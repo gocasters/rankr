@@ -13,7 +13,7 @@ import (
 
 // TracerProvider abstracts the tracing functionality
 type TracerProvider interface {
-	NewTracer(name string, options ...trace.TracerOption) trace.Tracer
+	NewTracer(name string, options ...trace.TracerOption) (trace.Tracer, error)
 	Shutdown(ctx context.Context) error
 }
 
@@ -52,6 +52,6 @@ type OtelAdapter interface {
 	MetricProvider
 	PropagationHandler
 	IsConfigured() bool
-	AddFloat64Counter(ctx context.Context, meter metric.Meter, name, desc string, cv float64, options ...metric.Float64CounterOption)
+	AddFloat64Counter(ctx context.Context, meter metric.Meter, name, desc string, cv float64, options ...metric.Float64CounterOption) error
 	Shutdown(ctx context.Context) error
 }

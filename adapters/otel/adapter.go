@@ -23,7 +23,7 @@ func NewOtelAdapter(config Config) (OtelAdapter, error) {
 	return factory.CreateAdapter(config)
 }
 
-func (a *compositeOtelAdapter) NewTracer(name string, options ...trace.TracerOption) trace.Tracer {
+func (a *compositeOtelAdapter) NewTracer(name string, options ...trace.TracerOption) (trace.Tracer, error) {
 	return a.tracerProvider.NewTracer(name, options...)
 }
 
@@ -43,8 +43,12 @@ func (a *compositeOtelAdapter) IsConfigured() bool {
 	return a.isConfigured
 }
 
-func (a *compositeOtelAdapter) AddFloat64Counter(ctx context.Context, meter metric.Meter, name, desc string, cv float64, options ...metric.Float64CounterOption) {
-	tracer := a.NewTracer("otel-adapter")
+func (a *compositeOtelAdapter) AddFloat64Counter(ctx context.Context, meter metric.Meter, name, desc string, cv float64, options ...metric.Float64CounterOption) error {
+	tracer, err := a.NewTracer("otel-adapter")
+	if err != nil {
+		logger.L().Error("failed to create tracer", err)
+	}
+
 	ctx, span := tracer.Start(ctx, "add-float64-counter")
 	defer span.End()
 
@@ -60,7 +64,7 @@ func (a *compositeOtelAdapter) AddFloat64Counter(ctx context.Context, meter metr
 			"error", err.Error(),
 			"counter_name", name,
 			"description", desc)
-		return
+		return fmt.Errorf("failed to create counter %s: %w", name, err)
 	}
 
 	processedEventCounter.Add(ctx, cv)
@@ -68,6 +72,7 @@ func (a *compositeOtelAdapter) AddFloat64Counter(ctx context.Context, meter metr
 	span.AddEvent("counter created and updated", trace.WithAttributes(
 		attribute.String("counter_name", name),
 		attribute.Float64("value", cv)))
+	return nil
 }
 
 func (a *compositeOtelAdapter) Shutdown(ctx context.Context) error {

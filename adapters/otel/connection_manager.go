@@ -13,8 +13,10 @@ type grpcConnectionManager struct {
 }
 
 func newGrpcConnectionManager(endpoint string) (*grpcConnectionManager, error) {
+	creds := insecure.NewCredentials()
+
 	conn, err := grpc.NewClient(endpoint,
-		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithTransportCredentials(creds),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gRPC connection to collector: %w", err)
