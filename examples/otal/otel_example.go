@@ -81,7 +81,11 @@ func createGRPCAdapter() otel.OtelAdapter {
 }
 
 func demonstrateTracing(adapter otel.OtelAdapter) {
-	tracer := adapter.NewTracer("example-tracer")
+	tracer, err := adapter.NewTracer("example-tracer")
+	if err != nil {
+		log.Printf("Failed to create tracer: %v", err)
+		return
+	}
 
 	ctx := context.Background()
 
@@ -156,7 +160,11 @@ func demonstrateMetrics(adapter otel.OtelAdapter) {
 
 func demonstrateContextPropagation(adapter otel.OtelAdapter) {
 
-	tracer := adapter.NewTracer("propagation-tracer")
+	tracer, err := adapter.NewTracer("propagation-tracer")
+	if err != nil {
+		log.Printf("Failed to create tracer for context propagation: %v", err)
+		return
+	}
 	ctx, span := tracer.Start(context.Background(), "propagation-example")
 	span.SetAttributes(attribute.String("example", "context-propagation"))
 
@@ -178,14 +186,26 @@ func demonstrateCustomCounter(adapter otel.OtelAdapter) {
 	ctx := context.Background()
 	meter := adapter.NewMeter("custom-meter")
 
-	adapter.AddFloat64Counter(ctx, meter, "custom_operations_total",
+	err := adapter.AddFloat64Counter(ctx, meter, "custom_operations_total",
 		"Total number of custom operations", 1.0)
+	if err != nil {
+		log.Printf("Failed to add custom counter: %v", err)
+		return
+	}
 
-	adapter.AddFloat64Counter(ctx, meter, "custom_operations_total",
+	err = adapter.AddFloat64Counter(ctx, meter, "custom_operations_total",
 		"Total number of custom operations", 2.5)
+	if err != nil {
+		log.Printf("Failed to add custom counter with value 2.5: %v", err)
+		return
+	}
 
-	adapter.AddFloat64Counter(ctx, meter, "error_operations_total",
+	err = adapter.AddFloat64Counter(ctx, meter, "error_operations_total",
 		"Total number of error operations", 1.0)
+	if err != nil {
+		log.Printf("Failed to add error counter: %v", err)
+		return
+	}
 
 	fmt.Println("Custom counter example completed")
 }

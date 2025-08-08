@@ -36,11 +36,12 @@ func newOtelTracerProvider(exporterFactory ExporterFactory, resourceBuilder Reso
 	}, nil
 }
 
-func (t *otelTracerProvider) NewTracer(name string, options ...trace.TracerOption) trace.Tracer {
+func (t *otelTracerProvider) NewTracer(name string, options ...trace.TracerOption) (trace.Tracer, error) {
 	if !t.isConfigured {
-		panic("tracer provider not configured")
+		return nil, fmt.Errorf("tracer provider not configured")
 	}
-	return t.provider.Tracer(name, options...)
+
+	return t.provider.Tracer(name, options...), nil
 }
 
 func (t *otelTracerProvider) Shutdown(ctx context.Context) error {
