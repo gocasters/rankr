@@ -20,14 +20,17 @@ func main() {
 func newHttpServerWithoutOtel() {
 	serverConfig := httpserver.Config{
 		Port:            8080,
-		Cors:            httpserver.Cors{AllowOrigins: []string{"*"}},
-		ShutDownTimeout: 10 * time.Second,
+		CORS:            httpserver.CORS{AllowOrigins: []string{"*"}},
+		ShutdownTimeout: 10 * time.Second,
 		OtelMiddleware:  nil, // No middleware is injected.
 	}
 
-	server := httpserver.New(serverConfig)
+	server, nErr := httpserver.New(serverConfig)
+	if nErr != nil {
+		log.Fatalf("failed to initial server: %v", nErr)
+	}
 
-	server.Router.GET(
+	server.GetRouter().GET(
 		"/ping",
 		func(c echo.Context) error {
 			return c.String(http.StatusOK, "pong")
@@ -89,14 +92,17 @@ func newHttpServerWithOtel() {
 
 	serverConfig := httpserver.Config{
 		Port:            8080,
-		Cors:            httpserver.Cors{AllowOrigins: []string{"*"}},
-		ShutDownTimeout: 10 * time.Second,
+		CORS:            httpserver.CORS{AllowOrigins: []string{"*"}},
+		ShutdownTimeout: 10 * time.Second,
 		OtelMiddleware:  otelMiddleware,
 	}
 
-	server := httpserver.New(serverConfig)
+	server, nErr := httpserver.New(serverConfig)
+	if nErr != nil {
+		log.Fatalf("failed to initial server: %v", nErr)
+	}
 
-	server.Router.GET(
+	server.GetRouter().GET(
 		"/ping-otel",
 		func(c echo.Context) error {
 			return c.String(http.StatusOK, "pong with otel")
