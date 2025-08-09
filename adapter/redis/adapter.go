@@ -27,7 +27,7 @@ func New(ctx context.Context, config Config) (*Adapter, error) {
 	})
 
 	if err := rdb.Ping(ctx).Err(); err != nil {
-		log.Errorf("Failed to connect to Redis: %v", err)
+		log.Errorf("Failed to connect to Redis at %s:%d (db=%d): %v", config.Host, config.Port, config.DB, err)
 
 		if cErr := rdb.Close(); cErr != nil {
 			log.Errorf("Error closing Redis client after connection failure: %v", cErr)
@@ -36,11 +36,19 @@ func New(ctx context.Context, config Config) (*Adapter, error) {
 		return nil, fmt.Errorf("redis connection failed: %w", err)
 	}
 
-	log.Info("✅ Redis is up running...")
+	log.Infof("✅ Redis is up and running at %s:%d (db=%d)", config.Host, config.Port, config.DB)
 
 	return &Adapter{client: rdb}, nil
 }
 
 func (a Adapter) Client() *redis.Client {
 	return a.client
+}
+
+func (a Adapter) Close() error {
+	if a.client == nil {
+		return nil
+	}
+
+	return a.client.Close()
 }
