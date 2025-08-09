@@ -119,13 +119,16 @@ func TestStopWithTimeout(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Act: Start the server in a separate goroutine
+	errCh := make(chan error, 1)
 	go func() {
-		startErr := server.Start()
-		assert.ErrorIs(t, startErr, http.ErrServerClosed, "server.Start() should return ErrServerClosed after shutdown")
+		errCh <- server.Start()
 	}()
 
-	time.Sleep(50 * time.Millisecond)
-
+	// Stop the server and verify shutdown succeeds
 	stopErr := server.StopWithTimeout()
 	assert.NoError(t, stopErr, "StopWithTimeout should not return an error when stopping a running server")
+
+	// Now verify Start() exited due to shutdown
+	startErr := <-errCh
+	assert.ErrorIs(t, startErr, http.ErrServerClosed, "server.Start() should return ErrServerClosed after shutdown")
 }
