@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var ValidConfig = Config{
+var validConfig = Config{
 	Host:     "localhost",
 	Port:     6379,
 	Password: "",
@@ -17,7 +17,7 @@ var ValidConfig = Config{
 }
 
 func TestConfigValidate_Valid(t *testing.T) {
-	vErrors := ValidConfig.Validate()
+	vErrors := validConfig.Validate()
 	assert.Empty(t, vErrors)
 }
 
@@ -106,9 +106,7 @@ func TestFormatValidationErrors(t *testing.T) {
 	}
 }
 
-// TestNew_WithMock tests the New function using a mock Redis client
 func TestNew_WithMock(t *testing.T) {
-	// Test successful connection
 	t.Run("Success", func(t *testing.T) {
 		client, mock := redismock.NewClientMock()
 		defer func() {
@@ -119,17 +117,14 @@ func TestNew_WithMock(t *testing.T) {
 
 		mock.ExpectPing().SetVal("PONG")
 
-		// Create adapter with the mocked client directly
 		adapter := &Adapter{client: client}
 
-		// Test ping to verify the mock works
 		err := adapter.client.Ping(context.Background()).Err()
 		assert.NoError(t, err)
 		assert.NotNil(t, adapter)
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
 
-	// Test connection failure
 	t.Run("Connection Failure", func(t *testing.T) {
 		client, mock := redismock.NewClientMock()
 		defer func() {
@@ -140,7 +135,6 @@ func TestNew_WithMock(t *testing.T) {
 
 		mock.ExpectPing().SetErr(errors.New("connection refused"))
 
-		// Simulate what the New function does on ping failure
 		err := client.Ping(context.Background()).Err()
 
 		assert.Error(t, err)
@@ -149,7 +143,6 @@ func TestNew_WithMock(t *testing.T) {
 	})
 }
 
-// TestNew_InvalidConfig tests configuration validation
 func TestNew_InvalidConfig(t *testing.T) {
 	testCases := []struct {
 		name        string
