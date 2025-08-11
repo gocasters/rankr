@@ -16,6 +16,7 @@ type Config struct {
 	RedisUrl string
 }
 
+// invalid Redis URL, failed Redis connectivity, or server startup failure.
 func main() {
 	var config Config
 	flag.IntVar(&config.Port, "port", 8080, "Server port")
@@ -64,6 +65,8 @@ func main() {
 	log.Fatal(http.ListenAndServe(addr, nil))
 }
 
+// getEnv returns the value of the environment variable named by key.
+// If the variable is unset or empty, it returns defaultValue.
 func getEnv(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
