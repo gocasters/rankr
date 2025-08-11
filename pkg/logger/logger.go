@@ -4,8 +4,8 @@ Package logger is responsible to log everything.
 package logger
 
 import (
+	"fmt"
 	"io"
-	"log"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -17,6 +17,7 @@ import (
 var (
 	globalLogger *slog.Logger
 	once         sync.Once
+	workingDir   string
 )
 
 type Config struct {
@@ -28,11 +29,13 @@ type Config struct {
 }
 
 // Init initializes the global logger instance.
-func Init(cfg Config) {
+func Init(cfg Config) error {
+	var initError error
 	once.Do(func() {
-		workingDir, err := os.Getwd()
-		if err != nil {
-			log.Fatalf("Error getting current working directory: %v", err)
+		workingDir, initError = os.Getwd()
+		if initError != nil {
+			initError = fmt.Errorf("error getting current working directory: %w", initError)
+			return
 		}
 		fileWriter := &lumberjack.Logger{
 			Filename:  filepath.Join(workingDir, cfg.FilePath),
@@ -48,18 +51,25 @@ func Init(cfg Config) {
 			}),
 		)
 	})
+	return initError
 }
 
 // L returns the global logger instance.
-func L() *slog.Logger {
-	return globalLogger
+func L() (*slog.Logger, error) {
+	if globalLogger == nil {
+		return nil, fmt.Errorf("globalLogger is null")
+	}
+	return globalLogger, nil
 }
 
 // New creates a new logger instance for each service with specific settings.
-func New(cfg Config) *slog.Logger {
-	workingDir, err := os.Getwd()
-	if err != nil {
-		log.Fatalf("Error getting current working directory: %v", err)
+func New(cfg Config) (*slog.Logger, error) {
+	var newErr error
+	if workingDir == "" {
+		workingDir, newErr = os.Getwd()
+		if newErr != nil {
+			return nil, fmt.Errorf("error getting current working directory: %w", newErr)
+		}
 	}
 
 	fileWriter := &lumberjack.Logger{
@@ -68,9 +78,10 @@ func New(cfg Config) *slog.Logger {
 		MaxSize:   cfg.FileMaxSizeInMB,
 		MaxAge:    cfg.FileMaxAgeInDays,
 	}
+	level := mapLevel(cfg.Level)
 	return slog.New(
-		slog.NewJSONHandler(io.MultiWriter(fileWriter), &slog.HandlerOptions{}),
-	)
+		slog.NewJSONHandler(io.MultiWriter(fileWriter), &slog.HandlerOptions{Level: level}),
+	), nil
 }
 
 func mapLevel(levelStr string) slog.Level {
