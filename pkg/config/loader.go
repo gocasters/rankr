@@ -1,7 +1,7 @@
 package config
 
 import (
-	"log"
+	"fmt"
 	"strings"
 
 	"github.com/knadh/koanf/parsers/yaml"
@@ -49,24 +49,25 @@ func Load(options Options, config interface{}) error {
 
 	options = *fillDefaultOptions(&options)
 
-	k := koanf.New(".")
+	k := koanf.New(options.Delimiter)
 
-	if err := k.Load(file.Provider(options.YamlFilePath), yaml.Parser()); err != nil {
-		log.Fatalf("error loading config: %s", err)
-		return err
+	if options.YamlFilePath != "" {
+		if err := k.Load(file.Provider(options.YamlFilePath), yaml.Parser()); err != nil {
+			return fmt.Errorf("error loading config: %w", err)
+		}
 	}
 
 	if err := k.Load(env.Provider(options.Delimiter, env.Opt{
 		Prefix:        options.Prefix,
 		TransformFunc: options.Transformer,
 	}), nil); err != nil {
-		log.Fatalf("error loading environment variables: %s", err)
-		return err
+		return fmt.Errorf("error loading environment variables: %w", err)
 	}
 
+	fmt.Printf("koanf %+v\n", k)
+
 	if err := k.Unmarshal("", &config); err != nil {
-		log.Fatalf("error unmarshaling config: %s", err)
-		return err
+		return fmt.Errorf("error unmarshaling config: %w", err)
 	}
 
 	return nil
