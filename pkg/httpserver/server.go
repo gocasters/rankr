@@ -12,6 +12,8 @@ type Config struct {
 	Port            int           `koanf:"port"`
 	CORS            CORS          `koanf:"cors"`
 	ShutdownTimeout time.Duration `koanf:"shutdown_context_timeout"`
+	HideBanner      bool          `koanf:"hide_banner"`
+	HidePort        bool          `koanf:"hide_port"`
 
 	// Optional Otel middleware can be injected from outside.
 	OtelMiddleware echo.MiddlewareFunc
@@ -59,26 +61,18 @@ func New(cfg Config) (*Server, error) {
 }
 
 func (s *Server) GetRouter() *echo.Echo {
-	if s.router != nil {
-		return s.router
-	}
-
-	return nil
+	return s.router
 }
 
 func (s *Server) GetConfig() *Config {
-	if s.config != nil {
-		return s.config
-	}
-
-	return nil
+	return s.config
 }
 
 func (s *Server) Start() error {
 	addr := fmt.Sprintf(":%d", s.config.Port)
 
-	//s.router.HideBanner = true
-	//s.router.HidePort = true
+	s.router.HideBanner = s.config.HideBanner
+	s.router.HidePort = s.config.HidePort
 
 	return s.router.Start(addr)
 }
