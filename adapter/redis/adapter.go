@@ -31,6 +31,7 @@ func (config Config) Validate() map[string]error {
 	return errs
 }
 
+// "validation errors: field1: error1; field2: error2", joining each "field: error" pair with "; ".
 func FormatValidationErrors(errs map[string]error) string {
 	if len(errs) == 0 {
 		return ""
@@ -48,6 +49,13 @@ type Adapter struct {
 	client *redis.Client
 }
 
+// New creates a Redis Adapter from the supplied Config and verifies connectivity.
+//
+// It validates the configuration, constructs a redis.Client, and performs a Ping using
+// the provided context to ensure the server is reachable. Returns an error if the
+// context is nil, the configuration is invalid (error message includes formatted
+// validation errors), or the connection ping fails (returned error wraps the ping error).
+// On ping failure the created client is closed before returning.
 func New(ctx context.Context, config Config) (*Adapter, error) {
 	if ctx == nil {
 		return nil, fmt.Errorf("context cannot be nil")

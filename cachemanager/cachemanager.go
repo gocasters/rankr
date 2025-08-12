@@ -11,6 +11,8 @@ type CacheManager struct {
 	cache *redis.Adapter
 }
 
+// NewCacheManager returns a new CacheManager that wraps the provided Redis adapter.
+// The returned manager delegates Get/Set operations to the given adapter's client.
 func NewCacheManager(cache *redis.Adapter) *CacheManager {
 	return &CacheManager{
 		cache: cache,
