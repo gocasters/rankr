@@ -3,9 +3,8 @@ package database
 import (
 	"context"
 	"fmt"
-	"time"
-
 	"github.com/jackc/pgx/v5/pgxpool"
+	"time"
 )
 
 type Database struct {
@@ -13,15 +12,7 @@ type Database struct {
 }
 
 func Connect(config Config) (*Database, error) {
-	dsn := fmt.Sprintf(
-		"postgres://%s:%s@%s:%d/%s?sslmode=%s",
-		config.Username,
-		config.Password,
-		config.Host,
-		config.Port,
-		config.DBName,
-		config.SSLMode,
-	)
+	dsn := BuildDSN(config)
 
 	poolConfig, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
@@ -48,9 +39,21 @@ func Connect(config Config) (*Database, error) {
 	}
 
 	fmt.Println("PostgreSQL connection established successfully (pgx v5)")
+
 	return &Database{Pool: pool}, nil
 }
 
 func (db *Database) Close() {
 	db.Pool.Close()
+}
+
+func BuildDSN(config Config) string {
+	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmod=%s",
+		config.Username,
+		config.Password,
+		config.Host,
+		config.Port,
+		config.DBName,
+		config.SSLMode,
+	)
 }
