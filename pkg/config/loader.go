@@ -60,11 +60,15 @@ func fillDefaultOptions(options *Options) *Options {
 
 func Load(options Options, config interface{}) error {
 	if config == nil {
-		return fmt.Errorf("config cannot be nil")
+		err := fmt.Errorf("config cannot be nil")
+		log.Printf("Invalid config: %v", err)
+		return err
 	}
 
 	if reflect.ValueOf(config).Kind() != reflect.Ptr || reflect.ValueOf(config).Elem().Kind() != reflect.Struct {
-		return fmt.Errorf("config must be a pointer to a struct")
+		err := fmt.Errorf("config must be a pointer to a struct, but got %v", reflect.TypeOf(config))
+		log.Printf("Invalid config type: %v", reflect.TypeOf(config))
+		return err
 	}
 
 	theOptions := fillDefaultOptions(&options)
@@ -73,7 +77,7 @@ func Load(options Options, config interface{}) error {
 
 	if theOptions.YamlFilePath != "" {
 		if err := k.Load(file.Provider(theOptions.YamlFilePath), yaml.Parser()); err != nil {
-			log.Fatalf("Error loading config file: %v", err)
+			log.Printf("Error loading config file: %v", err)
 			return err
 		}
 	}
@@ -82,14 +86,14 @@ func Load(options Options, config interface{}) error {
 		Prefix:        theOptions.Prefix,
 		TransformFunc: theOptions.Transformer,
 	}), nil); err != nil {
-		log.Fatalf("Error loading environment variables: %v", err)
+		log.Printf("Error loading environment variables: %v", err)
 		return err
 	}
 
 	fmt.Printf("koanf %+v\n", k)
 
 	if err := k.Unmarshal("", config); err != nil {
-		log.Fatalf("Error unmarshaling config: %v", err)
+		log.Printf("Error unmarshaling config: %v", err)
 		return err
 	}
 
