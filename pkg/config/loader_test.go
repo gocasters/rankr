@@ -89,7 +89,6 @@ log_level: info
 	err := config.Load(options, &cfg)
 	require.NoError(t, err)
 
-	fmt.Printf("config %+v", cfg)
 	// Environment variables should override YAML values
 	assert.Equal(t, "prod-db.example.com", cfg.Database.Host)
 	assert.Equal(t, 5433, cfg.Database.Port)
@@ -363,7 +362,7 @@ services:
 	assert.Equal(t, 6379, cfg.Services.Redis.Port)
 }
 
-// // Helper function to create temporary YAML files for testing
+// Helper function to create temporary YAML files for testing
 func createTempYAMLFile(t testing.TB, content string) *os.File {
 	tmpFile, err := os.CreateTemp("", "test-config-*.yaml")
 	require.NoError(t, err)

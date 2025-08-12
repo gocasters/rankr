@@ -90,8 +90,6 @@ func Load(options Options, config interface{}) error {
 		return err
 	}
 
-	fmt.Printf("koanf %+v\n", k)
-
 	if err := k.Unmarshal("", config); err != nil {
 		log.Printf("Error unmarshaling config: %v", err)
 		return err
