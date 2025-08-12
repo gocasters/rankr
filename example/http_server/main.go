@@ -1,19 +1,27 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/gocasters/rankr/pkg/httpserver"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.25.0"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"log"
 	"net/http"
 	"time"
 )
 
 func main() {
-	newHttpServerWithoutOtel()
-	//newHttpServerWithOtel()
+	//newHttpServerWithoutOtel()
+	newHttpServerWithOtel()
 }
 
 // newHttpServerWithoutOtel For test this example go to http://127.0.0.1:8080/ping
@@ -43,53 +51,61 @@ func newHttpServerWithoutOtel() {
 	}
 }
 
-// Instructions for the Future Developer:
-// 1. Delete this entire mocks.
-// 2. Import the real `otel` package.
-// 3. Replace the mock functions with the ones from the package.
+// =============================================================================
+// TODO: Refactor after 'otel' package merge
+//
+// ATTENTION: The 'initTracerProvider' function below is a temporary,
+// localized implementation for setting up OpenTelemetry tracing.
+// This was created because the centralized 'otel' package, which handles
+// all telemetry configurations, is not yet merged into the main branch.
+//
+// Once the 'otel' package is available, please perform the following steps:
+//  1. Delete this entire 'initTracerProvider' function.
+//  2. Import the 'otel' package.
+//  3. In the 'newHttpServerWithOtel' function, replace the call to
+//     'initTracerProvider' with a call to 'otel.NewOtelAdapter(config)'.
+//     The adapter will handle setting the global tracer provider internally.
+//
+// This change is crucial to centralize telemetry logic, avoid code
+// duplication, and adhere to our project's architectural design.
+// =============================================================================
+func initTracerProvider() (*sdktrace.TracerProvider, error) {
+	ctx := context.Background()
 
-type mockOtelAdapter struct{}
-
-func (m *mockOtelAdapter) IsConfigured() bool { return true }
-
-func NewOtelAdapter() (*mockOtelAdapter, error) {
-	return &mockOtelAdapter{}, nil
-}
-
-func EchoRequestLoggerBeforeNextFunc(pkg, fn string) func(c echo.Context) {
-	return func(c echo.Context) {
-		fmt.Printf("   [Otel Mock] -> BeforeNextFunc called for %s.\n", pkg)
+	conn, err := grpc.NewClient("127.0.0.1:4317", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gRPC connection to collector: %w", err)
 	}
-}
 
-func EchoRequestLoggerLogValuesFunc(pkg, fn string) func(c echo.Context, v middleware.RequestLoggerValues) error {
-	return func(c echo.Context, v middleware.RequestLoggerValues) error {
-		fmt.Printf("   [Otel Mock] -> LogValuesFunc called for %s with status %d.\n", pkg, v.Status)
-		return nil
+	traceExporter, err := otlptracegrpc.New(ctx, otlptracegrpc.WithGRPCConn(conn))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create trace exporter: %w", err)
 	}
+
+	resource := resource.NewWithAttributes(
+		semconv.SchemaURL,
+		semconv.ServiceNameKey.String("httpserver"),
+	)
+
+	tp := sdktrace.NewTracerProvider(
+		sdktrace.WithBatcher(traceExporter),
+		sdktrace.WithResource(resource),
+	)
+
+	return tp, nil
 }
 
 // newHttpServerWithOtel For test this example go to http://127.0.0.1:8080/ping-otel
 func newHttpServerWithOtel() {
-	otelAdapter, err := NewOtelAdapter()
+
+	traceProvider, err := initTracerProvider()
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 
-	var otelMiddleware echo.MiddlewareFunc
+	otel.SetTracerProvider(traceProvider)
 
-	if otelAdapter.IsConfigured() {
-		otelMiddleware = middleware.RequestLoggerWithConfig(
-			middleware.RequestLoggerConfig{
-				LogURI:    true,
-				LogStatus: true,
-				// any config...
-				BeforeNextFunc: EchoRequestLoggerBeforeNextFunc("httpserver", "Serve"),
-				LogValuesFunc:  EchoRequestLoggerLogValuesFunc("httpserver", "Serve"),
-			},
-		)
-	}
-
+	otelMiddleware := otelecho.Middleware("httpserver")
 	serverConfig := httpserver.Config{
 		Port:            8080,
 		CORS:            httpserver.CORS{AllowOrigins: []string{"*"}},
@@ -109,7 +125,6 @@ func newHttpServerWithOtel() {
 		},
 	)
 
-	fmt.Println("Server with Otel (mock) is ready.")
 	if err := server.Start(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("failed to start server: %v", err)
 	}
