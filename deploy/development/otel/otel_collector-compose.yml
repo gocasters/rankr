@@ -1,0 +1,9 @@
+services:
+  #Otel Service
+  otel_collector:
+    image: otel/opentelemetry-collector-contrib:${OTEL_IMAGE_TAG:-0.116.1}
+    volumes:
+      - ./deploy/development/otel/otel.yml:/etc/otelcol/config.yaml
+    ports:
+      - "8899:8899"
+    command: --config /etc/otelcol/config.yaml
