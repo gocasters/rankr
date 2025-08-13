@@ -28,6 +28,9 @@ go.work.sum
 .env
 
 # Editor/IDE
+ .idea/
+ .vscode/
+.DS_Store
 .idea/
 
 .vscode/
@@ -36,5 +39,7 @@ go.work.sum
 .history
 .cursor
 
-
+ .idea/
+ .vscode/
+.DS_Store
 
