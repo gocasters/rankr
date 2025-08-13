@@ -32,6 +32,7 @@ func (m Migrator) Up() {
 	if err != nil {
 		log.Fatalf("can't open postgres db: %v", err)
 	}
+	defer db.Close()
 
 	n, err := migrate.Exec(db, m.dialect, m.migrations, migrate.Up)
 	if err != nil {
@@ -49,6 +50,7 @@ func (m Migrator) Down() {
 	if err != nil {
 		log.Fatalf("can't open postgres db: %v", err)
 	}
+	defer db.Close()
 
 	n, err := migrate.Exec(db, m.dialect, m.migrations, migrate.Down)
 	if err != nil {
