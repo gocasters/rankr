@@ -48,7 +48,7 @@ func (db *Database) Close() {
 }
 
 func BuildDSN(config Config) string {
-	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmod=%s",
+	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
 		config.Username,
 		config.Password,
 		config.Host,
