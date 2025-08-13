@@ -32,9 +32,14 @@ go.work.sum
  .vscode/
 .DS_Store
 .idea/
+
 .vscode/
+
+
 .history
 .cursor
+
  .idea/
  .vscode/
 .DS_Store
+
