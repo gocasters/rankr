@@ -35,3 +35,6 @@ go.work.sum
 .vscode/
 .history
 .cursor
+ .idea/
+ .vscode/
+.DS_Store

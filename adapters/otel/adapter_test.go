@@ -149,7 +149,7 @@ func TestCompositeOtelAdapter_NewTracer(t *testing.T) {
 		isConfigured:   true,
 	}
 
-	tracer := adapter.NewTracer("test-tracer")
+	tracer, _ := adapter.NewTracer("test-tracer")
 	if tracer == nil {
 		t.Error("NewTracer should return a non-nil tracer")
 	}
