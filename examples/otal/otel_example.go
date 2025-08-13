@@ -116,7 +116,7 @@ func demonstrateTracing(adapter otel.OtelAdapter) {
 }
 
 func demonstrateMetrics(adapter otel.OtelAdapter) {
-	meter := adapter.NewMeter("example-meter")
+	meter, _ := adapter.NewMeter("example-meter")
 
 	requestCounter, err := meter.Float64Counter(
 		"requests_total",
@@ -184,7 +184,7 @@ func demonstrateContextPropagation(adapter otel.OtelAdapter) {
 
 func demonstrateCustomCounter(adapter otel.OtelAdapter) {
 	ctx := context.Background()
-	meter := adapter.NewMeter("custom-meter")
+	meter, _ := adapter.NewMeter("custom-meter")
 
 	err := adapter.AddFloat64Counter(ctx, meter, "custom_operations_total",
 		"Total number of custom operations", 1.0)

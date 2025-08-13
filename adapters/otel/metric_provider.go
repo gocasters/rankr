@@ -36,11 +36,11 @@ func newOtelMetricProvider(exporterFactory ExporterFactory, resourceBuilder Reso
 	}, nil
 }
 
-func (m *otelMetricProvider) NewMeter(name string, options ...metric.MeterOption) metric.Meter {
+func (m *otelMetricProvider) NewMeter(name string, options ...metric.MeterOption) (metric.Meter, error) {
 	if !m.isConfigured {
 		panic("metric provider not configured")
 	}
-	return m.provider.Meter(name, options...)
+	return m.provider.Meter(name, options...), nil
 }
 
 func (m *otelMetricProvider) Shutdown(ctx context.Context) error {

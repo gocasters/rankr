@@ -31,7 +31,7 @@ func (a *compositeOtelAdapter) NewMeter(name string, options ...metric.MeterOpti
 	if a.metricProvider == nil {
 		return nil, fmt.Errorf("metric provider is not configured")
 	}
-	return a.metricProvider.NewMeter(name, options...), nil
+	return a.metricProvider.NewMeter(name, options...)
 }
 
 func (a *compositeOtelAdapter) GetCarrierFromContext(ctx context.Context) map[string]string {
@@ -49,7 +49,7 @@ func (a *compositeOtelAdapter) IsConfigured() bool {
 func (a *compositeOtelAdapter) AddFloat64Counter(ctx context.Context, meter metric.Meter, name, desc string, cv float64, options ...metric.Float64CounterOption) error {
 	tracer, err := a.NewTracer("otel-adapter")
 	if err != nil {
-		logger.L().Error("failed to create tracer", err)
+		logger.L().Error("failed to create tracer", "error", err)
 	}
 
 	ctx, span := tracer.Start(ctx, "add-float64-counter")

@@ -31,11 +31,11 @@ type mockMetricProvider struct {
 	createdCounters map[string]*mockFloat64Counter
 }
 
-func (m *mockMetricProvider) NewMeter(name string, options ...metric.MeterOption) metric.Meter {
+func (m *mockMetricProvider) NewMeter(name string, options ...metric.MeterOption) (metric.Meter, error) {
 	if m.createdCounters == nil {
 		m.createdCounters = make(map[string]*mockFloat64Counter)
 	}
-	return &mockMeter{provider: m}
+	return &mockMeter{provider: m}, nil
 }
 
 func (m *mockMetricProvider) Shutdown(ctx context.Context) error {
@@ -344,7 +344,7 @@ func TestNewOtelAdapter(t *testing.T) {
 		t.Error("NewTracer should return a non-nil tracer")
 	}
 
-	meter := adapter.NewMeter("test")
+	meter, _ := adapter.NewMeter("test")
 	if meter == nil {
 		t.Error("NewMeter should return a non-nil meter")
 	}

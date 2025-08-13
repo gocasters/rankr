@@ -19,7 +19,7 @@ type TracerProvider interface {
 
 // MetricProvider abstracts the metrics functionality
 type MetricProvider interface {
-	NewMeter(name string, options ...metric.MeterOption) metric.Meter
+	NewMeter(name string, options ...metric.MeterOption) (metric.Meter, error)
 	Shutdown(ctx context.Context) error
 }
 
