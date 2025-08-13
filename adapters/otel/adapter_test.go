@@ -18,8 +18,8 @@ type mockTracerProvider struct {
 	startedSpans []*mockSpan
 }
 
-func (m *mockTracerProvider) NewTracer(name string, options ...trace.TracerOption) trace.Tracer {
-	return &mockTracer{provider: m}
+func (m *mockTracerProvider) NewTracer(name string, options ...trace.TracerOption) (trace.Tracer, error) {
+	return &mockTracer{provider: m}, nil
 }
 
 func (m *mockTracerProvider) Shutdown(ctx context.Context) error {
@@ -161,7 +161,7 @@ func TestCompositeOtelAdapter_NewMeter(t *testing.T) {
 		isConfigured:   true,
 	}
 
-	meter := adapter.NewMeter("test-meter")
+	meter, _ := adapter.NewMeter("test-meter")
 	if meter == nil {
 		t.Error("NewMeter should return a non-nil meter")
 	}
@@ -232,7 +232,7 @@ func TestCompositeOtelAdapter_AddFloat64Counter(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	meter := adapter.NewMeter("test-meter")
+	meter, _ := adapter.NewMeter("test-meter")
 
 	adapter.AddFloat64Counter(ctx, meter, "test_counter", "Test counter description", 1.5)
 
@@ -339,7 +339,7 @@ func TestNewOtelAdapter(t *testing.T) {
 		t.Error("Adapter should be configured after creation")
 	}
 
-	tracer := adapter.NewTracer("test")
+	tracer, _ := adapter.NewTracer("test")
 	if tracer == nil {
 		t.Error("NewTracer should return a non-nil tracer")
 	}

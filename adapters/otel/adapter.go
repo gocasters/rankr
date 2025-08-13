@@ -27,8 +27,11 @@ func (a *compositeOtelAdapter) NewTracer(name string, options ...trace.TracerOpt
 	return a.tracerProvider.NewTracer(name, options...)
 }
 
-func (a *compositeOtelAdapter) NewMeter(name string, options ...metric.MeterOption) metric.Meter {
-	return a.metricProvider.NewMeter(name, options...)
+func (a *compositeOtelAdapter) NewMeter(name string, options ...metric.MeterOption) (metric.Meter, error) {
+	if a.metricProvider == nil {
+		return nil, fmt.Errorf("metric provider is not configured")
+	}
+	return a.metricProvider.NewMeter(name, options...), nil
 }
 
 func (a *compositeOtelAdapter) GetCarrierFromContext(ctx context.Context) map[string]string {
