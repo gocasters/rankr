@@ -1,0 +1,10 @@
+postgres_db:
+  driver: postgres
+  host: localhost
+  port: 5432
+  contributor: contributor_admin
+  password: password123
+  db_name: contributor_db
+  ssl_mode: disable
+
+path_of_migration: ./contributorapp/repository/migrations
