@@ -27,10 +27,10 @@ type Notification struct {
 	Type      NotificationType   `json:"type"`
 	Status    NotificationStatus `json:"status"`
 	CreatedAt time.Time          `json:"created_at"`
-	ReadAt    *time.Time         `json:"read_at"`
+	ReadAt    *time.Time         `json:"read_at,omitempty"`
 }
 
-func new(userID, message string, nType NotificationType) *Notification {
+func newNotification(userID, message string, nType NotificationType) *Notification {
 	return &Notification{
 		UserID:  userID,
 		Message: message,

@@ -4,10 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 )
 
 var (
-	ErrNotFound  = errors.New("notification not found")
+	// ErrNotFound is returned when the notification does not exist.
+	ErrNotFound = errors.New("notification not found")
+	// ErrForbidden indicates the user lacks permission to access the notification.
 	ErrForbidden = errors.New("user does not have permission to access this resource")
 )
 
@@ -40,7 +43,7 @@ type DeleteRequest struct {
 	NotificationID string `json:"notification_id"`
 }
 
-type CountUnreadRequest struct {
+type GetUnreadCountRequest struct {
 	UserID string `json:"user_id"`
 }
 
@@ -64,6 +67,7 @@ type GetUnreadCountResponse struct {
 	Count int `json:"count"`
 }
 
+// Service contains the notification domain business logic.
 type Service struct {
 	repo Repository
 }
@@ -74,7 +78,11 @@ func NewService(repo Repository) *Service {
 
 // Create creates a new notification.
 func (s *Service) Create(ctx context.Context, req CreateRequest) (CreateResponse, error) {
-	n := new(req.UserID, req.Message, req.Type)
+	if strings.TrimSpace(req.Message) == "" {
+		return CreateResponse{}, fmt.Errorf("message cannot be blank")
+	}
+
+	n := newNotification(req.UserID, req.Message, req.Type)
 
 	createdNotification, err := s.repo.Create(ctx, *n)
 	if err != nil {
@@ -88,7 +96,10 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (CreateResponse
 func (s *Service) Get(ctx context.Context, req GetRequest) (GetResponse, error) {
 	notification, err := s.repo.Get(ctx, req.NotificationID)
 	if err != nil {
-		return GetResponse{}, ErrNotFound
+		if errors.Is(err, ErrNotFound) {
+			return GetResponse{}, ErrNotFound
+		}
+		return GetResponse{}, fmt.Errorf("failed to get notification: %w", err)
 	}
 
 	if notification.UserID != req.UserID {
@@ -98,6 +109,7 @@ func (s *Service) Get(ctx context.Context, req GetRequest) (GetResponse, error) 
 	return GetResponse{Notification: notification}, nil
 }
 
+// List returns all notifications for a user.
 func (s *Service) List(ctx context.Context, req ListRequest) (ListResponse, error) {
 	notifications, err := s.repo.List(ctx, req.UserID)
 	if err != nil {
@@ -112,8 +124,12 @@ func (s *Service) MarkAsRead(ctx context.Context, req MarkAsReadRequest) (MarkAs
 	// First, verify the notification exists and the user owns it.
 	notification, err := s.repo.Get(ctx, req.NotificationID)
 	if err != nil {
-		return MarkAsReadResponse{}, ErrNotFound
+		if errors.Is(err, ErrNotFound) {
+			return MarkAsReadResponse{}, ErrNotFound
+		}
+		return MarkAsReadResponse{}, fmt.Errorf("failed to get notification: %w", err)
 	}
+
 	if notification.UserID != req.UserID {
 		return MarkAsReadResponse{}, ErrForbidden
 	}
@@ -138,8 +154,12 @@ func (s *Service) MarkAllAsRead(ctx context.Context, req MarkAllAsReadRequest) e
 func (s *Service) Delete(ctx context.Context, req DeleteRequest) error {
 	notification, err := s.repo.Get(ctx, req.NotificationID)
 	if err != nil {
-		return ErrNotFound
+		if errors.Is(err, ErrNotFound) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("failed to get notification: %w", err)
 	}
+
 	if notification.UserID != req.UserID {
 		return ErrForbidden
 	}
@@ -151,7 +171,7 @@ func (s *Service) Delete(ctx context.Context, req DeleteRequest) error {
 }
 
 // GetUnreadCount gets the unread count for a user.
-func (s *Service) GetUnreadCount(ctx context.Context, req CountUnreadRequest) (GetUnreadCountResponse, error) {
+func (s *Service) GetUnreadCount(ctx context.Context, req GetUnreadCountRequest) (GetUnreadCountResponse, error) {
 	count, err := s.repo.GetUnreadCount(ctx, req.UserID)
 	if err != nil {
 		return GetUnreadCountResponse{}, fmt.Errorf("failed to get unread count: %w", err)
