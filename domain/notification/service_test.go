@@ -37,6 +37,7 @@ func TestCreateNotification(t *testing.T) {
 	assert.Equal(t, "4", resp.Notification.ID)
 	assert.Equal(t, "user-C", resp.Notification.UserID)
 	assert.Equal(t, StatusUnread, resp.Notification.Status)
+	assert.False(t, resp.Notification.CreatedAt.IsZero(), "CreatedAt should be set")
 }
 
 func TestGetNotification(t *testing.T) {
@@ -106,7 +107,6 @@ func TestMarkAsRead(t *testing.T) {
 	})
 
 	t.Run("should return ErrForbidden when marking another user's notification", func(t *testing.T) {
-		// Remember to fix the bug in the service first!
 		req := MarkAsReadRequest{UserID: "user-A", NotificationID: "3"}
 		_, err := service.MarkAsRead(ctx, req)
 
@@ -144,7 +144,7 @@ func TestGetUnreadCount(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("should return correct unread count for a user", func(t *testing.T) {
-		req := CountUnreadRequest{UserID: "user-A"}
+		req := GetUnreadCountRequest{UserID: "user-A"}
 		resp, err := service.GetUnreadCount(ctx, req)
 
 		require.NoError(t, err)
@@ -152,13 +152,36 @@ func TestGetUnreadCount(t *testing.T) {
 	})
 
 	t.Run("should return zero for a user with no unread notifications", func(t *testing.T) {
-		// Mark user-B's only notification as read to test this case
-		_, _ = service.MarkAsRead(ctx, MarkAsReadRequest{UserID: "user-B", NotificationID: "3"})
+		_, err := service.MarkAsRead(ctx, MarkAsReadRequest{UserID: "user-B", NotificationID: "3"})
+		require.NoError(t, err)
 
-		req := CountUnreadRequest{UserID: "user-B"}
+		req := GetUnreadCountRequest{UserID: "user-B"}
 		resp, err := service.GetUnreadCount(ctx, req)
 
 		require.NoError(t, err)
 		assert.Equal(t, 0, resp.Count)
 	})
+}
+
+func TestMarkAllAsRead(t *testing.T) {
+	service, _ := setupTestCase()
+	ctx := context.Background()
+
+	// user-A initially has 1 unread and 1 read
+	countResp, err := service.GetUnreadCount(ctx, GetUnreadCountRequest{UserID: "user-A"})
+	require.NoError(t, err)
+	require.Equal(t, 1, countResp.Count)
+
+	err = service.MarkAllAsRead(ctx, MarkAllAsReadRequest{UserID: "user-A"})
+	require.NoError(t, err)
+
+	// Validate all are read now
+	countResp, err = service.GetUnreadCount(ctx, GetUnreadCountRequest{UserID: "user-A"})
+	require.NoError(t, err)
+	require.Equal(t, 0, countResp.Count)
+
+	// Ensure user-B remains unaffected
+	countRespB, err := service.GetUnreadCount(ctx, GetUnreadCountRequest{UserID: "user-B"})
+	require.NoError(t, err)
+	require.Equal(t, 1, countRespB.Count)
 }

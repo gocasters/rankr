@@ -2,18 +2,17 @@ package notification
 
 import (
 	"context"
-	"errors"
 	"strconv"
 	"time"
 )
-
-// A local error for the mock to return, simulating a database "not found" error.
-var errMockNotFound = errors.New("not found in mock")
 
 type mockRepository struct {
 	notifications map[string]Notification
 	idCounter     int
 }
+
+// Compile-time check that mockRepository implements Repository.
+var _ Repository = (*mockRepository)(nil)
 
 func NewMockRepository() *mockRepository {
 	return &mockRepository{
@@ -27,6 +26,8 @@ func (m *mockRepository) Create(ctx context.Context, notification Notification) 
 	id := strconv.Itoa(m.idCounter)
 	notification.ID = id
 	notification.CreatedAt = time.Now()
+	notification.Status = StatusUnread
+	notification.ReadAt = nil
 
 	m.notifications[id] = notification
 
@@ -37,7 +38,7 @@ func (m *mockRepository) Get(ctx context.Context, notificationID string) (Notifi
 	if n, ok := m.notifications[notificationID]; ok {
 		return n, nil
 	}
-	return Notification{}, errMockNotFound
+	return Notification{}, ErrNotFound
 }
 
 func (m *mockRepository) List(ctx context.Context, userID string) ([]Notification, error) {
@@ -58,7 +59,7 @@ func (m *mockRepository) MarkAsRead(ctx context.Context, notificationID string) 
 		m.notifications[notificationID] = n
 		return n, nil
 	}
-	return Notification{}, errMockNotFound
+	return Notification{}, ErrNotFound
 }
 
 func (m *mockRepository) MarkAllAsRead(ctx context.Context, userID string) error {
@@ -75,7 +76,7 @@ func (m *mockRepository) MarkAllAsRead(ctx context.Context, userID string) error
 
 func (m *mockRepository) Delete(ctx context.Context, notificationID string) error {
 	if _, ok := m.notifications[notificationID]; !ok {
-		return errMockNotFound
+		return ErrNotFound
 	}
 	delete(m.notifications, notificationID)
 	return nil
