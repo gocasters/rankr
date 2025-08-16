@@ -1,0 +1,43 @@
+# HTTP Server Configuration
+http_server:
+  port: 8080
+  shutdown_timeout: 10s
+
+# PostgreSQL Database Configuration
+postgres_db:
+  driver: postgres
+  host: localhost
+  port: 5432
+  user: leaderboardscoring_admin
+  password: password123
+  db_name: leaderboardscoring_db
+  ssl_mode: disable
+
+# Redis Configuration
+redis:
+  address: "localhost:6379"
+  password: ""
+  db: 0
+
+# Logger Configuration
+logger:
+  level: "debug" # Can be debug, info, warn, error
+  format: "text" # Can be text or json
+
+# Consumer and Idempotency Configuration
+consumer:
+  processed_key_ttl: 24h
+  lock_key_ttl: 5m
+  prefix_processed_key: "processed_events"
+  prefix_lock_key: "lock"
+
+# Broker Configuration
+broker:
+  nats_url: ""
+  queue_group: "leaderboard_processors"
+
+# Path to database migrations
+path_of_migration: "./leaderboardscoring/repository/migrations"
+
+# Total application shutdown timeout
+total_shutdown_timeout: 30s

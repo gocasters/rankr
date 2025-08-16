@@ -1,0 +1,24 @@
+services:
+  leaderboardscoring-db:
+    image: postgres:17.2-alpine
+    container_name: leaderboardscoring-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: leaderboardscoring_admin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: leaderboardscoring_db
+    restart: always
+    volumes:
+      - leaderboardscoring-data:/var/lib/postgresql/data
+
+  leaderboardscoring-redis:
+    image: redis:6.2-alpine
+    container_name: leaderboardscoring-redis
+    ports:
+      - "6379:6379"
+    restart: always
+
+
+volumes:
+  leaderboardscoring-data:
