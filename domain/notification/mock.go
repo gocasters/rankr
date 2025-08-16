@@ -15,6 +15,9 @@ type mockRepository struct {
 	idCounter     int
 }
 
+// NewMockRepository creates and returns a new in-memory mockRepository for notifications.
+// The repository is initialized with an empty notifications map and an idCounter set to 0.
+// It is intended for tests and local usage where a persistent store is not required.
 func NewMockRepository() *mockRepository {
 	return &mockRepository{
 		notifications: make(map[string]Notification),

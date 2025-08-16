@@ -68,6 +68,7 @@ type Service struct {
 	repo Repository
 }
 
+// NewService returns a new Service backed by the provided Repository.
 func NewService(repo Repository) *Service {
 	return &Service{repo: repo}
 }
