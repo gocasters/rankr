@@ -47,7 +47,7 @@ func Setup(
 
 	httpServer, hErr := httpserver.New(config.HTTPServer)
 	if hErr != nil {
-		logger.Error("Failed to initialize HTTP server", slog.String("error", err.Error()))
+		logger.Error("Failed to initialize HTTP server", slog.String("error", hErr.Error()))
 		panic(hErr)
 	}
 	leaderboardscoringHandler := http.NewHandler(logger)
