@@ -59,6 +59,10 @@ func migrate() {
 
 	mgr := migrator.New(cfg.PostgresDB, cfg.PathOfMigration)
 
+	if up && down {
+		log.Fatalf("Flags --up and --down are mutually exclusive")
+	}
+
 	if up {
 		mgr.Up()
 	} else if down {

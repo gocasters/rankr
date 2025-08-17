@@ -35,15 +35,21 @@ func Setup(
 	subscriber message.Subscriber,
 	postgresConn *database.Database,
 ) Application {
-	redisAdapter, _ := redis.New(ctx, config.Redis)
+	redisAdapter, err := redis.New(ctx, config.Redis)
+	if err != nil {
+		logger.Error("Failed to initialize Redis adapter", slog.String("error", err.Error()))
+		panic(err)
+	}
 
 	leaderboardscoringRepo := repository.NewLeaderboardscoringRepo(redisAdapter.Client(), postgresConn.Pool, logger)
 	leaderboardValidator := leaderboardscoring.NewValidator()
 	leaderboardSvc := leaderboardscoring.NewService(leaderboardscoringRepo, leaderboardValidator, logger)
 
-	wmRouter := setupWatermill(leaderboardSvc, subscriber, config.Consumer, logger, redisAdapter)
-
-	httpServer, _ := httpserver.New(config.HTTPServer)
+	httpServer, hErr := httpserver.New(config.HTTPServer)
+	if hErr != nil {
+		logger.Error("Failed to initialize HTTP server", slog.String("error", err.Error()))
+		panic(hErr)
+	}
 	leaderboardscoringHandler := http.NewHandler(logger)
 	leaderboardHttpServer := http.New(
 		httpServer,
@@ -51,6 +57,8 @@ func Setup(
 		logger,
 		leaderboardSvc,
 	)
+
+	wmRouter := setupWatermill(leaderboardSvc, subscriber, config.Consumer, logger, redisAdapter)
 
 	return Application{
 		HTTPServer:                leaderboardHttpServer,
@@ -69,6 +77,7 @@ func (app Application) Start() {
 
 	startServer(app, &wg)
 	startWaterMill(app, &wg, ctx)
+
 	app.Logger.Info("Leaderboard Scoring application started.")
 
 	<-ctx.Done()
@@ -96,10 +105,10 @@ func (app Application) shutdownServers(ctx context.Context) bool {
 	go func() {
 		var shutdownWg sync.WaitGroup
 		shutdownWg.Add(1)
-		go app.shutdownHTTPServer(&shutdownWg)
+		go app.shutdownHTTPServer(ctx, &shutdownWg)
 
 		shutdownWg.Add(1)
-		go app.shutdownWatermill(&shutdownWg)
+		go app.shutdownWatermill(ctx, &shutdownWg)
 
 		shutdownWg.Wait()
 		close(shutdownDone)
@@ -114,28 +123,39 @@ func (app Application) shutdownServers(ctx context.Context) bool {
 	}
 }
 
-func (app Application) shutdownHTTPServer(wg *sync.WaitGroup) {
+func (app Application) shutdownHTTPServer(parentCtx context.Context, wg *sync.WaitGroup) {
 	app.Logger.Info(fmt.Sprintf("Starting graceful shutdown for HTTP server on port %d", app.Config.HTTPServer.Port))
 
 	defer wg.Done()
-	httpShutdownCtx, httpCancel := context.WithTimeout(context.Background(), app.Config.HTTPServer.ShutdownTimeout)
-	defer httpCancel()
+	httpCtx, cancel := context.WithTimeout(parentCtx, app.Config.HTTPServer.ShutdownTimeout)
+	defer cancel()
 
-	if err := app.HTTPServer.HTTPServer.Stop(httpShutdownCtx); err != nil {
+	if err := app.HTTPServer.HTTPServer.Stop(httpCtx); err != nil {
 		app.Logger.Error(fmt.Sprintf("HTTP server graceful shutdown failed: %v", err))
 	}
 
 	app.Logger.Info("HTTP server shut down successfully.")
 }
 
-func (app Application) shutdownWatermill(wg *sync.WaitGroup) {
+func (app Application) shutdownWatermill(parentCtx context.Context, wg *sync.WaitGroup) {
 	app.Logger.Info("Starting graceful shutdown for Watermill")
-
 	defer wg.Done()
 
-	if err := app.WatermillRouter.Close(); err != nil {
-		app.Logger.Error("Watermill graceful shutdown failed")
+	done := make(chan struct{})
+	go func() {
+		if err := app.WatermillRouter.Close(); err != nil {
+			app.Logger.Error("Watermill graceful shutdown failed")
+		}
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		app.Logger.Info("Watermill shutdown successfully.")
+	case <-parentCtx.Done():
+		app.Logger.Warn("Watermill shutdown timed out.")
 	}
+
 }
 
 func startServer(app Application, wg *sync.WaitGroup) {
@@ -145,7 +165,9 @@ func startServer(app Application, wg *sync.WaitGroup) {
 		app.Logger.Info(fmt.Sprintf("HTTP server started on %d", app.Config.HTTPServer.Port))
 		if err := app.HTTPServer.Serve(); err != nil {
 			// todo add metrics
-			app.Logger.Error(fmt.Sprintf("error in HTTP server on %d", app.Config.HTTPServer.Port), err)
+			app.Logger.Error(
+				fmt.Sprintf("error in HTTP server on %d", app.Config.HTTPServer.Port),
+				slog.Any("error", err))
 		}
 		app.Logger.Info(fmt.Sprintf("HTTP server stopped %d", app.Config.HTTPServer.Port))
 	}()

@@ -1,9 +1,9 @@
 syntax = "proto3";
 
-package event;
+package protobuf.event;
 import "google/protobuf/timestamp.proto";
 
-option go_package = "protobuf/golang/eventpb";
+option go_package = "github.com/gocasters/rankr/protobuf/golang/eventpb";
 
 // TODO: This enum defines the high-level event categories within the system.
 // This list should be reviewed and finalized once the event mapping strategy

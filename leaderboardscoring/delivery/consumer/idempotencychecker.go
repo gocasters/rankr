@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"log/slog"
 	"time"
@@ -51,14 +52,15 @@ func (ic *IdempotencyChecker) Process(ctx context.Context, eventID string, proce
 	}
 
 	// 2. Try to acquire a temporary lock.
-	wasSet, err := ic.redisClient.SetNX(ctx, lockKey, 1, ic.config.LockKeyTTL).Result()
-	if err != nil {
-		return fmt.Errorf("failed to acquire lock: %w", err)
+	token := uuid.NewString()
+	wasSet, sErr := ic.redisClient.SetNX(ctx, lockKey, token, ic.config.LockKeyTTL).Result()
+	if sErr != nil {
+		return fmt.Errorf("failed to acquire lock: %w", sErr)
 	}
 	if !wasSet {
 		return ErrEventLocked
 	}
-	defer ic.redisClient.Del(ctx, lockKey)
+	defer ic.releaseLock(ctx, lockKey, token)
 
 	// 3. Execute the core business logic.
 	if pErr := processFunc(); pErr != nil {
@@ -78,6 +80,17 @@ func (ic *IdempotencyChecker) Process(ctx context.Context, eventID string, proce
 	}
 
 	return nil
+}
+
+func (ic *IdempotencyChecker) releaseLock(ctx context.Context, lockKey, token string) {
+	var releaseLockLua = redis.NewScript(`
+if redis.call("get", KEYS[1]) == ARGV[1] then
+  return redis.call("del", KEYS[1])
+else
+  return 0
+end
+`)
+	_ = releaseLockLua.Run(ctx, ic.redisClient, []string{lockKey}, token).Err()
 }
 
 func (ic *IdempotencyChecker) processedKey(eventID string) string {

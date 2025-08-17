@@ -46,10 +46,10 @@ func (s Service) ProcessScoreEvent(ctx context.Context, req EventRequest) error 
 		ID:              req.ID,
 		UserID:          req.UserID,
 		ProjectID:       req.ProjectID,
-		Type:            req.Type,
+		Type:            ContributionType(req.Type),
 		ScoreValue:      req.ScoreValue,
 		SourceReference: req.SourceReference,
-		Timestamp:       req.Timestamp,
+		Timestamp:       req.Timestamp.UTC(),
 	}
 
 	var keys = s.keys(contributionEvent.ProjectID)

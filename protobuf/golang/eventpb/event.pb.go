@@ -76,7 +76,7 @@ func (EventName) EnumDescriptor() ([]byte, []int) {
 type Event struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	Id        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	EventName EventName              `protobuf:"varint,2,opt,name=event_name,json=eventName,proto3,enum=event.EventName" json:"event_name,omitempty"`
+	EventName EventName              `protobuf:"varint,2,opt,name=event_name,json=eventName,proto3,enum=protobuf.event.EventName" json:"event_name,omitempty"`
 	Time      *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=time,proto3" json:"time,omitempty"`
 	// Types that are valid to be assigned to Payload:
 	//
@@ -163,19 +163,14 @@ type Event_ContributionRegisteredPayload struct {
 
 func (*Event_ContributionRegisteredPayload) isEvent_Payload() {}
 
-// ContributionRegisteredPayload is a standardized message for any event that
-// represents a user contribution to be considered for leaderboard scoring.
 type ContributionRegisteredPayload struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
 	UserId    string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	ProjectId string                 `protobuf:"bytes,2,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
-	// The specific type of the contribution, crucial for the scoring logic.
-	// Example values: "PULL_REQUEST_MERGED", "PULL_REQUEST_REVIEW_SUBMITTED".
-	EventType string `protobuf:"bytes,3,opt,name=event_type,json=eventType,proto3" json:"event_type,omitempty"`
-	// The score value for this event, pre-calculated by the webhook service
-	ScoreValue int32 `protobuf:"varint,4,opt,name=score_value,json=scoreValue,proto3" json:"score_value,omitempty"`
-	// An optional field holding a reference to the source entity, such as the
-	// URL of a pull request, an issue number, or a commit SHA.
+	// Example values: "PULL_REQUEST_MERGED", "PULL_REQUEST_REVIEW_SUBMITTED"
+	EventType  string `protobuf:"bytes,3,opt,name=event_type,json=eventType,proto3" json:"event_type,omitempty"`
+	ScoreValue int32  `protobuf:"varint,4,opt,name=score_value,json=scoreValue,proto3" json:"score_value,omitempty"`
+	// URL of a pull request, an issue number, or a commit SHA
 	SourceReference string `protobuf:"bytes,5,opt,name=source_reference,json=sourceReference,proto3" json:"source_reference,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
@@ -250,13 +245,13 @@ var File_event_proto protoreflect.FileDescriptor
 
 const file_event_proto_rawDesc = "" +
 	"\n" +
-	"\vevent.proto\x12\x05event\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf3\x01\n" +
+	"\vevent.proto\x12\x0eprotobuf.event\x1a\x1fgoogle/protobuf/timestamp.proto\"\x85\x02\n" +
 	"\x05Event\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\x12/\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x128\n" +
 	"\n" +
-	"event_name\x18\x02 \x01(\x0e2\x10.event.EventNameR\teventName\x12.\n" +
-	"\x04time\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x04time\x12n\n" +
-	"\x1fcontribution_registered_payload\x18d \x01(\v2$.event.ContributionRegisteredPayloadH\x00R\x1dcontributionRegisteredPayloadB\t\n" +
+	"event_name\x18\x02 \x01(\x0e2\x19.protobuf.event.EventNameR\teventName\x12.\n" +
+	"\x04time\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x04time\x12w\n" +
+	"\x1fcontribution_registered_payload\x18d \x01(\v2-.protobuf.event.ContributionRegisteredPayloadH\x00R\x1dcontributionRegisteredPayloadB\t\n" +
 	"\apayload\"\xc2\x01\n" +
 	"\x1dContributionRegisteredPayload\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1d\n" +
@@ -269,7 +264,7 @@ const file_event_proto_rawDesc = "" +
 	"\x10source_reference\x18\x05 \x01(\tR\x0fsourceReference*D\n" +
 	"\tEventName\x12\x1a\n" +
 	"\x16EVENT_NAME_UNSPECIFIED\x10\x00\x12\x1b\n" +
-	"\x17CONTRIBUTION_REGISTERED\x10\x01B\x19Z\x17protobuf/golang/eventpbb\x06proto3"
+	"\x17CONTRIBUTION_REGISTERED\x10\x01B4Z2github.com/gocasters/rankr/protobuf/golang/eventpbb\x06proto3"
 
 var (
 	file_event_proto_rawDescOnce sync.Once
@@ -286,15 +281,15 @@ func file_event_proto_rawDescGZIP() []byte {
 var file_event_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_event_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
 var file_event_proto_goTypes = []any{
-	(EventName)(0),                        // 0: event.EventName
-	(*Event)(nil),                         // 1: event.Event
-	(*ContributionRegisteredPayload)(nil), // 2: event.ContributionRegisteredPayload
+	(EventName)(0),                        // 0: protobuf.event.EventName
+	(*Event)(nil),                         // 1: protobuf.event.Event
+	(*ContributionRegisteredPayload)(nil), // 2: protobuf.event.ContributionRegisteredPayload
 	(*timestamppb.Timestamp)(nil),         // 3: google.protobuf.Timestamp
 }
 var file_event_proto_depIdxs = []int32{
-	0, // 0: event.Event.event_name:type_name -> event.EventName
-	3, // 1: event.Event.time:type_name -> google.protobuf.Timestamp
-	2, // 2: event.Event.contribution_registered_payload:type_name -> event.ContributionRegisteredPayload
+	0, // 0: protobuf.event.Event.event_name:type_name -> protobuf.event.EventName
+	3, // 1: protobuf.event.Event.time:type_name -> google.protobuf.Timestamp
+	2, // 2: protobuf.event.Event.contribution_registered_payload:type_name -> protobuf.event.ContributionRegisteredPayload
 	3, // [3:3] is the sub-list for method output_type
 	3, // [3:3] is the sub-list for method input_type
 	3, // [3:3] is the sub-list for extension type_name

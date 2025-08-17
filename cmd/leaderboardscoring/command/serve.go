@@ -16,12 +16,6 @@ import (
 var migrateUp bool
 var migrateDown bool
 
-func init() {
-	serveCmd.Flags().BoolVar(&migrateUp, "migrate-up", false, "Run migrations up before starting the server")
-	serveCmd.Flags().BoolVar(&migrateDown, "migrate-down", false, "Run migrations down before starting the server")
-	RootCmd.AddCommand(serveCmd)
-}
-
 var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Start the leaderboardscoring service",
@@ -29,6 +23,12 @@ var serveCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		serve()
 	},
+}
+
+func init() {
+	serveCmd.Flags().BoolVar(&migrateUp, "migrate-up", false, "Run migrations up before starting the server")
+	serveCmd.Flags().BoolVar(&migrateDown, "migrate-down", false, "Run migrations down before starting the server")
+	RootCmd.AddCommand(serveCmd)
 }
 
 func serve() {
@@ -42,7 +42,7 @@ func serve() {
 
 	yamlPath := os.Getenv("CONFIG_PATH")
 	if yamlPath == "" {
-		yamlPath = filepath.Join(workingDir, "deploy", "leaderboardscoring", "development", "config.yml")
+		yamlPath = filepath.Join(workingDir, "deploy", "leaderboardscoring", "development", "config.local.yml")
 	}
 
 	options := config.Options{
@@ -51,7 +51,6 @@ func serve() {
 		Separator:    "__",
 		YamlFilePath: yamlPath,
 	}
-
 	if lErr := config.Load(options, &cfg); lErr != nil {
 		log.Fatalf("Failed to load leaderboardscoring config: %v", lErr)
 	}
@@ -62,6 +61,11 @@ func serve() {
 
 	// Run migrations if flags are set
 	if migrateUp || migrateDown {
+		if migrateUp && migrateDown {
+			leaderboardLogger.Error("invalid flags: --migrate-up and --migrate-down cannot be used together")
+			return
+		}
+
 		mgr := migrator.New(cfg.PostgresDB, cfg.PathOfMigration)
 		if migrateUp {
 			leaderboardLogger.Info("Running migrations up...")
@@ -78,11 +82,13 @@ func serve() {
 	// TODO - Start otel tracer
 
 	leaderboardLogger.Info("Starting leaderboardscoring Service...")
+
 	// Connect to the database
 	databaseConn, cnErr := database.Connect(cfg.PostgresDB)
 	if cnErr != nil {
 		leaderboardLogger.Error("fatal error occurred", "reason", "failed to connect to database", slog.Any("error", cnErr))
-		//os.Exit(1)
+
+		return
 	}
 	defer databaseConn.Close()
 
@@ -90,8 +96,8 @@ func serve() {
 	//ctx, cancel := context.WithCancel(context.Background())
 	//defer cancel()
 
-	//app := leaderboardscoring.Setup(ctx, cfg, leaderboardscoringLogger, subscriber, databaseConn)
+	//app := leaderboardscoring.Setup(ctx, cfg, leaderboardLogger, subscriber, databaseConn)
 	//app.Start()
 
-	slog.Info("leaderboard-scoring service started")
+	leaderboardLogger.Info("Leaderboard-scoring service started")
 }
