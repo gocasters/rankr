@@ -4,12 +4,9 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/gocasters/rankr/githubwebhook"
 	"log"
 	"net/http"
 	"os"
-
-	"github.com/gocasters/rankr/event"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -60,11 +57,6 @@ func main() {
 			fmt.Fprintf(w, "%s: %.0f\n", member.Member, member.Score)
 		}
 	})
-
-	watermillPublisher := event.SimplePublisher{}
-	pub := event.NewPublisher(&watermillPublisher)
-	webhookHandler := githubwebhook.NewGithubWebhookHandler(pub)
-	http.HandleFunc("/github/webhook", webhookHandler.ServeHTTP)
 
 	// Start server
 	addr := fmt.Sprintf(":%d", config.Port)
