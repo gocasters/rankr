@@ -99,13 +99,13 @@ func startServers(app Application, wg *sync.WaitGroup) {
 
 func (app Application) shutdownServers(ctx context.Context) bool {
 	app.Logger.Info("Starting server shutdown process...")
-
 	shutdownDone := make(chan struct{})
 
+	parentCtx := context.Background()
 	go func() {
 		var shutdownWg sync.WaitGroup
 		shutdownWg.Add(1)
-		go app.shutdownHTTPServer(&shutdownWg)
+		go app.shutdownHTTPServer(parentCtx, &shutdownWg)
 
 		shutdownWg.Wait()
 		close(shutdownDone)
@@ -121,11 +121,11 @@ func (app Application) shutdownServers(ctx context.Context) bool {
 	}
 }
 
-func (app Application) shutdownHTTPServer(wg *sync.WaitGroup) {
+func (app Application) shutdownHTTPServer(parentCtx context.Context, wg *sync.WaitGroup) {
 	app.Logger.Info(fmt.Sprintf("Starting graceful shutdown for HTTP server on port %d", app.Config.HTTPServer.Port))
 
 	defer wg.Done()
-	httpShutdownCtx, httpCancel := context.WithTimeout(context.Background(), app.Config.HTTPServer.ShutdownTimeout)
+	httpShutdownCtx, httpCancel := context.WithTimeout(parentCtx, app.Config.HTTPServer.ShutdownTimeout)
 	defer httpCancel()
 	if err := app.HTTPServer.Stop(httpShutdownCtx); err != nil {
 		app.Logger.Error(fmt.Sprintf("HTTP server graceful shutdown failed: %v", err))

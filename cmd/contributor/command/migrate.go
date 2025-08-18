@@ -61,6 +61,7 @@ func migrate() {
 		mgr.Down()
 	} else {
 		log.Println("Please specify a migration direction with --up or --down")
+		os.Exit(2)
 	}
 }
 
