@@ -41,6 +41,11 @@ func Setup(
 		panic(err)
 	}
 
+	if postgresConn == nil || postgresConn.Pool == nil {
+		logger.Error("Postgres connection pool is not initialized")
+		panic("postgres connection pool is nil")
+	}
+
 	leaderboardscoringRepo := repository.NewLeaderboardscoringRepo(redisAdapter.Client(), postgresConn.Pool, logger)
 	leaderboardValidator := leaderboardscoring.NewValidator()
 	leaderboardSvc := leaderboardscoring.NewService(leaderboardscoringRepo, leaderboardValidator, logger)

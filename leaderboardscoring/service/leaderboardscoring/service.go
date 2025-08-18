@@ -55,16 +55,16 @@ func (s Service) ProcessScoreEvent(ctx context.Context, req EventRequest) error 
 	var keys = s.keys(contributionEvent.ProjectID)
 
 	if err := s.repo.UpdateScores(ctx, keys, contributionEvent.ScoreValue, contributionEvent.UserID); err != nil {
-		s.logger.Error("failed to update scores in redis", slog.String("error", err.Error()))
+		s.logger.Error(ErrFailedToUpdateScores.Error(), slog.String("error", err.Error()))
 		return err
 	}
 
 	if err := s.repo.PersistContribution(ctx, &contributionEvent); err != nil {
-		s.logger.Error("failed to persist contribution to database", slog.String("error", err.Error()))
+		s.logger.Error(ErrFailedToPersistContribution.Error(), slog.String("error", err.Error()))
 		return err
 	}
 
-	s.logger.Debug("successfully processed score event", slog.String("event_id", contributionEvent.ID))
+	s.logger.Debug(ErrSuccessfullyProcessedEvent.Error(), slog.String("event_id", contributionEvent.ID))
 
 	return nil
 }
@@ -103,7 +103,7 @@ func (s Service) keys(projectID string) []string {
 	globalKeys := make([]string, 0, 4)
 	perProjectKeys := make([]string, 0, 4)
 
-	globalKeys = append(globalKeys, GetGlobalLeaderboardKey("all_time", ""))
+	globalKeys = append(globalKeys, getGlobalLeaderboardKey("all_time", ""))
 	for _, tf := range Timeframes {
 		var period string
 
@@ -116,11 +116,11 @@ func (s Service) keys(projectID string) []string {
 			period = timettl.GetWeek()
 		}
 
-		key := GetGlobalLeaderboardKey(tf, period)
+		key := getGlobalLeaderboardKey(tf, period)
 		globalKeys = append(globalKeys, key)
 	}
 
-	perProjectKeys = append(perProjectKeys, GetPerProjectLeaderboardKey(projectID, "all_time", ""))
+	perProjectKeys = append(perProjectKeys, getPerProjectLeaderboardKey(projectID, "all_time", ""))
 	for _, tf := range Timeframes {
 		var period string
 
@@ -133,7 +133,7 @@ func (s Service) keys(projectID string) []string {
 			period = timettl.GetWeek()
 		}
 
-		key := GetPerProjectLeaderboardKey(projectID, tf, period)
+		key := getPerProjectLeaderboardKey(projectID, tf, period)
 		globalKeys = append(globalKeys, key)
 	}
 
@@ -141,7 +141,7 @@ func (s Service) keys(projectID string) []string {
 	return keys
 }
 
-func GetGlobalLeaderboardKey(timeframe string, period string) string {
+func getGlobalLeaderboardKey(timeframe string, period string) string {
 	if timeframe == "all_time" {
 		return fmt.Sprintf("leaderboard:global:%s", timeframe)
 	}
@@ -149,7 +149,7 @@ func GetGlobalLeaderboardKey(timeframe string, period string) string {
 	return fmt.Sprintf("leaderboard:global:%s:%s", timeframe, period)
 }
 
-func GetPerProjectLeaderboardKey(project string, timeframe string, period string) string {
+func getPerProjectLeaderboardKey(project string, timeframe string, period string) string {
 	if timeframe == "all_time" {
 		return fmt.Sprintf("leaderboard:%s:%s", project, timeframe)
 	}
