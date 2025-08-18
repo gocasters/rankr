@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/gocasters/rankr/githubwebhook"
@@ -20,6 +21,8 @@ func (s Server) PublishGithubActivity(c echo.Context) error {
 		})
 	}
 
+	// TODO: add limit to read body to avoid abuse. -> "const maxPayload = 1 << 20";
+	// TODO: body, err := io.ReadAll(io.LimitReader(c.Request().Body, maxPayload))
 	body, err := io.ReadAll(c.Request().Body)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{
@@ -27,60 +30,36 @@ func (s Server) PublishGithubActivity(c echo.Context) error {
 		})
 	}
 
-	switch githubwebhook.EventType(eventName) {
-	case githubwebhook.EventTypeIssues:
-		webhookAction, waErr := extractWebhookAction(body)
-		if waErr != nil {
-			return c.JSON(http.StatusBadRequest, map[string]string{
-				"error": "Failed to parse JSON",
-			})
-		}
-
-		handleEvent := s.Service.HandleIssuesEvent(c.Request().Context(), webhookAction, body, deliveryUID)
-		if handleEvent != nil {
-			return c.JSON(http.StatusBadRequest, map[string]string{
-				"error": "Failed to handle event",
-			})
-		}
-		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
-
-	case githubwebhook.EventTypePullRequest:
-		webhookAction, waErr := extractWebhookAction(body)
-		if waErr != nil {
-			return c.JSON(http.StatusBadRequest, map[string]string{
-				"error": "Failed to parse JSON",
-			})
-		}
-
-		handleEvent := s.Service.HandlePullRequestEvent(c.Request().Context(), webhookAction, body, deliveryUID)
-		if handleEvent != nil {
-			return c.JSON(http.StatusBadRequest, map[string]string{
-				"error": "Failed to handle event",
-			})
-		}
-		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
-
-	case githubwebhook.EventTypePullRequestReview:
-		webhookAction, waErr := extractWebhookAction(body)
-		if waErr != nil {
-			return c.JSON(http.StatusBadRequest, map[string]string{
-				"error": "Failed to parse JSON",
-			})
-		}
-
-		handleEvent := s.Service.HandlePullRequestReviewEvent(c.Request().Context(), webhookAction, body, deliveryUID)
-		if handleEvent != nil {
-			return c.JSON(http.StatusBadRequest, map[string]string{
-				"error": "Failed to handle event",
-			})
-		}
-		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
-
-	default:
-		return c.JSON(http.StatusOK, map[string]string{
-			"message": fmt.Sprintf("Event type '%s' not handled", eventName),
+	webhookAction, waErr := extractWebhookAction(body)
+	if waErr != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "Failed to parse JSON",
 		})
 	}
+
+	// Map event types to their handler functions
+	handlers := map[githubwebhook.EventType]func(ctx context.Context, action string, body []byte, uid string) error{
+		githubwebhook.EventTypeIssues:            s.Service.HandleIssuesEvent,
+		githubwebhook.EventTypePullRequest:       s.Service.HandlePullRequestEvent,
+		githubwebhook.EventTypePullRequestReview: s.Service.HandlePullRequestReviewEvent,
+	}
+
+	if handler, ok := handlers[githubwebhook.EventType(eventName)]; ok {
+		if eErr := handler(c.Request().Context(), webhookAction, body, deliveryUID); eErr != nil {
+			if s.Handler.Logger != nil {
+				s.Handler.Logger.Error("Failed to handle issues event",
+					"err", err, "delivery", deliveryUID, "action", webhookAction)
+			}
+			return c.JSON(http.StatusBadRequest, map[string]string{
+				"error": fmt.Sprintf("failed to handle event. event type: %s", eventName),
+			})
+		}
+		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{
+		"message": fmt.Sprintf("event type %q not handled", eventName),
+	})
 }
 
 func extractWebhookAction(body []byte) (string, error) {
