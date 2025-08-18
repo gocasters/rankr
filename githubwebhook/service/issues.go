@@ -29,36 +29,28 @@ func (s Service) HandleIssuesEvent(c context.Context, action string, body []byte
 }
 
 func (s Service) processIssueOpened(c context.Context, req githubwebhook.IssueOpenedRequest, deliveryUID string) error {
-
-	ev := githubwebhook.ActivityEvent{
-		Event:       githubwebhook.EventTypeIssues,
-		Delivery:    deliveryUID,
-		PayloadType: githubwebhook.PayloadTypeIssueOpened,
-		Payload:     req,
-	}
-
-	metadata := make(map[string]string)
-
-	if err := s.Publisher.Publish(c, githubwebhook.TopicGithubUserActivity, ev, metadata); err != nil {
-		return fmt.Errorf("failed to publish event: %w", err)
-	}
-
-	return nil
+	return s.publishActivityEvent(c, githubwebhook.EventTypeIssues,
+		githubwebhook.PayloadTypeIssueOpened, req, deliveryUID)
 }
 
 func (s Service) processIssueClosed(c context.Context, req githubwebhook.IssueClosedRequest, deliveryUID string) error {
+	return s.publishActivityEvent(c, githubwebhook.EventTypeIssues,
+		githubwebhook.PayloadTypeIssueClosed, req, deliveryUID)
+}
+
+func (s Service) publishActivityEvent(ctx context.Context, eventType githubwebhook.EventType,
+	payloadType githubwebhook.PaLoadType, payload interface{}, deliveryUID string) error {
+
 	ev := githubwebhook.ActivityEvent{
-		Event:       githubwebhook.EventTypeIssues,
+		Event:       eventType,
 		Delivery:    deliveryUID,
-		PayloadType: githubwebhook.PayloadTypeIssueClosed,
-		Payload:     req,
+		PayloadType: payloadType,
+		Payload:     payload,
 	}
 
 	metadata := make(map[string]string)
-
-	if err := s.Publisher.Publish(c, githubwebhook.TopicGithubUserActivity, ev, metadata); err != nil {
+	if err := s.Publisher.Publish(ctx, githubwebhook.TopicGithubUserActivity, ev, metadata); err != nil {
 		return fmt.Errorf("failed to publish event: %w", err)
 	}
-
 	return nil
 }

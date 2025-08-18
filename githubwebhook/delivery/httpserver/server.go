@@ -13,10 +13,11 @@ type Server struct {
 	Service    service.Service
 }
 
-func New(server *httpserver.Server, handler Handler) Server {
+func New(server *httpserver.Server, handler Handler, service service.Service) Server {
 	return Server{
 		HTTPServer: server,
 		Handler:    handler,
+		Service:    service,
 	}
 }
 

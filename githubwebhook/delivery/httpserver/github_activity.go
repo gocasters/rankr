@@ -14,9 +14,9 @@ func (s Server) PublishGithubActivity(c echo.Context) error {
 	eventName := c.Request().Header.Get("X-GitHub-Event")
 	deliveryUID := c.Request().Header.Get("X-GitHub-Delivery")
 
-	if hookID == "" || eventName == "" || deliveryUID == "" {
+	if err := validateGitHubHeaders(hookID, eventName, deliveryUID); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Missing required GitHub headers",
+			"error": err.Error(),
 		})
 	}
 
@@ -75,4 +75,17 @@ func extractWebhookAction(body []byte) (string, error) {
 		return "", fmt.Errorf("missing action field")
 	}
 	return actionData.Action, nil
+}
+
+func validateGitHubHeaders(hookID, eventName, deliveryUID string) error {
+	if hookID == "" {
+		return fmt.Errorf("missing X-GitHub-Hook-ID header")
+	}
+	if eventName == "" {
+		return fmt.Errorf("missing X-GitHub-Event header")
+	}
+	if deliveryUID == "" {
+		return fmt.Errorf("missing X-GitHub-Delivery header")
+	}
+	return nil
 }
