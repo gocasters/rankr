@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-func (s Server) healthCheck(c echo.Context) error {
+func (s *Server) healthCheck(c echo.Context) error {
 	return c.JSON(
 		http.StatusOK,
 		echo.Map{

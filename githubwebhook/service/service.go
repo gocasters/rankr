@@ -8,8 +8,8 @@ type Service struct {
 	Publisher event.Publisher
 }
 
-func New(publisher event.Publisher) Service {
-	return Service{
+func New(publisher event.Publisher) *Service {
+	return &Service{
 		Publisher: publisher,
 	}
 }

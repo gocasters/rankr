@@ -9,19 +9,19 @@ import (
 
 type Server struct {
 	HTTPServer *httpserver.Server
-	Handler    Handler
-	Service    service.Service
+	Handler    *Handler
+	Service    *service.Service
 }
 
-func New(server *httpserver.Server, handler Handler, service service.Service) Server {
+func New(server *httpserver.Server, handler *Handler, svc *service.Service) Server {
 	return Server{
 		HTTPServer: server,
 		Handler:    handler,
-		Service:    service,
+		Service:    svc,
 	}
 }
 
-func (s Server) Serve() error {
+func (s *Server) Serve() error {
 	s.RegisterRoutes()
 	if err := s.HTTPServer.Start(); err != nil {
 		return err
@@ -30,11 +30,11 @@ func (s Server) Serve() error {
 	return nil
 }
 
-func (s Server) stop(ctx context.Context) error {
+func (s *Server) stop(ctx context.Context) error {
 	return s.HTTPServer.StopWithTimeout()
 }
 
-func (s Server) RegisterRoutes() {
+func (s *Server) RegisterRoutes() {
 	webhookRouter := s.HTTPServer.GetRouter().Group("/github-webhook")
 
 	webhookRouter.GET("/health-check", s.healthCheck)

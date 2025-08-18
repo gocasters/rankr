@@ -9,7 +9,7 @@ import (
 	"net/http"
 )
 
-func (s Server) PublishGithubActivity(c echo.Context) error {
+func (s *Server) PublishGithubActivity(c echo.Context) error {
 	hookID := c.Request().Header.Get("X-GitHub-Hook-ID")
 	eventName := c.Request().Header.Get("X-GitHub-Event")
 	deliveryUID := c.Request().Header.Get("X-GitHub-Delivery")

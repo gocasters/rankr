@@ -7,7 +7,7 @@ import (
 	"github.com/gocasters/rankr/githubwebhook"
 )
 
-func (s Service) HandlePullRequestEvent(c context.Context, action string, body []byte, deliveryUID string) error {
+func (s *Service) HandlePullRequestEvent(c context.Context, action string, body []byte, deliveryUID string) error {
 	switch action {
 	case "opened":
 		var req githubwebhook.PullRequestOpenedRequest
@@ -29,7 +29,7 @@ func (s Service) HandlePullRequestEvent(c context.Context, action string, body [
 	}
 }
 
-func (s Service) ProcessPullRequestOpened(c context.Context, req githubwebhook.PullRequestOpenedRequest, deliveryUID string) error {
+func (s *Service) ProcessPullRequestOpened(c context.Context, req githubwebhook.PullRequestOpenedRequest, deliveryUID string) error {
 	ev := githubwebhook.ActivityEvent{
 		Event:       githubwebhook.EventTypePullRequest,
 		Delivery:    deliveryUID,
@@ -37,7 +37,10 @@ func (s Service) ProcessPullRequestOpened(c context.Context, req githubwebhook.P
 		Payload:     req,
 	}
 
-	metadata := make(map[string]string)
+	metadata := map[string]string{
+		"delivery": deliveryUID,
+		"action":   "opened",
+	}
 
 	if err := s.Publisher.Publish(c, githubwebhook.TopicGithubUserActivity, ev, metadata); err != nil {
 		return fmt.Errorf("failed to publish event: %w", err)
@@ -46,7 +49,7 @@ func (s Service) ProcessPullRequestOpened(c context.Context, req githubwebhook.P
 	return nil
 }
 
-func (s Service) ProcessPullRequestClosed(c context.Context, req githubwebhook.PullRequestClosedRequest, deliveryUID string) error {
+func (s *Service) ProcessPullRequestClosed(c context.Context, req githubwebhook.PullRequestClosedRequest, deliveryUID string) error {
 	ev := githubwebhook.ActivityEvent{
 		Event:       githubwebhook.EventTypePullRequest,
 		Delivery:    deliveryUID,
@@ -54,7 +57,10 @@ func (s Service) ProcessPullRequestClosed(c context.Context, req githubwebhook.P
 		Payload:     req,
 	}
 
-	metadata := make(map[string]string)
+	metadata := map[string]string{
+		"delivery": deliveryUID,
+		"action":   "closed",
+	}
 
 	if err := s.Publisher.Publish(c, githubwebhook.TopicGithubUserActivity, ev, metadata); err != nil {
 		return fmt.Errorf("failed to publish event: %w", err)

@@ -7,7 +7,7 @@ import (
 	"github.com/gocasters/rankr/githubwebhook"
 )
 
-func (s Service) HandleIssuesEvent(c context.Context, action string, body []byte, deliveryUID string) error {
+func (s *Service) HandleIssuesEvent(c context.Context, action string, body []byte, deliveryUID string) error {
 	switch action {
 	case "opened":
 		var req githubwebhook.IssueOpenedRequest
@@ -28,18 +28,18 @@ func (s Service) HandleIssuesEvent(c context.Context, action string, body []byte
 	}
 }
 
-func (s Service) processIssueOpened(c context.Context, req githubwebhook.IssueOpenedRequest, deliveryUID string) error {
+func (s *Service) processIssueOpened(c context.Context, req githubwebhook.IssueOpenedRequest, deliveryUID string) error {
 	return s.publishActivityEvent(c, githubwebhook.EventTypeIssues,
 		githubwebhook.PayloadTypeIssueOpened, req, deliveryUID)
 }
 
-func (s Service) processIssueClosed(c context.Context, req githubwebhook.IssueClosedRequest, deliveryUID string) error {
+func (s *Service) processIssueClosed(c context.Context, req githubwebhook.IssueClosedRequest, deliveryUID string) error {
 	return s.publishActivityEvent(c, githubwebhook.EventTypeIssues,
 		githubwebhook.PayloadTypeIssueClosed, req, deliveryUID)
 }
 
-func (s Service) publishActivityEvent(ctx context.Context, eventType githubwebhook.EventType,
-	payloadType githubwebhook.PaLoadType, payload interface{}, deliveryUID string) error {
+func (s *Service) publishActivityEvent(ctx context.Context, eventType githubwebhook.EventType,
+	payloadType githubwebhook.PayLoadType, payload interface{}, deliveryUID string) error {
 
 	ev := githubwebhook.ActivityEvent{
 		Event:       eventType,
@@ -48,7 +48,7 @@ func (s Service) publishActivityEvent(ctx context.Context, eventType githubwebho
 		Payload:     payload,
 	}
 
-	metadata := make(map[string]string)
+	metadata := map[string]string{"delivery": deliveryUID}
 	if err := s.Publisher.Publish(ctx, githubwebhook.TopicGithubUserActivity, ev, metadata); err != nil {
 		return fmt.Errorf("failed to publish event: %w", err)
 	}

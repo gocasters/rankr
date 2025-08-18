@@ -7,7 +7,7 @@ import (
 	"github.com/gocasters/rankr/githubwebhook"
 )
 
-func (s Service) HandlePullRequestReviewEvent(c context.Context, action string, body []byte, deliveryUID string) error {
+func (s *Service) HandlePullRequestReviewEvent(c context.Context, action string, body []byte, deliveryUID string) error {
 	switch action {
 	case "submitted":
 		var reviewData githubwebhook.PullRequestReviewSubmittedRequest
@@ -21,7 +21,7 @@ func (s Service) HandlePullRequestReviewEvent(c context.Context, action string, 
 	}
 }
 
-func (s Service) ProcessPullRequestReviewSubmitted(c context.Context, req githubwebhook.PullRequestReviewSubmittedRequest, deliveryUID string) error {
+func (s *Service) ProcessPullRequestReviewSubmitted(c context.Context, req githubwebhook.PullRequestReviewSubmittedRequest, deliveryUID string) error {
 	ev := githubwebhook.ActivityEvent{
 		Event:       githubwebhook.EventTypePullRequestReview,
 		Delivery:    deliveryUID,
@@ -29,7 +29,7 @@ func (s Service) ProcessPullRequestReviewSubmitted(c context.Context, req github
 		Payload:     req,
 	}
 
-	metadata := make(map[string]string)
+	metadata := map[string]string{"delivery": deliveryUID}
 
 	if err := s.Publisher.Publish(c, githubwebhook.TopicGithubUserActivity, ev, metadata); err != nil {
 		return fmt.Errorf("failed to publish event: %w", err)
