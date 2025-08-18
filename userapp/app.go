@@ -1,10 +1,10 @@
 package main
 
 import (
-    "authapp/auth"
-    "authapp/delivery"
-    "authapp/repository"
-    "authapp/service"
+    "github.com/gocasters/rankr/userapp/auth"
+    "github.com/gocasters/rankr/userapp/delivery"
+    "github.com/gocasters/rankr/userapp/repository"
+    "github.com/gocasters/rankr/userapp/service"
     "github.com/labstack/echo/v4"
     "time"
 )
