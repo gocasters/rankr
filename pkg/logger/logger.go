@@ -17,7 +17,6 @@ import (
 var (
 	globalLogger *slog.Logger
 	once         sync.Once
-	workingDir   string
 )
 
 type Config struct {
@@ -31,6 +30,7 @@ type Config struct {
 // Init initializes the global logger instance.
 func Init(cfg Config) error {
 	var initError error
+	var workingDir string
 	once.Do(func() {
 		workingDir, initError = os.Getwd()
 		if initError != nil {
@@ -65,11 +65,10 @@ func L() (*slog.Logger, error) {
 // New creates a new logger instance for each service with specific settings.
 func New(cfg Config) (*slog.Logger, error) {
 	var newErr error
-	if workingDir == "" {
-		workingDir, newErr = os.Getwd()
-		if newErr != nil {
-			return nil, fmt.Errorf("error getting current working directory: %w", newErr)
-		}
+	var workingDir string
+	workingDir, newErr = os.Getwd()
+	if newErr != nil {
+		return nil, fmt.Errorf("error getting current working directory: %w", newErr)
 	}
 
 	fileWriter := &lumberjack.Logger{
