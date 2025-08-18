@@ -1,7 +1,6 @@
 package httpserver
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/gocasters/rankr/githubwebhook"
@@ -37,29 +36,32 @@ func (s Server) PublishGithubActivity(c echo.Context) error {
 		})
 	}
 
-	// Map event types to their handler functions
-	handlers := map[githubwebhook.EventType]func(ctx context.Context, action string, body []byte, uid string) error{
-		githubwebhook.EventTypeIssues:            s.Service.HandleIssuesEvent,
-		githubwebhook.EventTypePullRequest:       s.Service.HandlePullRequestEvent,
-		githubwebhook.EventTypePullRequestReview: s.Service.HandlePullRequestReviewEvent,
+	var eventError error = nil
+
+	switch githubwebhook.EventType(eventName) {
+	case githubwebhook.EventTypeIssues:
+		eventError = s.Service.HandleIssuesEvent(c.Request().Context(), webhookAction, body, deliveryUID)
+	case githubwebhook.EventTypePullRequest:
+		eventError = s.Service.HandlePullRequestEvent(c.Request().Context(), webhookAction, body, deliveryUID)
+	case githubwebhook.EventTypePullRequestReview:
+		eventError = s.Service.HandlePullRequestReviewEvent(c.Request().Context(), webhookAction, body, deliveryUID)
+	default:
+		return c.JSON(http.StatusOK, map[string]string{
+			"message": fmt.Sprintf("Event type '%s' not handled", eventName),
+		})
 	}
 
-	if handler, ok := handlers[githubwebhook.EventType(eventName)]; ok {
-		if eErr := handler(c.Request().Context(), webhookAction, body, deliveryUID); eErr != nil {
-			if s.Handler.Logger != nil {
-				s.Handler.Logger.Error("Failed to handle issues event",
-					"err", err, "delivery", deliveryUID, "action", webhookAction)
-			}
-			return c.JSON(http.StatusBadRequest, map[string]string{
-				"error": fmt.Sprintf("failed to handle event. event type: %s", eventName),
-			})
+	if eventError != nil {
+		if s.Handler.Logger != nil {
+			s.Handler.Logger.Error("Failed to handle event",
+				"err", eventError, "event", eventName,
+				"delivery", deliveryUID, "action", webhookAction)
 		}
-		return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": fmt.Sprintf("Failed to handle event. Event Type: %s", eventName),
+		})
 	}
-
-	return c.JSON(http.StatusOK, map[string]string{
-		"message": fmt.Sprintf("event type %q not handled", eventName),
-	})
+	return c.JSON(http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func extractWebhookAction(body []byte) (string, error) {
