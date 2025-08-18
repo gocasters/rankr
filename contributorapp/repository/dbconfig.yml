@@ -2,7 +2,7 @@ postgres_db:
   driver: postgres
   host: contributor-db
   port: 5432
-  contributor: contributor_admin
+  user: contributor_admin
   password: password123
   db_name: contributor_db
   ssl_mode: disable
