@@ -68,5 +68,6 @@ func migrate() {
 func init() {
 	migrateCmd.Flags().BoolVar(&up, "up", false, "Run migrations up")
 	migrateCmd.Flags().BoolVar(&down, "down", false, "Run migrations down")
+	migrateCmd.MarkFlagsMutuallyExclusive("up", "down")
 	RootCmd.AddCommand(migrateCmd)
 }
