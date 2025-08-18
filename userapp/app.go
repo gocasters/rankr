@@ -5,12 +5,14 @@ import (
     "github.com/gocasters/rankr/userapp/delivery"
     "github.com/gocasters/rankr/userapp/repository"
     "github.com/gocasters/rankr/userapp/service"
+     "github.com/gocasters/rankr/userapp/config"
     "github.com/labstack/echo/v4"
+    "github.com/labstack/echo/v4/middleware"
     "time"
 )
 
 func main() {
-    cfg := LoadConfig()
+    cfg := config.LoadConfig()
 
     jwtManager := auth.NewJWTManager(cfg.JWTSecret, time.Duration(cfg.TokenDuration)*time.Minute)
     authService := service.NewAuthService(jwtManager)
