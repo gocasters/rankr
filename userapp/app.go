@@ -17,6 +17,12 @@ func main() {
     roleRepo := repository.NewRoleRepository()
 
     e := echo.New()
+    // Add essential middleware
+    e.Use(middleware.Logger())
+    e.Use(middleware.Recover())
+    e.Use(middleware.CORS())
+    e.Use(middleware.Secure())
+
     delivery.NewAuthHandler(e, authService, roleRepo)
 
     e.Logger.Fatal(e.Start(":5002")) // auth service port

@@ -4,7 +4,7 @@ import (
     "net/http"
     "github.com/gocasters/rankr/userapp/service"
     "github.com/gocasters/rankr/userapp/repository"
-    "github.com/gocasters/rankr/github.com/labstack/echo/v4"
+    "github.com/labstack/echo/v4"
 )
 
 type AuthHandler struct {

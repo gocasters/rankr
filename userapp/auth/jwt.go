@@ -38,17 +38,23 @@ func (j *JWTManager) Verify(accessToken string) (*UserClaims, error) {
         accessToken,
         &UserClaims{},
         func(t *jwt.Token) (interface{}, error) {
+            // Verify signing method
+            if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+                return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+            }
             return []byte(j.secretKey), nil
         },
     )
     if err != nil {
-        return nil, err
+        return nil, fmt.Errorf("failed to parse token: %w", err)
     }
 
     claims, ok := token.Claims.(*UserClaims)
-    if !ok || !token.Valid {
-        return nil, err
+    if !ok {
+        return nil, fmt.Errorf("invalid token claims")
+    }
+    if !token.Valid {
+        return nil, fmt.Errorf("invalid token")
     }
     return claims, nil
 }
-
