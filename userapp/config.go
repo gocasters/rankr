@@ -7,7 +7,7 @@ type Config struct {
 
 func LoadConfig() *Config {
     return &Config{
-        JWTSecret:     "super-secret-key", // TODO در عمل باید از env بیاد
+        JWTSecret:     "super-secret-key", // TODO must be ENV
         TokenDuration: 60,
     }
 }
