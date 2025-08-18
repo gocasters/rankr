@@ -64,7 +64,7 @@ func (s Service) ProcessScoreEvent(ctx context.Context, req EventRequest) error 
 		return err
 	}
 
-	s.logger.Debug(ErrSuccessfullyProcessedEvent.Error(), slog.String("event_id", contributionEvent.ID))
+	s.logger.Debug(MsgSuccessfullyProcessedEvent, slog.String("event_id", contributionEvent.ID))
 
 	return nil
 }
@@ -134,7 +134,7 @@ func (s Service) keys(projectID string) []string {
 		}
 
 		key := getPerProjectLeaderboardKey(projectID, tf, period)
-		globalKeys = append(globalKeys, key)
+		perProjectKeys = append(perProjectKeys, key)
 	}
 
 	keys := append(globalKeys, perProjectKeys...)
