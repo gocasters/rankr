@@ -1,6 +1,6 @@
 package repository
 
-// Fake repository (later می‌تونی DB بزنی)
+// Fake repository 
 type RoleRepository struct{}
 
 func NewRoleRepository() *RoleRepository {
@@ -8,7 +8,7 @@ func NewRoleRepository() *RoleRepository {
 }
 
 func (r *RoleRepository) GetRoleByUserID(userID string) string {
-    // برای MVP یه role ثابت برمی‌گردونیم
+    // 
     return "contributor"
 }
 
