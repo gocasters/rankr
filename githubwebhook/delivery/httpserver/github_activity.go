@@ -69,5 +69,8 @@ func extractWebhookAction(body []byte) (string, error) {
 	if err := json.Unmarshal(body, &actionData); err != nil {
 		return "", err
 	}
+	if actionData.Action == "" {
+		return "", fmt.Errorf("missing action field")
+	}
 	return actionData.Action, nil
 }
