@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package protobuf.event;
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/gocasters/rankr/protobuf/golang/eventpb";
+
+// TODO: This enum defines the high-level event categories within the system.
+// This list should be reviewed and finalized once the event mapping strategy
+// in the webhook service is fully defined according to business requirements.
+enum EventName {
+  // The default value, ensuring that uninitialized events are not accidentally processed.
+  EVENT_NAME_UNSPECIFIED = 0;
+
+  // A single event name for all user contributions relevant to scoring.
+  CONTRIBUTION_REGISTERED = 1;
+}
+
+message Event {
+  string id = 1;
+  EventName event_name = 2;
+  google.protobuf.Timestamp time = 3;
+  oneof payload {
+    ContributionRegisteredPayload contribution_registered_payload = 100;
+  }
+}
+
+message ContributionRegisteredPayload {
+  string user_id = 1;
+  string project_id = 2;
+
+  // Example values: "PULL_REQUEST_MERGED", "PULL_REQUEST_REVIEW_SUBMITTED"
+  string event_type = 3;
+
+  int32 score_value = 4;
+
+  // URL of a pull request, an issue number, or a commit SHA
+  string source_reference = 5;
+}
