@@ -1,4 +1,4 @@
-package githubwebhook
+package service
 
 type EventType string
 type PayLoadType string

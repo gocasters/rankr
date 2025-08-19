@@ -1,9 +1,9 @@
-package httpserver
+package http
 
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gocasters/rankr/githubwebhook"
+	"github.com/gocasters/rankr/webhookapp/service"
 	"github.com/labstack/echo/v4"
 	"io"
 	"net/http"
@@ -38,12 +38,12 @@ func (s *Server) PublishGithubActivity(c echo.Context) error {
 
 	var eventError error = nil
 
-	switch githubwebhook.EventType(eventName) {
-	case githubwebhook.EventTypeIssues:
+	switch service.EventType(eventName) {
+	case service.EventTypeIssues:
 		eventError = s.Service.HandleIssuesEvent(c.Request().Context(), webhookAction, body, deliveryUID)
-	case githubwebhook.EventTypePullRequest:
+	case service.EventTypePullRequest:
 		eventError = s.Service.HandlePullRequestEvent(c.Request().Context(), webhookAction, body, deliveryUID)
-	case githubwebhook.EventTypePullRequestReview:
+	case service.EventTypePullRequestReview:
 		eventError = s.Service.HandlePullRequestReviewEvent(c.Request().Context(), webhookAction, body, deliveryUID)
 	default:
 		return c.JSON(http.StatusOK, map[string]string{

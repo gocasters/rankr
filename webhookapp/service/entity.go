@@ -1,4 +1,4 @@
-package githubwebhook
+package service
 
 import "time"
 

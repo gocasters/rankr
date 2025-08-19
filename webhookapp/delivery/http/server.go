@@ -1,10 +1,10 @@
-package httpserver
+package http
 
 import (
 	"context"
 
-	"github.com/gocasters/rankr/githubwebhook/service"
 	"github.com/gocasters/rankr/pkg/httpserver"
+	"github.com/gocasters/rankr/webhookapp/service"
 )
 
 type Server struct {
@@ -30,7 +30,7 @@ func (s *Server) Serve() error {
 	return nil
 }
 
-func (s *Server) stop(ctx context.Context) error {
+func (s *Server) Stop(ctx context.Context) error {
 	return s.HTTPServer.StopWithTimeout()
 }
 

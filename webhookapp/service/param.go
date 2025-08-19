@@ -1,4 +1,4 @@
-package githubwebhook
+package service
 
 type CommitCommentCreatedRequest struct {
 	Comment    CommitComment `json:"comment"`

@@ -1,4 +1,4 @@
-package httpserver
+package http
 
 import (
 	"log/slog"
