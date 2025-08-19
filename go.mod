@@ -3,6 +3,24 @@ module github.com/gocasters/rankr
 go 1.24.5
 
 require (
+
+gopkg.in/natefinch/lumberjack.v2 v2.2.1
+	github.com/labstack/echo/v4 v4.13.4
+	github.com/stretchr/testify v1.10.0
+	go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho v0.62.0
+	go.opentelemetry.io/otel v1.37.0
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.37.0
+	go.opentelemetry.io/otel/sdk v1.37.0
+	google.golang.org/grpc v1.74.2
+github.com/go-redis/redismock/v9 v9.2.0
+	github.com/labstack/gommon v0.4.2
+	github.com/redis/go-redis/v9 v9.12.0
+	github.com/stretchr/testify v1.8.4
+	github.com/jackc/pgx/v5 v5.7.5
+	github.com/lib/pq v1.10.9
+	github.com/rubenv/sql-migrate v1.8.0
+
+
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/charmbracelet/bubbles v0.21.0
 	github.com/charmbracelet/bubbletea v1.3.6
@@ -99,3 +117,4 @@ require (
 	golang.org/x/sync v0.15.0 // indirect
 
 )
+
