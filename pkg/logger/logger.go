@@ -4,8 +4,10 @@ Package logger is responsible to log everything.
 package logger
 
 import (
+
 	"fmt"
 	"io"
+
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -36,6 +38,8 @@ func Init(cfg Config) error {
 		if initError != nil {
 			initError = fmt.Errorf("error getting current working directory: %w", initError)
 			return
+
+
 		}
 		fileWriter := &lumberjack.Logger{
 			Filename:  filepath.Join(workingDir, cfg.FilePath),
@@ -51,6 +55,7 @@ func Init(cfg Config) error {
 			}),
 		)
 	})
+
 	return initError
 }
 
@@ -69,6 +74,7 @@ func New(cfg Config) (*slog.Logger, error) {
 	workingDir, newErr = os.Getwd()
 	if newErr != nil {
 		return nil, fmt.Errorf("error getting current working directory: %w", newErr)
+
 	}
 
 	fileWriter := &lumberjack.Logger{
@@ -77,10 +83,12 @@ func New(cfg Config) (*slog.Logger, error) {
 		MaxSize:   cfg.FileMaxSizeInMB,
 		MaxAge:    cfg.FileMaxAgeInDays,
 	}
+
 	level := mapLevel(cfg.Level)
 	return slog.New(
 		slog.NewJSONHandler(io.MultiWriter(fileWriter), &slog.HandlerOptions{Level: level}),
 	), nil
+
 }
 
 func mapLevel(levelStr string) slog.Level {

@@ -9,7 +9,9 @@ import (
 	"testing"
 )
 
+
 // Test mapLevel function
+
 func TestMapLevel(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -26,6 +28,7 @@ func TestMapLevel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+
 			got := mapLevel(tt.levelStr)
 			if got != tt.expected {
 				t.Errorf("mapLevel(%q) = %v, want %v", tt.levelStr, got, tt.expected)
@@ -45,6 +48,7 @@ func TestInit(t *testing.T) {
 	defer os.Chdir(originalWd)
 	os.Chdir(tempDir)
 
+
 	cfg := Config{
 		Level:            "debug",
 		FilePath:         "test.log",
@@ -53,12 +57,15 @@ func TestInit(t *testing.T) {
 		FileMaxAgeInDays: 7,
 	}
 
+
 	if err := Init(cfg); err != nil {
 		t.Fatalf("Init failed: %v", err)
 	}
+
 	if globalLogger == nil {
 		t.Error("Init() should initialize globalLogger")
 	}
+
 
 	// Test sync.Once: calling Init again should not overwrite
 	oldLogger := globalLogger
@@ -80,13 +87,16 @@ func TestL(t *testing.T) {
 	l, err := L()
 	if l != nil || err == nil {
 		t.Error("L() should return nil and error when logger is not initialized")
+
 	}
 
 	// Initialize logger
 	tempDir := t.TempDir()
+
 	originalWd, _ := os.Getwd()
 	defer os.Chdir(originalWd)
 	os.Chdir(tempDir)
+
 
 	cfg := Config{
 		Level:            "info",
@@ -95,6 +105,7 @@ func TestL(t *testing.T) {
 		FileMaxSizeInMB:  5,
 		FileMaxAgeInDays: 3,
 	}
+
 	Init(cfg)
 
 	l, err = L()
@@ -102,9 +113,11 @@ func TestL(t *testing.T) {
 		t.Fatalf("L() returned error after Init: %v", err)
 	}
 	if l != globalLogger {
+
 		t.Error("L() should return the same instance as globalLogger")
 	}
 }
+
 
 // Test New() creates a fresh logger instance
 func TestNew(t *testing.T) {
@@ -113,6 +126,7 @@ func TestNew(t *testing.T) {
 	defer os.Chdir(originalWd)
 	os.Chdir(tempDir)
 
+
 	cfg := Config{
 		Level:            "warn",
 		FilePath:         "service.log",
@@ -120,6 +134,7 @@ func TestNew(t *testing.T) {
 		FileMaxSizeInMB:  20,
 		FileMaxAgeInDays: 14,
 	}
+
 
 	l1, err := New(cfg)
 	if err != nil {
@@ -139,6 +154,7 @@ func TestNew(t *testing.T) {
 }
 
 // Test that Config struct works as expected
+
 func TestConfigStruct(t *testing.T) {
 	cfg := Config{
 		Level:            "debug",
@@ -152,12 +168,15 @@ func TestConfigStruct(t *testing.T) {
 		t.Errorf("Expected Level to be 'debug', got %s", cfg.Level)
 	}
 	if cfg.FilePath != "/var/log/app.log" {
+
 		t.Errorf("Expected FilePath '/var/log/app.log', got %s", cfg.FilePath)
+
 	}
 	if !cfg.UseLocalTime {
 		t.Error("Expected UseLocalTime to be true")
 	}
 	if cfg.FileMaxSizeInMB != 100 {
+
 		t.Errorf("Expected FileMaxSizeInMB 100, got %d", cfg.FileMaxSizeInMB)
 	}
 	if cfg.FileMaxAgeInDays != 30 {
@@ -166,15 +185,18 @@ func TestConfigStruct(t *testing.T) {
 }
 
 // Integration test: ensure logs are written to file
+
 func TestLoggerIntegration(t *testing.T) {
 	// Reset global state
 	globalLogger = nil
 	once = sync.Once{}
 
 	tempDir := t.TempDir()
+
 	originalWd, _ := os.Getwd()
 	defer os.Chdir(originalWd)
 	os.Chdir(tempDir)
+
 
 	cfg := Config{
 		Level:            "info",
@@ -183,6 +205,7 @@ func TestLoggerIntegration(t *testing.T) {
 		FileMaxSizeInMB:  1,
 		FileMaxAgeInDays: 1,
 	}
+
 
 	if err := Init(cfg); err != nil {
 		t.Fatalf("Init failed: %v", err)
@@ -196,16 +219,20 @@ func TestLoggerIntegration(t *testing.T) {
 		t.Fatal("Log file should exist")
 	}
 
+
 	content, err := os.ReadFile(logPath)
 	if err != nil {
 		t.Fatalf("Failed to read log file: %v", err)
 	}
+
 	if len(content) == 0 {
 		t.Error("Log file should contain log entries")
 	}
 }
 
+
 // Helper: capture stdout (optional)
+
 func captureOutput(fn func()) string {
 	old := os.Stdout
 	r, w, _ := os.Pipe()
@@ -218,4 +245,6 @@ func captureOutput(fn func()) string {
 
 	out, _ := io.ReadAll(r)
 	return string(out)
+
 }
+
