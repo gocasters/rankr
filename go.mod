@@ -1,10 +1,10 @@
-
 module github.com/gocasters/rankr
 
 
 go 1.24.5
 
 require (
+gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	github.com/labstack/echo/v4 v4.13.4
 	github.com/stretchr/testify v1.10.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho v0.62.0
@@ -171,3 +171,4 @@ require (
 	golang.org/x/text v0.24.0 // indirect
 
 )
+
