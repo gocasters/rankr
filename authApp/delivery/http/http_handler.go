@@ -1,4 +1,4 @@
-package delivery
+package http
 
 import (
     "net/http"
@@ -27,7 +27,11 @@ func (h *AuthHandler) IssueToken(c echo.Context) error {
         return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
     }
 
-    role := h.roleRepo.GetRoleByUserID(req.UserID)
+    role, err := h.roleRepo.GetRoleByUserID(c.Request().Context(), req.UserID)
+    if err != nil {
+        return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not fetch role"})
+    }
+
     token, err := h.authService.IssueToken(req.UserID, role)
     if err != nil {
         return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not issue token"})

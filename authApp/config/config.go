@@ -21,7 +21,7 @@ func getEnvOrDefault(key, def string) string {
 
 
 func LoadConfig() *Config {
-jwtSecret := getEnvOrDefault("JWT_SECRET", "")
+jwtSecret := getEnvOrDefault("JWT_SECRET", "secret")
     if jwtSecret == "" {
         log.Fatal("JWT_SECRET environment variable is required")
     }
