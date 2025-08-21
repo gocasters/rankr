@@ -1,19 +1,15 @@
 syntax = "proto3";
 
-package protobuf.event;
+package event;
 import "google/protobuf/timestamp.proto";
+option go_package = "protobuf/golang/eventpb";
 
-option go_package = "github.com/gocasters/rankr/protobuf/golang/eventpb";
-
-// TODO: This enum defines the high-level event categories within the system.
-// This list should be reviewed and finalized once the event mapping strategy
-// in the webhook service is fully defined according to business requirements.
 enum EventName {
-  // The default value, ensuring that uninitialized events are not accidentally processed.
   EVENT_NAME_UNSPECIFIED = 0;
 
-  // A single event name for all user contributions relevant to scoring.
-  CONTRIBUTION_REGISTERED = 1;
+  PULL_REQUEST_CLOSED = 1;
+  PULL_REQUEST_REVIEW_SUBMITTED = 2;
+  ISSUE_OPENED = 3;
 }
 
 message Event {
@@ -21,19 +17,27 @@ message Event {
   EventName event_name = 2;
   google.protobuf.Timestamp time = 3;
   oneof payload {
-    ContributionRegisteredPayload contribution_registered_payload = 100;
+    PullRequestClosedPayload pr_closed_payload = 100;
+    PullRequestReviewSubmittedPayload pr_review_payload = 101;
+    IssueOpenedPayload issue_opened_payload = 102;
   }
 }
 
-message ContributionRegisteredPayload {
+message PullRequestClosedPayload {
   string user_id = 1;
   string project_id = 2;
+  bool merged = 3;
+  int32 additions = 4;
+  int32 deletions = 5;
+}
 
-  // Example values: "PULL_REQUEST_MERGED", "PULL_REQUEST_REVIEW_SUBMITTED"
-  string event_type = 3;
+message PullRequestReviewSubmittedPayload {
+  string user_id = 1;
+  string project_id = 2;
+  string state = 3; // "approved", "changes_requested", "commented"
+}
 
-  int32 score_value = 4;
-
-  // URL of a pull request, an issue number, or a commit SHA
-  string source_reference = 5;
+message IssueOpenedPayload {
+  string user_id = 1;
+  string project_id = 2;
 }

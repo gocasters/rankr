@@ -1,29 +1,28 @@
 package service
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
-	
+
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
-func (s *Service) HandlePullRequestReviewEvent(c context.Context, action string, body []byte, deliveryUID string) error {
+func (s *Service) HandlePullRequestReviewEvent(action string, body []byte, deliveryUID string) error {
 	switch action {
 	case "submitted":
 		var reviewData PullRequestReviewSubmittedRequest
 		if err := json.Unmarshal(body, &reviewData); err != nil {
 			return err
 		}
-		return s.ProcessPullRequestReviewSubmitted(c, reviewData, deliveryUID)
+		return s.ProcessPullRequestReviewSubmitted(reviewData, deliveryUID)
 
 	default:
 		return fmt.Errorf("pull request review action '%s' not handled", action)
 	}
 }
 
-func (s *Service) ProcessPullRequestReviewSubmitted(c context.Context, req PullRequestReviewSubmittedRequest, deliveryUID string) error {
+func (s *Service) ProcessPullRequestReviewSubmitted(req PullRequestReviewSubmittedRequest, deliveryUID string) error {
 	ev := ActivityEvent{
 		Event:       EventTypePullRequestReview,
 		Delivery:    deliveryUID,

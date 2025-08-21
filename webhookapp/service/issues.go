@@ -1,45 +1,44 @@
 package service
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
-func (s *Service) HandleIssuesEvent(c context.Context, action string, body []byte, deliveryUID string) error {
+func (s *Service) HandleIssuesEvent(action string, body []byte, deliveryUID string) error {
 	switch action {
 	case "opened":
 		var req IssueOpenedRequest
 		if err := json.Unmarshal(body, &req); err != nil {
 			return err
 		}
-		return s.processIssueOpened(c, req, deliveryUID)
+		return s.processIssueOpened(req, deliveryUID)
 
 	case "closed":
 		var req IssueClosedRequest
 		if err := json.Unmarshal(body, &req); err != nil {
 			return err
 		}
-		return s.processIssueClosed(c, req, deliveryUID)
+		return s.processIssueClosed(req, deliveryUID)
 
 	default:
 		return fmt.Errorf("issue action '%s' not handled", action)
 	}
 }
 
-func (s *Service) processIssueOpened(c context.Context, req IssueOpenedRequest, deliveryUID string) error {
-	return s.publishActivityEvent(c, EventTypeIssues,
+func (s *Service) processIssueOpened(req IssueOpenedRequest, deliveryUID string) error {
+	return s.publishActivityEvent(EventTypeIssues,
 		PayloadTypeIssueOpened, req, deliveryUID)
 }
 
-func (s *Service) processIssueClosed(c context.Context, req IssueClosedRequest, deliveryUID string) error {
-	return s.publishActivityEvent(c, EventTypeIssues,
+func (s *Service) processIssueClosed(req IssueClosedRequest, deliveryUID string) error {
+	return s.publishActivityEvent(EventTypeIssues,
 		PayloadTypeIssueClosed, req, deliveryUID)
 }
 
-func (s *Service) publishActivityEvent(ctx context.Context, eventType EventType,
+func (s *Service) publishActivityEvent(eventType EventType,
 	payloadType PayLoadType, payload interface{}, deliveryUID string) error {
 
 	ev := ActivityEvent{

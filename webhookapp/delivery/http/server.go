@@ -31,7 +31,7 @@ func (s *Server) Serve() error {
 }
 
 func (s *Server) Stop(ctx context.Context) error {
-	return s.HTTPServer.StopWithTimeout()
+	return s.HTTPServer.Stop(ctx)
 }
 
 func (s *Server) RegisterRoutes() {
