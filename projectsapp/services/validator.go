@@ -11,7 +11,6 @@ import (
 )
 
 var (
-	ErrValidationFailed              = errors.New("validation failed")
 	ErrValidationRequiredLess100Char = "field is required and must be less than 100 characters"
 	ErrValidationRequiredLess255Char = "field is required and must be less than 255 characters"
 	ErrValidationRequiredAndNotZero  = "field is required and cannot be empty"
@@ -82,7 +81,7 @@ func (v *Validator) ValidateUpdateProject(ctx context.Context, input interfaces2
 				validation.Length(1, 100).Error(ErrValidationRequiredLess100Char),
 				validation.Match(slugPattern).Error(ErrInvalidSlugFormat),
 				validation.By(func(value interface{}) error {
-					return v.checkSlugUniquenesForUpdate(ctx, input.ID, value)
+					return v.checkSlugUniquenessForUpdate(ctx, input.ID, value)
 				}),
 			),
 		),
@@ -148,7 +147,7 @@ func (v *Validator) ValidateCreateVcsRepo(ctx context.Context, input interfaces2
 	)
 }
 
-func (v *Validator) ValidateUpdateVcsRepo(ctx context.Context, input interfaces2.UpdateVcsRepoInput) error {
+func (v *Validator) ValidateUpdateVcsRepo(input interfaces2.UpdateVcsRepoInput) error {
 	urlPattern := regexp.MustCompile(`^https?://[^\s/$.?#].[^\s]*$`)
 
 	return validation.ValidateStruct(&input,
@@ -206,7 +205,7 @@ func (v *Validator) checkSlugUniqueness(ctx context.Context, value interface{}) 
 	return nil
 }
 
-func (v *Validator) checkSlugUniquenesForUpdate(ctx context.Context, projectID string, value interface{}) error {
+func (v *Validator) checkSlugUniquenessForUpdate(ctx context.Context, projectID string, value interface{}) error {
 	slug, ok := value.(string)
 	if !ok {
 		return errors.New("slug must be a string")

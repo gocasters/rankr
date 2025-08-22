@@ -74,7 +74,7 @@ func (s VcsRepoService) GetVcsRepoByProviderID(ctx context.Context, provider typ
 
 func (s VcsRepoService) UpdateVcsRepo(ctx context.Context, in interfaces2.UpdateVcsRepoInput) (*types.VcsRepoEntity, error) {
 
-	if err := s.validator.ValidateUpdateVcsRepo(ctx, in); err != nil {
+	if err := s.validator.ValidateUpdateVcsRepo(in); err != nil {
 		return nil, err
 	}
 
