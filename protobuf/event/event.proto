@@ -70,16 +70,15 @@ message PullRequestOpenedPayload {
   bool is_draft = 7;
   repeated string labels = 8;
   google.protobuf.Timestamp deadline = 9;
-//  int32 estimated_lines_changed = 10;
 }
 
 message PullRequestClosedPayload {
-  string user_id = 1;              // PR author
+  string user_id = 1;
   string merger_user_id = 2;       // Person who merged (same as user_id if not merged)
   string project_id = 3;
   string pr_number = 4;
   PrCloseReason close_reason = 5;
-  bool merged = 6;                 // Primary indicator: was this merged?
+  bool merged = 6;
   int32 additions = 7;
   int32 deletions = 8;
   int32 files_changed = 9;
@@ -88,11 +87,8 @@ message PullRequestClosedPayload {
   bool met_deadline = 12;
   repeated string labels = 13;
   string target_branch = 14;
-  // Documentation-specific fields (zero values if not a doc PR)
   bool is_documentation = 15;       // Is this a documentation PR?
   repeated string documentation_types = 16;  // ["README", "API Documentation", etc.]
-  bool is_translation = 17;         // Is this a translation PR?
-  string language = 18;
 }
 
 message PullRequestReviewSubmittedPayload {
@@ -118,8 +114,8 @@ message IssueOpenedPayload {
 }
 
 message IssueClosedPayload {
-  string user_id = 1;              // Person who closed the issue
-  string issue_author_id = 2;      // Original issue author
+  string user_id = 1;
+  string issue_author_id = 2;
   string project_id = 3;
   string issue_number = 4;
   IssueCloseReason close_reason = 5;

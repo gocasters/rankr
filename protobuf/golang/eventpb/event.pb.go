@@ -473,7 +473,7 @@ type PullRequestOpenedPayload struct {
 	TargetBranch  string                 `protobuf:"bytes,6,opt,name=target_branch,json=targetBranch,proto3" json:"target_branch,omitempty"`
 	IsDraft       bool                   `protobuf:"varint,7,opt,name=is_draft,json=isDraft,proto3" json:"is_draft,omitempty"`
 	Labels        []string               `protobuf:"bytes,8,rep,name=labels,proto3" json:"labels,omitempty"`
-	Deadline      *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=deadline,proto3" json:"deadline,omitempty"` //  int32 estimated_lines_changed = 10;
+	Deadline      *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=deadline,proto3" json:"deadline,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -572,26 +572,23 @@ func (x *PullRequestOpenedPayload) GetDeadline() *timestamppb.Timestamp {
 }
 
 type PullRequestClosedPayload struct {
-	state        protoimpl.MessageState `protogen:"open.v1"`
-	UserId       string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`                     // PR author
-	MergerUserId string                 `protobuf:"bytes,2,opt,name=merger_user_id,json=mergerUserId,proto3" json:"merger_user_id,omitempty"` // Person who merged (same as user_id if not merged)
-	ProjectId    string                 `protobuf:"bytes,3,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
-	PrNumber     string                 `protobuf:"bytes,4,opt,name=pr_number,json=prNumber,proto3" json:"pr_number,omitempty"`
-	CloseReason  PrCloseReason          `protobuf:"varint,5,opt,name=close_reason,json=closeReason,proto3,enum=event.PrCloseReason" json:"close_reason,omitempty"`
-	Merged       bool                   `protobuf:"varint,6,opt,name=merged,proto3" json:"merged,omitempty"` // Primary indicator: was this merged?
-	Additions    int32                  `protobuf:"varint,7,opt,name=additions,proto3" json:"additions,omitempty"`
-	Deletions    int32                  `protobuf:"varint,8,opt,name=deletions,proto3" json:"deletions,omitempty"`
-	FilesChanged int32                  `protobuf:"varint,9,opt,name=files_changed,json=filesChanged,proto3" json:"files_changed,omitempty"`
-	CommitsCount int32                  `protobuf:"varint,10,opt,name=commits_count,json=commitsCount,proto3" json:"commits_count,omitempty"`
-	Deadline     *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=deadline,proto3" json:"deadline,omitempty"`
-	MetDeadline  bool                   `protobuf:"varint,12,opt,name=met_deadline,json=metDeadline,proto3" json:"met_deadline,omitempty"`
-	Labels       []string               `protobuf:"bytes,13,rep,name=labels,proto3" json:"labels,omitempty"`
-	TargetBranch string                 `protobuf:"bytes,14,opt,name=target_branch,json=targetBranch,proto3" json:"target_branch,omitempty"`
-	// Documentation-specific fields (zero values if not a doc PR)
-	IsDocumentation    bool     `protobuf:"varint,15,opt,name=is_documentation,json=isDocumentation,proto3" json:"is_documentation,omitempty"`         // Is this a documentation PR?
-	DocumentationTypes []string `protobuf:"bytes,16,rep,name=documentation_types,json=documentationTypes,proto3" json:"documentation_types,omitempty"` // ["README", "API Documentation", etc.]
-	IsTranslation      bool     `protobuf:"varint,17,opt,name=is_translation,json=isTranslation,proto3" json:"is_translation,omitempty"`               // Is this a translation PR?
-	Language           string   `protobuf:"bytes,18,opt,name=language,proto3" json:"language,omitempty"`
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	UserId             string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	MergerUserId       string                 `protobuf:"bytes,2,opt,name=merger_user_id,json=mergerUserId,proto3" json:"merger_user_id,omitempty"` // Person who merged (same as user_id if not merged)
+	ProjectId          string                 `protobuf:"bytes,3,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
+	PrNumber           string                 `protobuf:"bytes,4,opt,name=pr_number,json=prNumber,proto3" json:"pr_number,omitempty"`
+	CloseReason        PrCloseReason          `protobuf:"varint,5,opt,name=close_reason,json=closeReason,proto3,enum=event.PrCloseReason" json:"close_reason,omitempty"`
+	Merged             bool                   `protobuf:"varint,6,opt,name=merged,proto3" json:"merged,omitempty"`
+	Additions          int32                  `protobuf:"varint,7,opt,name=additions,proto3" json:"additions,omitempty"`
+	Deletions          int32                  `protobuf:"varint,8,opt,name=deletions,proto3" json:"deletions,omitempty"`
+	FilesChanged       int32                  `protobuf:"varint,9,opt,name=files_changed,json=filesChanged,proto3" json:"files_changed,omitempty"`
+	CommitsCount       int32                  `protobuf:"varint,10,opt,name=commits_count,json=commitsCount,proto3" json:"commits_count,omitempty"`
+	Deadline           *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=deadline,proto3" json:"deadline,omitempty"`
+	MetDeadline        bool                   `protobuf:"varint,12,opt,name=met_deadline,json=metDeadline,proto3" json:"met_deadline,omitempty"`
+	Labels             []string               `protobuf:"bytes,13,rep,name=labels,proto3" json:"labels,omitempty"`
+	TargetBranch       string                 `protobuf:"bytes,14,opt,name=target_branch,json=targetBranch,proto3" json:"target_branch,omitempty"`
+	IsDocumentation    bool                   `protobuf:"varint,15,opt,name=is_documentation,json=isDocumentation,proto3" json:"is_documentation,omitempty"`         // Is this a documentation PR?
+	DocumentationTypes []string               `protobuf:"bytes,16,rep,name=documentation_types,json=documentationTypes,proto3" json:"documentation_types,omitempty"` // ["README", "API Documentation", etc.]
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -736,20 +733,6 @@ func (x *PullRequestClosedPayload) GetDocumentationTypes() []string {
 		return x.DocumentationTypes
 	}
 	return nil
-}
-
-func (x *PullRequestClosedPayload) GetIsTranslation() bool {
-	if x != nil {
-		return x.IsTranslation
-	}
-	return false
-}
-
-func (x *PullRequestClosedPayload) GetLanguage() string {
-	if x != nil {
-		return x.Language
-	}
-	return ""
 }
 
 type PullRequestReviewSubmittedPayload struct {
@@ -954,8 +937,8 @@ func (x *IssueOpenedPayload) GetBodyLength() int32 {
 
 type IssueClosedPayload struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
-	UserId          string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`                        // Person who closed the issue
-	IssueAuthorId   string                 `protobuf:"bytes,2,opt,name=issue_author_id,json=issueAuthorId,proto3" json:"issue_author_id,omitempty"` // Original issue author
+	UserId          string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	IssueAuthorId   string                 `protobuf:"bytes,2,opt,name=issue_author_id,json=issueAuthorId,proto3" json:"issue_author_id,omitempty"`
 	ProjectId       string                 `protobuf:"bytes,3,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
 	IssueNumber     string                 `protobuf:"bytes,4,opt,name=issue_number,json=issueNumber,proto3" json:"issue_number,omitempty"`
 	CloseReason     IssueCloseReason       `protobuf:"varint,5,opt,name=close_reason,json=closeReason,proto3,enum=event.IssueCloseReason" json:"close_reason,omitempty"`
@@ -1444,7 +1427,7 @@ const file_event_proto_rawDesc = "" +
 	"\rtarget_branch\x18\x06 \x01(\tR\ftargetBranch\x12\x19\n" +
 	"\bis_draft\x18\a \x01(\bR\aisDraft\x12\x16\n" +
 	"\x06labels\x18\b \x03(\tR\x06labels\x126\n" +
-	"\bdeadline\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\bdeadline\"\xa3\x05\n" +
+	"\bdeadline\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\bdeadline\"\xe0\x04\n" +
 	"\x18PullRequestClosedPayload\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12$\n" +
 	"\x0emerger_user_id\x18\x02 \x01(\tR\fmergerUserId\x12\x1d\n" +
@@ -1463,9 +1446,7 @@ const file_event_proto_rawDesc = "" +
 	"\x06labels\x18\r \x03(\tR\x06labels\x12#\n" +
 	"\rtarget_branch\x18\x0e \x01(\tR\ftargetBranch\x12)\n" +
 	"\x10is_documentation\x18\x0f \x01(\bR\x0fisDocumentation\x12/\n" +
-	"\x13documentation_types\x18\x10 \x03(\tR\x12documentationTypes\x12%\n" +
-	"\x0eis_translation\x18\x11 \x01(\bR\risTranslation\x12\x1a\n" +
-	"\blanguage\x18\x12 \x01(\tR\blanguage\"\xb3\x02\n" +
+	"\x13documentation_types\x18\x10 \x03(\tR\x12documentationTypes\"\xb3\x02\n" +
 	"!PullRequestReviewSubmittedPayload\x12(\n" +
 	"\x10reviewer_user_id\x18\x01 \x01(\tR\x0ereviewerUserId\x12)\n" +
 	"\x11pr_author_user_id\x18\x02 \x01(\tR\x0eprAuthorUserId\x12\x1d\n" +
