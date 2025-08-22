@@ -7,37 +7,162 @@ option go_package = "protobuf/golang/eventpb";
 enum EventName {
   EVENT_NAME_UNSPECIFIED = 0;
 
-  PULL_REQUEST_CLOSED = 1;
-  PULL_REQUEST_REVIEW_SUBMITTED = 2;
-  ISSUE_OPENED = 3;
+  PULL_REQUEST_OPENED = 1;
+  PULL_REQUEST_CLOSED = 2;
+  PULL_REQUEST_REVIEW_SUBMITTED = 3;
+
+  ISSUE_OPENED = 4;
+  ISSUE_CLOSED = 5;
+  ISSUE_COMMENTED = 6;
+
+  COMMIT_PUSHED = 7;
+
+  REPOSITORY_FORKED = 8;
+}
+
+enum ReviewState {
+  REVIEW_STATE_UNSPECIFIED = 0;
+  APPROVED = 1;
+  CHANGES_REQUESTED = 2;
+  COMMENTED = 3;
+}
+
+enum IssueCloseReason {
+  ISSUE_CLOSE_REASON_UNSPECIFIED = 0;
+  COMPLETED = 1;
+  NOT_PLANNED = 2;        // Won't fix, duplicate, etc.
+  REOPENED = 3;
+}
+
+enum PrCloseReason {
+  PR_CLOSE_REASON_UNSPECIFIED = 0;
+  MERGED = 1;
+  CLOSED_WITHOUT_MERGE = 2;
+  DRAFT_CONVERTED = 3;
 }
 
 message Event {
   string id = 1;
   EventName event_name = 2;
   google.protobuf.Timestamp time = 3;
+  string repository_id = 4;
+  string repository_name = 5;
+
   oneof payload {
-    PullRequestClosedPayload pr_closed_payload = 100;
-    PullRequestReviewSubmittedPayload pr_review_payload = 101;
-    IssueOpenedPayload issue_opened_payload = 102;
+    PullRequestOpenedPayload pr_opened_payload = 100;
+    PullRequestClosedPayload pr_closed_payload = 101;
+    PullRequestReviewSubmittedPayload pr_review_payload = 102;
+    IssueOpenedPayload issue_opened_payload = 103;
+    IssueClosedPayload issue_closed_payload = 104;
+    IssueCommentedPayload issue_commented_payload = 105;
+    PushPayload push_payload = 106;
+    RepositoryForkedPayload repo_forked_payload = 107;
   }
 }
 
-message PullRequestClosedPayload {
+message PullRequestOpenedPayload {
   string user_id = 1;
   string project_id = 2;
-  bool merged = 3;
-  int32 additions = 4;
-  int32 deletions = 5;
+  string pr_number = 3;
+  string title = 4;
+  string branch_name = 5;
+  string target_branch = 6;
+  bool is_draft = 7;
+  repeated string labels = 8;
+  google.protobuf.Timestamp deadline = 9;
+//  int32 estimated_lines_changed = 10;
+}
+
+message PullRequestClosedPayload {
+  string user_id = 1;              // PR author
+  string merger_user_id = 2;       // Person who merged (same as user_id if not merged)
+  string project_id = 3;
+  string pr_number = 4;
+  PrCloseReason close_reason = 5;
+  bool merged = 6;                 // Primary indicator: was this merged?
+  int32 additions = 7;
+  int32 deletions = 8;
+  int32 files_changed = 9;
+  int32 commits_count = 10;
+  google.protobuf.Timestamp deadline = 11;
+  bool met_deadline = 12;
+  repeated string labels = 13;
+  string target_branch = 14;
+  // Documentation-specific fields (zero values if not a doc PR)
+  bool is_documentation = 15;       // Is this a documentation PR?
+  repeated string documentation_types = 16;  // ["README", "API Documentation", etc.]
+  bool is_translation = 17;         // Is this a translation PR?
+  string language = 18;
 }
 
 message PullRequestReviewSubmittedPayload {
-  string user_id = 1;
-  string project_id = 2;
-  string state = 3; // "approved", "changes_requested", "commented"
+  string reviewer_user_id = 1;
+  string pr_author_user_id = 2;
+  string project_id = 3;
+  string pr_number = 4;
+  ReviewState state = 5;
+  int32 comments_count = 6;
+  bool is_security_review = 7;
 }
 
 message IssueOpenedPayload {
   string user_id = 1;
   string project_id = 2;
+  string issue_number = 3;
+  string title = 4;
+  repeated string labels = 5;
+  bool is_bug_report = 6;
+  bool is_feature_request = 7;
+  bool has_reproduction_steps = 8;
+  int32 body_length = 9;
+}
+
+message IssueClosedPayload {
+  string user_id = 1;              // Person who closed the issue
+  string issue_author_id = 2;      // Original issue author
+  string project_id = 3;
+  string issue_number = 4;
+  IssueCloseReason close_reason = 5;
+  repeated string labels = 6;
+  google.protobuf.Timestamp opened_at = 7;
+  int32 comments_count = 8;
+  string closing_pr_number = 9;
+}
+
+message IssueCommentedPayload {
+  string user_id = 1;
+  string issue_author_id = 2;
+  string project_id = 3;
+  string issue_number = 4;
+  int32 comment_length = 5;
+  bool contains_code = 6;
+  bool is_solution = 7;
+}
+
+message PushPayload {
+  string user_id = 1;
+  string project_id = 2;
+  string branch_name = 3;
+  bool is_main_branch = 4;
+  int32 commits_count = 5;
+  repeated CommitInfo commits = 6;
+  int32 total_additions = 7;
+  int32 total_deletions = 8;
+  int32 files_changed = 9;
+}
+
+message CommitInfo {
+  string sha = 1;
+  string message = 2;
+  int32 additions = 3;
+  int32 deletions = 4;
+  int32 files_changed = 5;
+  bool is_merge_commit = 6;
+  repeated string modified_file_types = 7;    // .go, .md, .yaml, etc.
+}
+
+message RepositoryForkedPayload {
+  string user_id = 1;
+  string project_id = 2;
+  string fork_repository_id = 3;
 }
