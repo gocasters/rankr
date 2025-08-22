@@ -9,6 +9,11 @@ import (
 	"testing"
 )
 
+
+
+// Test mapLevel function
+
+
 func TestMapLevel(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -25,32 +30,28 @@ func TestMapLevel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := mapLevel(tt.levelStr)
-			if result != tt.expected {
-				t.Errorf("mapLevel(%q) = %v, want %v", tt.levelStr, result, tt.expected)
+
+
+			got := mapLevel(tt.levelStr)
+			if got != tt.expected {
+				t.Errorf("mapLevel(%q) = %v, want %v", tt.levelStr, got, tt.expected)
 			}
 		})
 	}
 }
 
+// Test Init initializes the global logger
 func TestInit(t *testing.T) {
-	// Reset global state for testing
+	// Reset global state
 	globalLogger = nil
 	once = sync.Once{}
 
-	// Create temporary directory for test logs
 	tempDir := t.TempDir()
-
-	// Change to temp directory for test
-	originalWd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Failed to get working directory: %v", err)
-	}
+	originalWd, _ := os.Getwd()
 	defer os.Chdir(originalWd)
+	os.Chdir(tempDir)
 
-	if err := os.Chdir(tempDir); err != nil {
-		t.Fatalf("Failed to change to temp directory: %v", err)
-	}
+
 
 	cfg := Config{
 		Level:            "debug",
@@ -60,41 +61,52 @@ func TestInit(t *testing.T) {
 		FileMaxAgeInDays: 7,
 	}
 
-	Init(cfg)
+
+
+	if err := Init(cfg); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
+
 
 	if globalLogger == nil {
 		t.Error("Init() should initialize globalLogger")
 	}
 
-	// Test that calling Init again doesn't reinitialize (sync.Once behavior)
-	originalLogger := globalLogger
-	Init(cfg)
-	if globalLogger != originalLogger {
-		t.Error("Init() should only initialize once due to sync.Once")
+
+
+	// Test sync.Once: calling Init again should not overwrite
+	oldLogger := globalLogger
+	if err := Init(cfg); err != nil {
+		t.Fatalf("Second Init failed: %v", err)
+	}
+	if globalLogger != oldLogger {
+		t.Error("Init() should only initialize once")
 	}
 }
 
+// Test L() returns global logger correctly
 func TestL(t *testing.T) {
-	// Reset global state for testing
+	// Reset global state
 	globalLogger = nil
 	once = sync.Once{}
 
-	// Test L() returns nil when not initialized
-	if L() != nil {
-		t.Error("L() should return nil when globalLogger is not initialized")
+	// L() should return error if not initialized
+	l, err := L()
+	if l != nil || err == nil {
+		t.Error("L() should return nil and error when logger is not initialized")
+
+
 	}
 
 	// Initialize logger
 	tempDir := t.TempDir()
-	originalWd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Failed to get working directory: %v", err)
-	}
-	defer os.Chdir(originalWd)
 
-	if err := os.Chdir(tempDir); err != nil {
-		t.Fatalf("Failed to change to temp directory: %v", err)
-	}
+
+	originalWd, _ := os.Getwd()
+	defer os.Chdir(originalWd)
+	os.Chdir(tempDir)
+
+
 
 	cfg := Config{
 		Level:            "info",
@@ -105,28 +117,28 @@ func TestL(t *testing.T) {
 	}
 
 	Init(cfg)
-	logger := L()
 
-	if logger == nil {
-		t.Error("L() should return initialized logger")
+
+	l, err = L()
+	if err != nil {
+		t.Fatalf("L() returned error after Init: %v", err)
 	}
+	if l != globalLogger {
 
-	if logger != globalLogger {
+
 		t.Error("L() should return the same instance as globalLogger")
 	}
 }
 
+
+// Test New() creates a fresh logger instance
 func TestNew(t *testing.T) {
 	tempDir := t.TempDir()
-	originalWd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Failed to get working directory: %v", err)
-	}
+	originalWd, _ := os.Getwd()
 	defer os.Chdir(originalWd)
+	os.Chdir(tempDir)
 
-	if err := os.Chdir(tempDir); err != nil {
-		t.Fatalf("Failed to change to temp directory: %v", err)
-	}
+
 
 	cfg := Config{
 		Level:            "warn",
@@ -136,18 +148,27 @@ func TestNew(t *testing.T) {
 		FileMaxAgeInDays: 14,
 	}
 
-	logger := New(cfg)
 
-	if logger == nil {
-		t.Error("New() should return a logger instance")
+
+	l1, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New() failed: %v", err)
+	}
+	if l1 == nil {
+		t.Fatal("New() returned nil")
 	}
 
-	// Test that each call to New() returns a different instance
-	logger2 := New(cfg)
-	if logger == logger2 {
-		t.Error("New() should return different instances on each call")
+	l2, err := New(cfg)
+	if err != nil {
+		t.Fatalf("Second New() failed: %v", err)
+	}
+	if l1 == l2 {
+		t.Error("New() should return different logger instances")
 	}
 }
+
+// Test that Config struct works as expected
+
 
 func TestConfigStruct(t *testing.T) {
 	cfg := Config{
@@ -162,18 +183,27 @@ func TestConfigStruct(t *testing.T) {
 		t.Errorf("Expected Level to be 'debug', got %s", cfg.Level)
 	}
 	if cfg.FilePath != "/var/log/app.log" {
-		t.Errorf("Expected FilePath to be '/var/log/app.log', got %s", cfg.FilePath)
+
+
+		t.Errorf("Expected FilePath '/var/log/app.log', got %s", cfg.FilePath)
+
+
 	}
 	if !cfg.UseLocalTime {
 		t.Error("Expected UseLocalTime to be true")
 	}
 	if cfg.FileMaxSizeInMB != 100 {
-		t.Errorf("Expected FileMaxSizeInMB to be 100, got %d", cfg.FileMaxSizeInMB)
+
+
+		t.Errorf("Expected FileMaxSizeInMB 100, got %d", cfg.FileMaxSizeInMB)
 	}
 	if cfg.FileMaxAgeInDays != 30 {
-		t.Errorf("Expected FileMaxAgeInDays to be 30, got %d", cfg.FileMaxAgeInDays)
+		t.Errorf("Expected FileMaxAgeInDays 30, got %d", cfg.FileMaxAgeInDays)
 	}
 }
+
+// Integration test: ensure logs are written to file
+
 
 func TestLoggerIntegration(t *testing.T) {
 	// Reset global state
@@ -181,15 +211,13 @@ func TestLoggerIntegration(t *testing.T) {
 	once = sync.Once{}
 
 	tempDir := t.TempDir()
-	originalWd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Failed to get working directory: %v", err)
-	}
-	defer os.Chdir(originalWd)
 
-	if err := os.Chdir(tempDir); err != nil {
-		t.Fatalf("Failed to change to temp directory: %v", err)
-	}
+
+	originalWd, _ := os.Getwd()
+	defer os.Chdir(originalWd)
+	os.Chdir(tempDir)
+
+
 
 	cfg := Config{
 		Level:            "info",
@@ -199,19 +227,21 @@ func TestLoggerIntegration(t *testing.T) {
 		FileMaxAgeInDays: 1,
 	}
 
-	Init(cfg)
-	logger := L()
 
-	// Test that we can actually log something
-	logger.Info("test message", "key", "value")
-
-	// Check that log file was created
-	logPath := filepath.Join(tempDir, "integration.log")
-	if _, err := os.Stat(logPath); os.IsNotExist(err) {
-		t.Error("Log file should be created after logging")
+	if err := Init(cfg); err != nil {
+		t.Fatalf("Init failed: %v", err)
 	}
 
-	// Check file content
+	l, _ := L()
+	l.Info("integration test", "key", "value")
+
+	logPath := filepath.Join(tempDir, "integration.log")
+	if _, err := os.Stat(logPath); os.IsNotExist(err) {
+		t.Fatal("Log file should exist")
+	}
+
+
+
 	content, err := os.ReadFile(logPath)
 	if err != nil {
 		t.Fatalf("Failed to read log file: %v", err)
@@ -222,13 +252,10 @@ func TestLoggerIntegration(t *testing.T) {
 	}
 }
 
-// Cleanup helper to reset global state
-func resetGlobalState() {
-	globalLogger = nil
-	once = sync.Once{}
-}
 
-// Test helper to capture output
+// Helper: capture stdout (optional)
+
+
 func captureOutput(fn func()) string {
 	old := os.Stdout
 	r, w, _ := os.Pipe()
@@ -241,4 +268,8 @@ func captureOutput(fn func()) string {
 
 	out, _ := io.ReadAll(r)
 	return string(out)
+
+
 }
+
+
