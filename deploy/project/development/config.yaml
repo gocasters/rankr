@@ -1,0 +1,32 @@
+total_shutdown_timeout: "15s"
+
+http_server:
+  port: 5001
+  cors:
+    allow_origins: "*"
+  shutdown_context_timeout: "10s"
+
+repository:
+  cache_prefix: "projects"
+  cache_enabled: true
+
+cache_config:
+  ttl: "24h"
+  write_ttl: "10s"
+
+postgres_db:
+  driver: "postgres"
+  host: "localhost"
+  port: 5432
+  projects: "projects_admin"
+  password: "password123"
+  db_name: "projects_db"
+  ssl_mode: "disable"
+  max_idle_conns: 15
+  max_open_conns: 100
+  conn_max_lifetime: 5
+  path_of_migration: "./projectsapp/repository/migrations"
+
+
+debug:
+  force_accept_otp: 11111

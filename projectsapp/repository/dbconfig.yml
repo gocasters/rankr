@@ -7,4 +7,4 @@ postgres_db:
   db_name: project_db
   ssl_mode: disable
 
-path_of_migration: ./projectapp/repository/migrations
+path_of_migration: ./projectsapp/repository/migrations
