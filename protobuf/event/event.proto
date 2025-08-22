@@ -62,89 +62,82 @@ message Event {
 
 message PullRequestOpenedPayload {
   string user_id = 1;
-  string project_id = 2;
-  string pr_number = 3;
-  string title = 4;
-  string branch_name = 5;
-  string target_branch = 6;
-  bool is_draft = 7;
-  repeated string labels = 8;
-  google.protobuf.Timestamp deadline = 9;
+  string pr_number = 2;
+  string title = 3;
+  string branch_name = 4;
+  string target_branch = 5;
+  bool is_draft = 6;
+  repeated string labels = 7;
+  google.protobuf.Timestamp deadline = 8;
 }
 
 message PullRequestClosedPayload {
   string user_id = 1;
   string merger_user_id = 2;       // Person who merged (same as user_id if not merged)
-  string project_id = 3;
-  string pr_number = 4;
-  PrCloseReason close_reason = 5;
-  bool merged = 6;
-  int32 additions = 7;
-  int32 deletions = 8;
-  int32 files_changed = 9;
-  int32 commits_count = 10;
-  google.protobuf.Timestamp deadline = 11;
-  bool met_deadline = 12;
-  repeated string labels = 13;
-  string target_branch = 14;
-  bool is_documentation = 15;       // Is this a documentation PR?
-  repeated string documentation_types = 16;  // ["README", "API Documentation", etc.]
+  string pr_number = 3;
+  PrCloseReason close_reason = 4;
+  bool merged = 5;
+  int32 additions = 6;
+  int32 deletions = 7;
+  int32 files_changed = 8;
+  int32 commits_count = 9;
+  google.protobuf.Timestamp deadline = 10;
+  bool met_deadline = 11;
+  repeated string labels = 12;
+  string target_branch = 13;
+  bool is_documentation = 14;       // Is this a documentation PR?
+  repeated string documentation_types = 15;  // ["README", "API Documentation", etc.]
 }
 
 message PullRequestReviewSubmittedPayload {
   string reviewer_user_id = 1;
   string pr_author_user_id = 2;
-  string project_id = 3;
-  string pr_number = 4;
-  ReviewState state = 5;
-  int32 comments_count = 6;
-  bool is_security_review = 7;
+  string pr_number = 3;
+  ReviewState state = 4;
+  int32 comments_count = 5;
+  bool is_security_review = 6;
 }
 
 message IssueOpenedPayload {
   string user_id = 1;
-  string project_id = 2;
-  string issue_number = 3;
-  string title = 4;
-  repeated string labels = 5;
-  bool is_bug_report = 6;
-  bool is_feature_request = 7;
-  bool has_reproduction_steps = 8;
-  int32 body_length = 9;
+  string issue_number = 2;
+  string title = 3;
+  repeated string labels = 4;
+  bool is_bug_report = 5;
+  bool is_feature_request = 6;
+  bool has_reproduction_steps = 7;
+  int32 body_length = 8;
 }
 
 message IssueClosedPayload {
   string user_id = 1;
   string issue_author_id = 2;
-  string project_id = 3;
-  string issue_number = 4;
-  IssueCloseReason close_reason = 5;
-  repeated string labels = 6;
-  google.protobuf.Timestamp opened_at = 7;
-  int32 comments_count = 8;
-  string closing_pr_number = 9;
+  string issue_number = 3;
+  IssueCloseReason close_reason = 4;
+  repeated string labels = 5;
+  google.protobuf.Timestamp opened_at = 6;
+  int32 comments_count = 7;
+  string closing_pr_number = 8;
 }
 
 message IssueCommentedPayload {
   string user_id = 1;
   string issue_author_id = 2;
-  string project_id = 3;
-  string issue_number = 4;
-  int32 comment_length = 5;
-  bool contains_code = 6;
-  bool is_solution = 7;
+  string issue_number = 3;
+  int32 comment_length = 4;
+  bool contains_code = 5;
+  bool is_solution = 6;
 }
 
 message PushPayload {
   string user_id = 1;
-  string project_id = 2;
-  string branch_name = 3;
-  bool is_main_branch = 4;
-  int32 commits_count = 5;
-  repeated CommitInfo commits = 6;
-  int32 total_additions = 7;
-  int32 total_deletions = 8;
-  int32 files_changed = 9;
+  string branch_name = 2;
+  bool is_main_branch = 3;
+  int32 commits_count = 4;
+  repeated CommitInfo commits = 5;
+  int32 total_additions = 6;
+  int32 total_deletions = 7;
+  int32 files_changed = 8;
 }
 
 message CommitInfo {
@@ -159,6 +152,5 @@ message CommitInfo {
 
 message RepositoryForkedPayload {
   string user_id = 1;
-  string project_id = 2;
-  string fork_repository_id = 3;
+  string fork_repository_id = 2;
 }
