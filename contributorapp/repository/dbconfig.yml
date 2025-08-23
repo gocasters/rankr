@@ -3,7 +3,7 @@ postgres_db:
   host: contributor-db
   port: 5432
   user: contributor_admin
-  password: password123
+  password: password123 # In production, use environment variables or a secrets manager
   db_name: contributor_db
   ssl_mode: disable
 
