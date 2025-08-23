@@ -2,7 +2,7 @@ package consumer
 
 import (
 	"fmt"
-	"github.com/gocasters/rankr/leaderboardscoring/service/leaderboardscoring"
+	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/gocasters/rankr/protobuf/golang/eventpb"
 )
 

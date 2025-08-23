@@ -1,7 +1,7 @@
 package command
 
 import (
-	"github.com/gocasters/rankr/leaderboardscoring"
+	"github.com/gocasters/rankr/leaderboardscoringapp"
 	"github.com/gocasters/rankr/pkg/config"
 	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/pkg/logger"
@@ -33,7 +33,7 @@ func init() {
 }
 
 func serve() {
-	var cfg leaderboardscoring.Config
+	var cfg leaderboardscoringapp.Config
 
 	// Load config
 	workingDir, err := os.Getwd()

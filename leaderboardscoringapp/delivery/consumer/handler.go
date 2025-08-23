@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/gocasters/rankr/leaderboardscoring/service/leaderboardscoring"
+	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/gocasters/rankr/protobuf/golang/eventpb"
 	"google.golang.org/protobuf/proto"
 	"log/slog"

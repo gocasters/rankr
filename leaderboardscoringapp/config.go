@@ -1,8 +1,8 @@
-package leaderboardscoring
+package leaderboardscoringapp
 
 import (
 	"github.com/gocasters/rankr/adapter/redis"
-	"github.com/gocasters/rankr/leaderboardscoring/delivery/consumer"
+	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/consumer"
 	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/pkg/httpserver"
 	"github.com/gocasters/rankr/pkg/logger"

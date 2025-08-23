@@ -1,10 +1,10 @@
-package leaderboardscoring
+package leaderboardscoringapp
 
 import (
 	"context"
 	"fmt"
-	"github.com/gocasters/rankr/leaderboardscoring/delivery/http"
-	"github.com/gocasters/rankr/leaderboardscoring/repository"
+	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/http"
+	"github.com/gocasters/rankr/leaderboardscoringapp/repository"
 	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/pkg/httpserver"
 	"os"
@@ -16,8 +16,8 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/gocasters/rankr/adapter/redis"
-	"github.com/gocasters/rankr/leaderboardscoring/delivery/consumer"
-	"github.com/gocasters/rankr/leaderboardscoring/service/leaderboardscoring"
+	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/consumer"
+	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 )
 
 type Application struct {
