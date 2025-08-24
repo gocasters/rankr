@@ -17,4 +17,5 @@ type Config struct {
 	Consumer             consumer.Config   `koanf:"consumer"`
 	TotalShutdownTimeout time.Duration     `koanf:"total_shutdown_timeout"`
 	PathOfMigration      string            `koanf:"path_of_migration"`
+	SubscriberTopic      string            `koanf:"subscriber_topic"`
 }

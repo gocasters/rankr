@@ -23,14 +23,18 @@ import (
 
 type Application struct {
 	HTTPServer                http.Server
+	LeaderboardSvc            leaderboardscoring.Service
 	LeaderboardscoringHandler http.Handler
-	WatermillRouter           *message.Router
+	WMRouter                  *message.Router
 	Logger                    *slog.Logger
+	WMLogger                  watermill.LoggerAdapter
 	Config                    Config
 	Subscriber                message.Subscriber
+	RedisAdapter              *redis.Adapter
 }
 
-func Setup(ctx context.Context, config Config, leaderboardLogger *slog.Logger, subscriber message.Subscriber, postgresConn *database.Database, wmLogger watermill.LoggerAdapter) Application {
+func Setup(ctx context.Context, config Config, leaderboardLogger *slog.Logger,
+	subscriber message.Subscriber, postgresConn *database.Database, wmLogger watermill.LoggerAdapter) Application {
 	redisAdapter, err := redis.New(ctx, config.Redis)
 	if err != nil {
 		leaderboardLogger.Error("Failed to initialize Redis adapter", slog.String("error", err.Error()))
@@ -59,15 +63,16 @@ func Setup(ctx context.Context, config Config, leaderboardLogger *slog.Logger, s
 		leaderboardSvc,
 	)
 
-	wmRouter := setupWatermill(leaderboardSvc, subscriber, config.Consumer, leaderboardLogger, redisAdapter, wmLogger)
-
 	return Application{
 		HTTPServer:                leaderboardHttpServer,
+		LeaderboardSvc:            leaderboardSvc,
 		LeaderboardscoringHandler: leaderboardscoringHandler,
-		WatermillRouter:           wmRouter,
+		WMRouter:                  nil,
 		Logger:                    leaderboardLogger,
+		WMLogger:                  wmLogger,
 		Config:                    config,
 		Subscriber:                subscriber,
+		RedisAdapter:              redisAdapter,
 	}
 }
 
@@ -77,8 +82,8 @@ func (app Application) Start() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	startHTTPServer(app, &wg)
-	startWaterMill(app, &wg, ctx)
+	app.startHTTPServer(&wg)
+	app.startWaterMill(&wg, ctx)
 
 	app.Logger.Info("Leaderboard Scoring application started.")
 
@@ -99,7 +104,7 @@ func (app Application) Start() {
 	app.Logger.Info("leaderboard-scoring stopped")
 }
 
-func startHTTPServer(app Application, wg *sync.WaitGroup) {
+func (app Application) startHTTPServer(wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -114,36 +119,38 @@ func startHTTPServer(app Application, wg *sync.WaitGroup) {
 	}()
 }
 
-func startWaterMill(app Application, wg *sync.WaitGroup, ctx context.Context) {
+func (app Application) startWaterMill(wg *sync.WaitGroup, ctx context.Context) {
+	app.setupWatermill()
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		app.Logger.Info("Starting Watermill event consumer router...")
-		if err := app.WatermillRouter.Run(ctx); err != nil {
+		if err := app.WMRouter.Run(ctx); err != nil {
 			app.Logger.Error("Watermill router stopped with an error", slog.String("error", err.Error()))
 		}
 	}()
 }
 
-func setupWatermill(leaderboardSvc leaderboardscoring.Service, subscriber message.Subscriber, config consumer.Config, logger *slog.Logger, redis *redis.Adapter, wmLogger watermill.LoggerAdapter) *message.Router {
+func (app Application) setupWatermill() {
 
-	router, err := message.NewRouter(message.RouterConfig{}, wmLogger)
+	router, err := message.NewRouter(message.RouterConfig{}, app.WMLogger)
 	if err != nil {
-		logger.Error("Failed to create Watermill router", slog.String("error", err.Error()))
+		app.Logger.Error("Failed to create Watermill router", slog.String("error", err.Error()))
 		panic(err)
 	}
 
-	checker := consumer.NewIdempotencyChecker(redis.Client(), config, logger)
-	handler := consumer.NewHandler(leaderboardSvc, checker, logger)
+	checker := consumer.NewIdempotencyChecker(app.RedisAdapter.Client(), app.Config.Consumer, app.Logger)
+	handler := consumer.NewHandler(app.LeaderboardSvc, checker, app.Logger)
 
 	router.AddNoPublisherHandler(
 		"ContributionHandler",
-		"CONTRIBUTION_REGISTERED",
-		subscriber,
+		app.Config.SubscriberTopic,
+		app.Subscriber,
 		handler.HandleContributionRegistered,
 	)
 
-	return router
+	app.WMRouter = router
 }
 
 func (app Application) shutdownServers(ctx context.Context) bool {
@@ -195,7 +202,7 @@ func (app Application) shutdownWatermill(parentCtx context.Context, wg *sync.Wai
 
 	done := make(chan struct{})
 	go func() {
-		if err := app.WatermillRouter.Close(); err != nil {
+		if err := app.WMRouter.Close(); err != nil {
 			app.Logger.Error("Watermill graceful shutdown failed")
 		}
 		close(done)
