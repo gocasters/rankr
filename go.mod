@@ -9,7 +9,7 @@ require (
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/go-redis/redismock/v9 v9.2.0
 	github.com/google/uuid v1.6.0
-gopkg.in/natefinch/lumberjack.v2 v2.2.1
+    gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	github.com/labstack/echo/v4 v4.13.4
 	github.com/stretchr/testify v1.10.0
 	go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho v0.62.0
@@ -17,7 +17,7 @@ gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.37.0
 	go.opentelemetry.io/otel/sdk v1.37.0
 	google.golang.org/grpc v1.74.2
-github.com/go-redis/redismock/v9 v9.2.0
+    github.com/go-redis/redismock/v9 v9.2.0
 	github.com/labstack/gommon v0.4.2
 	github.com/redis/go-redis/v9 v9.12.0
 	github.com/stretchr/testify v1.8.4
@@ -62,11 +62,11 @@ require (
 require (
 	github.com/cenkalti/backoff/v5 v5.0.2 // indirect
 
-github.com/cespare/xxhash/v2 v2.3.0 // indirect
+    github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
-  github.com/cenkalti/backoff/v5 v5.0.2 // indirect
+    github.com/cenkalti/backoff/v5 v5.0.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 
 	github.com/go-logr/logr v1.4.3 // indirect
@@ -161,7 +161,7 @@ require (
 	google.golang.org/protobuf v1.36.6 // indirect
 )
 
-
+require (
 	golang.org/x/sys v0.15.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -184,7 +184,7 @@ require (
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-
+)
 require (
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
@@ -279,4 +279,3 @@ require (
 
 
 )
-
