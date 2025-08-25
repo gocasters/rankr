@@ -8,6 +8,8 @@ services:
     restart: always
     profiles:
       - contributor
+    ports:
+      - "5432:5432"
     volumes:
       - contributor-data:/var/lib/postgresql/data
     healthcheck:
@@ -59,9 +61,10 @@ services:
 
       # routers without authentication
       - "traefik.http.routers.${SERVICE_NAME}_user_no_auth.service=${SERVICE_NAME}_user"
-      - "traefik.http.routers.${SERVICE_NAME}_user_no_auth.rule=Host(`${SERVICE_DOMAIN}`)&&(
-          PathPrefix(`/contributors/v1/health-check`)
-          )"
+      - "traefik.http.routers.${SERVICE_NAME}_user_no_auth.rule=Host(`${SERVICE_DOMAIN}`) && (
+          PathPrefix(`/contributors/v1/health-check`) ||
+          PathPrefix(`/contributors/v1/profile`)
+        )"
       - "traefik.http.routers.${SERVICE_NAME}_user_no_auth.entrypoints=web"
       - "traefik.http.routers.${SERVICE_NAME}_user_no_auth.middlewares=${SERVICE_NAME}_strip_user"
 

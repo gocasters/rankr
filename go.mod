@@ -37,6 +37,7 @@ require (
 )
 
 require (
+	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v1.37.0
 	go.opentelemetry.io/otel/exporters/stdout/stdoutmetric v1.37.0
 	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.37.0

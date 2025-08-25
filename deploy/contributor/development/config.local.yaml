@@ -57,7 +57,7 @@ logger:
   file_max_age_in_days: 7
 
 auth:
-  sign_key: "remenu"
+  sign_key: "rankr"
   access_expiration_time: "30m"
   refresh_expiration_time: "50m"
   access_subject: "at_contributor"
