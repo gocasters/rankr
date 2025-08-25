@@ -1,0 +1,17 @@
+services:
+  #pgadmin Service
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@test.com
+      PGADMIN_DEFAULT_PASSWORD: password
+      SCRIPT_NAME: "/pgadmin"
+    volumes:
+      - ./deploy/development/pgadmin/servers.json:/pgadmin4/servers.json
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.pgadmin.rule=Host(`${SERVICE_DOMAIN}`)&&PathPrefix(`/pgadmin`)"
+      - "traefik.http.routers.${SERVICE_NAME}_pgadmin.middlewares=${SERVICE_NAME}_pgadmin_strip"
+      - "traefik.http.routers.pgadmin.entrypoints=web"
+      - "traefik.http.services.pgadmin.loadbalancer.server.port=80"
+      - "traefik.http.middlewares.${SERVICE_NAME:-}_pgadmin_strip.stripprefix.prefixes=/pgadmin"

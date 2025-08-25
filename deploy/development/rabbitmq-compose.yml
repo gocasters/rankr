@@ -1,0 +1,30 @@
+services:
+  rabbitmq:
+    # image: rabbitmq:3-management-alpine
+    image: rabbitmq:3.9.29-management-alpine
+
+    ports:
+      - "5672:5672" # AMQP port
+      - "15672:15672" # Management UI port
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    # Do not remove these label before checking with Mr. Nazari
+    # labels:
+    #   - "traefik.enable=true"
+    #   - "traefik.http.routers.${SERVICE_NAME}_rabbitmq.service=${SERVICE_NAME}_rabbitmq"
+    #   - "traefik.http.routers.${SERVICE_NAME}_rabbitmq.rule=Host(`${SERVICE_DOMAIN}`)&&PathPrefix(`/rabbitmq`)"
+    #   - "traefik.http.routers.${SERVICE_NAME}_rabbitmq.middlewares=${SERVICE_NAME}_rabbitmq_strip"
+    #   - "traefik.http.routers.${SERVICE_NAME}_rabbitmq.entrypoints=web"
+    #   - "traefik.http.services.${SERVICE_NAME}_rabbitmq.loadbalancer.server.port=15672"
+    #   - "traefik.http.middlewares.${SERVICE_NAME:-}_rabbitmq_strip.stripprefix.prefixes=/rabbitmq"
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${SERVICE_NAME}_rabbitmq.service=${SERVICE_NAME}_rabbitmq"
+      - "traefik.http.routers.${SERVICE_NAME}_rabbitmq.rule=Host(`rabbitmq.${SERVICE_DOMAIN}`)"
+      - "traefik.http.routers.${SERVICE_NAME}_rabbitmq.entrypoints=web"
+      - "traefik.http.services.${SERVICE_NAME}_rabbitmq.loadbalancer.server.port=15672"

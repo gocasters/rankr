@@ -1,0 +1,7 @@
+http:
+  middlewares:
+    rankr_auth:
+      forwardAuth:
+        address: "http://contributor-service:5001/v1/auth"
+        authResponseHeaders:
+          - X-User-Info

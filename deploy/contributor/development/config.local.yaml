@@ -1,0 +1,74 @@
+total_shutdown_timeout: "15s"
+
+http_server:
+  port: 5001
+  cors:
+    allow_origins: "*"
+  shutdown_context_timeout: "10s"
+
+grpc_server:
+  host: "localhost"
+  port: 6001
+  type: "tcp"
+
+grpc_client:
+  # Host: "localhost"  # instead of notification-service
+  Host: "host.docker.internal"  # if you want to use notification service in container 
+  port: 6010
+  type: "tcp"
+  shutdown_context_timeout: "10s"
+
+repository:
+  cache_prefix: "contributor"
+  cache_enabled: true
+
+cache_config:
+  ttl: "24h"
+  write_ttl: "10s"
+
+postgres_db:
+  driver: "postgres"
+  host: "localhost"   # instead of contributor-db
+  port: 5432
+  user: "contributor_admin"
+  password: "password123"
+  db_name: "contributor_db"
+  ssl_mode: "disable"
+  max_idle_conns: 15
+  max_open_conns: 100
+  conn_max_lifetime: 5
+  path_of_migration: "./contributorapp/repository/migrations"
+  
+  # pgx pool configs
+  min_conns: 1
+  max_conns: 20
+  max_conn_lifetime: 300
+  max_conn_idle_time: 60
+  health_check_period: 30
+
+redis:
+  host: "localhost"
+  Port: 6379
+
+logger:
+  file_path: "logs/contributor/service.log"
+  use_local_time: true
+  file_max_size_in_mb: 10
+  file_max_age_in_days: 7
+
+auth:
+  sign_key: "remenu"
+  access_expiration_time: "30m"
+  refresh_expiration_time: "50m"
+  access_subject: "at_contributor"
+  refresh_subject: "rf_contributor"
+  context_key: "contributorInfo"
+
+rabbitmq:
+  host: "host.docker.internal"
+  port: 5672
+  username: "guest"
+  password: "guest"
+
+debug:
+  force_accept_otp: 11111

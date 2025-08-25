@@ -1,0 +1,68 @@
+services:
+#  todo move typesense to rankr folder
+  typesense:
+    image: typesense/typesense:27.1
+    container_name: argusapp-typesense
+    restart: always
+    environment:
+      TYPESENSE_API_KEY: "be-happy:)"
+      TYPESENSE_DATA_DIR: "/data"
+    volumes:
+      - rankr-typesense:/data
+    profiles:
+      - argus
+    labels:
+      - "traefik.enable=true"
+
+  argus-searcher-service:
+    build:
+      context: .
+      dockerfile: ./deploy/argus/development/Dockerfile
+      args:
+        GO_IMAGE_NAME: ${GO_IMAGE_NAME}
+        GO_IMAGE_VERSION: ${GO_IMAGE_VERSION}
+    image: ${SERVICE_NAME}-argus:${GO_IMAGE_NAME}-${GO_IMAGE_VERSION}
+    entrypoint:
+      - air
+      - "-c"
+      - /home/app/.air/.air.argus-searcher.toml
+    volumes:
+      - ./:/home/app
+    depends_on:
+      - typesense
+    profiles:
+      - argus
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${SERVICE_NAME}_argus.service=${SERVICE_NAME}_argus"
+      - "traefik.http.routers.${SERVICE_NAME}_argus.rule=Host(`${SERVICE_DOMAIN}`)&&PathPrefix(`/argus`)"
+      - "traefik.http.routers.${SERVICE_NAME}_argus.middlewares=${SERVICE_NAME}_strip_argus"
+      - "traefik.http.routers.${SERVICE_NAME}_argus.entrypoints=web"
+      - "traefik.http.services.${SERVICE_NAME}_argus.loadbalancer.server.port=5015"
+      - "traefik.http.middlewares.${SERVICE_NAME}_strip_argus.stripprefix.prefixes=/argus"
+
+  argus-indexer-service:
+    build:
+      context: .
+      dockerfile: ./deploy/argus/development/Dockerfile
+      args:
+        GO_IMAGE_NAME: ${GO_IMAGE_NAME}
+        GO_IMAGE_VERSION: ${GO_IMAGE_VERSION}
+    image: ${SERVICE_NAME}-argus:${GO_IMAGE_NAME}-${GO_IMAGE_VERSION}
+    entrypoint:
+      - air
+      - "-c"
+      - /home/app/.air/.air.argus-indexer.toml
+    volumes:
+      - ./:/home/app
+    depends_on:
+      - typesense
+      - rabbitmq
+    profiles:
+      - argus
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${SERVICE_NAME}_argus-indexer.service=${SERVICE_NAME}_argus_indexer"
+
+volumes:
+  rankr-typesense:

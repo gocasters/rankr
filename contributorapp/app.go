@@ -49,7 +49,7 @@ func Setup(
 
 	contributorHandler := http.NewHandler(contributorSvc, logger)
 
-	httpServer, err := httpserver.New(&config.HTTPServer)
+	httpServer, err := httpserver.New(config.HTTPServer)
 	if err != nil {
 		logger.Error("failed to initialize HTTP server", "err", err)
 		return Application{}, err
@@ -63,9 +63,9 @@ func Setup(
 			contributorHandler,
 			logger,
 		),
-		Config: config,
-		Logger: logger,
-		Redis:  redisAdapter,
+		Config:       config,
+		Logger:       logger,
+		Redis:        redisAdapter,
 		CacheManager: *cache,
 	}, nil
 }
