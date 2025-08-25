@@ -2,12 +2,14 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"time"
 )
 
 type Database struct {
+	DB   *sql.DB
 	Pool *pgxpool.Pool
 }
 
