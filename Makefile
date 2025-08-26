@@ -1,9 +1,17 @@
-.PHONY: start test build mod-tidy lint docker-build docker-run help proto-gen proto-lint proto-breaking proto-clean proto-format proto-setup install-buf
+.PHONY: start test build clean mod-tidy lint install-linter help \
+        proto-setup proto-setup-full proto-gen proto-lint proto-breaking \
+        proto-clean proto-format proto-deps proto-validate \
+        install-protoc-plugins install-buf \
+        docker-build docker-run \
+        proto-bsr-push proto-bsr-push-create proto-bsr-info proto-bsr-login proto-bsr-whoami \
+        update-buf-version
 
 BINARY_NAME ?= rankr
 BUILD_DIR ?= bin
 BUF_VERSION ?= v1.56.0
 DEFAULT_BRANCH ?= main
+PROTOC_GEN_GO_VERSION ?= v1.34.2
+PROTOC_GEN_GO_GRPC_VERSION ?= v1.5.1
 
 start: build
 	$(BUILD_DIR)/$(BINARY_NAME)
@@ -77,7 +85,7 @@ proto-breaking:
 
 proto-clean:
 	@echo "Cleaning generated protobuf files..."
-	rm -rf protobuf/golang/eventpb/*.pb.go
+	find protobuf/golang -type f \( -name "*.pb.go" -o -name "*_grpc.pb.go" \) -print -delete || true
 
 proto-format:
 	@echo "Formatting protobuf files..."
@@ -92,7 +100,7 @@ proto-validate:
 	buf lint
 	@if git rev-parse --git-dir > /dev/null 2>&1; then \
 		echo "Git repository found, checking for breaking changes..."; \
-		buf breaking --against '.git#branch=main'; \
+		buf breaking --against '.git#branch=$(DEFAULT_BRANCH)'; \
 	else \
 		echo "No Git repository found. Skipping breaking change check."; \
 		echo "To enable breaking change detection, initialize Git: git init"; \
@@ -122,7 +130,7 @@ proto-bsr-whoami:
 update-buf-version:
 	@echo "Current Buf version: $(BUF_VERSION)"
 	@echo "To update Buf version, run:"
-	@echo "  make install-buf-force BUF_VERSION=v1.57.0"
+	@echo "  make install-buf-force BUF_VERSION=$(BUF_VERSION)"
 	@echo "  # or edit the Makefile and change BUF_VERSION variable"
 
 install-protoc-plugins:
@@ -130,13 +138,13 @@ install-protoc-plugins:
 	@echo "Note: This may take a while due to Go version compatibility..."
 	@if ! command -v protoc-gen-go &> /dev/null; then \
 		echo "Installing protoc-gen-go..."; \
-		go install google.golang.org/protobuf/cmd/protoc-gen-go@latest; \
+		go install google.golang.org/protobuf/cmd/protoc-gen-go@$(PROTOC_GEN_GO_VERSION); \
 	else \
 		echo "protoc-gen-go is already installed"; \
 	fi
 	@if ! command -v protoc-gen-go-grpc &> /dev/null; then \
 		echo "Installing protoc-gen-go-grpc..."; \
-		go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest; \
+		go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@$(PROTOC_GEN_GO_GRPC_VERSION); \
 	else \
 		echo "protoc-gen-go-grpc is already installed"; \
 	fi
@@ -144,8 +152,9 @@ install-protoc-plugins:
 install-buf:
 	@echo "Installing Buf $(BUF_VERSION)..."
 	@if command -v buf &> /dev/null && buf --version &> /dev/null; then \
-		CURRENT_VERSION=$$(buf --version); \
-		if [ "$$CURRENT_VERSION" = "$(BUF_VERSION:%=%)" ]; then \
+		CURRENT_VERSION=$$(buf --version | sed 's/^v//'); \
+		EXPECTED_VERSION=$$(echo "$(BUF_VERSION)" | sed 's/^v//'); \
+		if [ "$$CURRENT_VERSION" = "$$EXPECTED_VERSION" ]; then \
 			echo "Buf $(BUF_VERSION) is already installed"; \
 		else \
 			echo "Buf version mismatch. Expected $(BUF_VERSION), found $$CURRENT_VERSION"; \
