@@ -28,6 +28,9 @@ go.work.sum
 .env
 
 # Editor/IDE
+.idea/
+.vscode/
+
 
  .idea/
  .vscode/
@@ -45,3 +48,4 @@ go.work.sum
 .DS_Store
 
 
+vendor/
