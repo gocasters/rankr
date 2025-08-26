@@ -35,7 +35,7 @@ redis:
 
 logger:
   level: "debug" # Can be `debug`, `info`, `warn`, `error`
-  file_path: "logs/leaderboardscoring/service.log"
+  file_path: "logs/leaderboardscoringapp/service.log"
   use_local_time: true
   file_max_size_in_mb: 10
   file_max_age_in_days: 7
@@ -48,6 +48,6 @@ consumer:
 
 total_shutdown_timeout: 30s
 
-path_of_migration: "./leaderboardscoring/repository/migrations"
+path_of_migration: "./leaderboardscoringapp/repository/migrations"
 
 subscriber_topic: "CONTRIBUTION_REGISTERED"

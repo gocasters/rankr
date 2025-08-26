@@ -36,7 +36,7 @@ func migrate() {
 		log.Fatalf("Error getting working directory: %v", err)
 	}
 
-	yamlPath := filepath.Join(workingDir, "leaderboardscoring", "repository", "dbconfig.yml")
+	yamlPath := filepath.Join(workingDir, "leaderboardscoringapp", "repository", "dbconfig.yml")
 
 	// to run migrations when you want to run leaderboardscoring service locally
 	if path := os.Getenv("DBCONFIG_OVERRIDE_PATH"); path != "" {

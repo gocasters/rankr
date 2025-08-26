@@ -66,7 +66,9 @@ func serve() {
 	}
 
 	// Initialize logger
-	logger.Init(cfg.Logger)
+	if err := logger.Init(cfg.Logger); err != nil {
+		log.Fatalf("Failed to initialize logger: %v", err)
+	}
 	lbLogger, lErr := logger.L()
 	if lErr != nil {
 		log.Fatalf("Failed to Initialize logger: %v", lErr)

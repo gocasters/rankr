@@ -98,19 +98,16 @@ func (ws *WebSocket) socketHandler(hub HubInterface) echo.HandlerFunc {
 }
 
 func (ws *WebSocket) NewUpgrader() websocket.Upgrader {
-	fmt.Println("------------------------------------")
-	fmt.Println(ws.config)
-	fmt.Println("------------------------------------")
 	return websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
 			return true
-			//origin := r.Header.Get("Origin")
-			//for _, allowed := range ws.config.AllowedOrigins {
-			//	if origin == allowed {
-			//		return true
-			//	}
-			//}
-			//return false
+			origin := r.Header.Get("Origin")
+			for _, allowed := range ws.config.AllowedOrigins {
+				if origin == allowed {
+					return true
+				}
+			}
+			return false
 		},
 	}
 }

@@ -95,10 +95,10 @@ func (s Service) RestoreLeaderboardFromSnapshot(ctx context.Context) error {
 // leaderboard:global:weekly:{year}-W{week_number}
 
 // Per-Project Leaderboards
-// leaderboard:project:{project_id}:all_time
-// leaderboard:project:{project_id}:yearly:{year}
-// leaderboard:project:{project_id}:monthly:{year}-{month}
-// leaderboard:project:{project_id}:weekly:{year}-W{week_number}
+// leaderboard:{project_id}:all_time
+// leaderboard:{project_id}:yearly:{year}
+// leaderboard:{project_id}:monthly:{year}-{month}
+// leaderboard:{project_id}:weekly:{year}-W{week_number}
 func (s Service) keys(projectID string) []string {
 	globalKeys := make([]string, 0, 4)
 	perProjectKeys := make([]string, 0, 4)
