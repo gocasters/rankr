@@ -39,3 +39,15 @@ The service exposes a basic HTTP API for health checks and querying leaderboard 
 |:-------|:-------------------------|:---------------------------------------|
 | `GET`  | `/v1/health-check`       | Checks the health of the service.      |
 | `GET`  | `/v1/leaderboard/public` | Fetches a specific leaderboard. (TODO) |
+
+## 4. WebSocket
+
+The service also exposes a **WebSocket endpoint** for real-time communication.
+
+### Connect via Websocat
+
+You can test the WebSocket connection using [websocat](https://github.com/vi/websocat):
+
+```bash
+websocat --header="Origin: http://127.0.0.1:3000" ws://127.0.0.1:8090/v1/leaderboard/ws
+```
