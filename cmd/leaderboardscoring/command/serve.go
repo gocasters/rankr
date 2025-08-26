@@ -61,6 +61,7 @@ func serve() {
 		Separator:    "__",
 		YamlFilePath: yamlPath,
 	}
+
 	if cErr := config.Load(options, &cfg); cErr != nil {
 		log.Fatalf("Failed to load leaderboardscoring config: %v", cErr)
 	}
@@ -76,6 +77,7 @@ func serve() {
 	if migrateUp || migrateDown {
 		if migrateUp && migrateDown {
 			lbLogger.Error("invalid flags: --migrate-up and --migrate-down cannot be used together")
+
 			return
 		}
 
