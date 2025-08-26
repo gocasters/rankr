@@ -1,0 +1,12 @@
+version: v1
+name: buf.build/gocasters/rankr
+lint:
+  use:
+    - STANDARD
+  except:
+    - PACKAGE_VERSION_SUFFIX
+breaking:
+  use:
+    - FILE
+  except:
+    - WIRE_JSON

@@ -1,0 +1,14 @@
+version: v1
+managed:
+  enabled: true
+  go_package_prefix:
+    default: github.com/gocasters/rankr/protobuf/golang
+plugins:
+  - plugin: buf.build/protocolbuffers/go:v1.34.2
+    out: protobuf/golang
+    opt:
+      - paths=source_relative
+  - plugin: buf.build/grpc/go:v1.5.1
+    out: protobuf/golang
+    opt:
+      - paths=source_relative
