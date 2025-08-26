@@ -1,6 +1,9 @@
 package event
 
 import (
+	"context"
+	"log/slog"
+
 	"github.com/gocasters/rankr/pkg/logger"
 )
 
@@ -12,25 +15,30 @@ type EvnetConsumer struct {
 	Router    Router
 }
 
-func (c EvnetConsumer) Start(done <-chan bool) {
+func (c EvnetConsumer) Start(ctx context.Context) {
 	log, err := logger.L()
 	if err != nil {
-		panic(err)
+		log = slog.Default()
+		log.Warn("logger not initialized; using default slog logger", "error", err)
 	}
 
+	
+	
 	eventstream := make(chan Event, 1024)
-	for _, consumer := range c.Consumers {
-		if err := consumer.Consume(eventstream); err != nil {
-			log.Error("can't start consuming events", "error", err)
-		}
-		
-	}
+    for _, consumer := range c.Consumers {
+       go func(cons Consumer) {
+           if err := cons.Consume(ctx, eventstream); err != nil {
+                log.Error("can't start consuming events", "error", err)
+            }
+        }(consumer)
+    }
 	go func() {
 		for {
 			select {
-			case <-done:
+			case <-ctx.Done():
 				log.Info("shutting down event consumer")
-				return
+				close(eventstream)
+                return
 			case e := <-eventstream: 
 				if handler, ok := c.Router[e.Topic]; ok {
 					if err := handler(e); err != nil {

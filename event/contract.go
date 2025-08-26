@@ -1,9 +1,12 @@
 package event
 
+import "context"
+
 type Publisher interface {
 	Publish(event Event) error
 }
 
 type Consumer interface {
-	Consume(chan<- Event) error
+	Consume(ctx context.Context, out chan<- Event) error
+	// Consume(chan<- Event) error
 }
