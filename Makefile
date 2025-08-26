@@ -2,9 +2,11 @@
 
 BINARY_NAME ?= rankr
 BUILD_DIR ?= bin
+BUF_VERSION ?= v1.56.0
+DEFAULT_BRANCH ?= main
 
 start: build
-	./bin/rankr
+	$(BUILD_DIR)/$(BINARY_NAME)
 
 test:
 	go test -v ./...
@@ -24,6 +26,15 @@ lint:
 
 install-linter:
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+# Docker targets
+docker-build:
+	@echo "Building Docker image..."
+	docker build -t rankr:latest -f deploy/leaderboardscoring/development/Dockerfile .
+
+docker-run:
+	@echo "Running Docker container..."
+	docker run -p 8080:8080 rankr:latest
 
 # Protobuf targets
 proto-setup: install-buf
@@ -57,8 +68,8 @@ proto-lint:
 proto-breaking:
 	@echo "Checking for breaking changes..."
 	@if git rev-parse --git-dir > /dev/null 2>&1; then \
-		echo "Git repository found, checking against main branch..."; \
-		buf breaking --against '.git#branch=main'; \
+		echo "Git repository found, checking against $(DEFAULT_BRANCH) branch..."; \
+		buf breaking --against '.git#branch=$(DEFAULT_BRANCH)'; \
 	else \
 		echo "No Git repository found. Skipping breaking change check."; \
 		echo "To enable breaking change detection, initialize Git: git init"; \
@@ -87,6 +98,33 @@ proto-validate:
 		echo "To enable breaking change detection, initialize Git: git init"; \
 	fi
 
+# BSR (Buf Schema Registry) targets
+proto-bsr-push:
+	@echo "Pushing protobuf module to BSR..."
+	cd protobuf && buf push
+
+proto-bsr-push-create:
+	@echo "Pushing protobuf module to BSR (create if not exists)..."
+	cd protobuf && buf push --create
+
+proto-bsr-info:
+	@echo "Getting BSR module information..."
+	buf registry module info buf.build/gocasters/rankr
+
+proto-bsr-login:
+	@echo "Logging in to BSR..."
+	buf registry login
+
+proto-bsr-whoami:
+	@echo "Checking BSR login status..."
+	buf registry whoami
+
+update-buf-version:
+	@echo "Current Buf version: $(BUF_VERSION)"
+	@echo "To update Buf version, run:"
+	@echo "  make install-buf-force BUF_VERSION=v1.57.0"
+	@echo "  # or edit the Makefile and change BUF_VERSION variable"
+
 install-protoc-plugins:
 	@echo "Installing protoc plugins..."
 	@echo "Note: This may take a while due to Go version compatibility..."
@@ -104,28 +142,48 @@ install-protoc-plugins:
 	fi
 
 install-buf:
-	@echo "Installing Buf..."
+	@echo "Installing Buf $(BUF_VERSION)..."
 	@if command -v buf &> /dev/null && buf --version &> /dev/null; then \
-		echo "Buf is already installed and working"; \
-	else \
-		echo "Buf not found or not working, installing..."; \
-		if command -v curl &> /dev/null; then \
-			echo "Using curl to install Buf..."; \
-			curl -sSL "https://github.com/bufbuild/buf/releases/latest/download/buf-$$(uname -s)-$$(uname -m)" -o /tmp/buf; \
-			chmod +x /tmp/buf; \
-			sudo mv /tmp/buf /usr/local/bin/buf; \
-			echo "Buf installed successfully"; \
-		elif command -v wget &> /dev/null; then \
-			echo "Using wget to install Buf..."; \
-			wget -qO /tmp/buf "https://github.com/bufbuild/buf/releases/latest/download/buf-$$(uname -s)-$$(uname -m)"; \
-			chmod +x /tmp/buf; \
-			sudo mv /tmp/buf /usr/local/bin/buf; \
-			echo "Buf installed successfully"; \
+		CURRENT_VERSION=$$(buf --version); \
+		if [ "$$CURRENT_VERSION" = "$(BUF_VERSION:%=%)" ]; then \
+			echo "Buf $(BUF_VERSION) is already installed"; \
 		else \
-			echo "Neither curl nor wget found. Please install Buf manually:"; \
-			echo "   Visit: https://docs.buf.build/installation"; \
-			exit 1; \
+			echo "Buf version mismatch. Expected $(BUF_VERSION), found $$CURRENT_VERSION"; \
+			echo "Reinstalling Buf $(BUF_VERSION)..."; \
+			$(MAKE) install-buf-force; \
 		fi; \
+	else \
+		echo "Buf not found, installing $(BUF_VERSION)..."; \
+		$(MAKE) install-buf-force; \
+	fi
+
+install-buf-force:
+	@echo "Installing Buf $(BUF_VERSION)..."
+	@if command -v curl &> /dev/null; then \
+		echo "Using curl to install Buf $(BUF_VERSION)..."; \
+		curl -sSL "https://github.com/bufbuild/buf/releases/$(BUF_VERSION)/download/buf-$$(uname -s)-$$(uname -m)" -o /tmp/buf; \
+		chmod +x /tmp/buf; \
+		if [ -w /usr/local/bin ]; then \
+			mv /tmp/buf /usr/local/bin/buf; \
+		else \
+			sudo mv /tmp/buf /usr/local/bin/buf; \
+		fi; \
+		echo "Buf $(BUF_VERSION) installed successfully"; \
+	elif command -v wget &> /dev/null; then \
+		echo "Using wget to install Buf $(BUF_VERSION)..."; \
+		wget -qO /tmp/buf "https://github.com/bufbuild/buf/releases/$(BUF_VERSION)/download/buf-$$(uname -s)-$$(uname -m)"; \
+		chmod +x /tmp/buf; \
+		if [ -w /usr/local/bin ]; then \
+			mv /tmp/buf /usr/local/bin/buf; \
+		else \
+			sudo mv /tmp/buf /usr/local/bin/buf; \
+		fi; \
+		echo "Buf $(BUF_VERSION) installed successfully"; \
+	else \
+		echo "Neither curl nor wget found. Please install Buf manually:"; \
+		echo "   Visit: https://docs.buf.build/installation"; \
+		echo "   Or use: BUF_VERSION=$(BUF_VERSION) make install-buf"; \
+		exit 1; \
 	fi
 
 help:
@@ -138,6 +196,10 @@ help:
 	@echo "  build     - Compile binary (BINARY_NAME=$(BINARY_NAME), BUILD_DIR=$(BUILD_DIR))"
 	@echo "  clean     - Remove build artifacts"
 	@echo ""
+	@echo "Docker targets:"
+	@echo "  docker-build - Build Docker image"
+	@echo "  docker-run   - Run Docker container"
+	@echo ""
 	@echo "Protobuf targets:"
 	@echo "  proto-setup    - Basic Buf setup (install, init, lint)"
 	@echo "  proto-setup-full - Complete Buf setup with code generation"
@@ -148,5 +210,13 @@ help:
 	@echo "  proto-format   - Format protobuf files"
 	@echo "  proto-deps     - Update protobuf dependencies"
 	@echo "  proto-validate - Run all protobuf validations"
-	@echo "  install-buf    - Install Buf CLI tool"
+	@echo "  install-buf    - Install Buf CLI tool (version $(BUF_VERSION))"
+	@echo "  install-buf-force - Force reinstall Buf CLI tool"
 	@echo "  install-protoc-plugins - Install protoc plugins (may take time)"
+	@echo ""
+	@echo "BSR (Buf Schema Registry) targets:"
+	@echo "  proto-bsr-push        - Push protobuf module to BSR"
+	@echo "  proto-bsr-push-create - Push to BSR (create if not exists)"
+	@echo "  proto-bsr-info        - Get BSR module information"
+	@echo "  proto-bsr-login       - Login to BSR"
+	@echo "  proto-bsr-whoami      - Check BSR login status"
