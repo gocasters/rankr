@@ -23,7 +23,7 @@ docker compose -f docker-compose.no-service.yml up -d
 
 ## 📋 Development Setup
 
-This project uses ASDF to manage tool versions. For complete setup instructions, see [SETUP.md](SETUP.md).
+This project uses ASDF to manage tool versions
 
 ### Prerequisites
 - **Go 1.21+** (managed via ASDF)
