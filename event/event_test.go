@@ -3,6 +3,7 @@ package event_test
 import (
 	"context"
 	"errors"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -40,8 +41,9 @@ func TestMain(m *testing.M) {
 		FileMaxSizeInMB:  10,
 		FileMaxAgeInDays: 7,
 	}
-	logger.Init(cfg)
-	m.Run()
+	_ = logger.Init(cfg)
+	code := m.Run()
+	os.Exit(code)
 }
 
 func TestEventConsumer_Start(t *testing.T) {
@@ -67,7 +69,7 @@ func TestEventConsumer_Start(t *testing.T) {
 
 	mock := &MockConsumer{Events: []event.Event{ev1, ev2}}
 
-	consumer := event.EvnetConsumer{
+	consumer := event.EventConsumer{
 		Consumers: []event.Consumer{mock},
 		Router:    router,
 	}
@@ -77,7 +79,6 @@ func TestEventConsumer_Start(t *testing.T) {
 
 	consumer.Start(ctx)
 
-	// wait for both handlers to complete
 	wg.Wait()
 
 	if !topic1Handled {
@@ -91,7 +92,7 @@ func TestEventConsumer_Start(t *testing.T) {
 func TestEventConsumer_ConsumerError(t *testing.T) {
 	mock := &MockConsumer{Err: errors.New("consumer error")}
 
-	consumer := event.EvnetConsumer{
+	consumer := event.EventConsumer{
 		Consumers: []event.Consumer{mock},
 		Router:    make(event.Router),
 	}
