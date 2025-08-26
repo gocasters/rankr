@@ -5,8 +5,6 @@ Rank repo contributors
 ---
 ## 🚀 Quick Start
 
-For detailed setup instructions, see [SETUP.md](SETUP.md).
-
 ### Quick Setup Commands
 ```bash
 # 1. Install tools (ASDF)
