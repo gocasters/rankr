@@ -7,7 +7,7 @@ Rank repo contributors
 
 For detailed setup instructions, see [SETUP.md](SETUP.md).
 
-### Quick Setup Commands:
+### Quick Setup Commands
 ```bash
 # 1. Install tools (ASDF)
 asdf install
@@ -20,7 +20,7 @@ make mod-tidy
 
 # 4. Start development environment
 cd deploy/leaderboardscoring/development
-docker-compose -f docker-compose.no-service.yml up -d
+docker compose -f docker-compose.no-service.yml up -d
 ```
 
 ## 📋 Development Setup
@@ -70,11 +70,26 @@ go version
 After cloning the repository:
 
 ```bash
-git clone https://github.com/your-org/rankr.git
+git clone https://github.com/gocasters/rankr/
 cd rankr
 asdf install  # Install tools
 make proto-setup  # Setup protobuf
 make mod-tidy  # Setup Go dependencies
+```
+
+### 4. BSR Setup (For Contributors)
+
+If you want to contribute to protobuf schemas or use BSR features:
+
+```bash
+# Login to BSR (first time only)
+make proto-bsr-login
+
+# Verify you can access the module
+make proto-bsr-info
+
+# Pull latest schemas from BSR
+make proto-deps
 ```
 
 ## 🔧 Protobuf Development
@@ -89,8 +104,11 @@ make proto-setup
 # Complete setup with code generation
 make proto-setup-full
 
-# Install Buf CLI tool
+# Install Buf CLI tool (pinned version v1.56.0)
 make install-buf
+
+# Force reinstall Buf CLI tool
+make install-buf-force
 
 # Install protoc plugins (required for code generation)
 make install-protoc-plugins
@@ -125,5 +143,49 @@ make proto-clean
 2. **Development**: Use `make proto-gen` to generate code after changing `.proto` files
 3. **Validation**: Use `make proto-validate` before committing to check for issues
 4. **Formatting**: Use `make proto-format` to ensure consistent formatting
+
+### BSR (Buf Schema Registry) Integration
+
+This project is integrated with BSR for centralized protobuf schema management.
+
+#### For Different User Types:
+
+**🔍 Just Using the Project (No BSR needed):**
+- Run `make proto-setup-full` and you're done!
+- All protobuf files are included in the repository
+- You can generate code locally without BSR
+
+**👨‍💻 Contributing to Protobuf Schemas:**
+```bash
+# Login to BSR (first time only)
+make proto-bsr-login
+
+# Push schemas to BSR
+make proto-bsr-push
+
+# Check module information
+make proto-bsr-info
+
+# Verify login status
+make proto-bsr-whoami
+```
+
+**🔄 Pulling Latest Schemas:**
+```bash
+# Update dependencies from BSR
+make proto-deps
+
+# Generate code from latest schemas
+make proto-gen
+```
+
+**BSR Benefits:**
+- Centralized schema storage and versioning
+- Multi-language code generation
+- Team collaboration on API design
+- Automatic breaking change detection
+- API documentation generation
+
+Visit this module at: https://buf.build/gocasters/rankr
 
 ---
