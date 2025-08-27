@@ -101,7 +101,7 @@ func (app Application) shutdownServers(ctx context.Context) bool {
 	app.Logger.Info("Starting server shutdown process...")
 	shutdownDone := make(chan struct{})
 
-	parentCtx := context.Background()
+	parentCtx := ctx
 	go func() {
 		var shutdownWg sync.WaitGroup
 		shutdownWg.Add(1)

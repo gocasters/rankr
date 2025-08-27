@@ -57,7 +57,7 @@ func serve() {
 	logger.Init(cfg.Logger)
 	taskLogger, lerr := logger.L()
 	if lerr != nil {
-		log.Fatalf("Failed to get global logger: %v", err)
+		log.Fatalf("Failed to get global logger: %v", lerr)
 	}
 
 	// Run migrations if flags are set
