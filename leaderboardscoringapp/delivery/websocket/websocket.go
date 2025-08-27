@@ -53,7 +53,7 @@ func New(cfg Config, logger *slog.Logger) (*WebSocket, error) {
 func (ws *WebSocket) Serve() error {
 	v1 := ws.HTTPServer.GetRouter().Group("/v1")
 	ldGroup := v1.Group("/leaderboard")
-	ldGroup.GET(ws.config.WebSocketPattern, ws.socketHandler())
+	ldGroup.GET(ws.config.WebSocketPattern, ws.socketHandler)
 
 	go ws.Hub.Run()
 
@@ -69,32 +69,31 @@ func (ws *WebSocket) Stop(ctx context.Context) error {
 	return ws.HTTPServer.Stop(ctx)
 }
 
-func (ws *WebSocket) socketHandler() echo.HandlerFunc {
-	return func(ctx echo.Context) error {
-		r := ctx.Request()
-		w := ctx.Response()
+func (ws *WebSocket) socketHandler(ctx echo.Context) error {
 
-		upgrade := ws.NewUpgrader()
-		conn, err := upgrade.Upgrade(w, r, nil)
-		if err != nil {
-			ws.Logger.Error("WebSocket upgrade failed", slog.String("error", err.Error()))
-			return ctx.JSON(http.StatusInternalServerError, echo.Map{"error": "can't open websocket connection"})
-		}
+	r := ctx.Request()
+	w := ctx.Response()
 
-		client := &Client{
-			Hub:  ws.Hub,
-			Conn: conn,
-			Send: make(chan []byte, ws.config.SendBufferSize),
-			UUID: uuid.New(),
-		}
-
-		ws.Hub.GetRegisterChan() <- client
-
-		go client.WritePump()
-		go client.ReadPump()
-
-		return nil
+	upgrade := ws.NewUpgrader()
+	conn, err := upgrade.Upgrade(w, r, nil)
+	if err != nil {
+		ws.Logger.Error("WebSocket upgrade failed", slog.String("error", err.Error()))
+		return ctx.JSON(http.StatusInternalServerError, echo.Map{"error": "can't open websocket connection"})
 	}
+
+	client := &Client{
+		Hub:  ws.Hub,
+		Conn: conn,
+		Send: make(chan []byte, ws.config.SendBufferSize),
+		UUID: uuid.New(),
+	}
+
+	ws.Hub.GetRegisterChan() <- client
+
+	go client.WritePump()
+	go client.ReadPump()
+
+	return nil
 }
 
 func (ws *WebSocket) NewUpgrader() websocket.Upgrader {
