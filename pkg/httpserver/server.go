@@ -77,9 +77,6 @@ func (s *Server) Start() error {
 	return s.router.Start(addr)
 }
 
-func (s *Server) StopWithTimeout() error {
-	ctx, cancel := context.WithTimeout(context.Background(), s.config.ShutdownTimeout)
-	defer cancel()
-
+func (s *Server) Stop(ctx context.Context) error {
 	return s.router.Shutdown(ctx)
 }
