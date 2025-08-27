@@ -250,7 +250,7 @@ type Event struct {
 	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	EventName      EventName              `protobuf:"varint,2,opt,name=event_name,json=eventName,proto3,enum=event.EventName" json:"event_name,omitempty"`
 	Time           *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=time,proto3" json:"time,omitempty"`
-	RepositoryId   string                 `protobuf:"bytes,4,opt,name=repository_id,json=repositoryId,proto3" json:"repository_id,omitempty"`
+	RepositoryId   uint64                 `protobuf:"varint,4,opt,name=repository_id,json=repositoryId,proto3" json:"repository_id,omitempty"`
 	RepositoryName string                 `protobuf:"bytes,5,opt,name=repository_name,json=repositoryName,proto3" json:"repository_name,omitempty"`
 	// Types that are valid to be assigned to Payload:
 	//
@@ -318,11 +318,11 @@ func (x *Event) GetTime() *timestamppb.Timestamp {
 	return nil
 }
 
-func (x *Event) GetRepositoryId() string {
+func (x *Event) GetRepositoryId() uint64 {
 	if x != nil {
 		return x.RepositoryId
 	}
-	return ""
+	return 0
 }
 
 func (x *Event) GetRepositoryName() string {
@@ -464,15 +464,16 @@ func (*Event_PushPayload) isEvent_Payload() {}
 func (*Event_RepoForkedPayload) isEvent_Payload() {}
 
 type PullRequestOpenedPayload struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	PrNumber      string                 `protobuf:"bytes,2,opt,name=pr_number,json=prNumber,proto3" json:"pr_number,omitempty"`
-	Title         string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
-	BranchName    string                 `protobuf:"bytes,4,opt,name=branch_name,json=branchName,proto3" json:"branch_name,omitempty"`
-	TargetBranch  string                 `protobuf:"bytes,5,opt,name=target_branch,json=targetBranch,proto3" json:"target_branch,omitempty"`
-	IsDraft       bool                   `protobuf:"varint,6,opt,name=is_draft,json=isDraft,proto3" json:"is_draft,omitempty"`
-	Labels        []string               `protobuf:"bytes,7,rep,name=labels,proto3" json:"labels,omitempty"`
-	Deadline      *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=deadline,proto3" json:"deadline,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	UserId       uint64                 `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	PrId         uint64                 `protobuf:"varint,2,opt,name=pr_id,json=prId,proto3" json:"pr_id,omitempty"`
+	PrNumber     int32                  `protobuf:"varint,3,opt,name=pr_number,json=prNumber,proto3" json:"pr_number,omitempty"`
+	Title        string                 `protobuf:"bytes,4,opt,name=title,proto3" json:"title,omitempty"`
+	BranchName   string                 `protobuf:"bytes,5,opt,name=branch_name,json=branchName,proto3" json:"branch_name,omitempty"`
+	TargetBranch string                 `protobuf:"bytes,6,opt,name=target_branch,json=targetBranch,proto3" json:"target_branch,omitempty"`
+	Labels       []string               `protobuf:"bytes,7,rep,name=labels,proto3" json:"labels,omitempty"`
+	// google.protobuf.Timestamp deadline = 8;
+	Assignees     []uint64 `protobuf:"varint,9,rep,packed,name=assignees,proto3" json:"assignees,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -507,18 +508,25 @@ func (*PullRequestOpenedPayload) Descriptor() ([]byte, []int) {
 	return file_event_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *PullRequestOpenedPayload) GetUserId() string {
+func (x *PullRequestOpenedPayload) GetUserId() uint64 {
 	if x != nil {
 		return x.UserId
 	}
-	return ""
+	return 0
 }
 
-func (x *PullRequestOpenedPayload) GetPrNumber() string {
+func (x *PullRequestOpenedPayload) GetPrId() uint64 {
+	if x != nil {
+		return x.PrId
+	}
+	return 0
+}
+
+func (x *PullRequestOpenedPayload) GetPrNumber() int32 {
 	if x != nil {
 		return x.PrNumber
 	}
-	return ""
+	return 0
 }
 
 func (x *PullRequestOpenedPayload) GetTitle() string {
@@ -542,13 +550,6 @@ func (x *PullRequestOpenedPayload) GetTargetBranch() string {
 	return ""
 }
 
-func (x *PullRequestOpenedPayload) GetIsDraft() bool {
-	if x != nil {
-		return x.IsDraft
-	}
-	return false
-}
-
 func (x *PullRequestOpenedPayload) GetLabels() []string {
 	if x != nil {
 		return x.Labels
@@ -556,30 +557,32 @@ func (x *PullRequestOpenedPayload) GetLabels() []string {
 	return nil
 }
 
-func (x *PullRequestOpenedPayload) GetDeadline() *timestamppb.Timestamp {
+func (x *PullRequestOpenedPayload) GetAssignees() []uint64 {
 	if x != nil {
-		return x.Deadline
+		return x.Assignees
 	}
 	return nil
 }
 
 type PullRequestClosedPayload struct {
-	state              protoimpl.MessageState `protogen:"open.v1"`
-	UserId             string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	MergerUserId       string                 `protobuf:"bytes,2,opt,name=merger_user_id,json=mergerUserId,proto3" json:"merger_user_id,omitempty"` // Person who merged (same as user_id if not merged)
-	PrNumber           string                 `protobuf:"bytes,3,opt,name=pr_number,json=prNumber,proto3" json:"pr_number,omitempty"`
-	CloseReason        PrCloseReason          `protobuf:"varint,4,opt,name=close_reason,json=closeReason,proto3,enum=event.PrCloseReason" json:"close_reason,omitempty"`
-	Merged             bool                   `protobuf:"varint,5,opt,name=merged,proto3" json:"merged,omitempty"`
-	Additions          int32                  `protobuf:"varint,6,opt,name=additions,proto3" json:"additions,omitempty"`
-	Deletions          int32                  `protobuf:"varint,7,opt,name=deletions,proto3" json:"deletions,omitempty"`
-	FilesChanged       int32                  `protobuf:"varint,8,opt,name=files_changed,json=filesChanged,proto3" json:"files_changed,omitempty"`
-	CommitsCount       int32                  `protobuf:"varint,9,opt,name=commits_count,json=commitsCount,proto3" json:"commits_count,omitempty"`
-	Deadline           *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=deadline,proto3" json:"deadline,omitempty"`
-	MetDeadline        bool                   `protobuf:"varint,11,opt,name=met_deadline,json=metDeadline,proto3" json:"met_deadline,omitempty"`
-	Labels             []string               `protobuf:"bytes,12,rep,name=labels,proto3" json:"labels,omitempty"`
-	TargetBranch       string                 `protobuf:"bytes,13,opt,name=target_branch,json=targetBranch,proto3" json:"target_branch,omitempty"`
-	IsDocumentation    bool                   `protobuf:"varint,14,opt,name=is_documentation,json=isDocumentation,proto3" json:"is_documentation,omitempty"`         // Is this a documentation PR?
-	DocumentationTypes []string               `protobuf:"bytes,15,rep,name=documentation_types,json=documentationTypes,proto3" json:"documentation_types,omitempty"` // ["README", "API Documentation", etc.]
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	UserId       uint64                 `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	MergerUserId uint64                 `protobuf:"varint,2,opt,name=merger_user_id,json=mergerUserId,proto3" json:"merger_user_id,omitempty"` // Person who merged (same as user_id if not merged)
+	PrId         uint64                 `protobuf:"varint,3,opt,name=pr_id,json=prId,proto3" json:"pr_id,omitempty"`
+	PrNumber     int32                  `protobuf:"varint,4,opt,name=pr_number,json=prNumber,proto3" json:"pr_number,omitempty"`
+	CloseReason  PrCloseReason          `protobuf:"varint,5,opt,name=close_reason,json=closeReason,proto3,enum=event.PrCloseReason" json:"close_reason,omitempty"`
+	Merged       bool                   `protobuf:"varint,6,opt,name=merged,proto3" json:"merged,omitempty"`
+	Additions    int32                  `protobuf:"varint,7,opt,name=additions,proto3" json:"additions,omitempty"`
+	Deletions    int32                  `protobuf:"varint,8,opt,name=deletions,proto3" json:"deletions,omitempty"`
+	FilesChanged int32                  `protobuf:"varint,9,opt,name=files_changed,json=filesChanged,proto3" json:"files_changed,omitempty"`
+	CommitsCount int32                  `protobuf:"varint,10,opt,name=commits_count,json=commitsCount,proto3" json:"commits_count,omitempty"`
+	// google.protobuf.Timestamp deadline = 11;
+	// bool met_deadline = 12;
+	Labels             []string `protobuf:"bytes,13,rep,name=labels,proto3" json:"labels,omitempty"`
+	TargetBranch       string   `protobuf:"bytes,14,opt,name=target_branch,json=targetBranch,proto3" json:"target_branch,omitempty"`
+	IsDocumentation    bool     `protobuf:"varint,15,opt,name=is_documentation,json=isDocumentation,proto3" json:"is_documentation,omitempty"`
+	DocumentationTypes []string `protobuf:"bytes,16,rep,name=documentation_types,json=documentationTypes,proto3" json:"documentation_types,omitempty"` // ["README", "API Documentation", etc.]
+	Assignees          []uint64 `protobuf:"varint,17,rep,packed,name=assignees,proto3" json:"assignees,omitempty"`
 	unknownFields      protoimpl.UnknownFields
 	sizeCache          protoimpl.SizeCache
 }
@@ -614,25 +617,32 @@ func (*PullRequestClosedPayload) Descriptor() ([]byte, []int) {
 	return file_event_proto_rawDescGZIP(), []int{2}
 }
 
-func (x *PullRequestClosedPayload) GetUserId() string {
+func (x *PullRequestClosedPayload) GetUserId() uint64 {
 	if x != nil {
 		return x.UserId
 	}
-	return ""
+	return 0
 }
 
-func (x *PullRequestClosedPayload) GetMergerUserId() string {
+func (x *PullRequestClosedPayload) GetMergerUserId() uint64 {
 	if x != nil {
 		return x.MergerUserId
 	}
-	return ""
+	return 0
 }
 
-func (x *PullRequestClosedPayload) GetPrNumber() string {
+func (x *PullRequestClosedPayload) GetPrId() uint64 {
+	if x != nil {
+		return x.PrId
+	}
+	return 0
+}
+
+func (x *PullRequestClosedPayload) GetPrNumber() int32 {
 	if x != nil {
 		return x.PrNumber
 	}
-	return ""
+	return 0
 }
 
 func (x *PullRequestClosedPayload) GetCloseReason() PrCloseReason {
@@ -677,20 +687,6 @@ func (x *PullRequestClosedPayload) GetCommitsCount() int32 {
 	return 0
 }
 
-func (x *PullRequestClosedPayload) GetDeadline() *timestamppb.Timestamp {
-	if x != nil {
-		return x.Deadline
-	}
-	return nil
-}
-
-func (x *PullRequestClosedPayload) GetMetDeadline() bool {
-	if x != nil {
-		return x.MetDeadline
-	}
-	return false
-}
-
 func (x *PullRequestClosedPayload) GetLabels() []string {
 	if x != nil {
 		return x.Labels
@@ -719,14 +715,23 @@ func (x *PullRequestClosedPayload) GetDocumentationTypes() []string {
 	return nil
 }
 
+func (x *PullRequestClosedPayload) GetAssignees() []uint64 {
+	if x != nil {
+		return x.Assignees
+	}
+	return nil
+}
+
 type PullRequestReviewSubmittedPayload struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
-	ReviewerUserId   string                 `protobuf:"bytes,1,opt,name=reviewer_user_id,json=reviewerUserId,proto3" json:"reviewer_user_id,omitempty"`
-	PrAuthorUserId   string                 `protobuf:"bytes,2,opt,name=pr_author_user_id,json=prAuthorUserId,proto3" json:"pr_author_user_id,omitempty"`
-	PrNumber         string                 `protobuf:"bytes,3,opt,name=pr_number,json=prNumber,proto3" json:"pr_number,omitempty"`
-	State            ReviewState            `protobuf:"varint,4,opt,name=state,proto3,enum=event.ReviewState" json:"state,omitempty"`
-	CommentsCount    int32                  `protobuf:"varint,5,opt,name=comments_count,json=commentsCount,proto3" json:"comments_count,omitempty"`
-	IsSecurityReview bool                   `protobuf:"varint,6,opt,name=is_security_review,json=isSecurityReview,proto3" json:"is_security_review,omitempty"`
+	ReviewerUserId   uint64                 `protobuf:"varint,1,opt,name=reviewer_user_id,json=reviewerUserId,proto3" json:"reviewer_user_id,omitempty"`
+	PrAuthorUserId   uint64                 `protobuf:"varint,2,opt,name=pr_author_user_id,json=prAuthorUserId,proto3" json:"pr_author_user_id,omitempty"`
+	PrId             uint64                 `protobuf:"varint,3,opt,name=pr_id,json=prId,proto3" json:"pr_id,omitempty"`
+	PrNumber         int32                  `protobuf:"varint,4,opt,name=pr_number,json=prNumber,proto3" json:"pr_number,omitempty"`
+	State            ReviewState            `protobuf:"varint,5,opt,name=state,proto3,enum=event.ReviewState" json:"state,omitempty"`
+	CommentsCount    int32                  `protobuf:"varint,6,opt,name=comments_count,json=commentsCount,proto3" json:"comments_count,omitempty"`
+	IsSecurityReview bool                   `protobuf:"varint,7,opt,name=is_security_review,json=isSecurityReview,proto3" json:"is_security_review,omitempty"`
+	Assignees        []uint64               `protobuf:"varint,8,rep,packed,name=assignees,proto3" json:"assignees,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -761,25 +766,32 @@ func (*PullRequestReviewSubmittedPayload) Descriptor() ([]byte, []int) {
 	return file_event_proto_rawDescGZIP(), []int{3}
 }
 
-func (x *PullRequestReviewSubmittedPayload) GetReviewerUserId() string {
+func (x *PullRequestReviewSubmittedPayload) GetReviewerUserId() uint64 {
 	if x != nil {
 		return x.ReviewerUserId
 	}
-	return ""
+	return 0
 }
 
-func (x *PullRequestReviewSubmittedPayload) GetPrAuthorUserId() string {
+func (x *PullRequestReviewSubmittedPayload) GetPrAuthorUserId() uint64 {
 	if x != nil {
 		return x.PrAuthorUserId
 	}
-	return ""
+	return 0
 }
 
-func (x *PullRequestReviewSubmittedPayload) GetPrNumber() string {
+func (x *PullRequestReviewSubmittedPayload) GetPrId() uint64 {
+	if x != nil {
+		return x.PrId
+	}
+	return 0
+}
+
+func (x *PullRequestReviewSubmittedPayload) GetPrNumber() int32 {
 	if x != nil {
 		return x.PrNumber
 	}
-	return ""
+	return 0
 }
 
 func (x *PullRequestReviewSubmittedPayload) GetState() ReviewState {
@@ -803,16 +815,24 @@ func (x *PullRequestReviewSubmittedPayload) GetIsSecurityReview() bool {
 	return false
 }
 
+func (x *PullRequestReviewSubmittedPayload) GetAssignees() []uint64 {
+	if x != nil {
+		return x.Assignees
+	}
+	return nil
+}
+
 type IssueOpenedPayload struct {
 	state                protoimpl.MessageState `protogen:"open.v1"`
-	UserId               string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	IssueNumber          string                 `protobuf:"bytes,2,opt,name=issue_number,json=issueNumber,proto3" json:"issue_number,omitempty"`
-	Title                string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
-	Labels               []string               `protobuf:"bytes,4,rep,name=labels,proto3" json:"labels,omitempty"`
-	IsBugReport          bool                   `protobuf:"varint,5,opt,name=is_bug_report,json=isBugReport,proto3" json:"is_bug_report,omitempty"`
-	IsFeatureRequest     bool                   `protobuf:"varint,6,opt,name=is_feature_request,json=isFeatureRequest,proto3" json:"is_feature_request,omitempty"`
-	HasReproductionSteps bool                   `protobuf:"varint,7,opt,name=has_reproduction_steps,json=hasReproductionSteps,proto3" json:"has_reproduction_steps,omitempty"`
-	BodyLength           int32                  `protobuf:"varint,8,opt,name=body_length,json=bodyLength,proto3" json:"body_length,omitempty"`
+	UserId               uint64                 `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	IssueId              uint64                 `protobuf:"varint,2,opt,name=issue_id,json=issueId,proto3" json:"issue_id,omitempty"`
+	IssueNumber          int32                  `protobuf:"varint,3,opt,name=issue_number,json=issueNumber,proto3" json:"issue_number,omitempty"`
+	Title                string                 `protobuf:"bytes,4,opt,name=title,proto3" json:"title,omitempty"`
+	Labels               []string               `protobuf:"bytes,5,rep,name=labels,proto3" json:"labels,omitempty"`
+	IsBugReport          bool                   `protobuf:"varint,6,opt,name=is_bug_report,json=isBugReport,proto3" json:"is_bug_report,omitempty"`
+	IsFeatureRequest     bool                   `protobuf:"varint,7,opt,name=is_feature_request,json=isFeatureRequest,proto3" json:"is_feature_request,omitempty"`
+	HasReproductionSteps bool                   `protobuf:"varint,8,opt,name=has_reproduction_steps,json=hasReproductionSteps,proto3" json:"has_reproduction_steps,omitempty"`
+	BodyLength           int32                  `protobuf:"varint,9,opt,name=body_length,json=bodyLength,proto3" json:"body_length,omitempty"`
 	unknownFields        protoimpl.UnknownFields
 	sizeCache            protoimpl.SizeCache
 }
@@ -847,18 +867,25 @@ func (*IssueOpenedPayload) Descriptor() ([]byte, []int) {
 	return file_event_proto_rawDescGZIP(), []int{4}
 }
 
-func (x *IssueOpenedPayload) GetUserId() string {
+func (x *IssueOpenedPayload) GetUserId() uint64 {
 	if x != nil {
 		return x.UserId
 	}
-	return ""
+	return 0
 }
 
-func (x *IssueOpenedPayload) GetIssueNumber() string {
+func (x *IssueOpenedPayload) GetIssueId() uint64 {
+	if x != nil {
+		return x.IssueId
+	}
+	return 0
+}
+
+func (x *IssueOpenedPayload) GetIssueNumber() int32 {
 	if x != nil {
 		return x.IssueNumber
 	}
-	return ""
+	return 0
 }
 
 func (x *IssueOpenedPayload) GetTitle() string {
@@ -905,14 +932,15 @@ func (x *IssueOpenedPayload) GetBodyLength() int32 {
 
 type IssueClosedPayload struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
-	UserId          string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	IssueAuthorId   string                 `protobuf:"bytes,2,opt,name=issue_author_id,json=issueAuthorId,proto3" json:"issue_author_id,omitempty"`
-	IssueNumber     string                 `protobuf:"bytes,3,opt,name=issue_number,json=issueNumber,proto3" json:"issue_number,omitempty"`
-	CloseReason     IssueCloseReason       `protobuf:"varint,4,opt,name=close_reason,json=closeReason,proto3,enum=event.IssueCloseReason" json:"close_reason,omitempty"`
-	Labels          []string               `protobuf:"bytes,5,rep,name=labels,proto3" json:"labels,omitempty"`
-	OpenedAt        *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=opened_at,json=openedAt,proto3" json:"opened_at,omitempty"`
-	CommentsCount   int32                  `protobuf:"varint,7,opt,name=comments_count,json=commentsCount,proto3" json:"comments_count,omitempty"`
-	ClosingPrNumber string                 `protobuf:"bytes,8,opt,name=closing_pr_number,json=closingPrNumber,proto3" json:"closing_pr_number,omitempty"`
+	UserId          uint64                 `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	IssueAuthorId   uint64                 `protobuf:"varint,2,opt,name=issue_author_id,json=issueAuthorId,proto3" json:"issue_author_id,omitempty"`
+	IssueId         uint64                 `protobuf:"varint,3,opt,name=issue_id,json=issueId,proto3" json:"issue_id,omitempty"`
+	IssueNumber     int32                  `protobuf:"varint,4,opt,name=issue_number,json=issueNumber,proto3" json:"issue_number,omitempty"`
+	CloseReason     IssueCloseReason       `protobuf:"varint,5,opt,name=close_reason,json=closeReason,proto3,enum=event.IssueCloseReason" json:"close_reason,omitempty"`
+	Labels          []string               `protobuf:"bytes,6,rep,name=labels,proto3" json:"labels,omitempty"`
+	OpenedAt        *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=opened_at,json=openedAt,proto3" json:"opened_at,omitempty"`
+	CommentsCount   int32                  `protobuf:"varint,8,opt,name=comments_count,json=commentsCount,proto3" json:"comments_count,omitempty"`
+	ClosingPrNumber int32                  `protobuf:"varint,9,opt,name=closing_pr_number,json=closingPrNumber,proto3" json:"closing_pr_number,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -947,25 +975,32 @@ func (*IssueClosedPayload) Descriptor() ([]byte, []int) {
 	return file_event_proto_rawDescGZIP(), []int{5}
 }
 
-func (x *IssueClosedPayload) GetUserId() string {
+func (x *IssueClosedPayload) GetUserId() uint64 {
 	if x != nil {
 		return x.UserId
 	}
-	return ""
+	return 0
 }
 
-func (x *IssueClosedPayload) GetIssueAuthorId() string {
+func (x *IssueClosedPayload) GetIssueAuthorId() uint64 {
 	if x != nil {
 		return x.IssueAuthorId
 	}
-	return ""
+	return 0
 }
 
-func (x *IssueClosedPayload) GetIssueNumber() string {
+func (x *IssueClosedPayload) GetIssueId() uint64 {
+	if x != nil {
+		return x.IssueId
+	}
+	return 0
+}
+
+func (x *IssueClosedPayload) GetIssueNumber() int32 {
 	if x != nil {
 		return x.IssueNumber
 	}
-	return ""
+	return 0
 }
 
 func (x *IssueClosedPayload) GetCloseReason() IssueCloseReason {
@@ -996,21 +1031,22 @@ func (x *IssueClosedPayload) GetCommentsCount() int32 {
 	return 0
 }
 
-func (x *IssueClosedPayload) GetClosingPrNumber() string {
+func (x *IssueClosedPayload) GetClosingPrNumber() int32 {
 	if x != nil {
 		return x.ClosingPrNumber
 	}
-	return ""
+	return 0
 }
 
 type IssueCommentedPayload struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	IssueAuthorId string                 `protobuf:"bytes,2,opt,name=issue_author_id,json=issueAuthorId,proto3" json:"issue_author_id,omitempty"`
-	IssueNumber   string                 `protobuf:"bytes,3,opt,name=issue_number,json=issueNumber,proto3" json:"issue_number,omitempty"`
-	CommentLength int32                  `protobuf:"varint,4,opt,name=comment_length,json=commentLength,proto3" json:"comment_length,omitempty"`
-	ContainsCode  bool                   `protobuf:"varint,5,opt,name=contains_code,json=containsCode,proto3" json:"contains_code,omitempty"`
-	IsSolution    bool                   `protobuf:"varint,6,opt,name=is_solution,json=isSolution,proto3" json:"is_solution,omitempty"`
+	UserId        uint64                 `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	IssueAuthorId uint64                 `protobuf:"varint,2,opt,name=issue_author_id,json=issueAuthorId,proto3" json:"issue_author_id,omitempty"`
+	IssueId       uint64                 `protobuf:"varint,3,opt,name=issue_id,json=issueId,proto3" json:"issue_id,omitempty"`
+	IssueNumber   int32                  `protobuf:"varint,4,opt,name=issue_number,json=issueNumber,proto3" json:"issue_number,omitempty"`
+	CommentLength int32                  `protobuf:"varint,5,opt,name=comment_length,json=commentLength,proto3" json:"comment_length,omitempty"`
+	ContainsCode  bool                   `protobuf:"varint,6,opt,name=contains_code,json=containsCode,proto3" json:"contains_code,omitempty"`
+	IsSolution    bool                   `protobuf:"varint,7,opt,name=is_solution,json=isSolution,proto3" json:"is_solution,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1045,25 +1081,32 @@ func (*IssueCommentedPayload) Descriptor() ([]byte, []int) {
 	return file_event_proto_rawDescGZIP(), []int{6}
 }
 
-func (x *IssueCommentedPayload) GetUserId() string {
+func (x *IssueCommentedPayload) GetUserId() uint64 {
 	if x != nil {
 		return x.UserId
 	}
-	return ""
+	return 0
 }
 
-func (x *IssueCommentedPayload) GetIssueAuthorId() string {
+func (x *IssueCommentedPayload) GetIssueAuthorId() uint64 {
 	if x != nil {
 		return x.IssueAuthorId
 	}
-	return ""
+	return 0
 }
 
-func (x *IssueCommentedPayload) GetIssueNumber() string {
+func (x *IssueCommentedPayload) GetIssueId() uint64 {
+	if x != nil {
+		return x.IssueId
+	}
+	return 0
+}
+
+func (x *IssueCommentedPayload) GetIssueNumber() int32 {
 	if x != nil {
 		return x.IssueNumber
 	}
-	return ""
+	return 0
 }
 
 func (x *IssueCommentedPayload) GetCommentLength() int32 {
@@ -1089,7 +1132,7 @@ func (x *IssueCommentedPayload) GetIsSolution() bool {
 
 type PushPayload struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
-	UserId         string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	UserId         uint64                 `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	BranchName     string                 `protobuf:"bytes,2,opt,name=branch_name,json=branchName,proto3" json:"branch_name,omitempty"`
 	IsMainBranch   bool                   `protobuf:"varint,3,opt,name=is_main_branch,json=isMainBranch,proto3" json:"is_main_branch,omitempty"`
 	CommitsCount   int32                  `protobuf:"varint,4,opt,name=commits_count,json=commitsCount,proto3" json:"commits_count,omitempty"`
@@ -1131,11 +1174,11 @@ func (*PushPayload) Descriptor() ([]byte, []int) {
 	return file_event_proto_rawDescGZIP(), []int{7}
 }
 
-func (x *PushPayload) GetUserId() string {
+func (x *PushPayload) GetUserId() uint64 {
 	if x != nil {
 		return x.UserId
 	}
-	return ""
+	return 0
 }
 
 func (x *PushPayload) GetBranchName() string {
@@ -1281,8 +1324,8 @@ func (x *CommitInfo) GetModifiedFileTypes() []string {
 
 type RepositoryForkedPayload struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
-	UserId           string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	ForkRepositoryId string                 `protobuf:"bytes,2,opt,name=fork_repository_id,json=forkRepositoryId,proto3" json:"fork_repository_id,omitempty"`
+	UserId           uint64                 `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	ForkRepositoryId uint64                 `protobuf:"varint,2,opt,name=fork_repository_id,json=forkRepositoryId,proto3" json:"fork_repository_id,omitempty"`
 	unknownFields    protoimpl.UnknownFields
 	sizeCache        protoimpl.SizeCache
 }
@@ -1317,18 +1360,18 @@ func (*RepositoryForkedPayload) Descriptor() ([]byte, []int) {
 	return file_event_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *RepositoryForkedPayload) GetUserId() string {
+func (x *RepositoryForkedPayload) GetUserId() uint64 {
 	if x != nil {
 		return x.UserId
 	}
-	return ""
+	return 0
 }
 
-func (x *RepositoryForkedPayload) GetForkRepositoryId() string {
+func (x *RepositoryForkedPayload) GetForkRepositoryId() uint64 {
 	if x != nil {
 		return x.ForkRepositoryId
 	}
-	return ""
+	return 0
 }
 
 var File_event_proto protoreflect.FileDescriptor
@@ -1341,7 +1384,7 @@ const file_event_proto_rawDesc = "" +
 	"\n" +
 	"event_name\x18\x02 \x01(\x0e2\x10.event.EventNameR\teventName\x12.\n" +
 	"\x04time\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x04time\x12#\n" +
-	"\rrepository_id\x18\x04 \x01(\tR\frepositoryId\x12'\n" +
+	"\rrepository_id\x18\x04 \x01(\x04R\frepositoryId\x12'\n" +
 	"\x0frepository_name\x18\x05 \x01(\tR\x0erepositoryName\x12M\n" +
 	"\x11pr_opened_payload\x18d \x01(\v2\x1f.event.PullRequestOpenedPayloadH\x00R\x0fprOpenedPayload\x12M\n" +
 	"\x11pr_closed_payload\x18e \x01(\v2\x1f.event.PullRequestClosedPayloadH\x00R\x0fprClosedPayload\x12V\n" +
@@ -1351,70 +1394,75 @@ const file_event_proto_rawDesc = "" +
 	"\x17issue_commented_payload\x18i \x01(\v2\x1c.event.IssueCommentedPayloadH\x00R\x15issueCommentedPayload\x127\n" +
 	"\fpush_payload\x18j \x01(\v2\x12.event.PushPayloadH\x00R\vpushPayload\x12P\n" +
 	"\x13repo_forked_payload\x18k \x01(\v2\x1e.event.RepositoryForkedPayloadH\x00R\x11repoForkedPayloadB\t\n" +
-	"\apayload\"\x97\x02\n" +
+	"\apayload\"\xf7\x01\n" +
 	"\x18PullRequestOpenedPayload\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1b\n" +
-	"\tpr_number\x18\x02 \x01(\tR\bprNumber\x12\x14\n" +
-	"\x05title\x18\x03 \x01(\tR\x05title\x12\x1f\n" +
-	"\vbranch_name\x18\x04 \x01(\tR\n" +
+	"\auser_id\x18\x01 \x01(\x04R\x06userId\x12\x13\n" +
+	"\x05pr_id\x18\x02 \x01(\x04R\x04prId\x12\x1b\n" +
+	"\tpr_number\x18\x03 \x01(\x05R\bprNumber\x12\x14\n" +
+	"\x05title\x18\x04 \x01(\tR\x05title\x12\x1f\n" +
+	"\vbranch_name\x18\x05 \x01(\tR\n" +
 	"branchName\x12#\n" +
-	"\rtarget_branch\x18\x05 \x01(\tR\ftargetBranch\x12\x19\n" +
-	"\bis_draft\x18\x06 \x01(\bR\aisDraft\x12\x16\n" +
-	"\x06labels\x18\a \x03(\tR\x06labels\x126\n" +
-	"\bdeadline\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\bdeadline\"\xc1\x04\n" +
+	"\rtarget_branch\x18\x06 \x01(\tR\ftargetBranch\x12\x16\n" +
+	"\x06labels\x18\a \x03(\tR\x06labels\x12\x1c\n" +
+	"\tassignees\x18\t \x03(\x04R\tassignees\"\x99\x04\n" +
 	"\x18PullRequestClosedPayload\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\x12$\n" +
-	"\x0emerger_user_id\x18\x02 \x01(\tR\fmergerUserId\x12\x1b\n" +
-	"\tpr_number\x18\x03 \x01(\tR\bprNumber\x127\n" +
-	"\fclose_reason\x18\x04 \x01(\x0e2\x14.event.PrCloseReasonR\vcloseReason\x12\x16\n" +
-	"\x06merged\x18\x05 \x01(\bR\x06merged\x12\x1c\n" +
-	"\tadditions\x18\x06 \x01(\x05R\tadditions\x12\x1c\n" +
-	"\tdeletions\x18\a \x01(\x05R\tdeletions\x12#\n" +
-	"\rfiles_changed\x18\b \x01(\x05R\ffilesChanged\x12#\n" +
-	"\rcommits_count\x18\t \x01(\x05R\fcommitsCount\x126\n" +
-	"\bdeadline\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampR\bdeadline\x12!\n" +
-	"\fmet_deadline\x18\v \x01(\bR\vmetDeadline\x12\x16\n" +
-	"\x06labels\x18\f \x03(\tR\x06labels\x12#\n" +
-	"\rtarget_branch\x18\r \x01(\tR\ftargetBranch\x12)\n" +
-	"\x10is_documentation\x18\x0e \x01(\bR\x0fisDocumentation\x12/\n" +
-	"\x13documentation_types\x18\x0f \x03(\tR\x12documentationTypes\"\x94\x02\n" +
+	"\auser_id\x18\x01 \x01(\x04R\x06userId\x12$\n" +
+	"\x0emerger_user_id\x18\x02 \x01(\x04R\fmergerUserId\x12\x13\n" +
+	"\x05pr_id\x18\x03 \x01(\x04R\x04prId\x12\x1b\n" +
+	"\tpr_number\x18\x04 \x01(\x05R\bprNumber\x127\n" +
+	"\fclose_reason\x18\x05 \x01(\x0e2\x14.event.PrCloseReasonR\vcloseReason\x12\x16\n" +
+	"\x06merged\x18\x06 \x01(\bR\x06merged\x12\x1c\n" +
+	"\tadditions\x18\a \x01(\x05R\tadditions\x12\x1c\n" +
+	"\tdeletions\x18\b \x01(\x05R\tdeletions\x12#\n" +
+	"\rfiles_changed\x18\t \x01(\x05R\ffilesChanged\x12#\n" +
+	"\rcommits_count\x18\n" +
+	" \x01(\x05R\fcommitsCount\x12\x16\n" +
+	"\x06labels\x18\r \x03(\tR\x06labels\x12#\n" +
+	"\rtarget_branch\x18\x0e \x01(\tR\ftargetBranch\x12)\n" +
+	"\x10is_documentation\x18\x0f \x01(\bR\x0fisDocumentation\x12/\n" +
+	"\x13documentation_types\x18\x10 \x03(\tR\x12documentationTypes\x12\x1c\n" +
+	"\tassignees\x18\x11 \x03(\x04R\tassignees\"\xc7\x02\n" +
 	"!PullRequestReviewSubmittedPayload\x12(\n" +
-	"\x10reviewer_user_id\x18\x01 \x01(\tR\x0ereviewerUserId\x12)\n" +
-	"\x11pr_author_user_id\x18\x02 \x01(\tR\x0eprAuthorUserId\x12\x1b\n" +
-	"\tpr_number\x18\x03 \x01(\tR\bprNumber\x12(\n" +
-	"\x05state\x18\x04 \x01(\x0e2\x12.event.ReviewStateR\x05state\x12%\n" +
-	"\x0ecomments_count\x18\x05 \x01(\x05R\rcommentsCount\x12,\n" +
-	"\x12is_security_review\x18\x06 \x01(\bR\x10isSecurityReview\"\xa7\x02\n" +
+	"\x10reviewer_user_id\x18\x01 \x01(\x04R\x0ereviewerUserId\x12)\n" +
+	"\x11pr_author_user_id\x18\x02 \x01(\x04R\x0eprAuthorUserId\x12\x13\n" +
+	"\x05pr_id\x18\x03 \x01(\x04R\x04prId\x12\x1b\n" +
+	"\tpr_number\x18\x04 \x01(\x05R\bprNumber\x12(\n" +
+	"\x05state\x18\x05 \x01(\x0e2\x12.event.ReviewStateR\x05state\x12%\n" +
+	"\x0ecomments_count\x18\x06 \x01(\x05R\rcommentsCount\x12,\n" +
+	"\x12is_security_review\x18\a \x01(\bR\x10isSecurityReview\x12\x1c\n" +
+	"\tassignees\x18\b \x03(\x04R\tassignees\"\xc2\x02\n" +
 	"\x12IssueOpenedPayload\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\x12!\n" +
-	"\fissue_number\x18\x02 \x01(\tR\vissueNumber\x12\x14\n" +
-	"\x05title\x18\x03 \x01(\tR\x05title\x12\x16\n" +
-	"\x06labels\x18\x04 \x03(\tR\x06labels\x12\"\n" +
-	"\ris_bug_report\x18\x05 \x01(\bR\visBugReport\x12,\n" +
-	"\x12is_feature_request\x18\x06 \x01(\bR\x10isFeatureRequest\x124\n" +
-	"\x16has_reproduction_steps\x18\a \x01(\bR\x14hasReproductionSteps\x12\x1f\n" +
-	"\vbody_length\x18\b \x01(\x05R\n" +
-	"bodyLength\"\xd8\x02\n" +
+	"\auser_id\x18\x01 \x01(\x04R\x06userId\x12\x19\n" +
+	"\bissue_id\x18\x02 \x01(\x04R\aissueId\x12!\n" +
+	"\fissue_number\x18\x03 \x01(\x05R\vissueNumber\x12\x14\n" +
+	"\x05title\x18\x04 \x01(\tR\x05title\x12\x16\n" +
+	"\x06labels\x18\x05 \x03(\tR\x06labels\x12\"\n" +
+	"\ris_bug_report\x18\x06 \x01(\bR\visBugReport\x12,\n" +
+	"\x12is_feature_request\x18\a \x01(\bR\x10isFeatureRequest\x124\n" +
+	"\x16has_reproduction_steps\x18\b \x01(\bR\x14hasReproductionSteps\x12\x1f\n" +
+	"\vbody_length\x18\t \x01(\x05R\n" +
+	"bodyLength\"\xf3\x02\n" +
 	"\x12IssueClosedPayload\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\x12&\n" +
-	"\x0fissue_author_id\x18\x02 \x01(\tR\rissueAuthorId\x12!\n" +
-	"\fissue_number\x18\x03 \x01(\tR\vissueNumber\x12:\n" +
-	"\fclose_reason\x18\x04 \x01(\x0e2\x17.event.IssueCloseReasonR\vcloseReason\x12\x16\n" +
-	"\x06labels\x18\x05 \x03(\tR\x06labels\x127\n" +
-	"\topened_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\bopenedAt\x12%\n" +
-	"\x0ecomments_count\x18\a \x01(\x05R\rcommentsCount\x12*\n" +
-	"\x11closing_pr_number\x18\b \x01(\tR\x0fclosingPrNumber\"\xe8\x01\n" +
+	"\auser_id\x18\x01 \x01(\x04R\x06userId\x12&\n" +
+	"\x0fissue_author_id\x18\x02 \x01(\x04R\rissueAuthorId\x12\x19\n" +
+	"\bissue_id\x18\x03 \x01(\x04R\aissueId\x12!\n" +
+	"\fissue_number\x18\x04 \x01(\x05R\vissueNumber\x12:\n" +
+	"\fclose_reason\x18\x05 \x01(\x0e2\x17.event.IssueCloseReasonR\vcloseReason\x12\x16\n" +
+	"\x06labels\x18\x06 \x03(\tR\x06labels\x127\n" +
+	"\topened_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\bopenedAt\x12%\n" +
+	"\x0ecomments_count\x18\b \x01(\x05R\rcommentsCount\x12*\n" +
+	"\x11closing_pr_number\x18\t \x01(\x05R\x0fclosingPrNumber\"\x83\x02\n" +
 	"\x15IssueCommentedPayload\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\x12&\n" +
-	"\x0fissue_author_id\x18\x02 \x01(\tR\rissueAuthorId\x12!\n" +
-	"\fissue_number\x18\x03 \x01(\tR\vissueNumber\x12%\n" +
-	"\x0ecomment_length\x18\x04 \x01(\x05R\rcommentLength\x12#\n" +
-	"\rcontains_code\x18\x05 \x01(\bR\fcontainsCode\x12\x1f\n" +
-	"\vis_solution\x18\x06 \x01(\bR\n" +
+	"\auser_id\x18\x01 \x01(\x04R\x06userId\x12&\n" +
+	"\x0fissue_author_id\x18\x02 \x01(\x04R\rissueAuthorId\x12\x19\n" +
+	"\bissue_id\x18\x03 \x01(\x04R\aissueId\x12!\n" +
+	"\fissue_number\x18\x04 \x01(\x05R\vissueNumber\x12%\n" +
+	"\x0ecomment_length\x18\x05 \x01(\x05R\rcommentLength\x12#\n" +
+	"\rcontains_code\x18\x06 \x01(\bR\fcontainsCode\x12\x1f\n" +
+	"\vis_solution\x18\a \x01(\bR\n" +
 	"isSolution\"\xb6\x02\n" +
 	"\vPushPayload\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1f\n" +
+	"\auser_id\x18\x01 \x01(\x04R\x06userId\x12\x1f\n" +
 	"\vbranch_name\x18\x02 \x01(\tR\n" +
 	"branchName\x12$\n" +
 	"\x0eis_main_branch\x18\x03 \x01(\bR\fisMainBranch\x12#\n" +
@@ -1433,8 +1481,8 @@ const file_event_proto_rawDesc = "" +
 	"\x0fis_merge_commit\x18\x06 \x01(\bR\risMergeCommit\x12.\n" +
 	"\x13modified_file_types\x18\a \x03(\tR\x11modifiedFileTypes\"`\n" +
 	"\x17RepositoryForkedPayload\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\x12,\n" +
-	"\x12fork_repository_id\x18\x02 \x01(\tR\x10forkRepositoryId*\xdf\x01\n" +
+	"\auser_id\x18\x01 \x01(\x04R\x06userId\x12,\n" +
+	"\x12fork_repository_id\x18\x02 \x01(\x04R\x10forkRepositoryId*\xdf\x01\n" +
 	"\tEventName\x12\x1a\n" +
 	"\x16EVENT_NAME_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13PULL_REQUEST_OPENED\x10\x01\x12\x17\n" +
@@ -1504,18 +1552,16 @@ var file_event_proto_depIdxs = []int32{
 	10, // 7: event.Event.issue_commented_payload:type_name -> event.IssueCommentedPayload
 	11, // 8: event.Event.push_payload:type_name -> event.PushPayload
 	13, // 9: event.Event.repo_forked_payload:type_name -> event.RepositoryForkedPayload
-	14, // 10: event.PullRequestOpenedPayload.deadline:type_name -> google.protobuf.Timestamp
-	3,  // 11: event.PullRequestClosedPayload.close_reason:type_name -> event.PrCloseReason
-	14, // 12: event.PullRequestClosedPayload.deadline:type_name -> google.protobuf.Timestamp
-	1,  // 13: event.PullRequestReviewSubmittedPayload.state:type_name -> event.ReviewState
-	2,  // 14: event.IssueClosedPayload.close_reason:type_name -> event.IssueCloseReason
-	14, // 15: event.IssueClosedPayload.opened_at:type_name -> google.protobuf.Timestamp
-	12, // 16: event.PushPayload.commits:type_name -> event.CommitInfo
-	17, // [17:17] is the sub-list for method output_type
-	17, // [17:17] is the sub-list for method input_type
-	17, // [17:17] is the sub-list for extension type_name
-	17, // [17:17] is the sub-list for extension extendee
-	0,  // [0:17] is the sub-list for field type_name
+	3,  // 10: event.PullRequestClosedPayload.close_reason:type_name -> event.PrCloseReason
+	1,  // 11: event.PullRequestReviewSubmittedPayload.state:type_name -> event.ReviewState
+	2,  // 12: event.IssueClosedPayload.close_reason:type_name -> event.IssueCloseReason
+	14, // 13: event.IssueClosedPayload.opened_at:type_name -> google.protobuf.Timestamp
+	12, // 14: event.PushPayload.commits:type_name -> event.CommitInfo
+	15, // [15:15] is the sub-list for method output_type
+	15, // [15:15] is the sub-list for method input_type
+	15, // [15:15] is the sub-list for extension type_name
+	15, // [15:15] is the sub-list for extension extendee
+	0,  // [0:15] is the sub-list for field type_name
 }
 
 func init() { file_event_proto_init() }
