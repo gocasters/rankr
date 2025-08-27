@@ -102,6 +102,9 @@ func serve() {
 }
 
 func init() {
+
+	serveCmd.MarkFlagsMutuallyExclusive("migrate-up", "migrate-down")
+
 	serveCmd.Flags().BoolVar(&migrateUp, "migrate-up", false, "Run migrations up before starting the server")
 	serveCmd.Flags().BoolVar(&migrateDown, "migrate-down", false, "Run migrations down before starting the server")
 	RootCmd.AddCommand(serveCmd)
