@@ -1,0 +1,46 @@
+services:
+
+  task-db:
+    image: postgres:17.2-alpine
+    environment:
+      POSTGRES_DB: task_db
+      POSTGRES_USER: "task_admin"
+      POSTGRES_PASSWORD: "password123"
+    restart: always
+    profiles:
+      - task
+    volumes:
+      - task-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U task_admin -d task_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  task-service:
+    build:
+      context: .
+      dockerfile: ./deploy/task/development/Dockerfile
+      args:
+        GO_IMAGE_NAME: golang
+        GO_IMAGE_VERSION: 1.23.4-alpine
+    image: rankr-task:golang-1.23.4-alpine
+
+    command: /bin/sh -c "go run cmd/task/main.go migrate --up"
+    depends_on:
+      task-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+    volumes:
+      - ./:/home/app
+      - task-go-mod-cache:/go/pkg/mod
+    profiles:
+      - task
+    ports:
+      - "6011:6011"
+
+volumes:
+  task-data:
+  task-go-mod-cache:
