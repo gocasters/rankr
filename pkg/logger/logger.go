@@ -5,8 +5,10 @@ package logger
 
 import (
 
+
 	"fmt"
 	"io"
+
 
 	"log/slog"
 	"os"
@@ -30,6 +32,7 @@ type Config struct {
 }
 
 // Init initializes the global logger instance.
+
 func Init(cfg Config) error {
 	var initError error
 	var workingDir string
@@ -38,6 +41,7 @@ func Init(cfg Config) error {
 		if initError != nil {
 			initError = fmt.Errorf("error getting current working directory: %w", initError)
 			return
+
 
 
 		}
@@ -55,6 +59,7 @@ func Init(cfg Config) error {
 			}),
 		)
 	})
+
 
 	return initError
 }
@@ -75,6 +80,7 @@ func New(cfg Config) (*slog.Logger, error) {
 	if newErr != nil {
 		return nil, fmt.Errorf("error getting current working directory: %w", newErr)
 
+
 	}
 
 	fileWriter := &lumberjack.Logger{
@@ -84,10 +90,12 @@ func New(cfg Config) (*slog.Logger, error) {
 		MaxAge:    cfg.FileMaxAgeInDays,
 	}
 
+
 	level := mapLevel(cfg.Level)
 	return slog.New(
 		slog.NewJSONHandler(io.MultiWriter(fileWriter), &slog.HandlerOptions{Level: level}),
 	), nil
+
 
 }
 
