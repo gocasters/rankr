@@ -53,7 +53,7 @@ func New(cfg Config, logger *slog.Logger) (*WebSocket, error) {
 func (ws *WebSocket) Serve() error {
 	v1 := ws.HTTPServer.GetRouter().Group("/v1")
 	ldGroup := v1.Group("/leaderboard")
-	ldGroup.GET(ws.config.WebSocketPattern, ws.socketHandler(ws.Hub))
+	ldGroup.GET(ws.config.WebSocketPattern, ws.socketHandler())
 
 	go ws.Hub.Run()
 
@@ -69,7 +69,7 @@ func (ws *WebSocket) Stop(ctx context.Context) error {
 	return ws.HTTPServer.Stop(ctx)
 }
 
-func (ws *WebSocket) socketHandler(hub HubInterface) echo.HandlerFunc {
+func (ws *WebSocket) socketHandler() echo.HandlerFunc {
 	return func(ctx echo.Context) error {
 		r := ctx.Request()
 		w := ctx.Response()
@@ -82,13 +82,13 @@ func (ws *WebSocket) socketHandler(hub HubInterface) echo.HandlerFunc {
 		}
 
 		client := &Client{
-			Hub:  hub,
+			Hub:  ws.Hub,
 			Conn: conn,
 			Send: make(chan []byte, ws.config.SendBufferSize),
 			UUID: uuid.New(),
 		}
 
-		hub.GetRegisterChan() <- client
+		ws.Hub.GetRegisterChan() <- client
 
 		go client.WritePump()
 		go client.ReadPump()

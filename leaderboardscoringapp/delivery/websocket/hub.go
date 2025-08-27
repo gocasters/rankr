@@ -5,18 +5,6 @@ import (
 	"sync"
 )
 
-type HubInterface interface {
-	RegisterClient(client *Client)
-	UnRegisterClient(client *Client)
-	BroadcastToClients(uuids []uuid.UUID, message []byte)
-	GetClient(uuid uuid.UUID) (*Client, bool)
-	IsClientRegistered(uuid uuid.UUID) bool
-	Run()
-	Close()
-	GetRegisterChan() chan *Client
-	GetUnregisterChan() chan *Client
-}
-
 type BroadcastMessage struct {
 	UUID    []uuid.UUID
 	Message []byte
