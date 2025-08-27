@@ -3,7 +3,8 @@ package cachemanager
 
 import (
 	"context"
-	"rankr/adapter/redis"
+	"github.com/gocasters/rankr/adapter/redis"
+
 	"time"
 )
 

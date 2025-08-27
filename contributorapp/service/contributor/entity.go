@@ -1,7 +1,7 @@
 package contributor
 
 import (
-	"github.com/gocasters/rankr/types"
+	"github.com/gocasters/rankr/type"
 )
 
 type Contributor struct {
