@@ -159,8 +159,6 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20250603155806-513f23925822 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250603155806-513f23925822 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
-)
-
 
 	golang.org/x/sys v0.15.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
@@ -178,14 +176,18 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20250603155806-513f23925822 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250603155806-513f23925822 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
+
 )
+
+
+	
+
 
 require (
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 
-require (
 	github.com/atotto/clipboard v0.1.4 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 
@@ -279,4 +281,3 @@ require (
 
 
 )
-
