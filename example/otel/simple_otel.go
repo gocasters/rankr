@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/gocasters/rankr/adapters/otel"
+	"github.com/gocasters/rankr/adapter/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/propagation"
