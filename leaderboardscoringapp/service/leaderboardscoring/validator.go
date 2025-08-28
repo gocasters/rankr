@@ -17,14 +17,13 @@ func (v Validator) ValidateContributionEvent(event EventRequest) error {
 	return validation.ValidateStruct(event,
 		// Example validation rules can be added here, for instance:
 		validation.Field(&event.ID, validation.Required, is.UUID),
-		validation.Field(&event.UserID, validation.Required),
-		validation.Field(&event.ProjectID, validation.Required),
-		validation.Field(&event.Type, validation.Required,
-			validation.In(string(ContributionCommit),
-				string(ContributionReview),
-				string(ContributionIssueClosed),
-			),
-		),
-		validation.Field(&event.ScoreValue, validation.Min(0)),
+		validation.Field(&event.ContributorID, validation.Required),
+		validation.Field(&event.RepositoryID, validation.Required),
+		//validation.Field(&event.Type, validation.Required,
+		//	validation.In(string(ContributionCommit),
+		//		string(ContributionReview),
+		//		string(ContributionIssueClosed),
+		//	),
+		//),
 	)
 }

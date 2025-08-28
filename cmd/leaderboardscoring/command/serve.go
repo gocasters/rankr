@@ -7,10 +7,10 @@ import (
 	"github.com/gocasters/rankr/leaderboardscoringapp"
 	"github.com/gocasters/rankr/pkg/config"
 	"github.com/gocasters/rankr/pkg/database"
-	"github.com/gocasters/rankr/pkg/file"
 	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/gocasters/rankr/pkg/migrator"
-	nats "github.com/nats-io/nats.go"
+	"github.com/gocasters/rankr/pkg/path"
+	"github.com/nats-io/nats.go"
 	"github.com/spf13/cobra"
 	"log"
 	"os"
@@ -45,7 +45,7 @@ func serve() {
 	var cfg leaderboardscoringapp.Config
 
 	// Load config
-	projectRoot, err := file.FindProjectRoot()
+	projectRoot, err := path.PathProjectRoot()
 	if err != nil {
 		log.Fatalf("Error finding project root: %v", err)
 	}

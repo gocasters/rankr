@@ -3,7 +3,6 @@ package leaderboardscoringapp
 import (
 	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/consumer"
-	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/websocket"
 	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/pkg/httpserver"
 	"github.com/gocasters/rankr/pkg/logger"
@@ -12,7 +11,6 @@ import (
 
 type Config struct {
 	HTTPServer           httpserver.Config `koanf:"http_server"`
-	WebSocket            websocket.Config  `koanf:"websocket"`
 	PostgresDB           database.Config   `koanf:"postgres_db"`
 	Redis                redis.Config      `koanf:"redis"`
 	Logger               logger.Config     `koanf:"logger"`

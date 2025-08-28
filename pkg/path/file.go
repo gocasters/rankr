@@ -1,4 +1,4 @@
-package file
+package path
 
 import (
 	"errors"
@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 )
 
-// FindProjectRoot searches upwards from the current directory to find the project root,
+// PathProjectRoot searches upwards from the current directory to find the project root,
 // identified by the presence of a "go.mod" file.
-func FindProjectRoot() (string, error) {
+func PathProjectRoot() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
 		return "", err

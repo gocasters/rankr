@@ -3,17 +3,6 @@ http_server:
   port: 8080
   shutdown_context_timeout: 10s
 
-websocket:
-  host: ""
-  port: 8090
-  websocket_pattern: "/ws"
-  allowed_origins_websocket:
-    - "http://localhost:3000"
-    - "http://127.0.0.1:3000"
-  send_buffer_size: 1024
-  broadcast_buffer_size: 1024
-  shutdown_context_timeout: 10s
-
 postgres_db:
   host: "127.0.0.1"
   port: 5432

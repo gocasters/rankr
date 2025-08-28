@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/http"
-	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/websocket"
 	"github.com/gocasters/rankr/leaderboardscoringapp/repository"
 	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/pkg/httpserver"
@@ -24,7 +23,6 @@ import (
 
 type Application struct {
 	HTTPServer                http.Server
-	WebSocket                 *websocket.WebSocket
 	LeaderboardSvc            leaderboardscoring.Service
 	LeaderboardscoringHandler http.Handler
 	WMRouter                  *message.Router
@@ -65,15 +63,8 @@ func Setup(ctx context.Context, config Config, leaderboardLogger *slog.Logger,
 		leaderboardSvc,
 	)
 
-	ws, wErr := websocket.New(config.WebSocket, leaderboardLogger)
-	if wErr != nil {
-		leaderboardLogger.Error("Failed to initialize WebSocket server", slog.String("error", wErr.Error()))
-		panic(wErr)
-	}
-
 	return &Application{
 		HTTPServer:                leaderboardHttpServer,
-		WebSocket:                 ws,
 		LeaderboardSvc:            leaderboardSvc,
 		LeaderboardscoringHandler: leaderboardscoringHandler,
 		WMRouter:                  nil,
@@ -93,7 +84,6 @@ func (app *Application) Start() {
 
 	app.startHTTPServer(&wg)
 	app.startWaterMill(&wg, ctx)
-	app.startWebSocket(&wg)
 
 	app.Logger.Info("Leaderboard Scoring application started.")
 
@@ -145,21 +135,6 @@ func (app *Application) startWaterMill(wg *sync.WaitGroup, ctx context.Context) 
 	}()
 }
 
-func (app *Application) startWebSocket(wg *sync.WaitGroup) {
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		if err := app.WebSocket.Serve(); err != nil {
-			app.Logger.Error("WebSocket server failed to start!",
-				slog.String("error", err.Error()),
-				slog.String("addr", fmt.Sprintf("%s:%d", app.Config.WebSocket.Host, app.Config.WebSocket.Port)))
-
-			panic(err)
-		}
-		app.Logger.Info(fmt.Sprintf("WebSocket server started on %s:%d", app.Config.WebSocket.Host, app.Config.WebSocket.Port))
-	}()
-}
-
 func (app *Application) setupWatermill() {
 
 	router, err := message.NewRouter(message.RouterConfig{}, app.WMLogger)
@@ -196,9 +171,6 @@ func (app *Application) shutdownServers(ctx context.Context) bool {
 
 		shutdownWg.Add(1)
 		go app.closeSubscriber(ctx, &shutdownWg)
-
-		shutdownWg.Add(1)
-		go app.shutdownWebSocket(ctx, &shutdownWg)
 
 		shutdownWg.Wait()
 		close(shutdownDone)
@@ -245,20 +217,6 @@ func (app *Application) shutdownWatermill(parentCtx context.Context, wg *sync.Wa
 	case <-parentCtx.Done():
 		app.Logger.Warn("Watermill shutdown timed out.")
 	}
-}
-
-func (app *Application) shutdownWebSocket(parentCtx context.Context, wg *sync.WaitGroup) {
-	app.Logger.Info(fmt.Sprintf("Starting graceful shutdown for websocket on %s:%d", app.Config.WebSocket.Host, app.Config.WebSocket.Port))
-
-	defer wg.Done()
-	wsCtx, cancel := context.WithTimeout(parentCtx, app.Config.WebSocket.ShutdownTimeout)
-	defer cancel()
-
-	if err := app.WebSocket.Stop(wsCtx); err != nil {
-		app.Logger.Error(fmt.Sprintf("WebSocket graceful shutdown failed: %v", err))
-	}
-
-	app.Logger.Info("WebSocket shutdown successfully")
 }
 
 func (app *Application) closeSubscriber(parentCtx context.Context, wg *sync.WaitGroup) {

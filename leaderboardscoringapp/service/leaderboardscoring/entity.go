@@ -12,9 +12,11 @@ const (
 
 type ContributionEvent struct {
 	ID              string
-	UserID          string
-	ProjectID       string
 	Type            ContributionType
+	EventName       string
+	RepositoryID    uint64
+	RepositoryName  string
+	ContributorID   string
 	ScoreValue      int
 	SourceReference string
 	Timestamp       time.Time // UTC
