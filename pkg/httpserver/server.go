@@ -9,6 +9,7 @@ import (
 )
 
 type Config struct {
+	Host            string        `koanf:"host"`
 	Port            int           `koanf:"port"`
 	CORS            CORS          `koanf:"cors"`
 	ShutdownTimeout time.Duration `koanf:"shutdown_context_timeout"`
@@ -69,7 +70,7 @@ func (s *Server) GetConfig() *Config {
 }
 
 func (s *Server) Start() error {
-	addr := fmt.Sprintf(":%d", s.config.Port)
+	addr := fmt.Sprintf("%s:%d", s.config.Host, s.config.Port)
 
 	s.router.HideBanner = s.config.HideBanner
 	s.router.HidePort = s.config.HidePort

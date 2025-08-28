@@ -4,11 +4,11 @@ import "time"
 
 type EventRequest struct {
 	ID              string
-	UserID          string
-	ProjectID       string
-	Type            string
-	ScoreValue      int
+	EventName       string
+	RepositoryID    uint64
+	RepositoryName  string
 	SourceReference string
+	ContributorID   string
 	Timestamp       time.Time
 }
 

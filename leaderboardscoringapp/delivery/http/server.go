@@ -2,7 +2,7 @@ package http
 
 import (
 	"context"
-	"github.com/gocasters/rankr/leaderboardscoring/service/leaderboardscoring"
+	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/gocasters/rankr/pkg/httpserver"
 	"log/slog"
 )
