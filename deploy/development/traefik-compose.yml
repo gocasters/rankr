@@ -1,0 +1,30 @@
+services:
+  traefik:
+    image: traefik:v3.1.0
+    # container_name: traefik
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - ./deploy/development/traefik:/etc/traefik/
+      - ./deploy/development/traefik/logs:/etc/traefik/logs
+      - /var/run/docker.sock:/var/run/docker.sock
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # basket-local-proxy:
+  #   image: traefik/whoami
+  #   container_name: basket-local-proxy
+  #   profiles:
+  #     - basket-local
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.http.routers.basket_dev.rule=Host(`rankr.local`) && PathPrefix(`/basket`)"
+  #     - "traefik.http.routers.basket_dev.entrypoints=web"
+  #     - "traefik.http.routers.basket_dev.service=basket_dev_target"
+  #     - "traefik.http.routers.basket_dev.middlewares=strip-basket-prefix"
+  #     - "traefik.http.services.basket_dev_target.loadbalancer.server.url=http://host.docker.internal:5000"
+  #     - "traefik.http.middlewares.strip-basket-prefix.stripprefix.prefixes=/basket"
+
+
+
