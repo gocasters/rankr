@@ -13,12 +13,19 @@ func (e ErrorResponse) Error() string {
 }
 
 func NewError(err error, errorType ErrorType, message ...string) ErrorResponse {
-	return ErrorResponse{}
+	return ErrorResponse{
+		Message:         getMessage(err, message),
+		Errors:          map[string]interface{}{},
+		InternalErrCode: string(errorType),
+	}
 }
 
 func getMessage(err error, message []string) string {
 	if len(message) > 0 {
 		return message[0]
+	}
+	if err != nil {
+		return err.Error()
 	}
 	return err.Error()
 }

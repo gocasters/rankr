@@ -4,7 +4,6 @@ package cachemanager
 import (
 	"context"
 	"github.com/gocasters/rankr/adapter/redis"
-
 	"time"
 )
 

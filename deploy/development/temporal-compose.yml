@@ -1,0 +1,94 @@
+services:
+  postgresql:
+    container_name: temporal-postgresql
+    environment:
+      POSTGRES_PASSWORD: temporal
+      POSTGRES_USER: temporal
+      POSTGRES_DB: temporal
+    image: postgres:17.2-alpine
+    ports:
+      - 5455:5432
+    volumes:
+      - temporal_postgresql_data:/var/lib/postgresql/data
+    command: 
+      - "postgres"
+      - "-c"
+      - "max_connections=100"
+      - "-c"
+      - "shared_buffers=128MB"
+      - "-c"
+      - "work_mem=16MB"
+      - "-c"
+      - "maintenance_work_mem=128MB"
+    healthcheck:
+      test: 
+        - CMD
+        - pg_isready
+        - -h
+        - localhost
+        - -U
+        - temporal
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 120s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  temporal:
+    container_name: temporal
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    environment:
+      - DB=postgres12_pgx
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=temporal-postgresql
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+    image: temporalio/auto-setup:1.27.0
+    ports:
+      - 7233:7233
+    volumes:
+      - ./deploy/development/temporal/dynamicconfig:/etc/temporal/config/dynamicconfig
+  
+  temporal-admin-tools:
+    container_name: temporal-admin-tools
+    depends_on:
+      temporal:
+        condition: service_started
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CLI_ADDRESS=temporal:7233
+    image: temporalio/admin-tools:1.27.0
+    stdin_open: true
+    tty: true
+
+  temporal-ui:
+    container_name: temporal-ui
+    depends_on:
+      temporal:
+        condition: service_started
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://rankr.local
+      - TEMPORAL_UI_BASE_PATH=/temporal
+      - TEMPORAL_UI_PUBLIC_PATH=/temporal
+    image: temporalio/ui:2.34.0
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${SERVICE_NAME}_temporal.rule=Host(`${SERVICE_DOMAIN}`) && PathPrefix(`/temporal`)"
+      - "traefik.http.routers.${SERVICE_NAME}_temporal.entrypoints=web"
+      - "traefik.http.services.${SERVICE_NAME}_temporal.loadbalancer.server.port=8080"
+      - "traefik.http.middlewares.temporal-stripprefix.stripprefix.prefixes=/temporal"
+      - "traefik.http.routers.${SERVICE_NAME}_temporal.middlewares=temporal-stripprefix"
+
+volumes:
+  temporal_postgresql_data:
+    driver: local

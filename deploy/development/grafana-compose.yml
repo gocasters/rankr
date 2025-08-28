@@ -1,0 +1,21 @@
+services:
+  #Grafana Service
+  grafana:
+    image: grafana/grafana:latest
+    volumes:
+      - ./deploy/development/grafana/grafana.ini:/etc/grafana/grafana.ini
+      - ./deploy/development/grafana/datasource.yml:/etc/grafana/provisioning/datasources/datasource.yaml
+      - ./deploy/development/grafana/dashboards/dashboard.yml:/etc/grafana/provisioning/dashboards/dashboard.yml
+      - ./deploy/development/grafana/dashboards/Go-Metrics-Dashboard.json:/var/lib/grafana/dashboards/Go-Metrics-Dashboard.json
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${SERVICE_NAME}_grafana.service=${SERVICE_NAME}_grafana"
+      - "traefik.http.routers.${SERVICE_NAME}_grafana.rule=Host(`${SERVICE_DOMAIN}`)&&PathPrefix(`/grafana`)"
+      - "traefik.http.routers.${SERVICE_NAME}_grafana.entrypoints=web"
+      - "traefik.http.services.${SERVICE_NAME}_grafana.loadbalancer.server.port=3000"
