@@ -31,11 +31,11 @@ go.work.sum
  .idea/
  .vscode/
 .DS_Store
-.idea/
-
-.vscode/
-
-
 .history
 .cursor
 
+# logs
+/logs/*
+/cmd/*/temp/*
+/deploy/development/traefik/logs/access.log
+deploy/development/traefik/logs/traefik.log

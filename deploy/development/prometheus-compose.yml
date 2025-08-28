@@ -1,0 +1,16 @@
+services:
+  #Prometheus Service
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./deploy/development/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${SERVICE_NAME}_prometheus.service=${SERVICE_NAME}_prometheus"
+      - "traefik.http.routers.${SERVICE_NAME}_prometheus.rule=Host(`${SERVICE_DOMAIN}`)&&PathPrefix(`/prometheus`)"
+      - "traefik.http.routers.${SERVICE_NAME}_prometheus.middlewares=${SERVICE_NAME}_prometheus_strip"
+      - "traefik.http.routers.${SERVICE_NAME}_prometheus.entrypoints=web"
+      - "traefik.http.services.${SERVICE_NAME}_prometheus.loadbalancer.server.port=9090"
+      - "traefik.http.middlewares.${SERVICE_NAME:-}_prometheus_strip.stripprefix.prefixes=/prometheus"

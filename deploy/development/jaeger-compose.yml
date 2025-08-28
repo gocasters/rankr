@@ -1,0 +1,23 @@
+services:
+  #Jaeger Service
+  jaeger:
+    image: jaegertracing/all-in-one:${JAEGER_IMAGE_TAG:-1.57}
+    volumes:
+      - "./deploy/development/jaeger/jaeger-ui.json:/etc/jaeger/jaeger-ui.json"
+    command: --query.ui-config /etc/jaeger/jaeger-ui.json --query.max-clock-skew-adjustment 5s --query.base-path=/jaeger
+    environment:
+      - METRICS_STORAGE_TYPE=prometheus
+      - PROMETHEUS_SERVER_URL=http://prometheus:9090
+      - PROMETHEUS_QUERY_SUPPORT_SPANMETRICS_CONNECTOR=${PROMETHEUS_QUERY_SUPPORT_SPANMETRICS_CONNECTOR:-true}
+      - PROMETHEUS_QUERY_NAMESPACE=${PROMETHEUS_QUERY_NAMESPACE:-}
+      - PROMETHEUS_QUERY_DURATION_UNIT=${PROMETHEUS_QUERY_DURATION_UNIT:-}
+      - PROMETHEUS_QUERY_NORMALIZE_CALLS=true
+      - PROMETHEUS_QUERY_NORMALIZE_DURATION=true
+    ports:
+      - "16686:16686"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.${SERVICE_NAME}_jaeger.service=${SERVICE_NAME}_jaeger"
+      - "traefik.http.routers.${SERVICE_NAME}_jaeger.rule=Host(`${SERVICE_DOMAIN}`)&&PathPrefix(`/jaeger`)"
+      - "traefik.http.routers.${SERVICE_NAME}_jaeger.entrypoints=web"
+      - "traefik.http.services.${SERVICE_NAME}_jaeger.loadbalancer.server.port=16686"
