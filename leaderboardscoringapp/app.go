@@ -10,6 +10,7 @@ import (
 	"github.com/gocasters/rankr/pkg/httpserver"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -35,6 +36,12 @@ type Application struct {
 
 func Setup(ctx context.Context, config Config, leaderboardLogger *slog.Logger,
 	subscriber message.Subscriber, postgresConn *database.Database, wmLogger watermill.LoggerAdapter) *Application {
+
+	if strings.TrimSpace(config.SubscriberTopic) == "" {
+		leaderboardLogger.Error("SubscriberTopic is empty; set config.subscriber_topic")
+		panic("invalid config: subscriber_topic")
+	}
+
 	redisAdapter, err := redis.New(ctx, config.Redis)
 	if err != nil {
 		leaderboardLogger.Error("Failed to initialize Redis adapter", slog.String("error", err.Error()))
@@ -108,6 +115,10 @@ func (app *Application) startHTTPServer(wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		app.Logger.Info("HTTP server starting...",
+			slog.String("host", app.Config.HTTPServer.Host),
+			slog.Int("port", app.Config.HTTPServer.Port))
+
 		if err := app.HTTPServer.Serve(); err != nil {
 			// todo add metrics
 			app.Logger.Error(
@@ -116,7 +127,10 @@ func (app *Application) startHTTPServer(wg *sync.WaitGroup) {
 
 			panic(err)
 		}
-		app.Logger.Info(fmt.Sprintf("HTTP server started on %s:%d", app.Config.HTTPServer.Host, app.Config.HTTPServer.Port))
+
+		app.Logger.Info("HTTP server stopped",
+			slog.String("host", app.Config.HTTPServer.Host),
+			slog.Int("port", app.Config.HTTPServer.Port))
 	}()
 }
 
@@ -126,12 +140,13 @@ func (app *Application) startWaterMill(wg *sync.WaitGroup, ctx context.Context) 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		app.Logger.Info("Starting Watermill event consumer router...")
+
 		if err := app.WMRouter.Run(ctx); err != nil {
 			app.Logger.Error("Watermill router stopped with an error", slog.String("error", err.Error()))
 
 			panic(err)
 		}
-		app.Logger.Info("Starting Watermill event consumer router...")
 	}()
 }
 

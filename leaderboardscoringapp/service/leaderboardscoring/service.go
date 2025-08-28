@@ -44,7 +44,7 @@ func (s Service) ProcessScoreEvent(ctx context.Context, req EventRequest) error 
 
 	contributionEvent := ContributionEvent{
 		ID:              req.ID,
-		Type:            ContributionType(""),
+		Type:            ContributionType(req.EventName),
 		EventName:       req.EventName,
 		RepositoryID:    req.RepositoryID,
 		RepositoryName:  req.RepositoryName,

@@ -23,10 +23,11 @@ func ProtobufToEventRequest(eventPB *eventpb.Event) (leaderboardscoring.EventReq
 	}
 	contributionEvent := leaderboardscoring.EventRequest{
 		ID:              eventPB.Id,
-		EventName:       string(eventPB.EventName),
+		EventName:       eventPB.EventName.String(),
 		RepositoryID:    eventPB.RepositoryId,
 		RepositoryName:  eventPB.RepositoryName,
 		SourceReference: "",
+		ContributorID:   "",
 		Timestamp:       ts.AsTime().UTC(),
 	}
 
