@@ -65,3 +65,10 @@ stop-contributor-debug: ## Stop user debug mode (keep volumes)
 	-f ./deploy/rankr/development/traefik-compose.yml \
 	-f ./deploy/user/development/docker-compose.no-service.yaml \
 	down --remove-orphans
+
+
+start-projects-app-dev:
+	./deploy/docker-compose-dev.bash --profile projects up -d
+
+start-projects-app-dev-log:
+	./deploy/docker-compose-dev.bash --profile contributor up

@@ -41,7 +41,7 @@ func serve() {
 	}
 
 	options := cfgloader.Options{
-		Prefix:       "PROJECT_",
+		Prefix:       "project_",
 		Delimiter:    ".",
 		Separator:    "__",
 		YamlFilePath: yamlPath,
@@ -56,7 +56,9 @@ func serve() {
 		log.Fatalf("Failed to initialize logger: %v", err)
 
 	}
+
 	projectLogger, err := logger.L()
+
 	if err != nil {
 		log.Fatalf("Failed to initialize logger: %v", err)
 	}
@@ -86,26 +88,14 @@ func serve() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Start otel tracer
-	// err = otel.NewOtelAdapter(otela.Config{
-	// 	Endpoint:    cfg.Otel.Endpoint,
-	// 	ServiceName: cfg.Otel.ServiceName,
-	// 	Exporter:    otela.ExporterGrpc,
-	// })
-	// if err != nil {
-	// 	projectLogger.Error("Failed to configure otela exporter", slog.Any("error", err))
-	// }
-	// defer otela.ShutDown()
-
 	app := projectsapp.Setup(ctx, cfg, conn, projectLogger)
 	app.Start()
 }
 
 func init() {
 
-	serveCmd.MarkFlagsMutuallyExclusive("migrate-up", "migrate-down")
-
 	serveCmd.Flags().BoolVar(&migrateUp, "migrate-up", false, "Run migrations up before starting the server")
 	serveCmd.Flags().BoolVar(&migrateDown, "migrate-down", false, "Run migrations down before starting the server")
+	serveCmd.MarkFlagsMutuallyExclusive("migrate-up", "migrate-down")
 	RootCmd.AddCommand(serveCmd)
 }
