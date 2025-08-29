@@ -1,8 +1,8 @@
-package leaderboardscoring
+package leaderboardscoringapp
 
 import (
 	"github.com/gocasters/rankr/adapter/redis"
-	"github.com/gocasters/rankr/leaderboardscoring/delivery/consumer"
+	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/consumer"
 	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/pkg/httpserver"
 	"github.com/gocasters/rankr/pkg/logger"
@@ -17,4 +17,5 @@ type Config struct {
 	Consumer             consumer.Config   `koanf:"consumer"`
 	TotalShutdownTimeout time.Duration     `koanf:"total_shutdown_timeout"`
 	PathOfMigration      string            `koanf:"path_of_migration"`
+	SubscriberTopic      string            `koanf:"subscriber_topic"`
 }

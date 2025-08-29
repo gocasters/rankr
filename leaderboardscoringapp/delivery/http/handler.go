@@ -3,6 +3,7 @@ package http
 import (
 	"github.com/labstack/echo/v4"
 	"log/slog"
+	nethttp "net/http"
 )
 
 type Handler struct {
@@ -14,5 +15,6 @@ func NewHandler(logger *slog.Logger) Handler {
 }
 
 func (h Handler) GetLeaderboard(c echo.Context) error {
-	return nil
+	h.Logger.Info("GetLeaderboard called")
+	return c.NoContent(nethttp.StatusNotImplemented) // TODO: implement me
 }

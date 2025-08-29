@@ -1,10 +1,9 @@
 package consumer
 
 import (
-	"context"
 	"errors"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/gocasters/rankr/leaderboardscoring/service/leaderboardscoring"
+	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/gocasters/rankr/protobuf/golang/eventpb"
 	"google.golang.org/protobuf/proto"
 	"log/slog"
@@ -41,11 +40,11 @@ func (h Handler) HandleContributionRegistered(msg *message.Message) error {
 			return err
 		}
 
-		return h.leaderboardSvc.ProcessScoreEvent(context.Background(), eventReq)
+		return h.leaderboardSvc.ProcessScoreEvent(msg.Context(), eventReq)
 	}
 
 	// Wrap the business logic with the idempotency check.
-	err := h.idempotencyChecker.Process(context.Background(), event.Id, processFunc)
+	err := h.idempotencyChecker.Process(msg.Context(), event.Id, processFunc)
 
 	switch {
 	case err == nil:

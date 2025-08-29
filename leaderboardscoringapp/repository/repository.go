@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	"github.com/gocasters/rankr/leaderboardscoring/service/leaderboardscoring"
+	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"log/slog"
