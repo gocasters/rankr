@@ -28,20 +28,14 @@ go.work.sum
 .env
 
 # Editor/IDE
-
- .idea/
- .vscode/
-.DS_Store
 .idea/
-
 .vscode/
-
-
+.DS_Store
 .history
 .cursor
 
- .idea/
- .vscode/
-.DS_Store
-
-
+# logs
+/logs/*
+/cmd/*/temp/*
+/deploy/development/traefik/logs/access.log
+deploy/development/traefik/logs/traefik.log

@@ -1,0 +1,41 @@
+http:
+  routers:
+    # routes without auth
+    user_no_auth:
+      rule: "Host(`rankr.local`) && (
+        PathPrefix(`/contributors/v1/health-check`))
+      entryPoints:
+        - web
+      service: user_target
+      middlewares:
+        - strip-user-prefix
+
+    # routes with auth
+    user:
+      rule: "Host(`rankr.local`) && PathPrefix(`/contributors`)"
+      entryPoints:
+        - web
+      service: user_target
+      middlewares:
+        - rankr_auth
+        - strip-user-prefix
+
+  services:
+    user_target:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:5001"
+
+  middlewares:
+    rankr_auth:
+      forwardAuth:
+        address: "http://host.docker.internal:5001/v1/auth"
+        trustForwardHeader: true
+        authResponseHeaders:
+          - X-User-Info
+
+    strip-user-prefix:
+      stripPrefix:
+        prefixes:
+          - "/contributors"
+

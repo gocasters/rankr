@@ -1,0 +1,30 @@
+global:
+  sendAnonymousUsage: false
+entryPoints:
+  web:
+    address: :80
+log:
+  level: "DEBUG"
+  filePath: "/etc/traefik/logs/traefik.log"
+accessLog:
+  filePath: "/etc/traefik/logs/access.log"
+  bufferingSize: 100
+  # filters:
+  #   statusCodes: ["400-599"]
+api:
+  dashboard: true
+  insecure: true
+metrics:
+  prometheus:
+    addEntryPointsLabels: true
+    buckets: [0.1, 0.3, 1.2, 5.0]
+providers:
+  docker:
+    watch: true
+    exposedByDefault: false
+  file:
+    # directory: /etc/traefik/dynamic
+    # filename: dynamic.yml
+    filename: /etc/traefik/dynamic/dynamic.yml
+    watch: true
+

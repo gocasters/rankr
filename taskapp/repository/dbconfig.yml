@@ -1,0 +1,10 @@
+postgres_db:
+  driver: postgres
+  host: task-db
+  port: 5432
+  user: task_admin
+  password: password123
+  db_name: task_db
+  ssl_mode: disable
+
+path_of_migration: ./taskapp/repository/migrations
