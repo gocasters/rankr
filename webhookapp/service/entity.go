@@ -3,13 +3,13 @@ package service
 import "time"
 
 type Label struct {
-	ID      int    `json:"id"`
+	ID      uint64 `json:"id"`
 	Name    string `json:"name"`
 	Color   string `json:"color"`
 	Default bool   `json:"default"`
 }
 type Repository struct {
-	ID       int64  `json:"id"`
+	ID       uint64 `json:"id"`
 	NodeID   string `json:"node_id"`
 	Name     string `json:"name"`
 	FullName string `json:"full_name"`
@@ -19,7 +19,7 @@ type Repository struct {
 type User struct {
 	AvatarURL string  `json:"avatar_url"`
 	Email     *string `json:"email"`
-	ID        int     `json:"id"`
+	ID        uint64  `json:"id"`
 	Login     string  `json:"login"`
 	Name      *string `json:"name"`
 	NodeID    string  `json:"node_id"`
@@ -34,7 +34,7 @@ type GitRef struct {
 }
 
 type IssueType struct {
-	ID          int     `json:"id"`          // Unique identifier
+	ID          uint64  `json:"id"`          // Unique identifier
 	NodeID      string  `json:"node_id"`     // Node identifier
 	Name        string  `json:"name"`        // Name of the issue type
 	Description *string `json:"description"` // Description (nullable)
@@ -45,29 +45,32 @@ type IssueType struct {
 }
 
 type Issue struct {
-	Assignee          *User      `json:"assignee"`
-	Assignees         []*User    `json:"assignees"`
-	AuthorAssociation string     `json:"author_association"`
-	Body              *string    `json:"body"`
-	ClosedAt          *time.Time `json:"closed_at"`
-	Comments          int        `json:"comments"`
-	CreatedAt         time.Time  `json:"created_at"`
-	Draft             *bool      `json:"draft,omitempty"`
-	ID                int        `json:"id"`
-	Labels            []Label    `json:"labels"`
-	Locked            bool       `json:"locked"`
-	RepositoryURL     string     `json:"repository_url"`
-	State             string     `json:"state"` // "open" or "closed"
-	Title             string     `json:"title"`
-	Type              *IssueType `json:"type"`
-	UpdatedAt         time.Time  `json:"updated_at"`
-	URL               string     `json:"url"`
-	User              *User      `json:"user"`
+	Assignee          *User       `json:"assignee"`
+	Assignees         []*User     `json:"assignees"`
+	AuthorAssociation string      `json:"author_association"`
+	Body              *string     `json:"body"`
+	ClosedAt          *time.Time  `json:"closed_at"`
+	Comments          int32       `json:"comments"`
+	CreatedAt         time.Time   `json:"created_at"`
+	Draft             *bool       `json:"draft,omitempty"`
+	ID                uint64      `json:"id"`
+	Number            int32       `json:"number"`
+	Labels            []Label     `json:"labels"`
+	Locked            bool        `json:"locked"`
+	RepositoryURL     string      `json:"repository_url"`
+	State             string      `json:"state"` // "open" or "closed"
+	StateReason       *string     `json:"state_reason"`
+	Title             string      `json:"title"`
+	Type              *IssueType  `json:"type"`
+	UpdatedAt         time.Time   `json:"updated_at"`
+	URL               string      `json:"url"`
+	User              *User       `json:"user"`
+	PullRequest       PullRequest `json:"pull_request"`
 }
 
 type IssueComment struct {
 	URL               string    `json:"url"`
-	ID                int64     `json:"id"`
+	ID                uint64    `json:"id"`
 	NodeID            string    `json:"node_id"`
 	User              User      `json:"user"`
 	CreatedAt         time.Time `json:"created_at"`
@@ -78,7 +81,7 @@ type IssueComment struct {
 
 type CommitComment struct {
 	URL         string    `json:"url"`
-	ID          int64     `json:"id"`
+	ID          uint64    `json:"id"`
 	NodeID      string    `json:"node_id"`
 	User        User      `json:"user"`
 	CommitID    string    `json:"commit_id"`
@@ -112,7 +115,8 @@ type PRLinks struct {
 
 type PullRequest struct {
 	URL      string `json:"url"`
-	ID       int    `json:"id"`
+	ID       uint64 `json:"id"`
+	Number   int32  `json:"number"`
 	NodeID   string `json:"node_id"`
 	IssueURL string `json:"issue_url"`
 
@@ -142,12 +146,12 @@ type PullRequest struct {
 	Head GitRef `json:"head"`
 	Base GitRef `json:"base"`
 
-	ChangedFiles   int `json:"changed_files"`
-	Additions      int `json:"additions"`
-	Deletions      int `json:"deletions"`
-	Comments       int `json:"comments"`
-	Commits        int `json:"commits"`
-	ReviewComments int `json:"review_comments"`
+	ChangedFiles   int32 `json:"changed_files"`
+	Additions      int32 `json:"additions"`
+	Deletions      int32 `json:"deletions"`
+	Comments       int32 `json:"comments"`
+	Commits        int32 `json:"commits"`
+	ReviewComments int32 `json:"review_comments"`
 
 	ActiveLockReason *string    `json:"active_lock_reason"` // nullable: resolved, off-topic, too heated, spam
 	AutoMerge        *AutoMerge `json:"auto_merge"`         // nullable
@@ -159,7 +163,7 @@ type ReviewLinks struct {
 	PullRequest Link `json:"pull_request"`
 }
 type PullRequestReview struct {
-	ID                int64       `json:"id"`
+	ID                uint64      `json:"id"`
 	NodeID            string      `json:"node_id"`
 	User              User        `json:"user"`
 	Body              string      `json:"body"`
@@ -178,13 +182,13 @@ type ReviewCommentLinks struct {
 
 type PullRequestReviewComment struct {
 	URL                 string             `json:"url"`
-	PullRequestReviewID int64              `json:"pull_request_review_id"`
-	ID                  int64              `json:"id"`
+	PullRequestReviewID uint64             `json:"pull_request_review_id"`
+	ID                  uint64             `json:"id"`
 	NodeID              string             `json:"node_id"`
 	DiffHunk            string             `json:"diff_hunk"`
 	Path                string             `json:"path"`
-	CommitID            string             `json:"commit_id"`
-	OriginalCommitID    string             `json:"original_commit_id"`
+	CommitID            uint64             `json:"commit_id"`
+	OriginalCommitID    uint64             `json:"original_commit_id"`
 	User                User               `json:"user"`
 	Body                string             `json:"body"`
 	CreatedAt           string             `json:"created_at"` // ISO 8601 timestamp
@@ -193,13 +197,27 @@ type PullRequestReviewComment struct {
 	PullRequestURL      string             `json:"pull_request_url"`
 	AuthorAssociation   string             `json:"author_association"`
 	Links               ReviewCommentLinks `json:"_links"`
-	StartLine           *int               `json:"start_line"`
-	OriginalStartLine   *int               `json:"original_start_line"`
+	StartLine           *int32             `json:"start_line"`
+	OriginalStartLine   *int32             `json:"original_start_line"`
 	StartSide           *string            `json:"start_side"`
-	Line                *int               `json:"line"`
-	OriginalLine        *int               `json:"original_line"`
+	Line                *int32             `json:"line"`
+	OriginalLine        *int32             `json:"original_line"`
 	Side                string             `json:"side"` // RIGHT or LEFT
-	OriginalPosition    int                `json:"original_position"`
-	Position            int                `json:"position"`
+	OriginalPosition    int32              `json:"original_position"`
+	Position            int32              `json:"position"`
 	SubjectType         string             `json:"subject_type"` // "line"
 }
+
+type EventType string
+
+const (
+	EventTypeIssues            EventType = "issues"
+	EventTypeIssueComment      EventType = "issue_comment"
+	EventTypePullRequest       EventType = "pull_request"
+	EventTypePullRequestReview EventType = "pull_request_review"
+
+	TopicGithubIssues       = "github.issue"
+	TopicGithubIssueComment = "github.issuecomment"
+	TopicGithubPullRequest  = "github.pullrequests"
+	TopicGithubReview       = "github.reviews"
+)

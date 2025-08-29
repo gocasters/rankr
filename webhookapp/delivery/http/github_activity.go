@@ -41,6 +41,8 @@ func (s *Server) PublishGithubActivity(c echo.Context) error {
 	switch service.EventType(eventName) {
 	case service.EventTypeIssues:
 		eventError = s.Service.HandleIssuesEvent(webhookAction, body, deliveryUID)
+	case service.EventTypeIssueComment:
+		eventError = s.Service.HandleIssueCommentEvent(webhookAction, body, deliveryUID)
 	case service.EventTypePullRequest:
 		eventError = s.Service.HandlePullRequestEvent(webhookAction, body, deliveryUID)
 	case service.EventTypePullRequestReview:

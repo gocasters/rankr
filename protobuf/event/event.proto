@@ -56,7 +56,7 @@ message Event {
     IssueClosedPayload issue_closed_payload = 104;
     IssueCommentedPayload issue_commented_payload = 105;
     PushPayload push_payload = 106;
-    RepositoryForkedPayload repo_forked_payload = 107;
+//    RepositoryForkedPayload repo_forked_payload = 107;
   }
 }
 
@@ -79,7 +79,7 @@ message PullRequestClosedPayload {
   uint64 pr_id = 3;
   int32 pr_number = 4;
   PrCloseReason close_reason = 5;
-  bool merged = 6;
+  optional bool merged = 6;
   int32 additions = 7;
   int32 deletions = 8;
   int32 files_changed = 9;
@@ -99,9 +99,6 @@ message PullRequestReviewSubmittedPayload {
   uint64 pr_id = 3;
   int32 pr_number = 4;
   ReviewState state = 5;
-  int32 comments_count = 6;
-  bool is_security_review = 7;
-  repeated uint64 assignees = 8;
 }
 
 message IssueOpenedPayload {
@@ -110,10 +107,10 @@ message IssueOpenedPayload {
   int32 issue_number = 3;
   string title = 4;
   repeated string labels = 5;
-  bool is_bug_report = 6;
-  bool is_feature_request = 7;
-  bool has_reproduction_steps = 8;
-  int32 body_length = 9;
+//  bool is_bug_report = 6;
+//  bool is_feature_request = 7;
+//  bool has_reproduction_steps = 8;
+//  int32 body_length = 9;
 }
 
 message IssueClosedPayload {
@@ -135,7 +132,7 @@ message IssueCommentedPayload {
   int32 issue_number = 4;
   int32 comment_length = 5;
   bool contains_code = 6;
-  bool is_solution = 7;
+//  bool is_solution = 7;
 }
 
 message PushPayload {
@@ -159,7 +156,7 @@ message CommitInfo {
   repeated string modified_file_types = 7;    // .go, .md, .yaml, etc.
 }
 
-message RepositoryForkedPayload {
-  uint64 user_id = 1;
-  uint64 fork_repository_id = 2;
-}
+//message RepositoryForkedPayload {
+//  uint64 user_id = 1;
+//  uint64 fork_repository_id = 2;
+//}

@@ -39,36 +39,36 @@ type IssueClosedRequest struct {
 }
 type IssueClosedResponse struct{}
 
-type IssueTypedRequest struct {
-	Issue      Issue      `json:"issue"`
-	Type       IssueType  `json:"type"`
-	Label      *Label     `json:"label"`
-	Repository Repository `json:"repository"`
-	Sender     User       `json:"sender"`
-}
-type IssueTypedResponse struct{}
-
-type IssueUntypedRequest struct {
-	Issue      Issue      `json:"issue"`
-	Type       IssueType  `json:"type"`
-	Label      *Label     `json:"label"`
-	Repository Repository `json:"repository"`
-	Sender     User       `json:"sender"`
-}
-type IssueUntypedResponse struct{}
-
-type LabelCreatedRequest struct {
-	Label      Label      `json:"label"`
-	Repository Repository `json:"repository"`
-	Sender     User       `json:"sender"`
-}
-type LabelCreatedResponse struct{}
-type LabelDeletedRequest struct {
-	Label      Label      `json:"label"`
-	Repository Repository `json:"repository"`
-	Sender     User       `json:"sender"`
-}
-type LabelDeletedResponse struct{}
+//type IssueTypedRequest struct {
+//	Issue      Issue      `json:"issue"`
+//	Type       IssueType  `json:"type"`
+//	Label      *Label     `json:"label"`
+//	Repository Repository `json:"repository"`
+//	Sender     User       `json:"sender"`
+//}
+//type IssueTypedResponse struct{}
+//
+//type IssueUntypedRequest struct {
+//	Issue      Issue      `json:"issue"`
+//	Type       IssueType  `json:"type"`
+//	Label      *Label     `json:"label"`
+//	Repository Repository `json:"repository"`
+//	Sender     User       `json:"sender"`
+//}
+//type IssueUntypedResponse struct{}
+//
+//type LabelCreatedRequest struct {
+//	Label      Label      `json:"label"`
+//	Repository Repository `json:"repository"`
+//	Sender     User       `json:"sender"`
+//}
+//type LabelCreatedResponse struct{}
+//type LabelDeletedRequest struct {
+//	Label      Label      `json:"label"`
+//	Repository Repository `json:"repository"`
+//	Sender     User       `json:"sender"`
+//}
+//type LabelDeletedResponse struct{}
 
 type PullRequestOpenedRequest struct {
 	Number      int         `json:"number"`
@@ -86,21 +86,21 @@ type PullRequestClosedRequest struct {
 }
 type PullRequestClosedResponse struct{}
 
-type PullRequestReviewCommentCreatedRequest struct {
-	PullRequest PullRequest `json:"pull_request"`
-	Comment     interface{} `json:"comment"`
-	Repository  Repository  `json:"repository"`
-	Sender      User        `json:"sender"`
-}
-type PullRequestReviewCommentCreatedResponse struct{}
-
-type PullRequestReviewCommentDeletedRequest struct {
-	PullRequest PullRequest `json:"pull_request"`
-	Comment     interface{} `json:"comment"`
-	Repository  Repository  `json:"repository"`
-	Sender      User        `json:"sender"`
-}
-type PullRequestReviewCommentDeletedResponse struct{}
+//type PullRequestReviewCommentCreatedRequest struct {
+//	PullRequest PullRequest `json:"pull_request"`
+//	Comment     interface{} `json:"comment"`
+//	Repository  Repository  `json:"repository"`
+//	Sender      User        `json:"sender"`
+//}
+//type PullRequestReviewCommentCreatedResponse struct{}
+//
+//type PullRequestReviewCommentDeletedRequest struct {
+//	PullRequest PullRequest `json:"pull_request"`
+//	Comment     interface{} `json:"comment"`
+//	Repository  Repository  `json:"repository"`
+//	Sender      User        `json:"sender"`
+//}
+//type PullRequestReviewCommentDeletedResponse struct{}
 
 type PullRequestReviewSubmittedRequest struct {
 	Review      PullRequestReview `json:"review"`
