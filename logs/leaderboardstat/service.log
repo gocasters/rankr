@@ -1,0 +1,59 @@
+{"time":"2025-08-29T02:30:39.309606-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T02:30:39.312102-07:00","level":"ERROR","msg":"fatal error occurred","reason":"failed to connect to database","error":"failed to create pgx pool: MaxSize must be >= 1"}
+{"time":"2025-08-29T02:31:13.194416-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T02:31:13.196235-07:00","level":"ERROR","msg":"fatal error occurred","reason":"failed to connect to database","error":"failed to create pgx pool: MaxSize must be >= 1"}
+{"time":"2025-08-29T02:39:15.769349-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T02:39:15.770952-07:00","level":"ERROR","msg":"fatal error occurred","reason":"failed to connect to database","error":"failed to create pgx pool: MaxSize must be >= 1"}
+{"time":"2025-08-29T02:40:11.972399-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T02:40:11.97386-07:00","level":"ERROR","msg":"fatal error occurred","reason":"failed to connect to database","error":"failed to create pgx pool: MaxSize must be >= 1"}
+{"time":"2025-08-29T02:42:04.511554-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T02:42:04.513307-07:00","level":"ERROR","msg":"fatal error occurred","reason":"failed to connect to database","error":"failed to create pgx pool: MaxSize must be >= 1"}
+{"time":"2025-08-29T02:42:48.638726-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T02:42:48.640527-07:00","level":"ERROR","msg":"fatal error occurred","reason":"failed to connect to database","error":"failed to create pgx pool: MaxSize must be >= 1"}
+{"time":"2025-08-29T02:45:48.19564-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T02:45:48.197229-07:00","level":"ERROR","msg":"fatal error occurred","reason":"failed to connect to database","error":"failed to create pgx pool: MaxSize must be >= 1"}
+{"time":"2025-08-29T02:51:37.730689-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T02:51:37.73236-07:00","level":"ERROR","msg":"fatal error occurred","reason":"failed to connect to database","error":"failed to create pgx pool: MaxSize must be >= 1"}
+{"time":"2025-08-29T02:57:58.214292-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T02:57:58.216007-07:00","level":"ERROR","msg":"fatal error occurred","reason":"failed to connect to database","error":"failed to create pgx pool: MaxSize must be >= 1"}
+{"time":"2025-08-29T03:00:45.42174-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T03:00:45.423605-07:00","level":"ERROR","msg":"fatal error occurred","reason":"failed to connect to database","error":"failed to create pgx pool: MaxSize must be >= 1"}
+{"time":"2025-08-29T03:01:10.970176-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T03:01:10.971956-07:00","level":"ERROR","msg":"fatal error occurred","reason":"failed to connect to database","error":"failed to create pgx pool: MaxSize must be >= 1"}
+{"time":"2025-08-29T03:01:32.891118-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T03:01:32.892635-07:00","level":"ERROR","msg":"fatal error occurred","reason":"failed to connect to database","error":"failed to create pgx pool: MaxSize must be >= 1"}
+{"time":"2025-08-29T03:01:58.425295-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T03:01:58.426904-07:00","level":"ERROR","msg":"fatal error occurred","reason":"failed to connect to database","error":"failed to create pgx pool: MaxSize must be >= 1"}
+{"time":"2025-08-29T03:09:09.99059-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T03:09:09.992204-07:00","level":"ERROR","msg":"fatal error occurred","reason":"failed to connect to database","error":"failed to create pgx pool: MaxSize must be >= 1"}
+{"time":"2025-08-29T03:13:27.320746-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T03:13:27.322229-07:00","level":"ERROR","msg":"fatal error occurred","reason":"failed to connect to database","error":"failed to create pgx pool: MaxSize must be >= 1"}
+{"time":"2025-08-29T03:14:12.074497-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T03:14:12.075968-07:00","level":"ERROR","msg":"fatal error occurred","reason":"failed to connect to database","error":"failed to create pgx pool: MaxSize must be >= 1"}
+{"time":"2025-08-29T03:57:14.093402-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T03:57:14.096749-07:00","level":"ERROR","msg":"fatal error occurred","reason":"failed to connect to database","error":"failed to ping database: failed to connect to `user=stat_admin database=leaderboardstat_db`: [::1]:5437 (localhost): dial error: dial tcp [::1]:5437: connect: connection refused"}
+{"time":"2025-08-29T04:00:09.163752-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T04:00:31.084963-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T04:00:31.088863-07:00","level":"ERROR","msg":"fatal error occurred","reason":"failed to connect to database","error":"failed to ping database: failed to connect to `user=stat_admin database=leaderboardstat_db`: [::1]:5437 (localhost): dial error: dial tcp [::1]:5437: connect: connection refused"}
+{"time":"2025-08-29T04:00:45.61627-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T04:00:45.619678-07:00","level":"ERROR","msg":"fatal error occurred","reason":"failed to connect to database","error":"failed to ping database: failed to connect to `user=stat_admin database=leaderboardstat_db`: [::1]:5437 (localhost): dial error: dial tcp [::1]:5437: connect: connection refused"}
+{"time":"2025-08-29T04:01:50.574584-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T04:02:31.05741-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T04:08:24.971402-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T04:43:24.913302-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T04:53:29.347714-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T04:55:20.078403-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T05:05:35.26391-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T05:05:35.265678-07:00","level":"ERROR","msg":"fatal error occurred","reason":"failed to connect to database","error":"failed to create pgx pool: MaxSize must be >= 1"}
+{"time":"2025-08-29T05:06:20.215494-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T05:06:20.217265-07:00","level":"ERROR","msg":"fatal error occurred","reason":"failed to connect to database","error":"failed to create pgx pool: MaxSize must be >= 1"}
+{"time":"2025-08-29T05:07:55.677377-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T05:07:55.679187-07:00","level":"ERROR","msg":"fatal error occurred","reason":"failed to connect to database","error":"failed to create pgx pool: MaxSize must be >= 1"}
+{"time":"2025-08-29T05:25:52.309611-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T05:25:52.311163-07:00","level":"ERROR","msg":"fatal error occurred","reason":"failed to connect to database","error":"failed to create pgx pool: MaxSize must be >= 1"}
+{"time":"2025-08-29T05:50:43.902591-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T05:50:43.905289-07:00","level":"ERROR","msg":"fatal error occurred","reason":"failed to connect to database","error":"failed to create pgx pool: MaxSize must be >= 1"}
+{"time":"2025-08-29T08:09:52.020392-07:00","level":"INFO","msg":"Running migrations up..."}
+{"time":"2025-08-29T08:09:52.057259-07:00","level":"INFO","msg":"Migrations up completed."}
+{"time":"2025-08-29T08:09:52.057286-07:00","level":"INFO","msg":"Starting leaderboardstat Service..."}
+{"time":"2025-08-29T08:09:52.057904-07:00","level":"ERROR","msg":"fatal error occurred","reason":"failed to connect to database","error":"failed to create pgx pool: MaxSize must be >= 1"}

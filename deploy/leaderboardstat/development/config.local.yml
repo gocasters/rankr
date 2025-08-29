@@ -1,0 +1,31 @@
+server:
+  port: 5003
+  cors:
+    allow_origins: "*"
+
+total_shutdown_timeout:
+  15s
+
+postgres_db:
+  driver: postgres
+  host: localhost
+  port: 5437
+  user: "stat_admin"
+  password: "password123"
+  db_name: leaderboardstat_db
+  ssl_mode: disable
+  max_idle_conns: 15
+  max_open_conns: 100
+  conn_max_lifetime: 5
+
+logger:
+  file_path: "logs/leaderboardstat/service.log"
+  use_local_time: true
+  file_max_size_in_mb: 10
+  file_max_age_in_days: 7
+outbox_scheduler:
+  interval_in_seconds: 60
+  retry_threshold: 5
+  batch_size: 100
+
+path_of_migration: './leaderboardstatapp/repository/postgres/migrations'

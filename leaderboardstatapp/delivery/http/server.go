@@ -1,31 +1,31 @@
 package http
 
 import (
-	"fmt"
-	"strconv"
-
 	httpserver "github.com/gocasters/rankr/pkg/httpserver"
+	"log/slog"
 )
 
 type Server struct {
 	HTTPServer httpserver.Server
 	Handler    Handler
+	logger     *slog.Logger
 }
 
-func New(server httpserver.Server, handler Handler) Server {
+func New(server httpserver.Server, handler Handler, logger *slog.Logger) Server {
 	return Server{
 		HTTPServer: server,
 		Handler:    handler,
+		logger:     logger,
 	}
 }
 
-func (s Server) Serve() {
+func (s Server) Serve() error {
 	s.RegisterRoutes()
-
-	fmt.Printf("start echo server on %s\n", strconv.Itoa(s.HTTPServer.GetConfig().Port))
 	if err := s.HTTPServer.Start(); err != nil {
-		fmt.Println("router start error", err)
+		return err
 	}
+
+	return nil
 }
 
 func (s Server) RegisterRoutes() {
@@ -34,11 +34,6 @@ func (s Server) RegisterRoutes() {
 	// create v1 group
 	v1 := s.HTTPServer.GetRouter().Group("/v1")
 	v1.GET("/health-check", s.healthCheck)
-
-	// leaderboard group
-	leaderboardGroup := v1.Group("/leaderboard")
-	leaderboardGroup.GET("/", s.Handler.GetLeaderboards)
-	//leaderboardGroup.GET("/:project", s.Handler.GetLeaderboard)
 
 	// contributor group
 	contributorGroup := v1.Group("/contributors")
