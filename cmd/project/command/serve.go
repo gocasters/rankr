@@ -41,7 +41,7 @@ func serve() {
 	}
 
 	options := cfgloader.Options{
-		Prefix:       "project_",
+		Prefix:       "PROJECT_",
 		Delimiter:    ".",
 		Separator:    "__",
 		YamlFilePath: yamlPath,

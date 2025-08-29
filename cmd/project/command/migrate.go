@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/gocasters/rankr/cmd/command"
 	cfgloader "github.com/gocasters/rankr/pkg/config"
 	"github.com/gocasters/rankr/pkg/migrator"
 	"github.com/gocasters/rankr/projectsapp"
@@ -60,11 +59,14 @@ func migrate() {
 		mgr.Down()
 	} else {
 		log.Println("Please specify a migration direction with --up or --down")
+		os.Exit(2)
+
 	}
 }
 
 func init() {
 	migrateCmd.Flags().BoolVar(&up, "up", false, "Run migrations up")
 	migrateCmd.Flags().BoolVar(&down, "down", false, "Run migrations down")
-	command.RootCmd.AddCommand(migrateCmd)
+	migrateCmd.MarkFlagsMutuallyExclusive("up", "down")
+	RootCmd.AddCommand(migrateCmd)
 }

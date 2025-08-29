@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/gocasters/rankr/cmd/command"
+	"github.com/gocasters/rankr/cmd/project/command"
 )
 
 func main() {
