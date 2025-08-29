@@ -1,0 +1,68 @@
+services:
+  project-db:
+    image: postgres:17.2-alpine
+    environment:
+      - 'POSTGRES_DB=project_db'
+      - 'POSTGRES_USER=project_admin'
+      - 'POSTGRES_PASSWORD=password123'
+    restart: always
+    profiles:
+      - project
+    volumes:
+      - project-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U project_admin -d project_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  project-service:
+    build:
+      context: .
+      dockerfile: ./deploy/project/development/Dockerfile
+      args:
+        GO_IMAGE_NAME: ${GO_IMAGE_NAME}
+        GO_IMAGE_VERSION: ${GO_IMAGE_VERSION}
+    image: ${SERVICE_NAME}-project:${GO_IMAGE_NAME}-${GO_IMAGE_VERSION}
+    command: /bin/sh -c "go run cmd/project/main.go migrate --up && air -c /home/app/.air/.air.project.toml"
+    depends_on:
+      project-db:
+        condition: service_healthy
+      project-redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ./:/home/app
+      - project-go-mod-cache:/go/pkg/mod
+    profiles:
+      - project
+    labels:
+      # routers with authentication
+      - "traefik.enable=true"
+      - "traefik.http.routers.${SERVICE_NAME}_project.service=${SERVICE_NAME}_project"
+      - "traefik.http.routers.${SERVICE_NAME}_project.rule=Host(`${SERVICE_DOMAIN}`)&&PathPrefix(`/projects`)"
+      - "traefik.http.routers.${SERVICE_NAME}_project.entrypoints=web"
+      - "traefik.http.services.${SERVICE_NAME}_project.loadbalancer.server.port=5001"
+
+      # routers without authentication
+      - "traefik.http.routers.${SERVICE_NAME}_project_no_auth.service=${SERVICE_NAME}_project"
+      - "traefik.http.routers.${SERVICE_NAME}_project_no_auth.rule=Host(`${SERVICE_DOMAIN}`)&&(
+          PathPrefix(`/projects/v1/health-check`)||
+          PathPrefix(`/projects/v1/customers/signup`)||
+          PathPrefix(`/projects/v1/customers/login`)||
+          PathPrefix(`/projects/v1/customers/verify/otp`)||
+          PathPrefix(`/projects/v1/owners/signup`)||
+          PathPrefix(`/projects/v1/owners/login`)||
+          PathPrefix(`/projects/v1/owners/verify/otp`)
+          )"
+      - "traefik.http.routers.${SERVICE_NAME}_project_no_auth.entrypoints=web"
+      - "traefik.http.routers.${SERVICE_NAME}_project_no_auth.middlewares=${SERVICE_NAME}_strip_project"
+
+      # middlewares
+      - "traefik.http.middlewares.${SERVICE_NAME}_strip_project.stripprefix.prefixes=/projects"
+      - "traefik.http.routers.${SERVICE_NAME}_project.middlewares=beehive_auth@file,${SERVICE_NAME}_strip_project"
+
+volumes:
+  project-data:
+  project-go-mod-cache:
