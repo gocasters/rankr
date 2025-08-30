@@ -22,27 +22,27 @@ func NewLeaderboardscoringRepo(client *redis.Client, db *pgxpool.Pool, logger *s
 	}
 }
 
-func (l *LeaderboardscoringRepo) PersistContribution(ctx context.Context, event *leaderboardscoring.ContributionEvent) error {
+func (l *LeaderboardscoringRepo) PersistContribution(ctx context.Context, event *leaderboardscoring.Event) error {
 	return nil
 }
 
-func (l *LeaderboardscoringRepo) UpdateScores(ctx context.Context, keys []string, score int, userID string) error {
+func (l *LeaderboardscoringRepo) UpsertScores(ctx context.Context, keys []string, score uint8, contributorID string) error {
 	pipeLine := l.client.Pipeline()
 
 	for _, key := range keys {
-		pipeLine.ZIncrBy(ctx, key, float64(score), userID)
+		pipeLine.ZIncrBy(ctx, key, float64(score), contributorID)
 	}
 
 	_, err := pipeLine.Exec(ctx)
 	if err != nil {
 		l.logger.Error(
 			"failed to execute redis pipeline for updating scores",
-			slog.String("user_id", userID),
+			slog.String("user_id", contributorID),
 			slog.String("error", err.Error()),
 		)
 		return err
 	}
 
-	l.logger.Debug("successfully updated scores in redis pipeline", slog.String("user_id", userID))
+	l.logger.Debug("successfully updated scores in redis pipeline", slog.String("user_id", contributorID))
 	return nil
 }

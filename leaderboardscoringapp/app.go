@@ -165,7 +165,7 @@ func (app *Application) setupWatermill() {
 		"ContributionHandler",
 		app.Config.SubscriberTopic,
 		app.Subscriber,
-		handler.HandleContributionRegistered,
+		handler.HandleEvent,
 	)
 
 	app.WMRouter = router
