@@ -5,21 +5,13 @@ import (
 	"fmt"
 	"github.com/gocasters/rankr/pkg/timettl"
 	"log/slog"
+	"strconv"
 )
 
 var Timeframes = []string{"yearly", "monthly", "weekly"}
 
-type RedisRepository interface {
-	UpdateScores(ctx context.Context, keys []string, score int, userID string) error
-}
-
-type DatabaseRepository interface {
-	PersistContribution(ctx context.Context, event *ContributionEvent) error
-}
-
 type Repository interface {
-	RedisRepository
-	DatabaseRepository
+	UpsertScores(ctx context.Context, keys []string, score uint8, contributorID string) error
 }
 
 type Service struct {
@@ -36,37 +28,37 @@ func NewService(repo Repository, validator Validator, logger *slog.Logger) Servi
 	}
 }
 
-func (s Service) ProcessScoreEvent(ctx context.Context, req EventRequest) error {
-	if err := s.validator.ValidateContributionEvent(req); err != nil {
-		// TODO - use Error pattern
+func (s Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) error {
+	if err := s.validator.ValidateEvent(req); err != nil {
 		return err
 	}
 
-	contributionEvent := ContributionEvent{
-		ID:              req.ID,
-		Type:            ContributionType(req.EventName),
-		EventName:       req.EventName,
-		RepositoryID:    req.RepositoryID,
-		RepositoryName:  req.RepositoryName,
-		ContributorID:   req.ContributorID,
-		ScoreValue:      0,
-		SourceReference: req.SourceReference,
-		Timestamp:       req.Timestamp.UTC(),
+	var keys = s.keys(strconv.Itoa(int(req.RepositoryID)))
+	var score uint8 = 0
+
+	switch req.EventName {
+	case PullRequestOpened:
+		score = 1
+	case PullRequestClosed:
+		score = 5
+	case PullRequestReview:
+		score = 3
+	case IssueOpened:
+		score = 1
+	case IssueComment:
+		score = 1
+	case IssueClosed:
+		score = 5
+	case CommitPush:
+		score = 3
 	}
 
-	var keys = s.keys(contributionEvent.RepositoryName)
-
-	if err := s.repo.UpdateScores(ctx, keys, contributionEvent.ScoreValue, contributionEvent.ContributorID); err != nil {
+	if err := s.repo.UpsertScores(ctx, keys, score, strconv.Itoa(int(req.ContributorID))); err != nil {
 		s.logger.Error(ErrFailedToUpdateScores.Error(), slog.String("error", err.Error()))
 		return err
 	}
 
-	if err := s.repo.PersistContribution(ctx, &contributionEvent); err != nil {
-		s.logger.Error(ErrFailedToPersistContribution.Error(), slog.String("error", err.Error()))
-		return err
-	}
-
-	s.logger.Debug(MsgSuccessfullyProcessedEvent, slog.String("event_id", contributionEvent.ID))
+	s.logger.Debug(MsgSuccessfullyProcessedEvent, slog.String("event_id", req.ID))
 
 	return nil
 }
