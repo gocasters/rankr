@@ -49,7 +49,7 @@ func (s *Server) PublishGithubActivity(c echo.Context) error {
 		eventError = s.Service.HandlePullRequestReviewEvent(webhookAction, body, deliveryUID)
 	default:
 		return c.JSON(http.StatusOK, map[string]string{
-			"message": fmt.Sprintf("Event type '%s' not handled", eventName),
+			"message": fmt.Sprintf("Event types '%s' not handled", eventName),
 		})
 	}
 

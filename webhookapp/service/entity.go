@@ -36,12 +36,12 @@ type GitRef struct {
 type IssueType struct {
 	ID          uint64  `json:"id"`          // Unique identifier
 	NodeID      string  `json:"node_id"`     // Node identifier
-	Name        string  `json:"name"`        // Name of the issue type
+	Name        string  `json:"name"`        // Name of the issue types
 	Description *string `json:"description"` // Description (nullable)
 	Color       *string `json:"color"`       // Can be: gray, blue, green, yellow, orange, red, pink, purple, or null
 	CreatedAt   *string `json:"created_at"`  // Creation timestamp (ISO 8601)
 	UpdatedAt   *string `json:"updated_at"`  // Last update timestamp (ISO 8601)
-	IsEnabled   bool    `json:"is_enabled"`  // Whether this type is enabled
+	IsEnabled   bool    `json:"is_enabled"`  // Whether this types is enabled
 }
 
 type Issue struct {
@@ -61,7 +61,7 @@ type Issue struct {
 	State             string      `json:"state"` // "open" or "closed"
 	StateReason       *string     `json:"state_reason"`
 	Title             string      `json:"title"`
-	Type              *IssueType  `json:"type"`
+	Type              *IssueType  `json:"types"`
 	UpdatedAt         time.Time   `json:"updated_at"`
 	URL               string      `json:"url"`
 	User              *User       `json:"user"`
