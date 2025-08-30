@@ -18,7 +18,7 @@ type Config struct {
 
 func main() {
 	var config Config
-	flag.IntVar(&config.Port, "port", 8080, "Server port")
+	flag.IntVar(&config.Port, "port", 8080, "HTTPServer port")
 	flag.StringVar(&config.RedisUrl, "redis-url", getEnv("REDIS_URL", "redis://localhost:6379"), "Redis URL")
 	flag.Parse()
 
@@ -60,7 +60,7 @@ func main() {
 
 	// Start server
 	addr := fmt.Sprintf(":%d", config.Port)
-	log.Printf("Server starting on %s", addr)
+	log.Printf("HTTPServer starting on %s", addr)
 	log.Fatal(http.ListenAndServe(addr, nil))
 }
 

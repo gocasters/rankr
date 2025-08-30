@@ -23,7 +23,7 @@ type Application struct {
 }
 
 func Setup(config Config, logger *slog.Logger, pub message.Publisher) Application {
-	httpService, err := httpserver.New(config.Server)
+	httpService, err := httpserver.New(config.HTTPServer)
 	if err != nil {
 		panic(err)
 	}
@@ -36,6 +36,7 @@ func Setup(config Config, logger *slog.Logger, pub message.Publisher) Applicatio
 	return Application{
 		HTTPServer: appHttpServer,
 		Logger:     logger,
+		Config:     config,
 	}
 }
 
@@ -65,11 +66,11 @@ func startServers(app Application, wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		app.Logger.Info(fmt.Sprintf("✅ HTTP server started on %d", app.Config.Server.Port))
+		app.Logger.Info(fmt.Sprintf("✅ HTTP server started on %d", app.Config.HTTPServer.Port))
 		if err := app.HTTPServer.Serve(); err != nil {
-			app.Logger.Error(fmt.Sprintf("❌ error in HTTP server on %d", app.Config.Server.Port), err)
+			app.Logger.Error(fmt.Sprintf("❌ error in HTTP server on %d", app.Config.HTTPServer.Port), err)
 		}
-		app.Logger.Info(fmt.Sprintf("✅ HTTP server stopped %d", app.Config.Server.Port))
+		app.Logger.Info(fmt.Sprintf("✅ HTTP server stopped %d", app.Config.HTTPServer.Port))
 	}()
 }
 
@@ -96,7 +97,7 @@ func (app Application) shutdownServers(ctx context.Context) bool {
 }
 
 func (app Application) shutdownHTTPServer(wg *sync.WaitGroup) {
-	app.Logger.Info(fmt.Sprintf("✅ Starting graceful shutdown for HTTP server on port %d", app.Config.Server.Port))
+	app.Logger.Info(fmt.Sprintf("✅ Starting graceful shutdown for HTTP server on port %d", app.Config.HTTPServer.Port))
 	defer wg.Done()
 	httpShutdownCtx, httpCancel := context.WithTimeout(context.Background(), app.Config.ShutDownCtxTimeout)
 	defer httpCancel()

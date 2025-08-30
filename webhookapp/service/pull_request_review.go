@@ -3,9 +3,8 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/gocasters/rankr/protobuf/golang/eventpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func (s *Service) HandlePullRequestReviewEvent(action string, body []byte, deliveryUID string) error {
@@ -15,37 +14,32 @@ func (s *Service) HandlePullRequestReviewEvent(action string, body []byte, deliv
 		if err := json.Unmarshal(body, &reviewData); err != nil {
 			return err
 		}
-		return s.ProcessPullRequestReviewSubmitted(reviewData, deliveryUID)
+		return s.PublishPullRequestReviewSubmitted(reviewData, deliveryUID)
 
 	default:
 		return fmt.Errorf("pull request review action '%s' not handled", action)
 	}
 }
 
-func (s *Service) ProcessPullRequestReviewSubmitted(req PullRequestReviewSubmittedRequest, deliveryUID string) error {
-	ev := ActivityEvent{
-		Event:       EventTypePullRequestReview,
-		Delivery:    deliveryUID,
-		PayloadType: PayloadTypePullRequestReviewSubmitted,
-		Payload:     req,
+func (s *Service) PublishPullRequestReviewSubmitted(req PullRequestReviewSubmittedRequest, deliveryUID string) error {
+	ev := &eventpb.Event{
+		Id:             deliveryUID,
+		EventName:      eventpb.EventName_PULL_REQUEST_REVIEW_SUBMITTED,
+		Time:           timestamppb.New(parseTime(req.Review.SubmittedAt)),
+		RepositoryId:   req.Repository.ID,
+		RepositoryName: req.Repository.FullName,
+		Payload: &eventpb.Event_PrReviewPayload{
+			PrReviewPayload: &eventpb.PullRequestReviewSubmittedPayload{
+				ReviewerUserId: req.Review.User.ID,
+				PrAuthorUserId: req.PullRequest.User.ID,
+				PrId:           req.PullRequest.ID,
+				PrNumber:       req.PullRequest.Number,
+				State:          getReviewState(req.Review.State),
+			},
+		},
 	}
 
-	payload, pErr := json.Marshal(ev)
-	if pErr != nil {
-		return pErr
-	}
+	metadata := map[string]string{}
 
-	msg := message.NewMessage(watermill.NewUUID(), payload)
-
-	metadata := map[string]string{"delivery": deliveryUID}
-
-	for k, v := range metadata {
-		msg.Metadata.Set(k, v)
-	}
-
-	if err := s.Publisher.Publish(TopicGithubUserActivity, msg); err != nil {
-		return fmt.Errorf("failed to publish event: %w", err)
-	}
-
-	return nil
+	return s.publishEvent(ev, eventpb.EventName_PULL_REQUEST_REVIEW_SUBMITTED, TopicGithubReview, metadata)
 }

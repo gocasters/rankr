@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	errmsg "github.com/gocasters/rankr/pkg/err_msg"
-	"github.com/gocasters/rankr/type"
+	"github.com/gocasters/rankr/types"
 
 	"github.com/labstack/echo/v4"
 )

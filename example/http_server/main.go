@@ -45,7 +45,7 @@ func newHttpServerWithoutOtel() {
 		},
 	)
 
-	fmt.Println("Server without Otel is ready.")
+	fmt.Println("HTTPServer without Otel is ready.")
 	if err := server.Start(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("failed to start server: %v", err)
 	}
