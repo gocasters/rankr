@@ -1,0 +1,20 @@
+services:
+  nats:
+    image: nats:2.10
+    restart: unless-stopped
+    command:
+      - "-js"
+      - "--auth"
+      - "supersecret"
+    ports:
+      - "4222:4222"
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    networks:
+      - nats_net
+
+networks:
+  nats_net:
+    driver: bridge

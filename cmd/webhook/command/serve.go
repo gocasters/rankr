@@ -7,14 +7,12 @@ import (
 	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/gocasters/rankr/pkg/path"
 	"github.com/gocasters/rankr/webhookapp"
-	"github.com/nats-io/nats-server/v2/server"
 	nc "github.com/nats-io/nats.go"
 	"github.com/spf13/cobra"
 	"log"
 	"log/slog"
 	"os"
 	"path/filepath"
-	"time"
 )
 
 var serveCmd = &cobra.Command{
@@ -64,31 +62,53 @@ func serve() {
 		log.Fatalf("Failed to Initialize logger: %v", lErr)
 	}
 
-	svr, nsErr := server.NewServer(&server.Options{
-		Host: "0.0.0.0",
-		Port: 42222,
-	})
-
-	if nsErr != nil {
-		lbLogger.Error("Failed to create nats server", slog.String("error", nsErr.Error()))
-	}
-
-	svr.Start()
-	defer svr.Shutdown()
-
+	// Initialize nats
 	marshaler := &nats.GobMarshaler{}
 	natsLogger := watermill.NewStdLogger(false, false)
 	natsOptions := []nc.Option{
-		nc.RetryOnFailedConnect(true),
-		nc.Timeout(30 * time.Second),
-		nc.ReconnectWait(1 * time.Second),
+		nc.RetryOnFailedConnect(cfg.NATSConfig.RetryOnFailedConnect),
+		nc.Timeout(cfg.NATSConfig.ConnectTimeout),
+		nc.ReconnectWait(cfg.NATSConfig.ReconnectWait),
 	}
 
-	jsConfig := nats.JetStreamConfig{Disabled: true}
+	// connect to external NATS (container service name "nats")
+	natsURL := cfg.NATSConfig.URL
+	if natsURL == "" {
+		natsURL = "nats://supersecret@localhost:4222" // default
+	}
+
+	natsDB, ncErr := nc.Connect(natsURL,
+		nc.Timeout(cfg.NATSConfig.ConnectTimeout),
+	)
+	if ncErr != nil {
+		lbLogger.Error("NATS not available", slog.String("error", ncErr.Error()))
+		return
+	}
+	defer natsDB.Close()
+
+	js, jsErr := natsDB.JetStream()
+	if jsErr != nil {
+		lbLogger.Error("failed to init JetStream context: ", slog.String("error", jsErr.Error()))
+		return
+	}
+
+	_, siErr := js.StreamInfo(cfg.NATSConfig.Stream.Name)
+	if siErr != nil {
+		_, saErr := js.AddStream(&nc.StreamConfig{
+			Name:     cfg.NATSConfig.Stream.Name,
+			Subjects: cfg.NATSConfig.Stream.Subjects, // adjust to your domain naming
+			Storage:  nc.FileStorage,                 // persist on disk
+		})
+		if saErr != nil {
+			lbLogger.Error("Failed to create JetStream stream: ", slog.String("error", saErr.Error()))
+		}
+	}
+
+	jsConfig := nats.JetStreamConfig{Disabled: !cfg.NATSConfig.JetStreamEnabled}
 
 	publisher, pErr := nats.NewPublisher(
 		nats.PublisherConfig{
-			URL:         svr.ClientURL(),
+			URL:         natsURL,
 			NatsOptions: natsOptions,
 			Marshaler:   marshaler,
 			JetStream:   jsConfig,
@@ -97,8 +117,9 @@ func serve() {
 	)
 	if pErr != nil {
 		lbLogger.Error("Failed to start publisher", slog.String("error", pErr.Error()))
+		return
 	} else {
-		lbLogger.Info("Publisher started on " + svr.ClientURL())
+		lbLogger.Info("Publisher started on " + natsURL)
 	}
 
 	app := webhookapp.Setup(cfg, lbLogger, publisher)

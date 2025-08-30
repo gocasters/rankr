@@ -30,6 +30,8 @@ func (s *Service) publishEvent(ev *eventpb.Event, evName eventpb.EventName, topi
 		msg.Metadata.Set(k, v)
 	}
 
+	fmt.Printf("event %s published to %s\n", evName, topic)
+
 	if err := s.Publisher.Publish(string(topic), msg); err != nil {
 		return fmt.Errorf("failed to publish event. topic: %s, eventname: %s, error: %w",
 			topic, evName, err)
