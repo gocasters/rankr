@@ -37,13 +37,13 @@ var (
 	ErrEventLocked           = errors.New("event is currently locked by another processor")
 )
 
-// Process It returns specific errors if the event is a duplicate or is locked.
-func (ic *IdempotencyChecker) Process(ctx context.Context, eventID string, processFunc func() error) error {
+// CheckEvent It returns specific errors if the event is a duplicate or is locked.
+func (ic *IdempotencyChecker) CheckEvent(ctx context.Context, eventID string, processEventFunc func() error) error {
 
 	if eventID == "" {
 		return fmt.Errorf("invalid eventID: empty")
 	}
-	
+
 	processedKey := ic.processedKey(eventID)
 	lockKey := ic.lockKey(eventID)
 
@@ -68,7 +68,7 @@ func (ic *IdempotencyChecker) Process(ctx context.Context, eventID string, proce
 	defer ic.releaseLock(ctx, lockKey, token)
 
 	// 3. Execute the core business logic.
-	if pErr := processFunc(); pErr != nil {
+	if pErr := processEventFunc(); pErr != nil {
 		return pErr
 	}
 
