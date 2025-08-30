@@ -32,8 +32,7 @@ const (
 	EventName_ISSUE_OPENED                  EventName = 4
 	EventName_ISSUE_CLOSED                  EventName = 5
 	EventName_ISSUE_COMMENTED               EventName = 6
-	EventName_COMMIT_PUSHED                 EventName = 7
-	EventName_REPOSITORY_FORKED             EventName = 8
+	EventName_PUSHED                        EventName = 7
 )
 
 // Enum value maps for EventName.
@@ -46,8 +45,7 @@ var (
 		4: "ISSUE_OPENED",
 		5: "ISSUE_CLOSED",
 		6: "ISSUE_COMMENTED",
-		7: "COMMIT_PUSHED",
-		8: "REPOSITORY_FORKED",
+		7: "PUSHED",
 	}
 	EventName_value = map[string]int32{
 		"EVENT_NAME_UNSPECIFIED":        0,
@@ -57,8 +55,7 @@ var (
 		"ISSUE_OPENED":                  4,
 		"ISSUE_CLOSED":                  5,
 		"ISSUE_COMMENTED":               6,
-		"COMMIT_PUSHED":                 7,
-		"REPOSITORY_FORKED":             8,
+		"PUSHED":                        7,
 	}
 )
 
@@ -562,13 +559,13 @@ type PullRequestClosedPayload struct {
 	CommitsCount int32                  `protobuf:"varint,10,opt,name=commits_count,json=commitsCount,proto3" json:"commits_count,omitempty"`
 	// google.protobuf.Timestamp deadline = 11;
 	// bool met_deadline = 12;
-	Labels             []string `protobuf:"bytes,13,rep,name=labels,proto3" json:"labels,omitempty"`
-	TargetBranch       string   `protobuf:"bytes,14,opt,name=target_branch,json=targetBranch,proto3" json:"target_branch,omitempty"`
-	IsDocumentation    bool     `protobuf:"varint,15,opt,name=is_documentation,json=isDocumentation,proto3" json:"is_documentation,omitempty"`
-	DocumentationTypes []string `protobuf:"bytes,16,rep,name=documentation_types,json=documentationTypes,proto3" json:"documentation_types,omitempty"` // ["README", "API Documentation", etc.]
-	Assignees          []uint64 `protobuf:"varint,17,rep,packed,name=assignees,proto3" json:"assignees,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	Labels       []string `protobuf:"bytes,13,rep,name=labels,proto3" json:"labels,omitempty"`
+	TargetBranch string   `protobuf:"bytes,14,opt,name=target_branch,json=targetBranch,proto3" json:"target_branch,omitempty"`
+	// bool is_documentation = 15;
+	// repeated string documentation_types = 16;  // ["README", "API Documentation", etc.]
+	Assignees     []uint64 `protobuf:"varint,17,rep,packed,name=assignees,proto3" json:"assignees,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PullRequestClosedPayload) Reset() {
@@ -683,20 +680,6 @@ func (x *PullRequestClosedPayload) GetTargetBranch() string {
 		return x.TargetBranch
 	}
 	return ""
-}
-
-func (x *PullRequestClosedPayload) GetIsDocumentation() bool {
-	if x != nil {
-		return x.IsDocumentation
-	}
-	return false
-}
-
-func (x *PullRequestClosedPayload) GetDocumentationTypes() []string {
-	if x != nil {
-		return x.DocumentationTypes
-	}
-	return nil
 }
 
 func (x *PullRequestClosedPayload) GetAssignees() []uint64 {
@@ -1051,17 +1034,13 @@ func (x *IssueCommentedPayload) GetContainsCode() bool {
 }
 
 type PushPayload struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	UserId         uint64                 `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	BranchName     string                 `protobuf:"bytes,2,opt,name=branch_name,json=branchName,proto3" json:"branch_name,omitempty"`
-	IsMainBranch   bool                   `protobuf:"varint,3,opt,name=is_main_branch,json=isMainBranch,proto3" json:"is_main_branch,omitempty"`
-	CommitsCount   int32                  `protobuf:"varint,4,opt,name=commits_count,json=commitsCount,proto3" json:"commits_count,omitempty"`
-	Commits        []*CommitInfo          `protobuf:"bytes,5,rep,name=commits,proto3" json:"commits,omitempty"`
-	TotalAdditions int32                  `protobuf:"varint,6,opt,name=total_additions,json=totalAdditions,proto3" json:"total_additions,omitempty"`
-	TotalDeletions int32                  `protobuf:"varint,7,opt,name=total_deletions,json=totalDeletions,proto3" json:"total_deletions,omitempty"`
-	FilesChanged   int32                  `protobuf:"varint,8,opt,name=files_changed,json=filesChanged,proto3" json:"files_changed,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        uint64                 `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	BranchName    string                 `protobuf:"bytes,2,opt,name=branch_name,json=branchName,proto3" json:"branch_name,omitempty"`
+	CommitsCount  int32                  `protobuf:"varint,3,opt,name=commits_count,json=commitsCount,proto3" json:"commits_count,omitempty"`
+	Commits       []*CommitInfo          `protobuf:"bytes,4,rep,name=commits,proto3" json:"commits,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PushPayload) Reset() {
@@ -1108,13 +1087,6 @@ func (x *PushPayload) GetBranchName() string {
 	return ""
 }
 
-func (x *PushPayload) GetIsMainBranch() bool {
-	if x != nil {
-		return x.IsMainBranch
-	}
-	return false
-}
-
 func (x *PushPayload) GetCommitsCount() int32 {
 	if x != nil {
 		return x.CommitsCount
@@ -1129,38 +1101,16 @@ func (x *PushPayload) GetCommits() []*CommitInfo {
 	return nil
 }
 
-func (x *PushPayload) GetTotalAdditions() int32 {
-	if x != nil {
-		return x.TotalAdditions
-	}
-	return 0
-}
-
-func (x *PushPayload) GetTotalDeletions() int32 {
-	if x != nil {
-		return x.TotalDeletions
-	}
-	return 0
-}
-
-func (x *PushPayload) GetFilesChanged() int32 {
-	if x != nil {
-		return x.FilesChanged
-	}
-	return 0
-}
-
 type CommitInfo struct {
-	state             protoimpl.MessageState `protogen:"open.v1"`
-	Sha               string                 `protobuf:"bytes,1,opt,name=sha,proto3" json:"sha,omitempty"`
-	Message           string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
-	Additions         int32                  `protobuf:"varint,3,opt,name=additions,proto3" json:"additions,omitempty"`
-	Deletions         int32                  `protobuf:"varint,4,opt,name=deletions,proto3" json:"deletions,omitempty"`
-	FilesChanged      int32                  `protobuf:"varint,5,opt,name=files_changed,json=filesChanged,proto3" json:"files_changed,omitempty"`
-	IsMergeCommit     bool                   `protobuf:"varint,6,opt,name=is_merge_commit,json=isMergeCommit,proto3" json:"is_merge_commit,omitempty"`
-	ModifiedFileTypes []string               `protobuf:"bytes,7,rep,name=modified_file_types,json=modifiedFileTypes,proto3" json:"modified_file_types,omitempty"` // .go, .md, .yaml, etc.
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AuthorName    string                 `protobuf:"bytes,1,opt,name=author_name,json=authorName,proto3" json:"author_name,omitempty"`
+	CommitId      string                 `protobuf:"bytes,2,opt,name=commit_id,json=commitId,proto3" json:"commit_id,omitempty"`
+	Message       string                 `protobuf:"bytes,3,opt,name=message,proto3" json:"message,omitempty"`
+	Additions     int32                  `protobuf:"varint,4,opt,name=additions,proto3" json:"additions,omitempty"`
+	Deletions     int32                  `protobuf:"varint,5,opt,name=deletions,proto3" json:"deletions,omitempty"`
+	Modified      int32                  `protobuf:"varint,6,opt,name=modified,proto3" json:"modified,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CommitInfo) Reset() {
@@ -1193,9 +1143,16 @@ func (*CommitInfo) Descriptor() ([]byte, []int) {
 	return file_event_proto_rawDescGZIP(), []int{8}
 }
 
-func (x *CommitInfo) GetSha() string {
+func (x *CommitInfo) GetAuthorName() string {
 	if x != nil {
-		return x.Sha
+		return x.AuthorName
+	}
+	return ""
+}
+
+func (x *CommitInfo) GetCommitId() string {
+	if x != nil {
+		return x.CommitId
 	}
 	return ""
 }
@@ -1221,25 +1178,11 @@ func (x *CommitInfo) GetDeletions() int32 {
 	return 0
 }
 
-func (x *CommitInfo) GetFilesChanged() int32 {
+func (x *CommitInfo) GetModified() int32 {
 	if x != nil {
-		return x.FilesChanged
+		return x.Modified
 	}
 	return 0
-}
-
-func (x *CommitInfo) GetIsMergeCommit() bool {
-	if x != nil {
-		return x.IsMergeCommit
-	}
-	return false
-}
-
-func (x *CommitInfo) GetModifiedFileTypes() []string {
-	if x != nil {
-		return x.ModifiedFileTypes
-	}
-	return nil
 }
 
 var File_event_proto protoreflect.FileDescriptor
@@ -1271,7 +1214,7 @@ const file_event_proto_rawDesc = "" +
 	"branchName\x12#\n" +
 	"\rtarget_branch\x18\x06 \x01(\tR\ftargetBranch\x12\x16\n" +
 	"\x06labels\x18\a \x03(\tR\x06labels\x12\x1c\n" +
-	"\tassignees\x18\t \x03(\x04R\tassignees\"\xa9\x04\n" +
+	"\tassignees\x18\t \x03(\x04R\tassignees\"\xcd\x03\n" +
 	"\x18PullRequestClosedPayload\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x04R\x06userId\x12$\n" +
 	"\x0emerger_user_id\x18\x02 \x01(\x04R\fmergerUserId\x12\x13\n" +
@@ -1285,9 +1228,7 @@ const file_event_proto_rawDesc = "" +
 	"\rcommits_count\x18\n" +
 	" \x01(\x05R\fcommitsCount\x12\x16\n" +
 	"\x06labels\x18\r \x03(\tR\x06labels\x12#\n" +
-	"\rtarget_branch\x18\x0e \x01(\tR\ftargetBranch\x12)\n" +
-	"\x10is_documentation\x18\x0f \x01(\bR\x0fisDocumentation\x12/\n" +
-	"\x13documentation_types\x18\x10 \x03(\tR\x12documentationTypes\x12\x1c\n" +
+	"\rtarget_branch\x18\x0e \x01(\tR\ftargetBranch\x12\x1c\n" +
 	"\tassignees\x18\x11 \x03(\x04R\tassigneesB\t\n" +
 	"\a_merged\"\xd4\x01\n" +
 	"!PullRequestReviewSubmittedPayload\x12(\n" +
@@ -1318,26 +1259,22 @@ const file_event_proto_rawDesc = "" +
 	"\bissue_id\x18\x03 \x01(\x04R\aissueId\x12!\n" +
 	"\fissue_number\x18\x04 \x01(\x05R\vissueNumber\x12%\n" +
 	"\x0ecomment_length\x18\x05 \x01(\x05R\rcommentLength\x12#\n" +
-	"\rcontains_code\x18\x06 \x01(\bR\fcontainsCode\"\xb6\x02\n" +
+	"\rcontains_code\x18\x06 \x01(\bR\fcontainsCode\"\x99\x01\n" +
 	"\vPushPayload\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\x04R\x06userId\x12\x1f\n" +
 	"\vbranch_name\x18\x02 \x01(\tR\n" +
-	"branchName\x12$\n" +
-	"\x0eis_main_branch\x18\x03 \x01(\bR\fisMainBranch\x12#\n" +
-	"\rcommits_count\x18\x04 \x01(\x05R\fcommitsCount\x12+\n" +
-	"\acommits\x18\x05 \x03(\v2\x11.event.CommitInfoR\acommits\x12'\n" +
-	"\x0ftotal_additions\x18\x06 \x01(\x05R\x0etotalAdditions\x12'\n" +
-	"\x0ftotal_deletions\x18\a \x01(\x05R\x0etotalDeletions\x12#\n" +
-	"\rfiles_changed\x18\b \x01(\x05R\ffilesChanged\"\xf1\x01\n" +
+	"branchName\x12#\n" +
+	"\rcommits_count\x18\x03 \x01(\x05R\fcommitsCount\x12+\n" +
+	"\acommits\x18\x04 \x03(\v2\x11.event.CommitInfoR\acommits\"\xbc\x01\n" +
 	"\n" +
-	"CommitInfo\x12\x10\n" +
-	"\x03sha\x18\x01 \x01(\tR\x03sha\x12\x18\n" +
-	"\amessage\x18\x02 \x01(\tR\amessage\x12\x1c\n" +
-	"\tadditions\x18\x03 \x01(\x05R\tadditions\x12\x1c\n" +
-	"\tdeletions\x18\x04 \x01(\x05R\tdeletions\x12#\n" +
-	"\rfiles_changed\x18\x05 \x01(\x05R\ffilesChanged\x12&\n" +
-	"\x0fis_merge_commit\x18\x06 \x01(\bR\risMergeCommit\x12.\n" +
-	"\x13modified_file_types\x18\a \x03(\tR\x11modifiedFileTypes*\xdf\x01\n" +
+	"CommitInfo\x12\x1f\n" +
+	"\vauthor_name\x18\x01 \x01(\tR\n" +
+	"authorName\x12\x1b\n" +
+	"\tcommit_id\x18\x02 \x01(\tR\bcommitId\x12\x18\n" +
+	"\amessage\x18\x03 \x01(\tR\amessage\x12\x1c\n" +
+	"\tadditions\x18\x04 \x01(\x05R\tadditions\x12\x1c\n" +
+	"\tdeletions\x18\x05 \x01(\x05R\tdeletions\x12\x1a\n" +
+	"\bmodified\x18\x06 \x01(\x05R\bmodified*\xc1\x01\n" +
 	"\tEventName\x12\x1a\n" +
 	"\x16EVENT_NAME_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13PULL_REQUEST_OPENED\x10\x01\x12\x17\n" +
@@ -1345,9 +1282,9 @@ const file_event_proto_rawDesc = "" +
 	"\x1dPULL_REQUEST_REVIEW_SUBMITTED\x10\x03\x12\x10\n" +
 	"\fISSUE_OPENED\x10\x04\x12\x10\n" +
 	"\fISSUE_CLOSED\x10\x05\x12\x13\n" +
-	"\x0fISSUE_COMMENTED\x10\x06\x12\x11\n" +
-	"\rCOMMIT_PUSHED\x10\a\x12\x15\n" +
-	"\x11REPOSITORY_FORKED\x10\b*_\n" +
+	"\x0fISSUE_COMMENTED\x10\x06\x12\n" +
+	"\n" +
+	"\x06PUSHED\x10\a*_\n" +
 	"\vReviewState\x12\x1c\n" +
 	"\x18REVIEW_STATE_UNSPECIFIED\x10\x00\x12\f\n" +
 	"\bAPPROVED\x10\x01\x12\x15\n" +

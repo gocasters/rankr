@@ -1,12 +1,5 @@
 package service
 
-type CommitCommentCreatedRequest struct {
-	Comment    CommitComment `json:"comment"`
-	Repository Repository    `json:"repository"`
-	Sender     User          `json:"sender"`
-}
-type CommitCommentCreatedResponse struct{}
-
 type IssueCommentCreatedRequest struct {
 	Issue      Issue        `json:"issue"`
 	Comment    IssueComment `json:"comment"`
@@ -109,3 +102,12 @@ type PullRequestReviewSubmittedRequest struct {
 	Sender      User              `json:"sender"`
 }
 type PullRequestReviewSubmittedResponse struct{}
+
+type PushRequest struct {
+	Ref        string     `json:"ref"`
+	Repository Repository `json:"repository"`
+	HeadCommit *Commit    `json:"head_commit"`
+	Commits    []Commit   `json:"commits"`
+	Sender     User       `json:"sender"`
+}
+type PushResponse struct{}

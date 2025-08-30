@@ -19,7 +19,6 @@ func New(publisher message.Publisher) *Service {
 }
 
 func (s *Service) publishEvent(ev *eventpb.Event, evName eventpb.EventName, topic EventType, metadata map[string]string) error {
-
 	payload, err := proto.Marshal(ev)
 	if err != nil {
 		return fmt.Errorf("failed to marshal protobuf event. eventname: %s. error: %w",
@@ -27,7 +26,6 @@ func (s *Service) publishEvent(ev *eventpb.Event, evName eventpb.EventName, topi
 	}
 
 	msg := message.NewMessage(watermill.NewUUID(), payload)
-
 	for k, v := range metadata {
 		msg.Metadata.Set(k, v)
 	}

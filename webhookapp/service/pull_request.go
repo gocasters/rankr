@@ -77,10 +77,7 @@ func (s *Service) publishPullRequestClosed(req PullRequestClosedRequest, deliver
 				CommitsCount: req.PullRequest.Commits,
 				Labels:       extractLabelsNames(req.PullRequest.Labels),
 				TargetBranch: req.PullRequest.Base.Ref,
-				// Documentation-specific fields (zero values if not a doc PR)
-				IsDocumentation:    false,
-				DocumentationTypes: []string{},
-				Assignees:          extractAssigneesIDs(req.PullRequest.Assignees),
+				Assignees:    extractAssigneesIDs(req.PullRequest.Assignees),
 			},
 		},
 	}

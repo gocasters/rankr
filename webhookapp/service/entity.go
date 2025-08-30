@@ -208,6 +208,30 @@ type PullRequestReviewComment struct {
 	SubjectType         string             `json:"subject_type"` // "line"
 }
 
+type Commit struct {
+	ID        string   `json:"id"`
+	TreeID    string   `json:"tree_id"`
+	Message   string   `json:"message"`
+	Timestamp string   `json:"timestamp"`
+	URL       string   `json:"url"`
+	Author    Author   `json:"author"`
+	Committer Author   `json:"committer"`
+	Added     []string `json:"added"`
+	Removed   []string `json:"removed"`
+	Modified  []string `json:"modified"`
+}
+
+type Author struct {
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Username string `json:"username"`
+}
+type Pusher struct {
+	Name     string `json:"name"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+}
+
 type EventType string
 
 const (
@@ -215,9 +239,11 @@ const (
 	EventTypeIssueComment      EventType = "issue_comment"
 	EventTypePullRequest       EventType = "pull_request"
 	EventTypePullRequestReview EventType = "pull_request_review"
+	EventTypePush              EventType = "push"
 
-	TopicGithubIssues       = "github.issue"
+	TopicGithubIssues       = "github.issues"
 	TopicGithubIssueComment = "github.issuecomment"
-	TopicGithubPullRequest  = "github.pullrequests"
-	TopicGithubReview       = "github.reviews"
+	TopicGithubPullRequest  = "github.pullrequest"
+	TopicGithubReview       = "github.review"
+	TopicGithubPush         = "github.push"
 )
