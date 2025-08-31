@@ -4,54 +4,65 @@ import (
 	"context"
 	"fmt"
 	"github.com/gocasters/rankr/pkg/timettl"
+	"github.com/gocasters/rankr/protobuf/golang/eventpb"
+	"google.golang.org/protobuf/proto"
 	"log/slog"
 	"strconv"
 )
 
 var Timeframes = []string{"yearly", "monthly", "weekly"}
 
-type Repository interface {
+// ScoreRepository handles the hot path: real-time score updates in Redis.
+type ScoreRepository interface {
 	UpsertScores(ctx context.Context, keys []string, score uint8, contributorID string) error
+}
+
+// PersistenceQueueRepository handles the temporary buffering of events.
+// TODO- This could be implemented with Redis Lists, Kafka, etc.
+type PersistenceQueueRepository interface {
+	Enqueue(ctx context.Context, payload []byte) error
+	DequeueBatch(ctx context.Context, batchSize int) ([][]byte, error)
+}
+
+// DatabaseRepository handles the cold path: persisting events to the database.
+type DatabaseRepository interface {
+	PersistEventBatch(ctx context.Context, events []*Event) error
+}
+
+type Repository interface {
+	ScoreRepository
+	PersistenceQueueRepository
+	DatabaseRepository
+}
+
+type Config struct {
+	BatchSize int `koanf:"batch_size"`
 }
 
 type Service struct {
 	repo      Repository
 	validator Validator
 	logger    *slog.Logger
+	cfg       Config
 }
 
-func NewService(repo Repository, validator Validator, logger *slog.Logger) Service {
+func NewService(repo Repository, validator Validator, logger *slog.Logger, cfg Config) Service {
 	return Service{
 		repo:      repo,
 		validator: validator,
 		logger:    logger,
+		cfg:       cfg,
 	}
 }
 
+// ProcessScoreEvent handles only the critical, real-time login.
 func (s Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) error {
 	if err := s.validator.ValidateEvent(req); err != nil {
 		return err
 	}
 
 	var keys = s.keys(strconv.Itoa(int(req.RepositoryID)))
-	var score uint8 = 0
-
-	switch req.EventName {
-	case PullRequestOpened:
-		score = 1
-	case PullRequestClosed:
-		score = 5
-	case PullRequestReview:
-		score = 3
-	case IssueOpened:
-		score = 1
-	case IssueComment:
-		score = 1
-	case IssueClosed:
-		score = 5
-	case CommitPush:
-		score = 3
-	}
+	score := s.calculateScore(req.EventName)
 
 	if err := s.repo.UpsertScores(ctx, keys, score, strconv.Itoa(int(req.ContributorID))); err != nil {
 		s.logger.Error(ErrFailedToUpdateScores.Error(), slog.String("error", err.Error()))
@@ -59,7 +70,47 @@ func (s Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) error
 	}
 
 	s.logger.Debug(MsgSuccessfullyProcessedEvent, slog.String("event_id", req.ID))
+	return nil
+}
 
+// QueueEventForPersistence handles the non-critical, async part.
+func (s Service) QueueEventForPersistence(ctx context.Context, eventPayload []byte) error {
+	return s.repo.Enqueue(ctx, eventPayload)
+}
+
+// ProcessPersistenceQueue is the method called by the scheduler for persist async Event to Database.
+func (s Service) ProcessPersistenceQueue(ctx context.Context) error {
+	rawEvents, err := s.repo.DequeueBatch(ctx, s.cfg.BatchSize)
+	if err != nil {
+		s.logger.Error("failed to dequeue events from persistence queue", slog.String("error", err.Error()))
+		return err
+	}
+	if len(rawEvents) == 0 {
+		s.logger.Debug("no events in persistence queue to process.")
+		return nil
+	}
+
+	var events = make([]*Event, 0, len(rawEvents))
+	for _, payload := range rawEvents {
+		var protoEvent eventpb.Event
+		if err := proto.Unmarshal(payload, &protoEvent); err != nil {
+			s.logger.Error("failed to unmarshal event from queue, skipping", slog.String("error", err.Error()))
+			continue
+		}
+
+		// TODO - Map the protoEvent to internal Event struct.
+		// event := MapProtoToDomain(&protoEvent)
+		// events = append(events, event)
+	}
+
+	// TODO - map batchPayloadEvent to []Event,
+	if err := s.repo.PersistEventBatch(ctx, events); err != nil {
+		s.logger.Error("failed to persist batch of events to database", slog.String("error", err.Error()))
+		// TODO - Implement a dead-letter queue or retry mechanism for the failed batch.
+		return err
+	}
+
+	s.logger.Info("successfully persisted event batch to database", slog.Int("batch_size", len(events)))
 	return nil
 }
 
@@ -149,4 +200,25 @@ func getPerProjectLeaderboardKey(project string, timeframe string, period string
 	}
 
 	return fmt.Sprintf("leaderboard:%s:%s:%s", project, timeframe, period)
+}
+
+func (s Service) calculateScore(eventType EventType) uint8 {
+	switch eventType {
+	case PullRequestOpened:
+		return 1
+	case PullRequestClosed:
+		return 5
+	case PullRequestReview:
+		return 3
+	case IssueOpened:
+		return 1
+	case IssueComment:
+		return 1
+	case IssueClosed:
+		return 5
+	case CommitPush:
+		return 3
+	default:
+		return 0
+	}
 }

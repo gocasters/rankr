@@ -43,8 +43,12 @@ func (h Handler) HandleEvent(msg *message.Message) error {
 		return h.leaderboardSvc.ProcessScoreEvent(msg.Context(), eventReq)
 	}
 
+	bufferedEventFunc := func() error {
+		return h.leaderboardSvc.QueueEventForPersistence(msg.Context(), msg.Payload)
+	}
+
 	// Wrap the business logic with the idempotency check.
-	err := h.idempotencyChecker.CheckEvent(msg.Context(), eventReq.ID, processEventFunc)
+	err := h.idempotencyChecker.CheckEvent(msg.Context(), eventReq.ID, processEventFunc, bufferedEventFunc)
 
 	switch {
 	case err == nil:
