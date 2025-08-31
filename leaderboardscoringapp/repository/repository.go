@@ -2,10 +2,11 @@ package repository
 
 import (
 	"context"
+	"log/slog"
+
 	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
-	"log/slog"
 )
 
 type LeaderboardscoringRepo struct {
@@ -44,5 +45,23 @@ func (l *LeaderboardscoringRepo) UpdateScores(ctx context.Context, keys []string
 	}
 
 	l.logger.Debug("successfully updated scores in redis pipeline", slog.String("user_id", userID))
+	return nil
+}
+
+func (l *LeaderboardscoringRepo) AddToRedisStream(ctx context.Context, streamKey string, event *leaderboardscoring.ContributionEvent) error {
+	pipeline := l.client.Pipeline()
+
+	args := &redis.XAddArgs{
+		Stream: streamKey,
+		MaxLen: 1000,
+		Approx: true,
+		Values: event,
+	}
+
+	id, err := pipeline.XAdd(ctx, args).Result()
+	if err != nil {
+		return err
+	}
+	l.logger.Debug("successfully Added event to stream", slog.String("id", id))
 	return nil
 }

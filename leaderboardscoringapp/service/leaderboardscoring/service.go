@@ -9,8 +9,13 @@ import (
 
 var Timeframes = []string{"yearly", "monthly", "weekly"}
 
+const (
+	RedisStreamKey = "contributionEvent"
+)	
+
 type RedisRepository interface {
 	UpdateScores(ctx context.Context, keys []string, score int, userID string) error
+	AddToRedisStream(ctx context.Context, streamKey string, event *ContributionEvent) error
 }
 
 type DatabaseRepository interface {
@@ -63,6 +68,11 @@ func (s Service) ProcessScoreEvent(ctx context.Context, req EventRequest) error 
 
 	if err := s.repo.PersistContribution(ctx, &contributionEvent); err != nil {
 		s.logger.Error(ErrFailedToPersistContribution.Error(), slog.String("error", err.Error()))
+		return err
+	}
+
+	if err := s.repo.AddToRedisStream(ctx, RedisStreamKey, &contributionEvent); err != nil {
+		s.logger.Error(ErrFailedToAddToRedisStream.Error(), slog.String("error", err.Error()))
 		return err
 	}
 
