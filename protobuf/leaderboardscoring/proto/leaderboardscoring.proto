@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package leaderboardscoring;
+
+option go_package = "protobuf/leaderboardscoring/golang/leaderboardscoringpb";
+
+// Enum to define standard timeframes for requests, preventing typos.
+enum Timeframe {
+  TIMEFRAME_UNSPECIFIED = 0;
+  ALL_TIME = 1;
+  YEARLY = 2; // Represents the last year
+  MONTHLY = 3; // Represents the last month
+  WEEKLY = 4;  // Represents the last week
+}
+
+// Represents a single entry in any leaderboard.
+message LeaderboardRow {
+  uint64 rank = 1;
+  string user_id = 2;
+  uint64 score = 3;
+}
+
+// A standard RPC for fetching a snapshot of the leaderboard.
+// The server will automatically determine the correct period (e.g., current month for MONTHLY).
+message GetLeaderboardRequest {
+  Timeframe timeframe = 1;
+  optional string project_id = 2; // If provided, fetches a per-project leaderboard.
+
+  // Pagination parameters
+  int32 page_size = 3; // How many rows to return.
+  int32 offset = 4;    // Where to start from (e.g., 0 for the first page, 50 for the second).
+}
+
+message GetLeaderboardResponse {
+  Timeframe timeframe = 1;
+  optional string project_id = 2;
+  repeated LeaderboardRow rows = 3;
+}
+
+service LeaderboardScoringService {
+  // Fetches a single snapshot of the leaderboard with pagination.
+  // Real-time updates are handled by Centrifugo.
+  rpc GetLeaderboard(GetLeaderboardRequest) returns (GetLeaderboardResponse);
+}
