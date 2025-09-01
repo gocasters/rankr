@@ -39,6 +39,11 @@ var (
 
 // Process It returns specific errors if the event is a duplicate or is locked.
 func (ic *IdempotencyChecker) Process(ctx context.Context, eventID string, processFunc func() error) error {
+
+	if eventID == "" {
+		return fmt.Errorf("invalid eventID: empty")
+	}
+	
 	processedKey := ic.processedKey(eventID)
 	lockKey := ic.lockKey(eventID)
 

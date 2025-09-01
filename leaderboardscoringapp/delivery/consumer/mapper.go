@@ -2,7 +2,7 @@ package consumer
 
 import (
 	"fmt"
-	"github.com/gocasters/rankr/leaderboardscoring/service/leaderboardscoring"
+	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/gocasters/rankr/protobuf/golang/eventpb"
 )
 
@@ -11,11 +11,11 @@ func ProtobufToEventRequest(eventPB *eventpb.Event) (leaderboardscoring.EventReq
 		return leaderboardscoring.EventRequest{}, fmt.Errorf("nil event")
 	}
 
-	payload := eventPB.GetContributionRegisteredPayload()
-	if payload == nil {
-		return leaderboardscoring.EventRequest{},
-			fmt.Errorf("event with ID %s has a missing or invalid payload", eventPB.Id)
-	}
+	//payload := eventPB.GetContributionRegisteredPayload()
+	//if payload == nil {
+	//	return leaderboardscoring.EventRequest{},
+	//		fmt.Errorf("event with ID %s has a missing or invalid payload", eventPB.Id)
+	//}
 
 	ts := eventPB.GetTime()
 	if ts == nil {
@@ -23,11 +23,11 @@ func ProtobufToEventRequest(eventPB *eventpb.Event) (leaderboardscoring.EventReq
 	}
 	contributionEvent := leaderboardscoring.EventRequest{
 		ID:              eventPB.Id,
-		UserID:          payload.UserId,
-		ProjectID:       payload.ProjectId,
-		Type:            payload.EventType,
-		ScoreValue:      int(payload.ScoreValue),
-		SourceReference: payload.SourceReference,
+		EventName:       eventPB.EventName.String(),
+		RepositoryID:    eventPB.RepositoryId,
+		RepositoryName:  eventPB.RepositoryName,
+		SourceReference: "",
+		ContributorID:   "",
 		Timestamp:       ts.AsTime().UTC(),
 	}
 
