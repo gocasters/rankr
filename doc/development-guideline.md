@@ -88,17 +88,17 @@ We use a modular layout to enforce separation of concerns and improve navigabili
 ### 1. Webhook (receives repository events)     2-3-6
 ### 2. Realtime     1-5
 ### 3. LeaderboardScoring (Update contributor score)        2-4
-### 4. LeaderboardStats (Serves Leaderboard statistics to clients)      3-5
+### 4. LeaderboardStat (Serves Leaderboard statistics to clients)      3-5
 
 #### Communication with LeaderboardScoring
 
-The **LeaderboardStats** service depends on **LeaderboardScoring** for refined contribution data (scores, events, and normalized repository activities).  
+The **LeaderboardStat** service depends on **LeaderboardScoring** for refined contribution data (scores, events, and normalized repository activities).  
 There are two supported communication models depending on the stage of the system:
 ---
 
 **Guideline:**
 - For now, adopt **Option 3 (shared DB, read-only replica)** for speed and simplicity.
-- Plan migration toward **Option 1 (event-driven, independent DB)** once Stats grows in complexity, or when schema evolution between services becomes a bottleneck.
+- Plan migration toward **Option 1 (event-driven, independent DB)** once LeaderboardStat grows in complexity, or when schema evolution between services becomes a bottleneck.
 
 ### 5. Contributor/User (Profile/ Project Scores)       9-4-3-8
 ### 6. TaskManagement (Managing Tasks based on repo issues/PRs)     1-
@@ -113,7 +113,7 @@ All services **must** implement a consistent Cobra-based CLI structure. This ens
 ### Standard Structure
 ```
 cmd/
-└── [service-name]/          # e.g., leaderboardstat, webhook, scoring
+└── [service-name]/          # e.g., project, webhook, leadrboardscoring
     ├── main.go              # Entry point (minimal, calls command package)
     └── command/             # All command implementations
         ├── root.go          # Root command definition
@@ -163,6 +163,45 @@ go run cmd/[app-service-name]/main.go --help
 ```
 ## Project Setup & main.go
 ## Logging
+
+Rankr uses a structured logging system with Go's slog package and Lumberjack for log rotation. The logger is implemented as a singleton pattern for consistent application-wide logging, with automatic file rotation based on size and age constraints.
+
+```
+// Initialize logger with config
+logger.Init(cfg.Logger)
+
+// Get logger instance and use it
+log, _ := logger.L()
+log.Info("Service starting", "port", 8080, "environment", "development")
+log.Error("Database connection failed", "error", err, "attempt", 3)
+```
+
+**Log rotation** is an automated process of managing log files to prevent them from growing indefinitely and consuming all available disk space. It involves:
+
+**1 —Archiving** the current log file.
+
+**2 —Creating** a new, empty log file for new entries.
+
+**3 —Deleting** old log files after a certain period or number.
+
+Without log rotation, a single log file (```service.log```) would just keep getting bigger and bigger. This leads to several major problems.
+This is the log configuration in ```deploy/[appservice]/development/config.yml```
+
+```
+logger:
+  file_path: "log/[appservice]/service.log"   # The active log file
+  file_max_size_in_mb: 10         # Rotate when the file reaches 10 MB
+  file_max_age_in_days: 7         # Delete archived logs older than 7 days
+```
+
+Here’s what your ```log/``` directory might look like over time:
+```
+log/[appservice]/
+├── service.log          # <-- Active file (0.5 MB). Currently being written to.
+├── service-2025-01-30T15-04-05.log  # <-- Archived, 10 MB, 1 day old (kept)
+├── service-2025-01-29T10-22-17.log  # <-- Archived, 10 MB, 2 days old (kept)
+└── service-2025-01-22T09-51-01.log  # <-- Archived, 10 MB, 9 days old (DELETED by lumberjack!)
+```
 ## Observability: OpenTelemetry (OTel)
 ## Error Handling
 
@@ -182,11 +221,12 @@ go run cmd/[app-service-name]/main.go --help
 - **Eventual Consistency** is the default assumption.
 
 **3 — HTTP vs gRPC**
-- Use HTTP/JSON for external APIs.
-- Use gRPC/Protobuf for internal service-to-service communication where efficiency matters.
+- Use ```HTTP/JSON``` for external APIs.
+- Use ```gRPC/Protobuf``` for internal service-to-service communication where efficiency matters.
 
 **4 — Domain Communications**
-**Option 1 — Event-Driven Communication (preferred)**“Something happened — whoever cares, react!”
+
+**Option 1 — Event-Driven Communication (preferred)** “Something happened — whoever cares, react!”
 - Services publish events (e.g., UserCreated, ScoreUpdated) without knowing who consumes them.
 - Other services subscribe to relevant events.
 - Follows Choreography Saga pattern with retry policies instead of rollbacks
@@ -194,7 +234,7 @@ go run cmd/[app-service-name]/main.go --help
 ✅ Pros: loose coupling, independent evolution of services, scales well.  
 ⚠️ Cons: requires event infrastructure and introduces eventual consistency.
 
-**Option 2 — Message-Driven Communication**“Send this to Service B”
+**Option 2 — Message-Driven Communication** “Send this to Service B”
 - A service sends a message to a specific recipient after updating its state.
 - The sender must know the exact address of the receiver.
 - Usually one receiver per message (point-to-point).
@@ -206,34 +246,32 @@ go run cmd/[app-service-name]/main.go --help
 **Option 3 — Shared Database**
 - Normally, each service owns its DB.
 - If read duplication is too expensive, a service may provide read-only access (ideally through a replica) to another service.
-- Example: Stat Service reading from DB of Scoring Service.
 
 ✅ Pros: simple, low infra cost, fast to implement.  
 ⚠️ Cons: tight coupling between two services.
 
-
 ## Service-Level Best Practices
 Each domain package should follow this pattern:
 ### Layer Responsibilities:
-**1 — [appService]/service/entity.go**
+1 — ```[appService]/service/entity.go```
 - Defines pure domain structs. No logic.
 
-**2 — [appService]/repository/** (Data Layer):
+2 — ```[appService]/repository/``` (Data Layer):
 - Defines the persistence interface (type Repository interface {...}).
 - Provides the implementation (e.g., postgresRepository).
 
-**3 — [appService]/service/** (Business Layer):
+3 — ```[appService]/service/``` (Business Layer):
 - Contains all business logic and rules.
 - Depends on the Repository interface.
 - Must remain free of HTTP/transport concerns.
 
-**4 — [appService]/delivery/** (Transport Layer):
+4 — ```[appService]/delivery/``` (Transport Layer):
 - Handles HTTP-specific tasks (JSON marshaling/unmarshaling, parameter parsing).
 - Calls the Service layer.
 - Instruments with logging and tracing.
 
 ### Additional Guidelines
-- Validation and data sanitizing must happen before data enters the service layer(Usecase or Intractor layer).
+- Validation and data sanitizing must happen before data enters the service layer. We uses ```ozzo-validation``` library as Golang is a ***strong type*** language and this library use this property perfectly.
 - Keep entities and use cases free of external dependencies.
 - Outer layers (delivery, repository) can depend on frameworks and libraries.
 - Dependency Injection: Use constructor functions to explicitly require dependencies.
@@ -244,10 +282,10 @@ Each domain package should follow this pattern:
 In Go, CI usually covers:
 
 - **Dependency management** (download modules).
-- **Linting** (golangci-lint) to enforce code quality & style.
-- **Unit tests** with coverage reports (go test ./... -cover).
+- **Linting** (```golangci-lint```) to enforce code quality & style.
+- **Unit tests** with coverage reports (```go test ./... -cover```).
 - **Build check** to ensure the app compiles.
-  This guarantees that the main branch is always stable.
+  This guarantees that the ```main``` branch is always stable.
 
 ## GitHub Actions for CI
 We use GitHub Actions as our CI/CD platform.
