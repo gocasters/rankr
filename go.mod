@@ -45,7 +45,10 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 )
 
-require gopkg.in/natefinch/lumberjack.v2 v2.2.1
+require (
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1
+)
 
 require (
 	github.com/charmbracelet/colorprofile v0.2.3-0.20250311203215-f60798e515dc // indirect
