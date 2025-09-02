@@ -1,7 +1,7 @@
 package main
 
 import (
-    "github.com/gocasters/rankr/authapp/auth"
+//    "github.com/gocasters/rankr/authapp/auth"
     "github.com/gocasters/rankr/authapp/delivery/http"
     "github.com/gocasters/rankr/authapp/repository"
     "github.com/gocasters/rankr/authapp/service"
@@ -53,7 +53,7 @@ func main() {
 	defer db.Close()
 
 
-    jwtManager := auth.NewJWTManager(cfg.JWTSecret, time.Duration(cfg.TokenDuration)*time.Minute)
+    jwtManager := service.NewJWTManager(cfg.JWTSecret, time.Duration(cfg.TokenDuration)*time.Minute)
     authService := service.NewAuthService(jwtManager)
     roleRepo := repository.NewRoleRepository(db)
 
