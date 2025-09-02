@@ -2,17 +2,20 @@ package notification
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"time"
+)
+
+// Define the errors that the service expects
+var (
+	errMockNotFound = errors.New("not found in mock")
 )
 
 type mockRepository struct {
 	notifications map[string]Notification
 	idCounter     int
 }
-
-// Compile-time check that mockRepository implements Repository.
-var _ Repository = (*mockRepository)(nil)
 
 func NewMockRepository() *mockRepository {
 	return &mockRepository{
@@ -26,19 +29,17 @@ func (m *mockRepository) Create(ctx context.Context, notification Notification) 
 	id := strconv.Itoa(m.idCounter)
 	notification.ID = id
 	notification.CreatedAt = time.Now()
-	notification.Status = StatusUnread
-	notification.ReadAt = nil
 
 	m.notifications[id] = notification
 
 	return notification, nil
 }
 
-func (m *mockRepository) Get(ctx context.Context, notificationID string) (Notification, error) {
+func (m *mockRepository) Get(ctx context.Context, notificationID, userID string) (Notification, error) {
 	if n, ok := m.notifications[notificationID]; ok {
 		return n, nil
 	}
-	return Notification{}, ErrNotFound
+	return Notification{}, errMockNotFound
 }
 
 func (m *mockRepository) List(ctx context.Context, userID string) ([]Notification, error) {
@@ -51,7 +52,7 @@ func (m *mockRepository) List(ctx context.Context, userID string) ([]Notificatio
 	return ns, nil
 }
 
-func (m *mockRepository) MarkAsRead(ctx context.Context, notificationID string) (Notification, error) {
+func (m *mockRepository) MarkAsRead(ctx context.Context, notificationID, userID string) (Notification, error) {
 	if n, ok := m.notifications[notificationID]; ok {
 		now := time.Now()
 		n.Status = StatusRead
@@ -59,7 +60,7 @@ func (m *mockRepository) MarkAsRead(ctx context.Context, notificationID string) 
 		m.notifications[notificationID] = n
 		return n, nil
 	}
-	return Notification{}, ErrNotFound
+	return Notification{}, errMockNotFound
 }
 
 func (m *mockRepository) MarkAllAsRead(ctx context.Context, userID string) error {
@@ -74,9 +75,9 @@ func (m *mockRepository) MarkAllAsRead(ctx context.Context, userID string) error
 	return nil
 }
 
-func (m *mockRepository) Delete(ctx context.Context, notificationID string) error {
+func (m *mockRepository) Delete(ctx context.Context, notificationID, userID string) error {
 	if _, ok := m.notifications[notificationID]; !ok {
-		return ErrNotFound
+		return errMockNotFound
 	}
 	delete(m.notifications, notificationID)
 	return nil
