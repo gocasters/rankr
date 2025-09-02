@@ -1300,7 +1300,7 @@ const file_event_proto_rawDesc = "" +
 	"\n" +
 	"\x06MERGED\x10\x01\x12\x18\n" +
 	"\x14CLOSED_WITHOUT_MERGE\x10\x02\x12\x13\n" +
-	"\x0fDRAFT_CONVERTED\x10\x03B\x19Z\x17protobuf/golang/eventpbb\x06proto3"
+	"\x0fDRAFT_CONVERTED\x10\x03B4Z2github.com/gocasters/rankr/protobuf/golang/eventpbb\x06proto3"
 
 var (
 	file_event_proto_rawDescOnce sync.Once
