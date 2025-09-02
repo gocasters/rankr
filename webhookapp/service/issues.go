@@ -75,15 +75,20 @@ func (s *Service) publishIssueClosed(req IssueClosedRequest, deliveryUID string)
 		RepositoryName: req.Repository.FullName,
 		Payload: &eventpb.Event_IssueClosedPayload{
 			IssueClosedPayload: &eventpb.IssueClosedPayload{
-				UserId:          req.Sender.ID,
-				IssueAuthorId:   req.Issue.User.ID,
-				IssueId:         req.Issue.ID,
-				IssueNumber:     req.Issue.Number,
-				CloseReason:     closeReason,
-				Labels:          extractLabelsNames(req.Issue.Labels),
-				OpenedAt:        timestamppb.New(req.Issue.CreatedAt),
-				CommentsCount:   req.Issue.Comments,
-				ClosingPrNumber: req.Issue.PullRequest.Number,
+				UserId:        req.Sender.ID,
+				IssueAuthorId: req.Issue.User.ID,
+				IssueId:       req.Issue.ID,
+				IssueNumber:   req.Issue.Number,
+				CloseReason:   closeReason,
+				Labels:        extractLabelsNames(req.Issue.Labels),
+				OpenedAt:      timestamppb.New(req.Issue.CreatedAt),
+				CommentsCount: req.Issue.Comments,
+				ClosingPrNumber: func() int32 {
+					if req.Issue.PullRequest != nil {
+						return req.Issue.PullRequest.Number
+					}
+					return 0
+				}(),
 			},
 		},
 	}

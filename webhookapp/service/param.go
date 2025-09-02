@@ -18,7 +18,6 @@ type IssueCommentDeletedResponse struct{}
 
 type IssueOpenedRequest struct {
 	Issue      Issue      `json:"issue"`
-	Type       IssueType  `json:"types"`
 	Repository Repository `json:"repository"`
 	Sender     User       `json:"sender"`
 }
