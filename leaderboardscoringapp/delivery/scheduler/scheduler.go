@@ -32,6 +32,10 @@ func New(lbScoringSvc leaderboardscoring.Service, logger *slog.Logger, cfg Confi
 
 // Start begins the periodic execution of the persistence job.
 func (s *Scheduler) Start(ctx context.Context) {
+	if s.cfg.Interval <= 0 {
+		s.logger.Error("scheduler not started: non-positive interval", slog.Duration("interval", s.cfg.Interval))
+		return
+	}
 	ticker := time.NewTicker(s.cfg.Interval)
 
 	go func() {

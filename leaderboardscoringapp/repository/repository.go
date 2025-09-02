@@ -45,15 +45,15 @@ func (l *LeaderboardRepo) UpsertScores(ctx context.Context, keys []string, score
 
 // Enqueue TODO - Implement me
 func (l *LeaderboardRepo) Enqueue(ctx context.Context, payload []byte) error {
-	return nil
+	return leaderboardscoring.ErrNotImplemented
 }
 
 // DequeueBatch TODO - Implement me
 func (l *LeaderboardRepo) DequeueBatch(ctx context.Context, batchSize int) ([][]byte, error) {
-	return make([][]byte, 0), nil
+	return make([][]byte, 0), leaderboardscoring.ErrNotImplemented
 }
 
 // PersistEventBatch TODO - Implement me
 func (l *LeaderboardRepo) PersistEventBatch(ctx context.Context, events []*leaderboardscoring.Event) error {
-	return nil
+	return leaderboardscoring.ErrNotImplemented
 }

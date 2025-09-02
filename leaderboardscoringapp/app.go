@@ -162,11 +162,10 @@ func (app *Application) startWaterMill(ctx context.Context, wg *sync.WaitGroup) 
 		defer wg.Done()
 		app.Logger.Info("Starting Watermill event consumer router...")
 
-		if err := app.WMRouter.Run(ctx); err != nil {
-			if !errors.Is(ctx.Err(), context.Canceled) {
-				app.Logger.Error("Watermill router stopped with an error", slog.String("error", err.Error()))
-				panic(err)
-			}
+		if err := app.WMRouter.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
+			app.Logger.Error("Watermill router stopped with an error", slog.String("error", err.Error()))
+			panic(err)
+
 		}
 	}()
 }

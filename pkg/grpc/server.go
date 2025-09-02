@@ -6,9 +6,11 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/status"
 	"log/slog"
 	"net"
 )
@@ -48,7 +50,7 @@ func NewServer(cfg ServerConfig, logger *slog.Logger) (*RPCServer, error) {
 	healthServer := health.NewServer()
 	grpc_health_v1.RegisterHealthServer(gRPCServer, healthServer)
 	// Manually set the health status of the main service.
-	healthServer.SetServingStatus(cfg.Host, grpc_health_v1.HealthCheckResponse_SERVING)
+	healthServer.SetServingStatus("", grpc_health_v1.HealthCheckResponse_SERVING)
 
 	// Enable Server Reflection for debugging and testing purposes.
 	reflection.Register(gRPCServer)
@@ -73,9 +75,9 @@ func buildServerOptions(cfg ServerConfig, logger *slog.Logger) []grpc.ServerOpti
 
 	// Create a recovery interceptor to catch panics and return gRPC errors.
 	recoveryOpts := []recovery.Option{
-		recovery.WithRecoveryHandler(func(p any) (err error) {
+		recovery.WithRecoveryHandler(func(p any) error {
 			logger.Error("gRPC handler panicked", slog.Any("panic", p))
-			return fmt.Errorf("internal server error")
+			return status.Errorf(codes.Internal, "internal server error")
 		}),
 	}
 

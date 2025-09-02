@@ -11,7 +11,7 @@ type EventRequest struct {
 	EventName      EventType
 	RepositoryID   uint64
 	RepositoryName string
-	ContributorID  uint64
+	ContributorID  int
 	Timestamp      time.Time
 }
 

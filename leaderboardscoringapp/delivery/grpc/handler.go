@@ -4,6 +4,8 @@ import (
 	"context"
 	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/gocasters/rankr/protobuf/leaderboardscoring/golang/leaderboardscoringpb"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"log/slog"
 )
 
@@ -23,9 +25,14 @@ func NewHandler(leaderboardScoringSvc leaderboardscoring.Service, logger *slog.L
 
 func (h Handler) GetLeaderboard(ctx context.Context, req *leaderboardscoringpb.GetLeaderboardRequest) (*leaderboardscoringpb.GetLeaderboardResponse, error) {
 
+	var projectIDPtr *string
+	if pid := req.GetProjectId(); pid != "" {
+		projectIDPtr = &pid
+	}
+
 	leaderboardReq := &leaderboardscoring.GetLeaderboardRequest{
 		Timeframe: leaderboardscoring.Timeframe(req.GetTimeframe()),
-		ProjectID: req.ProjectId,
+		ProjectID: projectIDPtr,
 		PageSize:  req.GetPageSize(),
 		Offset:    req.GetOffset(),
 	}
@@ -37,9 +44,9 @@ func (h Handler) GetLeaderboard(ctx context.Context, req *leaderboardscoringpb.G
 			slog.String("error", err.Error()),
 			slog.Any("request", req),
 		)
-		// TODO: Map service errors to gRPC status codes
 
-		return nil, err
+		// TODO: replace with concrete error mapping from service layer
+		return nil, status.Errorf(codes.Internal, "get leaderboard failed: %v", err)
 	}
 
 	leaderboardPBRes := leaderboardResToProtobuf(leaderboardRes)
@@ -59,9 +66,13 @@ func leaderboardResToProtobuf(leaderboardRes leaderboardscoring.GetLeaderboardRe
 		rows = append(rows, leaderboardRow)
 	}
 
+	var projectID string
+	if leaderboardRes.ProjectID != nil {
+		projectID = *leaderboardRes.ProjectID
+	}
 	leaderboardPBRes := &leaderboardscoringpb.GetLeaderboardResponse{
 		Timeframe: leaderboardscoringpb.Timeframe(leaderboardRes.Timeframe),
-		ProjectId: leaderboardRes.ProjectID,
+		ProjectId: &projectID,
 		Rows:      rows,
 	}
 	return leaderboardPBRes

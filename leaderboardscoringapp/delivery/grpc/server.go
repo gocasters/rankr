@@ -21,7 +21,7 @@ func New(server *grpc.RPCServer, handler Handler, logger *slog.Logger) Server {
 }
 
 func (s *Server) Serve() error {
-	leaderboardscoringpb.RegisterLeaderboardScoringServiceServer(s.server.Server, s.handler)
+	leaderboardscoringpb.RegisterLeaderboardScoringServiceServer(s.server.Server, &s.handler)
 
 	s.logger.Info(
 		"leaderboard-scoring gRPC server started",

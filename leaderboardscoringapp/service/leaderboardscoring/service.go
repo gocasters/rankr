@@ -62,7 +62,7 @@ func (s Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) error
 	var keys = s.keys(strconv.Itoa(int(req.RepositoryID)))
 	score := s.calculateScore(req.EventName)
 
-	if err := s.repo.UpsertScores(ctx, keys, score, strconv.Itoa(int(req.ContributorID))); err != nil {
+	if err := s.repo.UpsertScores(ctx, keys, score, strconv.Itoa(req.ContributorID)); err != nil {
 		s.logger.Error(ErrFailedToUpdateScores.Error(), slog.String("error", err.Error()))
 		return err
 	}

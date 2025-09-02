@@ -2,7 +2,7 @@ package leaderboardscoring
 
 import (
 	"context"
-	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
+	lbscoring "github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/gocasters/rankr/pkg/grpc"
 	"github.com/gocasters/rankr/protobuf/leaderboardscoring/golang/leaderboardscoringpb"
 	"log/slog"
@@ -22,7 +22,7 @@ func New(rpcClient *grpc.RPCClient, logger *slog.Logger) Client {
 	}
 }
 
-func (c *Client) GetLeaderboard(ctx context.Context, getLeaderboardReq *leaderboardscoring.GetLeaderboardRequest) (*leaderboardscoring.GetLeaderboardResponse, error) {
+func (c *Client) GetLeaderboard(ctx context.Context, getLeaderboardReq *lbscoring.GetLeaderboardRequest) (*lbscoring.GetLeaderboardResponse, error) {
 
 	leaderboardPBReq := &leaderboardscoringpb.GetLeaderboardRequest{
 		Timeframe: leaderboardscoringpb.Timeframe(getLeaderboardReq.Timeframe),
@@ -41,10 +41,10 @@ func (c *Client) GetLeaderboard(ctx context.Context, getLeaderboardReq *leaderbo
 	return getLeaderboardRes, nil
 }
 
-func protobufToLeaderboardRes(leaderboardPBRes *leaderboardscoringpb.GetLeaderboardResponse) *leaderboardscoring.GetLeaderboardResponse {
-	var rows = make([]leaderboardscoring.LeaderboardRow, 0, len(leaderboardPBRes.Rows))
+func protobufToLeaderboardRes(leaderboardPBRes *leaderboardscoringpb.GetLeaderboardResponse) *lbscoring.GetLeaderboardResponse {
+	var rows = make([]lbscoring.LeaderboardRow, 0, len(leaderboardPBRes.Rows))
 	for _, r := range leaderboardPBRes.Rows {
-		row := leaderboardscoring.LeaderboardRow{
+		row := lbscoring.LeaderboardRow{
 			Rank:   r.Rank,
 			UserID: r.UserId,
 			Score:  r.Score,
@@ -52,8 +52,8 @@ func protobufToLeaderboardRes(leaderboardPBRes *leaderboardscoringpb.GetLeaderbo
 		rows = append(rows, row)
 	}
 
-	var getLeaderboardRes = &leaderboardscoring.GetLeaderboardResponse{
-		Timeframe:       leaderboardscoring.Timeframe(leaderboardPBRes.GetTimeframe()),
+	var getLeaderboardRes = &lbscoring.GetLeaderboardResponse{
+		Timeframe:       lbscoring.Timeframe(leaderboardPBRes.GetTimeframe()),
 		ProjectID:       leaderboardPBRes.ProjectId,
 		LeaderboardRows: rows,
 	}

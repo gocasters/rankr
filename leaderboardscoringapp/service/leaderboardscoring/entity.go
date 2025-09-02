@@ -33,7 +33,7 @@ type Event struct {
 	EventName      EventType
 	RepositoryID   uint64
 	RepositoryName string
-	ContributorID  string
+	ContributorID  int
 	Score          int
 	Timestamp      time.Time // UTC
 }

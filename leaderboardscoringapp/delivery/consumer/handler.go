@@ -85,21 +85,27 @@ func protobufToEventRequest(eventPB *eventpb.Event) (*leaderboardscoring.EventRe
 
 	var contribID uint64 = 0
 
-	switch eventPB.EventName.Type() {
-	case eventpb.EventName_PULL_REQUEST_OPENED.Type():
+	switch eventPB.GetEventName() {
+	case eventpb.EventName_PULL_REQUEST_OPENED:
 		contribID = eventPB.GetPrOpenedPayload().GetUserId()
-	case eventpb.EventName_PULL_REQUEST_CLOSED.Type():
+	case eventpb.EventName_PULL_REQUEST_CLOSED:
 		contribID = eventPB.GetPrClosedPayload().GetUserId()
-	case eventpb.EventName_PULL_REQUEST_REVIEW_SUBMITTED.Type():
+	case eventpb.EventName_PULL_REQUEST_REVIEW_SUBMITTED:
 		contribID = eventPB.GetPrReviewPayload().GetReviewerUserId()
-	case eventpb.EventName_ISSUE_OPENED.Type():
+	case eventpb.EventName_ISSUE_OPENED:
 		contribID = eventPB.GetIssueOpenedPayload().GetUserId()
-	case eventpb.EventName_ISSUE_CLOSED.Type():
+	case eventpb.EventName_ISSUE_CLOSED:
 		contribID = eventPB.GetIssueClosedPayload().GetUserId()
-	case eventpb.EventName_ISSUE_COMMENTED.Type():
+	case eventpb.EventName_ISSUE_COMMENTED:
 		contribID = eventPB.GetIssueCommentedPayload().GetUserId()
-	case eventpb.EventName_COMMIT_PUSHED.Type():
+	case eventpb.EventName_COMMIT_PUSHED:
 		contribID = eventPB.GetPushPayload().GetUserId()
+	default:
+		return nil, fmt.Errorf(
+			"unsupported event name: %s (id=%s)",
+			eventPB.EventName.String(),
+			eventPB.Id,
+		)
 	}
 
 	contributionEvent := &leaderboardscoring.EventRequest{
@@ -110,6 +116,11 @@ func protobufToEventRequest(eventPB *eventpb.Event) (*leaderboardscoring.EventRe
 		ContributorID:  contribID,
 		Timestamp:      ts.AsTime().UTC(),
 	}
-
+	if contributionEvent.RepositoryID == 0 {
+		return nil, fmt.Errorf("event with ID %s has missing repository id", eventPB.Id)
+	}
+	if contributionEvent.ContributorID == 0 {
+		return nil, fmt.Errorf("event with ID %s has missign contributor id", eventPB.Id)
+	}
 	return contributionEvent, nil
 }

@@ -45,9 +45,14 @@ func NewClient(cfg ClientConfig, logger *slog.Logger) (*RPCClient, error) {
 	dialOptions := []grpc.DialOption{
 		grpc.WithTransportCredentials(transportCreds),
 		grpc.WithDefaultServiceConfig(retryPolicyJSON),
+		grpc.WithBlock(),
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	timeout := cfg.InitialBackoff
+	if timeout <= 0 {
+		timeout = 10 * time.Second
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
 	conn, err := grpc.DialContext(ctx, target, dialOptions...)
@@ -74,6 +79,17 @@ func (c *RPCClient) Close() {
 }
 
 func buildRetryPolicyJSON(cfg ClientConfig) (string, error) {
+
+	if cfg.GRPCServiceName == "" {
+		return "", fmt.Errorf("grpc_service_name must be set")
+	}
+	if cfg.MaxAttempts <= 0 {
+		cfg.MaxAttempts = 3
+	}
+	if cfg.MaxAttempts > 5 {
+		cfg.MaxAttempts = 5
+	}
+
 	type retryPolicy struct {
 		MaxAttempts          int      `json:"MaxAttempts"`
 		InitialBackoff       string   `json:"InitialBackoff"`
