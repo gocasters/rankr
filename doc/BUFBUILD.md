@@ -20,18 +20,19 @@ This document provides comprehensive documentation for the Buf setup in the Rank
 
 ```
 rankr/
-├── docs/                    # Documentation
-│   └── README.md           # This documentation
-├── protobuf/               # Protocol Buffer definitions
-│   ├── buf.yaml            # Module configuration
+├── doc/                      # Documentation
+│   └── BUFBUILD.md           # This documentation
+├── protobuf/                 # Protocol Buffer definitions
+│   ├── buf.yaml              # Module configuration
 │   ├── event/
-│   │   └── event.proto     # Event definitions
-│   └── golang/             # Generated Go code
+│   │   ├── v1/
+│   │   └── event.proto       # Event definitions
+│   └── golang/               # Generated Go code
 │       └── event/
 │           └── event.pb.go
-├── buf.gen.yaml            # Code generation configuration
-├── buf.yaml                # Workspace configuration
-└── Makefile                # Build automation
+├── buf.gen.yaml              # Code generation configuration
+├── buf.yaml                  # Workspace configuration
+└── Makefile                  # Build automation
 ```
 
 ## Configuration Files
@@ -117,7 +118,7 @@ lint:
     - PACKAGE_VERSION_SUFFIX  # Except this specific rule
   rules:
     - ENUM_ZERO_VALUE_SUFFIX:  # Override specific rule
-        prefix: "_UNSPECIFIED"
+        suffix: "_UNSPECIFIED"
 ```
 
 ### Breaking Change Rules
