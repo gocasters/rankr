@@ -76,7 +76,7 @@ func serve() {
 	}
 
 	// Start the server
-	taskLogger.Info("Starting contributor Service...")
+	taskLogger.Info("Starting task Service...")
 	// Connect to the database
 	conn, cnErr := database.Connect(cfg.PostgresDB)
 	if cnErr != nil {

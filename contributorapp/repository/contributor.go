@@ -7,7 +7,6 @@ import (
 	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/contributorapp/service/contributor"
 	"github.com/gocasters/rankr/pkg/database"
-	"github.com/gocasters/rankr/types"
 	"log/slog"
 )
 
