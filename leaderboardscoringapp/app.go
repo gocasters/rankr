@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/http"
+	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/scheduler"
 	"github.com/gocasters/rankr/leaderboardscoringapp/repository"
 	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/pkg/httpserver"
@@ -24,6 +25,7 @@ import (
 
 type Application struct {
 	HTTPServer                http.Server
+	Scheduler                 *scheduler.Scheduler
 	LeaderboardSvc            leaderboardscoring.Service
 	LeaderboardscoringHandler http.Handler
 	WMRouter                  *message.Router
@@ -53,27 +55,30 @@ func Setup(ctx context.Context, config Config, leaderboardLogger *slog.Logger,
 		panic("postgres connection pool is nil")
 	}
 
-	leaderboardscoringRepo := repository.NewLeaderboardscoringRepo(redisAdapter.Client(), postgresConn.Pool, leaderboardLogger)
-	leaderboardValidator := leaderboardscoring.NewValidator()
-	leaderboardSvc := leaderboardscoring.NewService(leaderboardscoringRepo, leaderboardValidator, leaderboardLogger)
+	lbScoringRepo := repository.NewLeaderboardscoringRepo(redisAdapter.Client(), postgresConn.Pool, leaderboardLogger)
+	lbScoringValidator := leaderboardscoring.NewValidator()
+	lbScoringService := leaderboardscoring.NewService(lbScoringRepo, lbScoringValidator, leaderboardLogger, config.LeaderboardScoring)
 
 	httpServer, hErr := httpserver.New(config.HTTPServer)
 	if hErr != nil {
 		leaderboardLogger.Error("Failed to initialize HTTP server", slog.String("error", hErr.Error()))
 		panic(hErr)
 	}
-	leaderboardscoringHandler := http.NewHandler(leaderboardLogger)
+	lbScoringHandler := http.NewHandler(leaderboardLogger)
 	leaderboardHttpServer := http.New(
 		httpServer,
-		leaderboardscoringHandler,
+		lbScoringHandler,
 		leaderboardLogger,
-		leaderboardSvc,
+		lbScoringService,
 	)
+
+	sch := scheduler.New(lbScoringService, leaderboardLogger, config.Scheduler)
 
 	return &Application{
 		HTTPServer:                leaderboardHttpServer,
-		LeaderboardSvc:            leaderboardSvc,
-		LeaderboardscoringHandler: leaderboardscoringHandler,
+		Scheduler:                 sch,
+		LeaderboardSvc:            lbScoringService,
+		LeaderboardscoringHandler: lbScoringHandler,
 		WMRouter:                  nil,
 		Logger:                    leaderboardLogger,
 		WMLogger:                  wmLogger,
@@ -91,6 +96,7 @@ func (app *Application) Start() {
 
 	app.startHTTPServer(&wg)
 	app.startWaterMill(&wg, ctx)
+	app.startScheduler(ctx)
 
 	app.Logger.Info("Leaderboard Scoring application started.")
 
@@ -171,6 +177,11 @@ func (app *Application) setupWatermill() {
 	app.WMRouter = router
 }
 
+func (app *Application) startScheduler(ctx context.Context) {
+	app.Logger.Info("Starting Scheduler...")
+	app.Scheduler.Start(ctx)
+}
+
 func (app *Application) shutdownServers(ctx context.Context) bool {
 	app.Logger.Info("Starting server shutdown process...")
 
@@ -186,6 +197,8 @@ func (app *Application) shutdownServers(ctx context.Context) bool {
 
 		shutdownWg.Add(1)
 		go app.closeSubscriber(ctx, &shutdownWg)
+
+		app.Scheduler.Stop()
 
 		shutdownWg.Wait()
 		close(shutdownDone)

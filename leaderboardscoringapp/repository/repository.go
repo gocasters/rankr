@@ -8,25 +8,21 @@ import (
 	"log/slog"
 )
 
-type LeaderboardscoringRepo struct {
+type LeaderboardRepo struct {
 	client *redis.Client
 	db     *pgxpool.Pool
 	logger *slog.Logger
 }
 
 func NewLeaderboardscoringRepo(client *redis.Client, db *pgxpool.Pool, logger *slog.Logger) leaderboardscoring.Repository {
-	return &LeaderboardscoringRepo{
+	return &LeaderboardRepo{
 		client: client,
 		db:     db,
 		logger: logger,
 	}
 }
 
-func (l *LeaderboardscoringRepo) PersistContribution(ctx context.Context, event *leaderboardscoring.Event) error {
-	return nil
-}
-
-func (l *LeaderboardscoringRepo) UpsertScores(ctx context.Context, keys []string, score uint8, contributorID string) error {
+func (l *LeaderboardRepo) UpsertScores(ctx context.Context, keys []string, score uint8, contributorID string) error {
 	pipeLine := l.client.Pipeline()
 
 	for _, key := range keys {
@@ -44,5 +40,20 @@ func (l *LeaderboardscoringRepo) UpsertScores(ctx context.Context, keys []string
 	}
 
 	l.logger.Debug("successfully updated scores in redis pipeline", slog.String("user_id", contributorID))
+	return nil
+}
+
+// Enqueue TODO - Implement me
+func (l *LeaderboardRepo) Enqueue(ctx context.Context, payload []byte) error {
+	return nil
+}
+
+// DequeueBatch TODO - Implement me
+func (l *LeaderboardRepo) DequeueBatch(ctx context.Context, batchSize int) ([][]byte, error) {
+	return make([][]byte, 0), nil
+}
+
+// PersistEventBatch TODO - Implement me
+func (l *LeaderboardRepo) PersistEventBatch(ctx context.Context, events []*leaderboardscoring.Event) error {
 	return nil
 }
