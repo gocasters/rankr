@@ -1,5 +1,6 @@
-version: v1
-name: buf.build/gocasters/rankr
+version: v2
+modules:
+  - path: .
 lint:
   use:
     - STANDARD
