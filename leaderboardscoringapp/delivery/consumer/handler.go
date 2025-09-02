@@ -2,6 +2,7 @@ package consumer
 
 import (
 	"errors"
+	"fmt"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/gocasters/rankr/protobuf/golang/eventpb"
@@ -34,7 +35,7 @@ func (h Handler) HandleEvent(msg *message.Message) error {
 		return err // NACK
 	}
 
-	eventReq, rErr := leaderboardscoring.ProtobufToEventRequest(&event)
+	eventReq, rErr := protobufToEventRequest(&event)
 	if rErr != nil {
 		return rErr // NACK
 	}
@@ -70,4 +71,45 @@ func (h Handler) HandleEvent(msg *message.Message) error {
 		)
 		return err // NACK and requeue
 	}
+}
+
+func protobufToEventRequest(eventPB *eventpb.Event) (*leaderboardscoring.EventRequest, error) {
+	if eventPB == nil {
+		return &leaderboardscoring.EventRequest{}, fmt.Errorf("nil event")
+	}
+
+	ts := eventPB.GetTime()
+	if ts == nil {
+		return &leaderboardscoring.EventRequest{}, fmt.Errorf("event with ID %s has a missing timestamp", eventPB.Id)
+	}
+
+	var contribID uint64 = 0
+
+	switch eventPB.EventName.Type() {
+	case eventpb.EventName_PULL_REQUEST_OPENED.Type():
+		contribID = eventPB.GetPrOpenedPayload().GetUserId()
+	case eventpb.EventName_PULL_REQUEST_CLOSED.Type():
+		contribID = eventPB.GetPrClosedPayload().GetUserId()
+	case eventpb.EventName_PULL_REQUEST_REVIEW_SUBMITTED.Type():
+		contribID = eventPB.GetPrReviewPayload().GetReviewerUserId()
+	case eventpb.EventName_ISSUE_OPENED.Type():
+		contribID = eventPB.GetIssueOpenedPayload().GetUserId()
+	case eventpb.EventName_ISSUE_CLOSED.Type():
+		contribID = eventPB.GetIssueClosedPayload().GetUserId()
+	case eventpb.EventName_ISSUE_COMMENTED.Type():
+		contribID = eventPB.GetIssueCommentedPayload().GetUserId()
+	case eventpb.EventName_COMMIT_PUSHED.Type():
+		contribID = eventPB.GetPushPayload().GetUserId()
+	}
+
+	contributionEvent := &leaderboardscoring.EventRequest{
+		ID:             eventPB.Id,
+		EventName:      leaderboardscoring.EventType(eventPB.GetEventName()),
+		RepositoryID:   eventPB.RepositoryId,
+		RepositoryName: eventPB.RepositoryName,
+		ContributorID:  contribID,
+		Timestamp:      ts.AsTime().UTC(),
+	}
+
+	return contributionEvent, nil
 }

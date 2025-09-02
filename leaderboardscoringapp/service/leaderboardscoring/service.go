@@ -10,8 +10,6 @@ import (
 	"strconv"
 )
 
-var Timeframes = []string{"yearly", "monthly", "weekly"}
-
 // ScoreRepository handles the hot path: real-time score updates in Redis.
 type ScoreRepository interface {
 	UpsertScores(ctx context.Context, keys []string, score uint8, contributorID string) error
@@ -114,8 +112,7 @@ func (s Service) ProcessPersistenceQueue(ctx context.Context) error {
 	return nil
 }
 
-// GetLeaderboard TODO - get Leaderboard data
-func (s Service) GetLeaderboard(ctx context.Context, req GetLeaderboardRequest) (GetLeaderboardResponse, error) {
+func (s Service) GetLeaderboard(ctx context.Context, req *GetLeaderboardRequest) (GetLeaderboardResponse, error) {
 	return GetLeaderboardResponse{}, nil
 }
 
@@ -129,77 +126,6 @@ func (s Service) CreateLeaderboardSnapshot(ctx context.Context) error {
 // snapshot stored in the database. This is typically called on service startup if Redis is empty.
 func (s Service) RestoreLeaderboardFromSnapshot(ctx context.Context) error {
 	return nil
-}
-
-// All Keys
-
-// Global Leaderboards
-// leaderboard:global:all_time	members(user_ids)
-// leaderboard:global:yearly:{year}
-// leaderboard:global:monthly:{year}-{month}
-// leaderboard:global:weekly:{year}-W{week_number}
-
-// Per-Project Leaderboards
-// leaderboard:{project_id}:all_time
-// leaderboard:{project_id}:yearly:{year}
-// leaderboard:{project_id}:monthly:{year}-{month}
-// leaderboard:{project_id}:weekly:{year}-W{week_number}
-func (s Service) keys(projectID string) []string {
-	globalKeys := make([]string, 0, 4)
-	perProjectKeys := make([]string, 0, 4)
-
-	globalKeys = append(globalKeys, getGlobalLeaderboardKey("all_time", ""))
-	for _, tf := range Timeframes {
-		var period string
-
-		switch tf {
-		case "yearly":
-			period = timettl.GetYear()
-		case "monthly":
-			period = timettl.GetMonth()
-		case "weekly":
-			period = timettl.GetWeek()
-		}
-
-		key := getGlobalLeaderboardKey(tf, period)
-		globalKeys = append(globalKeys, key)
-	}
-
-	perProjectKeys = append(perProjectKeys, getPerProjectLeaderboardKey(projectID, "all_time", ""))
-	for _, tf := range Timeframes {
-		var period string
-
-		switch tf {
-		case "yearly":
-			period = timettl.GetYear()
-		case "monthly":
-			period = timettl.GetMonth()
-		case "weekly":
-			period = timettl.GetWeek()
-		}
-
-		key := getPerProjectLeaderboardKey(projectID, tf, period)
-		perProjectKeys = append(perProjectKeys, key)
-	}
-
-	keys := append(globalKeys, perProjectKeys...)
-	return keys
-}
-
-func getGlobalLeaderboardKey(timeframe string, period string) string {
-	if timeframe == "all_time" {
-		return fmt.Sprintf("leaderboard:global:%s", timeframe)
-	}
-
-	return fmt.Sprintf("leaderboard:global:%s:%s", timeframe, period)
-}
-
-func getPerProjectLeaderboardKey(project string, timeframe string, period string) string {
-	if timeframe == "all_time" {
-		return fmt.Sprintf("leaderboard:%s:%s", project, timeframe)
-	}
-
-	return fmt.Sprintf("leaderboard:%s:%s:%s", project, timeframe, period)
 }
 
 func (s Service) calculateScore(eventType EventType) uint8 {
@@ -221,4 +147,75 @@ func (s Service) calculateScore(eventType EventType) uint8 {
 	default:
 		return 0
 	}
+}
+
+// All Keys
+
+// Global Leaderboards
+// leaderboard:global:all_time	members(user_ids)
+// leaderboard:global:yearly:{year}
+// leaderboard:global:monthly:{year}-{month}
+// leaderboard:global:weekly:{year}-W{week_number}
+
+// Per-Project Leaderboards
+// leaderboard:{project_id}:all_time
+// leaderboard:{project_id}:yearly:{year}
+// leaderboard:{project_id}:monthly:{year}-{month}
+// leaderboard:{project_id}:weekly:{year}-W{week_number}
+func (s Service) keys(projectID string) []string {
+	globalKeys := make([]string, 0, 4)
+	perProjectKeys := make([]string, 0, 4)
+
+	globalKeys = append(globalKeys, getGlobalLeaderboardKey(AllTime, ""))
+	for _, tf := range Timeframes {
+		var period string
+
+		switch tf {
+		case Yearly:
+			period = timettl.GetYear()
+		case Monthly:
+			period = timettl.GetMonth()
+		case Weekly:
+			period = timettl.GetWeek()
+		}
+
+		key := getGlobalLeaderboardKey(tf, period)
+		globalKeys = append(globalKeys, key)
+	}
+
+	perProjectKeys = append(perProjectKeys, getPerProjectLeaderboardKey(projectID, AllTime, ""))
+	for _, tf := range Timeframes {
+		var period string
+
+		switch tf {
+		case Yearly:
+			period = timettl.GetYear()
+		case Monthly:
+			period = timettl.GetMonth()
+		case Weekly:
+			period = timettl.GetWeek()
+		}
+
+		key := getPerProjectLeaderboardKey(projectID, tf, period)
+		perProjectKeys = append(perProjectKeys, key)
+	}
+
+	keys := append(globalKeys, perProjectKeys...)
+	return keys
+}
+
+func getGlobalLeaderboardKey(timeframe Timeframe, period string) string {
+	if timeframe == AllTime {
+		return fmt.Sprintf("leaderboard:global:%s", timeframe.String())
+	}
+
+	return fmt.Sprintf("leaderboard:global:%s:%s", timeframe.String(), period)
+}
+
+func getPerProjectLeaderboardKey(project string, timeframe Timeframe, period string) string {
+	if timeframe == AllTime {
+		return fmt.Sprintf("leaderboard:%s:%s", project, timeframe.String())
+	}
+
+	return fmt.Sprintf("leaderboard:%s:%s:%s", project, timeframe.String(), period)
 }
