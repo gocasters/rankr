@@ -1,7 +1,7 @@
 package service
 
 import (
-    "github.com/gocasters/rankr/authApp/auth"
+    "github.com/gocasters/rankr/authapp/auth"
 )
 
 type AuthService struct {

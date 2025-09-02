@@ -1,11 +1,11 @@
 package main
 
 import (
-    "github.com/gocasters/rankr/authApp/auth"
-    "github.com/gocasters/rankr/authApp/delivery/http"
-    "github.com/gocasters/rankr/authApp/repository"
-    "github.com/gocasters/rankr/authApp/service"
-    "github.com/gocasters/rankr/authApp/config"
+    "github.com/gocasters/rankr/authapp/auth"
+    "github.com/gocasters/rankr/authapp/delivery/http"
+    "github.com/gocasters/rankr/authapp/repository"
+    "github.com/gocasters/rankr/authapp/service"
+    "github.com/gocasters/rankr/authapp/config"
     "github.com/gocasters/rankr/pkg/database"
     "github.com/labstack/echo/v4"
     "github.com/labstack/echo/v4/middleware"

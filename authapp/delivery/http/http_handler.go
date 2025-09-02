@@ -2,8 +2,8 @@ package http
 
 import (
     "net/http"
-    "github.com/gocasters/rankr/authApp/service"
-    "github.com/gocasters/rankr/authApp/repository"
+    "github.com/gocasters/rankr/authapp/service"
+    "github.com/gocasters/rankr/authapp/repository"
     "github.com/labstack/echo/v4"
 )
 
