@@ -1,38 +1,11 @@
 package service
 
 import (
-	"encoding/json"
-	"fmt"
-	"github.com/gocasters/rankr/protobuf/golang/eventpb"
 	"strings"
 	"time"
+
+	"github.com/gocasters/rankr/protobuf/golang/eventpb"
 )
-
-func extractWebhookAction(body []byte) (string, error) {
-	var actionData struct {
-		Action string `json:"action"`
-	}
-	if err := json.Unmarshal(body, &actionData); err != nil {
-		return "", err
-	}
-	if actionData.Action == "" {
-		return "", fmt.Errorf("missing action field")
-	}
-	return actionData.Action, nil
-}
-
-func validateGitHubHeaders(hookID, eventName, deliveryUID string) error {
-	if hookID == "" {
-		return fmt.Errorf("missing X-GitHub-Hook-ID header")
-	}
-	if eventName == "" {
-		return fmt.Errorf("missing X-GitHub-Event header")
-	}
-	if deliveryUID == "" {
-		return fmt.Errorf("missing X-GitHub-Delivery header")
-	}
-	return nil
-}
 
 func getReviewState(state string) eventpb.ReviewState {
 	lowerCasedState := strings.ToLower(state)
@@ -53,10 +26,12 @@ func getReviewState(state string) eventpb.ReviewState {
 }
 
 func parseTime(stringTime string) time.Time {
-	layout := "2019-11-17T17:43:43Z"
-	parseTimed, err := time.Parse(layout, stringTime)
+	if stringTime == "" {
+		return time.Time{}
+	}
+	//layout := "2019-11-17T17:43:43Z" // time.RFC3339
+	parseTimed, err := time.Parse(time.RFC3339, stringTime)
 	if err != nil {
-		fmt.Println("Error parsing time:", err)
 		return time.Time{}
 	}
 	return parseTimed

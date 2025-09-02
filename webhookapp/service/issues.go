@@ -52,12 +52,19 @@ func (s *Service) publishIssueOpened(req IssueOpenedRequest, deliveryUID string)
 func (s *Service) publishIssueClosed(req IssueClosedRequest, deliveryUID string) error {
 
 	closeReason := eventpb.IssueCloseReason_ISSUE_CLOSE_REASON_UNSPECIFIED
-	if *req.Issue.StateReason == "not_planned" {
-		closeReason = eventpb.IssueCloseReason_NOT_PLANNED
-	} else if *req.Issue.StateReason == "completed" {
-		closeReason = eventpb.IssueCloseReason_COMPLETED
-	} else if *req.Issue.StateReason == "reopened" {
-		closeReason = eventpb.IssueCloseReason_REOPENED
+	if v := req.Issue.StateReason; v != nil {
+		switch *v {
+		case "not_planned":
+			closeReason = eventpb.IssueCloseReason_NOT_PLANNED
+		case "completed":
+			closeReason = eventpb.IssueCloseReason_COMPLETED
+		case "reopened":
+			closeReason = eventpb.IssueCloseReason_REOPENED
+		}
+	}
+
+	if req.Issue.ClosedAt == nil {
+		return fmt.Errorf("invalid IssueClosed payload: issue.closed_at is nil")
 	}
 
 	ev := &eventpb.Event{

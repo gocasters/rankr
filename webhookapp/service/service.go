@@ -18,7 +18,7 @@ func New(publisher message.Publisher) *Service {
 	}
 }
 
-func (s *Service) publishEvent(ev *eventpb.Event, evName eventpb.EventName, topic EventType, metadata map[string]string) error {
+func (s *Service) publishEvent(ev *eventpb.Event, evName eventpb.EventName, topic Topic, metadata map[string]string) error {
 	payload, err := proto.Marshal(ev)
 	if err != nil {
 		return fmt.Errorf("failed to marshal protobuf event. eventname: %s. error: %w",

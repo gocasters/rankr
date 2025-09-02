@@ -64,7 +64,7 @@ type IssueClosedResponse struct{}
 //types LabelDeletedResponse struct{}
 
 type PullRequestOpenedRequest struct {
-	Number      int         `json:"number"`
+	Number      int32       `json:"number"`
 	PullRequest PullRequest `json:"pull_request"`
 	Repository  Repository  `json:"repository"`
 	Sender      User        `json:"sender"`
@@ -72,7 +72,7 @@ type PullRequestOpenedRequest struct {
 type PullRequestOpenedResponse struct{}
 
 type PullRequestClosedRequest struct {
-	Number      int         `json:"number"`
+	Number      int32       `json:"number"`
 	PullRequest PullRequest `json:"pull_request"`
 	Repository  Repository  `json:"repository"`
 	Sender      User        `json:"sender"`

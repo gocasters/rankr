@@ -39,7 +39,12 @@ func (s *Service) publishPush(req PushRequest, deliveryUID string) error {
 		Id:        deliveryUID,
 		EventName: eventpb.EventName_PUSHED,
 		//TODO we have no time for when push happened
-		Time:           timestamppb.New(parseTime(req.HeadCommit.Timestamp)),
+		Time: func() *timestamppb.Timestamp {
+			if req.HeadCommit != nil && req.HeadCommit.Timestamp != "" {
+				return timestamppb.New(parseTime(req.HeadCommit.Timestamp))
+			}
+			return timestamppb.Now()
+		}(),
 		RepositoryId:   req.Repository.ID,
 		RepositoryName: req.Repository.FullName,
 		Payload: &eventpb.Event_PushPayload{

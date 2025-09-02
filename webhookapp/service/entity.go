@@ -34,38 +34,39 @@ type GitRef struct {
 }
 
 type IssueType struct {
-	ID          uint64  `json:"id"`          // Unique identifier
-	NodeID      string  `json:"node_id"`     // Node identifier
-	Name        string  `json:"name"`        // Name of the issue types
-	Description *string `json:"description"` // Description (nullable)
-	Color       *string `json:"color"`       // Can be: gray, blue, green, yellow, orange, red, pink, purple, or null
-	CreatedAt   *string `json:"created_at"`  // Creation timestamp (ISO 8601)
-	UpdatedAt   *string `json:"updated_at"`  // Last update timestamp (ISO 8601)
-	IsEnabled   bool    `json:"is_enabled"`  // Whether this types is enabled
+	ID          uint64     `json:"id"`          // Unique identifier
+	NodeID      string     `json:"node_id"`     // Node identifier
+	Name        string     `json:"name"`        // Name of the issue types
+	Description *string    `json:"description"` // Description (nullable)
+	Color       *string    `json:"color"`       // Can be: gray, blue, green, yellow, orange, red, pink, purple, or null
+	CreatedAt   *time.Time `json:"created_at"`  // Creation timestamp (ISO 8601)
+	UpdatedAt   *time.Time `json:"updated_at"`  // Last update timestamp (ISO 8601)
+	IsEnabled   bool       `json:"is_enabled"`  // Whether this types is enabled
 }
 
 type Issue struct {
-	Assignee          *User       `json:"assignee"`
-	Assignees         []*User     `json:"assignees"`
-	AuthorAssociation string      `json:"author_association"`
-	Body              *string     `json:"body"`
-	ClosedAt          *time.Time  `json:"closed_at"`
-	Comments          int32       `json:"comments"`
-	CreatedAt         time.Time   `json:"created_at"`
-	Draft             *bool       `json:"draft,omitempty"`
-	ID                uint64      `json:"id"`
-	Number            int32       `json:"number"`
-	Labels            []Label     `json:"labels"`
-	Locked            bool        `json:"locked"`
-	RepositoryURL     string      `json:"repository_url"`
-	State             string      `json:"state"` // "open" or "closed"
-	StateReason       *string     `json:"state_reason"`
-	Title             string      `json:"title"`
-	Type              *IssueType  `json:"types"`
-	UpdatedAt         time.Time   `json:"updated_at"`
-	URL               string      `json:"url"`
-	User              *User       `json:"user"`
-	PullRequest       PullRequest `json:"pull_request"`
+	Assignee          *User      `json:"assignee"`
+	Assignees         []*User    `json:"assignees"`
+	AuthorAssociation string     `json:"author_association"`
+	Body              *string    `json:"body"`
+	ClosedAt          *time.Time `json:"closed_at"`
+	Comments          int32      `json:"comments"`
+	CreatedAt         time.Time  `json:"created_at"`
+	// Draft is PR-only; omit on Issue
+	//Draft             *bool        `json:"draft,omitempty"`
+	ID            uint64       `json:"id"`
+	Number        int32        `json:"number"`
+	Labels        []Label      `json:"labels"`
+	Locked        bool         `json:"locked"`
+	RepositoryURL string       `json:"repository_url"`
+	State         string       `json:"state"` // "open" or "closed"
+	StateReason   *string      `json:"state_reason"`
+	Title         string       `json:"title"`
+	Type          *IssueType   `json:"types"`
+	UpdatedAt     time.Time    `json:"updated_at"`
+	URL           string       `json:"url"`
+	User          *User        `json:"user"`
+	PullRequest   *PullRequest `json:"pull_request,omitempty"`
 }
 
 type IssueComment struct {
@@ -126,15 +127,15 @@ type PullRequest struct {
 	Locked bool    `json:"locked"`
 	Draft  bool    `json:"draft"`
 
-	CreatedAt      string  `json:"created_at"`
-	UpdatedAt      string  `json:"updated_at"`
-	ClosedAt       *string `json:"closed_at"`        // nullable
-	MergedAt       *string `json:"merged_at"`        // nullable
-	MergeCommitSHA *string `json:"merge_commit_sha"` // nullable
-	Merged         *bool   `json:"merged"`           // nullable
-	Mergeable      *bool   `json:"mergeable"`        // nullable
-	MergeableState string  `json:"mergeable_state"`
-	Rebaseable     *bool   `json:"rebaseable"` // nullable
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
+	ClosedAt       *time.Time `json:"closed_at"`        // nullable
+	MergedAt       *time.Time `json:"merged_at"`        // nullable
+	MergeCommitSHA *string    `json:"merge_commit_sha"` // nullable
+	Merged         *bool      `json:"merged"`           // nullable
+	Mergeable      *bool      `json:"mergeable"`        // nullable
+	MergeableState string     `json:"mergeable_state"`
+	Rebaseable     *bool      `json:"rebaseable"` // nullable
 
 	Assignee           *User   `json:"assignee"`  // nullable
 	Assignees          []*User `json:"assignees"` // nullable
@@ -168,7 +169,7 @@ type PullRequestReview struct {
 	User              User        `json:"user"`
 	Body              string      `json:"body"`
 	CommitID          string      `json:"commit_id"`
-	SubmittedAt       string      `json:"submitted_at"` // ISO8601 timestamp
+	SubmittedAt       time.Time   `json:"submitted_at"` // ISO8601 timestamp
 	State             string      `json:"state"`        // e.g., "commented", "approved", etc.
 	HtmlURL           string      `json:"html_url"`
 	PullRequestURL    string      `json:"pull_request_url"`
@@ -187,12 +188,12 @@ type PullRequestReviewComment struct {
 	NodeID              string             `json:"node_id"`
 	DiffHunk            string             `json:"diff_hunk"`
 	Path                string             `json:"path"`
-	CommitID            uint64             `json:"commit_id"`
-	OriginalCommitID    uint64             `json:"original_commit_id"`
+	CommitID            string             `json:"commit_id"`
+	OriginalCommitID    string             `json:"original_commit_id"`
 	User                User               `json:"user"`
 	Body                string             `json:"body"`
-	CreatedAt           string             `json:"created_at"` // ISO 8601 timestamp
-	UpdatedAt           string             `json:"updated_at"` // ISO 8601 timestamp
+	CreatedAt           time.Time          `json:"created_at"` // ISO 8601 timestamp
+	UpdatedAt           time.Time          `json:"updated_at"` // ISO 8601 timestamp
 	HtmlURL             string             `json:"html_url"`
 	PullRequestURL      string             `json:"pull_request_url"`
 	AuthorAssociation   string             `json:"author_association"`
@@ -240,10 +241,14 @@ const (
 	EventTypePullRequest       EventType = "pull_request"
 	EventTypePullRequestReview EventType = "pull_request_review"
 	EventTypePush              EventType = "push"
+)
 
-	TopicGithubIssues       = "github.issues"
-	TopicGithubIssueComment = "github.issuecomment"
-	TopicGithubPullRequest  = "github.pullrequest"
-	TopicGithubReview       = "github.review"
-	TopicGithubPush         = "github.push"
+type Topic string
+
+const (
+	TopicGithubIssues       Topic = "github.issues"
+	TopicGithubIssueComment Topic = "github.issue_comments"
+	TopicGithubPullRequest  Topic = "github.pull_requests"
+	TopicGithubReview       Topic = "github.reviews"
+	TopicGithubPush         Topic = "github.pushes"
 )

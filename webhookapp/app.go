@@ -59,7 +59,7 @@ func (app Application) Start() {
 		app.Logger.Warn("❌ Shutdown timed out, exiting application")
 		os.Exit(1)
 	}
-	app.Logger.Info("✅ food_app stopped")
+	app.Logger.Info("✅ webhook-app stopped")
 }
 
 func startServers(app Application, wg *sync.WaitGroup) {

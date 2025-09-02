@@ -25,7 +25,7 @@ func (s *Service) PublishPullRequestReviewSubmitted(req PullRequestReviewSubmitt
 	ev := &eventpb.Event{
 		Id:             deliveryUID,
 		EventName:      eventpb.EventName_PULL_REQUEST_REVIEW_SUBMITTED,
-		Time:           timestamppb.New(parseTime(req.Review.SubmittedAt)),
+		Time:           timestamppb.New(req.Review.SubmittedAt),
 		RepositoryId:   req.Repository.ID,
 		RepositoryName: req.Repository.FullName,
 		Payload: &eventpb.Event_PrReviewPayload{

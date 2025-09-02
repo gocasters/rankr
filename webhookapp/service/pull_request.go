@@ -34,7 +34,7 @@ func (s *Service) publishPullRequestOpened(req PullRequestOpenedRequest, deliver
 	ev := &eventpb.Event{
 		Id:             deliveryUID,
 		EventName:      eventpb.EventName_PULL_REQUEST_OPENED,
-		Time:           timestamppb.Now(),
+		Time:           timestamppb.New(req.PullRequest.CreatedAt),
 		RepositoryId:   req.Repository.ID,
 		RepositoryName: req.Repository.FullName,
 		Payload: &eventpb.Event_PrOpenedPayload{
@@ -60,13 +60,18 @@ func (s *Service) publishPullRequestClosed(req PullRequestClosedRequest, deliver
 	ev := &eventpb.Event{
 		Id:             deliveryUID,
 		EventName:      eventpb.EventName_PULL_REQUEST_CLOSED,
-		Time:           timestamppb.Now(),
+		Time:           timestamppb.New(*req.PullRequest.ClosedAt),
 		RepositoryId:   req.Repository.ID,
 		RepositoryName: req.Repository.FullName,
 		Payload: &eventpb.Event_PrClosedPayload{
 			PrClosedPayload: &eventpb.PullRequestClosedPayload{
-				UserId:       req.Sender.ID,
-				MergerUserId: req.Sender.ID,
+				UserId: req.Sender.ID,
+				MergerUserId: func() uint64 {
+					if req.PullRequest.Merged != nil && *req.PullRequest.Merged && req.PullRequest.MergedBy != nil {
+						return req.PullRequest.MergedBy.ID
+					}
+					return req.Sender.ID
+				}(),
 				PrId:         req.PullRequest.ID,
 				PrNumber:     req.PullRequest.Number,
 				Merged:       req.PullRequest.Merged,
