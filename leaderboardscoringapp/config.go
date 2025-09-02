@@ -6,6 +6,7 @@ import (
 	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/scheduler"
 	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/gocasters/rankr/pkg/database"
+	"github.com/gocasters/rankr/pkg/grpc"
 	"github.com/gocasters/rankr/pkg/httpserver"
 	"github.com/gocasters/rankr/pkg/logger"
 	"time"
@@ -13,6 +14,7 @@ import (
 
 type Config struct {
 	HTTPServer           httpserver.Config         `koanf:"http_server"`
+	RPCServer            grpc.ServerConfig         `koanf:"rpc_server"`
 	Scheduler            scheduler.Config          `koanf:"scheduler"`
 	LeaderboardScoring   leaderboardscoring.Config `koanf:"leaderboard_scoring"`
 	PostgresDB           database.Config           `koanf:"postgres_db"`
