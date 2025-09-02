@@ -82,25 +82,28 @@ func serve() {
 	)
 	if ncErr != nil {
 		lbLogger.Error("NATS not available", slog.String("error", ncErr.Error()))
-		return
+		panic(ncErr)
 	}
 	defer natsDB.Close()
 
-	js, jsErr := natsDB.JetStream()
-	if jsErr != nil {
-		lbLogger.Error("failed to init JetStream context: ", slog.String("error", jsErr.Error()))
-		return
-	}
+	if cfg.NATSConfig.JetStreamEnabled {
+		js, jsErr := natsDB.JetStream()
+		if jsErr != nil {
+			lbLogger.Error("failed to init JetStream context: ", slog.String("error", jsErr.Error()))
+			panic(jsErr)
+		}
 
-	_, siErr := js.StreamInfo(cfg.NATSConfig.Stream.Name)
-	if siErr != nil {
-		_, saErr := js.AddStream(&nc.StreamConfig{
-			Name:     cfg.NATSConfig.Stream.Name,
-			Subjects: cfg.NATSConfig.Stream.Subjects, // adjust to your domain naming
-			Storage:  nc.FileStorage,                 // persist on disk
-		})
-		if saErr != nil {
-			lbLogger.Error("Failed to create JetStream stream: ", slog.String("error", saErr.Error()))
+		_, siErr := js.StreamInfo(cfg.NATSConfig.Stream.Name)
+		if siErr != nil {
+			_, saErr := js.AddStream(&nc.StreamConfig{
+				Name:     cfg.NATSConfig.Stream.Name,
+				Subjects: cfg.NATSConfig.Stream.Subjects, // adjust to your domain naming
+				Storage:  nc.FileStorage,                 // persist on disk
+			})
+			if saErr != nil {
+				lbLogger.Error("Failed to create JetStream stream: ", slog.String("error", saErr.Error()))
+				panic(saErr)
+			}
 		}
 	}
 
@@ -117,10 +120,15 @@ func serve() {
 	)
 	if pErr != nil {
 		lbLogger.Error("Failed to start publisher", slog.String("error", pErr.Error()))
-		return
+		panic(pErr)
 	} else {
 		lbLogger.Info("Publisher started on " + natsURL)
 	}
+	defer func() {
+		if pcErr := publisher.Close(); pcErr != nil {
+			lbLogger.Warn("publisher close error", slog.Any("error", pcErr))
+		}
+	}()
 
 	app := webhookapp.Setup(cfg, lbLogger, publisher)
 	app.Start()

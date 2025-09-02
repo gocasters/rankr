@@ -39,6 +39,4 @@ func (s *Server) RegisterRoutes() {
 	webhookRouter.GET("/health-check", s.healthCheck)
 
 	webhookRouter.POST("/process", s.PublishGithubActivity)
-
-	webhookRouter.GET("/testsub", s.TestSubscribe)
 }
