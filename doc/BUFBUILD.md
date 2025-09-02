@@ -154,6 +154,7 @@ Buf v2 supports three types of plugins:
 ### Current Plugin Setup
 
 #### Protocol Buffers Go Plugin
+
 ```yaml
 - remote: buf.build/protocolbuffers/go:v1.34.2
   out: protobuf/golang
@@ -161,6 +162,7 @@ Buf v2 supports three types of plugins:
 ```
 
 #### gRPC Go Plugin
+
 ```yaml
 - remote: buf.build/grpc/go:v1.5.1
   out: protobuf/golang
@@ -211,7 +213,7 @@ buf generate
 buf generate --verbose
 
 # Generate code for specific files
-buf generate protobuf/event/event.proto
+buf generate --path protobuf/event/event.proto
 ```
 
 ### Input Specification
@@ -318,42 +320,6 @@ buf push
 - Tag releases with semantic versioning
 - Document breaking changes
 
-## Troubleshooting
-
-### Common Issues
-
-#### "buf.yaml at protobuf did not have version v1beta1 or v1"
-**Cause**: Using Buf v1.x with v2 configuration
-**Solution**: Upgrade Buf to v1.60+ or revert to v1 configuration
-
-#### "Failed to generate: plugin not found"
-**Cause**: Remote plugin not accessible
-**Solution**: Check internet connection or switch to local plugins
-
-#### "Breaking change detected"
-**Cause**: Incompatible protobuf changes
-**Solution**: Use `buf breaking` to identify specific changes and update accordingly
-
-#### Generated files in wrong location
-**Cause**: Incorrect `out` path in plugin configuration
-**Solution**: Update `buf.gen.yaml` with correct output paths
-
-### Debug Commands
-
-```bash
-# Show current configuration
-buf config ls-modules
-
-# Show available lint rules
-buf config ls-lint-rules
-
-# Show available breaking rules
-buf config ls-breaking-rules
-
-# Verbose output
-buf generate --verbose
-```
-
 ### Getting Help
 
 - [Buf Documentation](https://buf.build/docs)
@@ -382,7 +348,7 @@ buf dep update            # Update dependencies
 
 ### Configuration Structure
 
-```
+```yaml
 buf.yaml (workspace)
 ├── buf.gen.yaml (code generation)
 └── protobuf/
