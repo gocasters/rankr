@@ -171,8 +171,14 @@ func (m *model) executeCommand(ctx context.Context) tea.Cmd {
 		cmdArgs = append(cmdArgs, args...)
 
 		cmd := exec.CommandContext(ctx, "go", cmdArgs...)
-		stdout, _ := cmd.StdoutPipe()
-		stderr, _ := cmd.StderrPipe()
+		stdout, err := cmd.StdoutPipe()
+		if err != nil {
+			return commandFinishedMsg{success: false, err: err}
+		}
+		stderr, err := cmd.StderrPipe()
+		if err != nil {
+			return commandFinishedMsg{success: false, err: err}
+		}
 
 		if err := cmd.Start(); err != nil {
 			return commandFinishedMsg{success: false, err: err}
@@ -207,7 +213,7 @@ func (m *model) executeCommand(ctx context.Context) tea.Cmd {
 			close(m.logCh)
 		}()
 
-		return waitForLog(m.logCh)
+		return commandFinishedMsg{success: true, output: "finished"}
 	}
 }
 
