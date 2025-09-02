@@ -27,22 +27,22 @@ const (
 
 var (
 	titleStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("#FFA500")).
-		MarginLeft(2)
+			Bold(true).
+			Foreground(lipgloss.Color("#FFA500")).
+			MarginLeft(2)
 
 	docStyle = lipgloss.NewStyle().Margin(1, 2)
 
 	inputStyle = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("#FF69B4")).
-		Padding(0, 1).
-		Margin(1, 0)
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(lipgloss.Color("#FF69B4")).
+			Padding(0, 1).
+			Margin(1, 0)
 
 	helpStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#888888")).
-		Italic(true).
-		Margin(1, 0)
+			Foreground(lipgloss.Color("#888888")).
+			Italic(true).
+			Margin(1, 0)
 )
 
 // item represents a list item for both services and commands
@@ -236,7 +236,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch m.state {
 		case enterFlags:
 			switch msg.String() {
-			case "esc":
+			case "ctrl+c":
 				m.state = selectService
 				m.selected = nil
 				m.setupServiceList()
@@ -258,7 +258,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case executing:
 			switch msg.String() {
-			case "esc", "q":
+			case "ctrl+c":
 				if m.cancel != nil {
 					m.cancel()
 				}
@@ -270,7 +270,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		default:
 			switch keypress := msg.String(); keypress {
-			case "esc", "q":
+			case "ctrl+c":
 				if m.state == selectCommand {
 					if m.cancel != nil {
 						m.cancel()
@@ -302,27 +302,14 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							m.textInput.SetValue(i.flags)
 							return m, nil
 						} else {
-							fmt.Printf("Running: %s %s\n\n", m.selected.Name(), cmd.Name())
-
 							ctx, cancel := context.WithCancel(context.Background())
 							m.cancel = cancel
-							cmd.SetContext(ctx)
-
-							go func(c *cobra.Command) {
-								c.SetArgs([]string{})
-
-								// todo check c, c.Flags().Args() and if exist flag want user to type flags string like --up
-								// then enter run command
-								if c.RunE != nil {
-									if err := c.RunE(c, c.Flags().Args()); err != nil {
-										fmt.Println("command error:", err)
-									}
-								} else if c.Run != nil {
-									c.Run(c, c.Flags().Args())
-								} else {
-									fmt.Println("no runnable handler for", c.Name())
-								}
-							}(cmd)
+							m.state = executing
+							m.logCh = make(chan logMsg, 10)
+							return m, tea.Batch(
+								m.executeCommand(ctx), // start command
+								waitForLog(m.logCh),   // start listening for logs
+							)
 						}
 
 					}
@@ -374,7 +361,7 @@ func (m *model) View() string {
 		return docStyle.Render(
 			titleStyle.Render("Executing...") + "\n\n" +
 				m.logs.String() + "\n\n" +
-				helpStyle.Render("Press esc to back"),
+				helpStyle.Render("Press ctrl+c to back"),
 		)
 
 	case enterFlags:
@@ -388,7 +375,7 @@ func (m *model) View() string {
 				helpStyle.Render(help) + "\n" +
 				"Enter flags:\n" +
 				inputStyle.Render(m.textInput.View()) + "\n" +
-				helpStyle.Render("Press Enter to execute, Esc to go back"),
+				helpStyle.Render("Press Enter to execute, ctrl+c to go back"),
 		)
 	}
 	return ""

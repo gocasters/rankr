@@ -10,7 +10,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "ci",
+	Use:   "tui",
 	Short: "Interactive CI for all services",
 }
 
