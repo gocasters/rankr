@@ -4,75 +4,119 @@ import (
 	"context"
 	"fmt"
 	"github.com/gocasters/rankr/pkg/timettl"
+	"github.com/gocasters/rankr/protobuf/golang/eventpb"
+	"google.golang.org/protobuf/proto"
 	"log/slog"
+	"strconv"
 )
 
-var Timeframes = []string{"yearly", "monthly", "weekly"}
-
-type RedisRepository interface {
-	UpdateScores(ctx context.Context, keys []string, score int, userID string) error
+// ScoreRepository handles the hot path: real-time score updates in Redis.
+type ScoreRepository interface {
+	UpsertScores(ctx context.Context, keys []string, score uint8, contributorID string) error
 }
 
+
+// PersistenceQueueRepository handles the temporary buffering of events.
+// TODO- This could be implemented with Redis Lists, Kafka, etc.
+type PersistenceQueueRepository interface {
+	Enqueue(ctx context.Context, payload []byte) error
+	DequeueBatch(ctx context.Context, batchSize int) ([][]byte, error)
+
+}
+
+// DatabaseRepository handles the cold path: persisting events to the database.
 type DatabaseRepository interface {
-	PersistContribution(ctx context.Context, event *ContributionEvent) error
+	PersistEventBatch(ctx context.Context, events []*Event) error
 }
 
 type Repository interface {
-	RedisRepository
+	ScoreRepository
+	PersistenceQueueRepository
 	DatabaseRepository
+}
+
+type Config struct {
+	BatchSize int `koanf:"batch_size"`
 }
 
 type Service struct {
 	repo      Repository
 	validator Validator
 	logger    *slog.Logger
+	cfg       Config
 }
 
-func NewService(repo Repository, validator Validator, logger *slog.Logger) Service {
+func NewService(repo Repository, validator Validator, logger *slog.Logger, cfg Config) Service {
 	return Service{
 		repo:      repo,
 		validator: validator,
 		logger:    logger,
+		cfg:       cfg,
 	}
 }
 
-func (s Service) ProcessScoreEvent(ctx context.Context, req EventRequest) error {
-	if err := s.validator.ValidateContributionEvent(req); err != nil {
-		// TODO - use Error pattern
+// ProcessScoreEvent handles only the critical, real-time login.
+func (s Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) error {
+	if err := s.validator.ValidateEvent(req); err != nil {
 		return err
 	}
 
-	contributionEvent := ContributionEvent{
-		ID:              req.ID,
-		Type:            ContributionType(req.EventName),
-		EventName:       req.EventName,
-		RepositoryID:    req.RepositoryID,
-		RepositoryName:  req.RepositoryName,
-		ContributorID:   req.ContributorID,
-		ScoreValue:      0,
-		SourceReference: req.SourceReference,
-		Timestamp:       req.Timestamp.UTC(),
-	}
+	var keys = s.keys(strconv.Itoa(int(req.RepositoryID)))
+	score := s.calculateScore(req.EventName)
 
-	var keys = s.keys(contributionEvent.RepositoryName)
-
-	if err := s.repo.UpdateScores(ctx, keys, contributionEvent.ScoreValue, contributionEvent.ContributorID); err != nil {
+	if err := s.repo.UpsertScores(ctx, keys, score, strconv.Itoa(req.ContributorID)); err != nil {
 		s.logger.Error(ErrFailedToUpdateScores.Error(), slog.String("error", err.Error()))
 		return err
 	}
 
-	if err := s.repo.PersistContribution(ctx, &contributionEvent); err != nil {
-		s.logger.Error(ErrFailedToPersistContribution.Error(), slog.String("error", err.Error()))
-		return err
-	}
-
-	s.logger.Debug(MsgSuccessfullyProcessedEvent, slog.String("event_id", contributionEvent.ID))
-
+	s.logger.Debug(MsgSuccessfullyProcessedEvent, slog.String("event_id", req.ID))
 	return nil
 }
 
-// GetLeaderboard TODO - get Leaderboard data
-func (s Service) GetLeaderboard(ctx context.Context, req GetLeaderboardRequest) (GetLeaderboardResponse, error) {
+// QueueEventForPersistence handles the non-critical, async part.
+func (s Service) QueueEventForPersistence(ctx context.Context, eventPayload []byte) error {
+	return s.repo.Enqueue(ctx, eventPayload)
+}
+
+// ProcessPersistenceQueue is the method called by the scheduler for persist async Event to Database.
+func (s Service) ProcessPersistenceQueue(ctx context.Context) error {
+	rawEvents, err := s.repo.DequeueBatch(ctx, s.cfg.BatchSize)
+	if err != nil {
+		s.logger.Error("failed to dequeue events from persistence queue", slog.String("error", err.Error()))
+		return err
+	}
+	if len(rawEvents) == 0 {
+		s.logger.Debug("no events in persistence queue to process.")
+		return nil
+	}
+
+	var events = make([]*Event, 0, len(rawEvents))
+	for _, payload := range rawEvents {
+		var protoEvent eventpb.Event
+		if err := proto.Unmarshal(payload, &protoEvent); err != nil {
+			s.logger.Error("failed to unmarshal event from queue, skipping", slog.String("error", err.Error()))
+			continue
+		}
+
+		// TODO - Map the protoEvent to internal Event struct.
+		// event := MapProtoToDomain(&protoEvent)
+		// events = append(events, event)
+	}
+
+
+	// TODO - map batchPayloadEvent to []Event,
+	if err := s.repo.PersistEventBatch(ctx, events); err != nil {
+		s.logger.Error("failed to persist batch of events to database", slog.String("error", err.Error()))
+		// TODO - Implement a dead-letter queue or retry mechanism for the failed batch.
+		return err
+	}
+
+
+	s.logger.Info("successfully persisted event batch to database", slog.Int("batch_size", len(events)))
+	return nil
+}
+
+func (s Service) GetLeaderboard(ctx context.Context, req *GetLeaderboardRequest) (GetLeaderboardResponse, error) {
 	return GetLeaderboardResponse{}, nil
 }
 
@@ -86,6 +130,27 @@ func (s Service) CreateLeaderboardSnapshot(ctx context.Context) error {
 // snapshot stored in the database. This is typically called on service startup if Redis is empty.
 func (s Service) RestoreLeaderboardFromSnapshot(ctx context.Context) error {
 	return nil
+}
+
+func (s Service) calculateScore(eventType EventType) uint8 {
+	switch eventType {
+	case PullRequestOpened:
+		return 1
+	case PullRequestClosed:
+		return 5
+	case PullRequestReview:
+		return 3
+	case IssueOpened:
+		return 1
+	case IssueComment:
+		return 1
+	case IssueClosed:
+		return 5
+	case CommitPush:
+		return 3
+	default:
+		return 0
+	}
 }
 
 // All Keys
@@ -105,16 +170,16 @@ func (s Service) keys(projectID string) []string {
 	globalKeys := make([]string, 0, 4)
 	perProjectKeys := make([]string, 0, 4)
 
-	globalKeys = append(globalKeys, getGlobalLeaderboardKey("all_time", ""))
+	globalKeys = append(globalKeys, getGlobalLeaderboardKey(AllTime, ""))
 	for _, tf := range Timeframes {
 		var period string
 
 		switch tf {
-		case "yearly":
+		case Yearly:
 			period = timettl.GetYear()
-		case "monthly":
+		case Monthly:
 			period = timettl.GetMonth()
-		case "weekly":
+		case Weekly:
 			period = timettl.GetWeek()
 		}
 
@@ -122,16 +187,16 @@ func (s Service) keys(projectID string) []string {
 		globalKeys = append(globalKeys, key)
 	}
 
-	perProjectKeys = append(perProjectKeys, getPerProjectLeaderboardKey(projectID, "all_time", ""))
+	perProjectKeys = append(perProjectKeys, getPerProjectLeaderboardKey(projectID, AllTime, ""))
 	for _, tf := range Timeframes {
 		var period string
 
 		switch tf {
-		case "yearly":
+		case Yearly:
 			period = timettl.GetYear()
-		case "monthly":
+		case Monthly:
 			period = timettl.GetMonth()
-		case "weekly":
+		case Weekly:
 			period = timettl.GetWeek()
 		}
 
@@ -143,18 +208,18 @@ func (s Service) keys(projectID string) []string {
 	return keys
 }
 
-func getGlobalLeaderboardKey(timeframe string, period string) string {
-	if timeframe == "all_time" {
-		return fmt.Sprintf("leaderboard:global:%s", timeframe)
+func getGlobalLeaderboardKey(timeframe Timeframe, period string) string {
+	if timeframe == AllTime {
+		return fmt.Sprintf("leaderboard:global:%s", timeframe.String())
 	}
 
-	return fmt.Sprintf("leaderboard:global:%s:%s", timeframe, period)
+	return fmt.Sprintf("leaderboard:global:%s:%s", timeframe.String(), period)
 }
 
-func getPerProjectLeaderboardKey(project string, timeframe string, period string) string {
-	if timeframe == "all_time" {
-		return fmt.Sprintf("leaderboard:%s:%s", project, timeframe)
+func getPerProjectLeaderboardKey(project string, timeframe Timeframe, period string) string {
+	if timeframe == AllTime {
+		return fmt.Sprintf("leaderboard:%s:%s", project, timeframe.String())
 	}
 
-	return fmt.Sprintf("leaderboard:%s:%s:%s", project, timeframe, period)
+	return fmt.Sprintf("leaderboard:%s:%s:%s", project, timeframe.String(), period)
 }

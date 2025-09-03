@@ -3,6 +3,14 @@ http_server:
   port: 8080
   shutdown_context_timeout: 10s
 
+rpc_server:
+  host: "127.0.0.1"
+  port: 8090
+  network_type: "tcp"
+
+leaderboard_scoring:
+  batch_size: 99
+
 postgres_db:
   host: "127.0.0.1"
   port: 5432
@@ -34,6 +42,9 @@ consumer:
   lock_key_ttl: 5m
   prefix_processed_key: "processed_events"
   prefix_lock_key: "lock"
+
+scheduler:
+  interval: 30s
 
 total_shutdown_timeout: 30s
 

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   leaderboardscoring-db:
     image: postgres:17.2-alpine

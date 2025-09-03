@@ -2,30 +2,34 @@ package leaderboardscoringapp
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"github.com/ThreeDotsLabs/watermill"
-	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/http"
+	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/gocasters/rankr/adapter/redis"
+	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/consumer"
+	leaderboardGRPC "github.com/gocasters/rankr/leaderboardscoringapp/delivery/grpc"
+	leaderboardHTTP "github.com/gocasters/rankr/leaderboardscoringapp/delivery/http"
+	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/scheduler"
 	"github.com/gocasters/rankr/leaderboardscoringapp/repository"
+	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/gocasters/rankr/pkg/database"
+	"github.com/gocasters/rankr/pkg/grpc"
 	"github.com/gocasters/rankr/pkg/httpserver"
+	"log/slog"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
 	"sync"
 	"syscall"
-
-	"log/slog"
-
-	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/gocasters/rankr/adapter/redis"
-	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/consumer"
-	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 )
 
 type Application struct {
-	HTTPServer                http.Server
+	HTTPServer                leaderboardHTTP.Server
+	LeaderboardGrpcServer     leaderboardGRPC.Server
+	Scheduler                 *scheduler.Scheduler
 	LeaderboardSvc            leaderboardscoring.Service
-	LeaderboardscoringHandler http.Handler
+	LeaderboardscoringHandler leaderboardHTTP.Handler
 	WMRouter                  *message.Router
 	Logger                    *slog.Logger
 	WMLogger                  watermill.LoggerAdapter
@@ -53,27 +57,39 @@ func Setup(ctx context.Context, config Config, leaderboardLogger *slog.Logger,
 		panic("postgres connection pool is nil")
 	}
 
-	leaderboardscoringRepo := repository.NewLeaderboardscoringRepo(redisAdapter.Client(), postgresConn.Pool, leaderboardLogger)
-	leaderboardValidator := leaderboardscoring.NewValidator()
-	leaderboardSvc := leaderboardscoring.NewService(leaderboardscoringRepo, leaderboardValidator, leaderboardLogger)
+	lbScoringRepo := repository.NewLeaderboardscoringRepo(redisAdapter.Client(), postgresConn.Pool, leaderboardLogger)
+	lbScoringValidator := leaderboardscoring.NewValidator()
+	lbScoringService := leaderboardscoring.NewService(lbScoringRepo, lbScoringValidator, leaderboardLogger, config.LeaderboardScoring)
 
 	httpServer, hErr := httpserver.New(config.HTTPServer)
 	if hErr != nil {
 		leaderboardLogger.Error("Failed to initialize HTTP server", slog.String("error", hErr.Error()))
 		panic(hErr)
 	}
-	leaderboardscoringHandler := http.NewHandler(leaderboardLogger)
-	leaderboardHttpServer := http.New(
+	lbScoringHandler := leaderboardHTTP.NewHandler(leaderboardLogger)
+	leaderboardHttpServer := leaderboardHTTP.New(
 		httpServer,
-		leaderboardscoringHandler,
+		lbScoringHandler,
 		leaderboardLogger,
-		leaderboardSvc,
+		lbScoringService,
 	)
+
+	sch := scheduler.New(lbScoringService, leaderboardLogger, config.Scheduler)
+
+	rpcServer, gErr := grpc.NewServer(config.RPCServer, leaderboardLogger)
+	if gErr != nil {
+		leaderboardLogger.Error("Failed to initialize gRPC server", slog.String("error", gErr.Error()))
+		panic(gErr)
+	}
+	leaderboardGrpcHandler := leaderboardGRPC.NewHandler(lbScoringService, leaderboardLogger)
+	leaderboardGrpcServer := leaderboardGRPC.New(rpcServer, leaderboardGrpcHandler, leaderboardLogger)
 
 	return &Application{
 		HTTPServer:                leaderboardHttpServer,
-		LeaderboardSvc:            leaderboardSvc,
-		LeaderboardscoringHandler: leaderboardscoringHandler,
+		LeaderboardGrpcServer:     leaderboardGrpcServer,
+		Scheduler:                 sch,
+		LeaderboardSvc:            lbScoringService,
+		LeaderboardscoringHandler: lbScoringHandler,
 		WMRouter:                  nil,
 		Logger:                    leaderboardLogger,
 		WMLogger:                  wmLogger,
@@ -90,7 +106,9 @@ func (app *Application) Start() {
 	defer stop()
 
 	app.startHTTPServer(&wg)
-	app.startWaterMill(&wg, ctx)
+	app.startWaterMill(ctx, &wg)
+	app.startScheduler(ctx, &wg)
+	app.startGRPCServer(&wg)
 
 	app.Logger.Info("Leaderboard Scoring application started.")
 
@@ -120,12 +138,14 @@ func (app *Application) startHTTPServer(wg *sync.WaitGroup) {
 			slog.Int("port", app.Config.HTTPServer.Port))
 
 		if err := app.HTTPServer.Serve(); err != nil {
-			// todo add metrics
-			app.Logger.Error(
-				fmt.Sprintf("error in HTTP server on %d", app.Config.HTTPServer.Port),
-				slog.Any("error", err))
-
-			panic(err)
+			if !errors.Is(err, http.ErrServerClosed) {
+				app.Logger.Error(
+					"HTTP server failed",
+					slog.Int("port", app.Config.HTTPServer.Port),
+					slog.Any("error", err),
+				)
+				panic(err)
+			}
 		}
 
 		app.Logger.Info("HTTP server stopped",
@@ -134,7 +154,7 @@ func (app *Application) startHTTPServer(wg *sync.WaitGroup) {
 	}()
 }
 
-func (app *Application) startWaterMill(wg *sync.WaitGroup, ctx context.Context) {
+func (app *Application) startWaterMill(ctx context.Context, wg *sync.WaitGroup) {
 	app.setupWatermill()
 
 	wg.Add(1)
@@ -142,10 +162,10 @@ func (app *Application) startWaterMill(wg *sync.WaitGroup, ctx context.Context) 
 		defer wg.Done()
 		app.Logger.Info("Starting Watermill event consumer router...")
 
-		if err := app.WMRouter.Run(ctx); err != nil {
+		if err := app.WMRouter.Run(ctx); err != nil && !errors.Is(err, context.Canceled) {
 			app.Logger.Error("Watermill router stopped with an error", slog.String("error", err.Error()))
-
 			panic(err)
+
 		}
 	}()
 }
@@ -165,10 +185,29 @@ func (app *Application) setupWatermill() {
 		"ContributionHandler",
 		app.Config.SubscriberTopic,
 		app.Subscriber,
-		handler.HandleContributionRegistered,
+		handler.HandleEvent,
 	)
 
 	app.WMRouter = router
+}
+
+func (app *Application) startScheduler(ctx context.Context, wg *sync.WaitGroup) {
+	app.Logger.Info("Starting Scheduler...")
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		app.Scheduler.Start(ctx)
+	}()
+}
+
+func (app *Application) startGRPCServer(wg *sync.WaitGroup) {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := app.LeaderboardGrpcServer.Serve(); err != nil {
+			app.Logger.Error("error in serving leaderboard-scoring gRPC server", "error", err)
+		}
+	}()
 }
 
 func (app *Application) shutdownServers(ctx context.Context) bool {
@@ -178,14 +217,17 @@ func (app *Application) shutdownServers(ctx context.Context) bool {
 
 	go func() {
 		var shutdownWg sync.WaitGroup
+
 		shutdownWg.Add(1)
 		go app.shutdownHTTPServer(ctx, &shutdownWg)
 
 		shutdownWg.Add(1)
-		go app.shutdownWatermill(ctx, &shutdownWg)
+		go app.shutdownWatermillAndSubscriber(ctx, &shutdownWg)
+
+		app.Scheduler.Stop()
 
 		shutdownWg.Add(1)
-		go app.closeSubscriber(ctx, &shutdownWg)
+		go app.shutdownGRPCServer(ctx, &shutdownWg)
 
 		shutdownWg.Wait()
 		close(shutdownDone)
@@ -201,54 +243,57 @@ func (app *Application) shutdownServers(ctx context.Context) bool {
 }
 
 func (app *Application) shutdownHTTPServer(parentCtx context.Context, wg *sync.WaitGroup) {
-	app.Logger.Info(fmt.Sprintf("Starting graceful shutdown for HTTP server on %s:%d", app.Config.HTTPServer.Host, app.Config.HTTPServer.Port))
-
 	defer wg.Done()
+	app.Logger.Info("Starting graceful shutdown for HTTP server", "port", app.Config.HTTPServer.Port)
+
 	httpCtx, cancel := context.WithTimeout(parentCtx, app.Config.HTTPServer.ShutdownTimeout)
 	defer cancel()
 
 	if err := app.HTTPServer.HTTPServer.Stop(httpCtx); err != nil {
-		app.Logger.Error(fmt.Sprintf("HTTP server graceful shutdown failed: %v", err))
+		app.Logger.Error("HTTP server graceful shutdown failed", "error", err)
+	} else {
+		app.Logger.Info("HTTP server shutdown successfully")
 	}
-
-	app.Logger.Info("HTTP server shutdown successfully")
 }
 
-func (app *Application) shutdownWatermill(parentCtx context.Context, wg *sync.WaitGroup) {
-	app.Logger.Info("Starting graceful shutdown for Watermill")
+func (app *Application) shutdownWatermillAndSubscriber(parentCtx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
+	app.Logger.Info("Starting graceful shutdown for Watermill router and subscriber...")
 
 	done := make(chan struct{})
 	go func() {
+		// first shutdown gracefully watermill router
+		app.Logger.Info("Closing Watermill router...")
 		if err := app.WMRouter.Close(); err != nil {
-			app.Logger.Error("Watermill graceful shutdown failed")
+			app.Logger.Error("Watermill router graceful shutdown failed", "error", err)
+		} else {
+			app.Logger.Info("Watermill router shutdown successfully.")
 		}
+
+		// second close subscriber
+		app.Logger.Info("Closing subscriber...")
+		if err := app.Subscriber.Close(); err != nil {
+			app.Logger.Error("Subscriber close failed", "error", err)
+		} else {
+			app.Logger.Info("Subscriber closed successfully.")
+		}
+
 		close(done)
 	}()
 
 	select {
 	case <-done:
-		app.Logger.Info("Watermill shutdown successfully.")
+		app.Logger.Info("Watermill and subscriber shutdown completed.")
 	case <-parentCtx.Done():
-		app.Logger.Warn("Watermill shutdown timed out.")
+		app.Logger.Warn("Watermill and subscriber shutdown timed out.")
 	}
 }
 
-func (app *Application) closeSubscriber(parentCtx context.Context, wg *sync.WaitGroup) {
-	app.Logger.Info("Close subscriber")
+func (app *Application) shutdownGRPCServer(parentCtx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
-	done := make(chan struct{})
-	go func() {
-		if err := app.Subscriber.Close(); err != nil {
-			app.Logger.Error("Close subscriber failed")
-		}
-		close(done)
-	}()
+	app.Logger.Info("starting gracefully shutdown leaderboard-scoring gRPC server")
 
-	select {
-	case <-done:
-		app.Logger.Info("Close subscriber successfully.")
-	case <-parentCtx.Done():
-		app.Logger.Warn("Close subscriber timed out.")
-	}
+	app.LeaderboardGrpcServer.Stop()
+
+	app.Logger.Info("leaderboard-scoring gRPC server shutdown successfully.")
 }

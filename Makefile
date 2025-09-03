@@ -1,3 +1,4 @@
+
 .PHONY: start test build clean mod-tidy lint install-linter help \
         proto-setup proto-setup-full proto-gen proto-lint proto-breaking \
         proto-clean proto-format proto-deps proto-validate \
@@ -5,6 +6,7 @@
         docker-build docker-run \
         proto-bsr-push proto-bsr-push-create proto-bsr-info proto-bsr-login proto-bsr-whoami \
         update-buf-version
+
 
 BINARY_NAME ?= rankr
 BUILD_DIR ?= bin
@@ -253,4 +255,5 @@ stop-contributor-debug: ## Stop user debug mode (keep volumes)
 	-f ./deploy/rankr/development/traefik-compose.yml \
 	-f ./deploy/user/development/docker-compose.no-service.yaml \
 	down --remove-orphans
+
 

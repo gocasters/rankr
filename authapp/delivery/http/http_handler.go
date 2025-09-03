@@ -2,9 +2,10 @@ package http
 
 import (
     "net/http"
-    "github.com/gocasters/rankr/authApp/service"
-    "github.com/gocasters/rankr/authApp/repository"
+    "github.com/gocasters/rankr/authapp/service"
+    "github.com/gocasters/rankr/authapp/repository"
     "github.com/labstack/echo/v4"
+    "strings"
 )
 
 type AuthHandler struct {
@@ -48,10 +49,26 @@ func (h *AuthHandler) VerifyToken(c echo.Context) error {
         return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
     }
 
-    claims, err := h.authService.VerifyToken(req.Token)
-    if err != nil {
-        return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid token"})
+    // Allow Bearer token via Authorization header
+    if strings.TrimSpace(req.Token) == "" {
+        authz := c.Request().Header.Get("Authorization")
+        if len(authz) >= 7 && strings.EqualFold(authz[0:7], "Bearer ") {
+            req.Token = strings.TrimSpace(authz[7:])
+        }
     }
+    req.Token = strings.TrimSpace(req.Token)
+    if req.Token == "" {
+        return c.JSON(http.StatusBadRequest, map[string]string{"error": "token is required"})
+    }
+
+    claims, err := h.authService.VerifyToken(req.Token)
+
+    if err != nil {
+                // RFC 6750 guidance
+                c.Response().Header().Set("WWW-Authenticate", `Bearer error="invalid_token"`)
+               return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid token"})
+    }
+
 
     return c.JSON(http.StatusOK, claims)
 }

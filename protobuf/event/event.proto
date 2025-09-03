@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package event;
 import "google/protobuf/timestamp.proto";
-option go_package = "protobuf/golang/eventpb";
+option go_package = "github.com/gocasters/rankr/protobuf/golang/eventpb";
 
 enum EventName {
   EVENT_NAME_UNSPECIFIED = 0;
@@ -15,9 +15,7 @@ enum EventName {
   ISSUE_CLOSED = 5;
   ISSUE_COMMENTED = 6;
 
-  COMMIT_PUSHED = 7;
-
-  REPOSITORY_FORKED = 8;
+  PUSHED = 7;
 }
 
 enum ReviewState {
@@ -56,7 +54,7 @@ message Event {
     IssueClosedPayload issue_closed_payload = 104;
     IssueCommentedPayload issue_commented_payload = 105;
     PushPayload push_payload = 106;
-    RepositoryForkedPayload repo_forked_payload = 107;
+//    RepositoryForkedPayload repo_forked_payload = 107;
   }
 }
 
@@ -79,7 +77,7 @@ message PullRequestClosedPayload {
   uint64 pr_id = 3;
   int32 pr_number = 4;
   PrCloseReason close_reason = 5;
-  bool merged = 6;
+  optional bool merged = 6;
   int32 additions = 7;
   int32 deletions = 8;
   int32 files_changed = 9;
@@ -88,8 +86,8 @@ message PullRequestClosedPayload {
 //  bool met_deadline = 12;
   repeated string labels = 13;
   string target_branch = 14;
-  bool is_documentation = 15;
-  repeated string documentation_types = 16;  // ["README", "API Documentation", etc.]
+//  bool is_documentation = 15;
+//  repeated string documentation_types = 16;  // ["README", "API Documentation", etc.]
   repeated uint64 assignees = 17;
 }
 
@@ -99,9 +97,6 @@ message PullRequestReviewSubmittedPayload {
   uint64 pr_id = 3;
   int32 pr_number = 4;
   ReviewState state = 5;
-  int32 comments_count = 6;
-  bool is_security_review = 7;
-  repeated uint64 assignees = 8;
 }
 
 message IssueOpenedPayload {
@@ -110,10 +105,10 @@ message IssueOpenedPayload {
   int32 issue_number = 3;
   string title = 4;
   repeated string labels = 5;
-  bool is_bug_report = 6;
-  bool is_feature_request = 7;
-  bool has_reproduction_steps = 8;
-  int32 body_length = 9;
+//  bool is_bug_report = 6;
+//  bool is_feature_request = 7;
+//  bool has_reproduction_steps = 8;
+//  int32 body_length = 9;
 }
 
 message IssueClosedPayload {
@@ -135,31 +130,26 @@ message IssueCommentedPayload {
   int32 issue_number = 4;
   int32 comment_length = 5;
   bool contains_code = 6;
-  bool is_solution = 7;
+//  bool is_solution = 7;
 }
 
 message PushPayload {
   uint64 user_id = 1;
   string branch_name = 2;
-  bool is_main_branch = 3;
-  int32 commits_count = 4;
-  repeated CommitInfo commits = 5;
-  int32 total_additions = 6;
-  int32 total_deletions = 7;
-  int32 files_changed = 8;
+  int32 commits_count = 3;
+  repeated CommitInfo commits = 4;
 }
 
 message CommitInfo {
-  string sha = 1;
-  string message = 2;
-  int32 additions = 3;
-  int32 deletions = 4;
-  int32 files_changed = 5;
-  bool is_merge_commit = 6;
-  repeated string modified_file_types = 7;    // .go, .md, .yaml, etc.
+  string author_name = 1;
+  string commit_id = 2;
+  string message = 3;
+  int32 additions = 4;
+  int32 deletions = 5;
+  int32 modified = 6;
 }
 
-message RepositoryForkedPayload {
-  uint64 user_id = 1;
-  uint64 fork_repository_id = 2;
-}
+//message RepositoryForkedPayload {
+//  uint64 user_id = 1;
+//  uint64 fork_repository_id = 2;
+//}
