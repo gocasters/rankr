@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/gocasters/rankr/cmd/command"
+	"github.com/gocasters/rankr/cmd/webhook/command"
 	"os"
 )
 

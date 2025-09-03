@@ -11,19 +11,16 @@ func NewValidator() Validator {
 	return Validator{}
 }
 
-// ValidateContributionEvent checks if the domain event has valid data.
-func (v Validator) ValidateContributionEvent(event EventRequest) error {
+// ValidateEvent checks if the domain event has valid data.
+func (v Validator) ValidateEvent(event *EventRequest) error {
 	// TODO: This validation needs to be completed for all event attributes.
 	return validation.ValidateStruct(event,
 		// Example validation rules can be added here, for instance:
 		validation.Field(&event.ID, validation.Required, is.UUID),
-		validation.Field(&event.ContributorID, validation.Required),
+		validation.Field(&event.EventName, validation.In(EventTypes)),
 		validation.Field(&event.RepositoryID, validation.Required),
-		//validation.Field(&event.Type, validation.Required,
-		//	validation.In(string(ContributionCommit),
-		//		string(ContributionReview),
-		//		string(ContributionIssueClosed),
-		//	),
-		//),
+		validation.Field(&event.RepositoryName, validation.Required),
+		validation.Field(&event.ContributorID, validation.Required),
+		validation.Field(&event.Timestamp, validation.Required),
 	)
 }

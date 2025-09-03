@@ -1,6 +1,11 @@
 package contributor
 
-import "time"
+
+
+import (
+  "time"
+	"github.com/gocasters/rankr/types"
+)
 
 type Contributor struct {
 	ID             int64       `json:"id" db:"id"`
