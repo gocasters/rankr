@@ -1,4 +1,4 @@
-package comment
+package task
 
 import (
 	"github.com/gocasters/rankr/taskapp/service/account"
