@@ -1,10 +1,10 @@
+// cachemanager.go
 package cachemanager
 
 import (
 	"context"
-	"time"
-
 	"github.com/gocasters/rankr/adapter/redis"
+	"time"
 )
 
 type CacheManager struct {
