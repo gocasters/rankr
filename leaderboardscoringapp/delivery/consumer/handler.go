@@ -84,7 +84,7 @@ func protobufToEventRequest(eventPB *eventpb.Event) (*leaderboardscoring.EventRe
 		return &leaderboardscoring.EventRequest{}, fmt.Errorf("event with ID %s has a missing timestamp", eventPB.Id)
 	}
 
-	var contribID uint64 = 0
+	var contribID uint64
 
 	switch eventPB.GetEventName() {
 	case eventpb.EventName_PULL_REQUEST_OPENED:

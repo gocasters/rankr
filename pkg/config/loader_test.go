@@ -395,6 +395,6 @@ log_level: info
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		config.Load(options, &cfg)
+		_ = config.Load(options, &cfg)
 	}
 }

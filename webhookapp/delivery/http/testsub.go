@@ -3,13 +3,14 @@ package http
 import (
 	"errors"
 	"fmt"
+	"net/http"
+	"time"
+
 	wnats "github.com/ThreeDotsLabs/watermill-nats/v2/pkg/nats"
 	"github.com/gocasters/rankr/protobuf/golang/eventpb"
 	"github.com/labstack/echo/v4"
 	nc "github.com/nats-io/nats.go"
 	"google.golang.org/protobuf/proto"
-	"net/http"
-	"time"
 )
 
 func (s *Server) TestSubscribe(c echo.Context) error {
@@ -58,7 +59,14 @@ func (s *Server) TestSubscribe(c echo.Context) error {
 		if err != nil {
 			fmt.Printf("Error unmarshalling Watermill message: %v\n", err)
 			// Decide whether to Ack/Nak based on your intent:
-			msg.Ack() // or msg.Nak()
+			if ackErr := msg.Ack(); ackErr != nil {
+				fmt.Printf("Error acknowledging message: %v\n", ackErr)
+			}
+
+			// OR
+			//if ackErr := msg.Nak(); ackErr != nil {
+			//	fmt.Printf("Error nack message: %v\n", ackErr)
+			//}
 			continue
 		}
 
@@ -70,7 +78,9 @@ func (s *Server) TestSubscribe(c echo.Context) error {
 			fmt.Printf("Event: uuid: %s & payload: %+v\n", wmMsg.UUID, ev.Payload)
 		}
 
-		msg.Ack()
+		if ackErr := msg.Ack(); ackErr != nil {
+			fmt.Printf("Error acknowledging message: %v\n", ackErr)
+		}
 	}
 
 	return c.String(http.StatusOK, fmt.Sprintf("Printed %d messages", len(msgs)))
