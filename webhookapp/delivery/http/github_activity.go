@@ -41,13 +41,17 @@ func (s *Server) PublishGithubActivity(c echo.Context) error {
 	switch service.EventType(eventName) {
 	case service.EventTypeIssues:
 		eventError = s.Service.HandleIssuesEvent(webhookAction, body, deliveryUID)
+	case service.EventTypeIssueComment:
+		eventError = s.Service.HandleIssueCommentEvent(webhookAction, body, deliveryUID)
 	case service.EventTypePullRequest:
 		eventError = s.Service.HandlePullRequestEvent(webhookAction, body, deliveryUID)
 	case service.EventTypePullRequestReview:
 		eventError = s.Service.HandlePullRequestReviewEvent(webhookAction, body, deliveryUID)
+	case service.EventTypePush:
+		eventError = s.Service.HandlePushEvent(body, deliveryUID)
 	default:
 		return c.JSON(http.StatusOK, map[string]string{
-			"message": fmt.Sprintf("Event type '%s' not handled", eventName),
+			"message": fmt.Sprintf("Event types '%s' not handled", eventName),
 		})
 	}
 
