@@ -35,7 +35,8 @@ jobs:
           args: >
             --timeout=5m
             --issues-exit-code=0
-            --out-format=github-actions
+            --format=github-actions
+
 
       - name: Test
         run: go test ./... -v -coverprofile=coverage.out
