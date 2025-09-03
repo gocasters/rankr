@@ -2,13 +2,14 @@ package contributor
 
 import (
 	"context"
+
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
 
 const (
 	ErrValidationRequired     = "is required"
 	ErrValidationEnumPrivacy  = "must be 'real' or 'anonymous'"
-	ErrValidationEnumPrivacy  = "must be 'public' or 'private'"
+	ErrValidationPositive     = "must be 'public' or 'private'"
 	ErrValidationLength3To100 = "must be between 3 and 100 characters"
 )
 
