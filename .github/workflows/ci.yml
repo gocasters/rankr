@@ -35,7 +35,7 @@ jobs:
           args: >
             --timeout=5m
             --issues-exit-code=0
-            --format=github-actions
+#            --format=github-actions
 
 
       - name: Test
