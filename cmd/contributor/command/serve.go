@@ -55,7 +55,7 @@ func serve() {
 
 	// Initialize logger
 	logger.Init(cfg.Logger)
-	contributorLogger := logger.L()
+	contributorLogger, _ := logger.L()
 
 	// Run migrations if flags are set
 	if migrateUp || migrateDown {
@@ -85,7 +85,7 @@ func serve() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	app := contributorapp.Setup(ctx, cfg, conn, contributorLogger)
+	app, _ := contributorapp.Setup(ctx, cfg, conn, contributorLogger)
 	app.Start()
 }
 
