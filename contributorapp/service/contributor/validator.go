@@ -7,7 +7,7 @@ import (
 
 const (
 	ErrValidationRequired     = "is required"
-	ErrValidationPositive     = "must be a positive value"
+	ErrValidationEnumPrivacy  = "must be 'real' or 'anonymous'"
 	ErrValidationEnumPrivacy  = "must be 'public' or 'private'"
 	ErrValidationLength3To100 = "must be between 3 and 100 characters"
 )
