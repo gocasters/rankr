@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   leaderboardscoring-db:
     image: postgres:17.2-alpine
@@ -19,6 +21,21 @@ services:
       - "6379:6379"
     restart: always
 
+  leaderboardscoring-nats:
+    image: nats:2.11.8
+    container_name: nats_jetstream
+    restart: unless-stopped
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    volumes:
+      - nats1:/data
+    command:
+      - "--name=nats1"
+      - "--sd=/data"
+      - "--js"
+      - "--http_port=8222"
 
 volumes:
   leaderboardscoring-data:
+  nats1:

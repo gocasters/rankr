@@ -1,0 +1,17 @@
+server:
+  port: 5015
+  cors:
+    allow_origins: "*"
+logger:
+  file_path: "logs/argus/service.log"
+  use_local_time: true
+  file_max_size_in_mb: 1
+  file_max_age_in_days: 1
+rabbitmq:
+  port: 5672
+  host: "rabbitmq"
+  username: "guest"
+  password: "guest"
+typesense:
+  host: "http://typesense:8108"
+  api_key: "be-happy:)"

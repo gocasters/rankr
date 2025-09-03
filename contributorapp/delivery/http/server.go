@@ -2,9 +2,8 @@ package http
 
 import (
 	"context"
-	"log/slog"
-
 	"github.com/gocasters/rankr/pkg/httpserver"
+	"log/slog"
 )
 
 type Server struct {
@@ -30,11 +29,11 @@ func (s Server) Serve() error {
 }
 
 func (s Server) Stop(ctx context.Context) error {
-	return s.HTTPServer.StopWithTimeout()
+	return s.HTTPServer.Stop(ctx)
 }
 
 func (s Server) RegisterRoutes() {
-
-	v1 := s.HTTPServer.GetRouter()
+	v1 := s.HTTPServer.GetRouter().Group("v1")
 	v1.GET("/health-check", s.healthCheck)
+	v1.GET("/profile", s.Handler.getProfile)
 }

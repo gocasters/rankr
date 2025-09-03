@@ -1,0 +1,13 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "User DB",
+      "Group": "rankr",
+      "Host": "user-db",
+      "Port": 5432,
+      "Username": "user_admin",
+      "SSLMode": "disable",
+      "MaintenanceDB": "user_db"
+    }
+  }
+}

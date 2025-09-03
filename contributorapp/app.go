@@ -34,9 +34,13 @@ func Setup(
 	config Config,
 	postgresConn *database.Database,
 	logger *slog.Logger,
-) Application {
+) (Application, error) {
 
-	redisAdapter, _ := redis.New(ctx, config.Redis)
+	redisAdapter, err := redis.New(ctx, config.Redis)
+	if err != nil {
+		logger.Error("failed to initialize Redis", "err", err)
+		return Application{}, err
+	}
 	cache := cachemanager.NewCacheManager(redisAdapter)
 
 	contributorRepo := repository.NewContributorRepo(config.Repository, postgresConn, logger)
@@ -45,8 +49,11 @@ func Setup(
 
 	contributorHandler := http.NewHandler(contributorSvc, logger)
 
-	httpServer, _ := httpserver.New(config.HTTPServer)
-
+	httpServer, err := httpserver.New(config.HTTPServer)
+	if err != nil {
+		logger.Error("failed to initialize HTTP server", "err", err)
+		return Application{}, err
+	}
 	return Application{
 		ContributorRepo:    contributorRepo,
 		ContributorSrv:     contributorSvc,
@@ -56,9 +63,11 @@ func Setup(
 			contributorHandler,
 			logger,
 		),
-		Config: config,
-		Logger: logger,
-	}
+		Config:       config,
+		Logger:       logger,
+		Redis:        redisAdapter,
+		CacheManager: *cache,
+	}, nil
 }
 
 func (app Application) Start() {

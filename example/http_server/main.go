@@ -84,7 +84,7 @@ func initTracerProvider() (*sdktrace.TracerProvider, error) {
 
 	resource := resource.NewWithAttributes(
 		semconv.SchemaURL,
-		semconv.ServiceNameKey.String("httpserver"),
+		semconv.ServiceNameKey.String("http"),
 	)
 
 	tp := sdktrace.NewTracerProvider(
@@ -105,7 +105,7 @@ func newHttpServerWithOtel() {
 
 	otel.SetTracerProvider(traceProvider)
 
-	otelMiddleware := otelecho.Middleware("httpserver")
+	otelMiddleware := otelecho.Middleware("http")
 	serverConfig := httpserver.Config{
 		Port:            8080,
 		CORS:            httpserver.CORS{AllowOrigins: []string{"*"}},
