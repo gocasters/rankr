@@ -19,12 +19,12 @@ type MockRedisClient struct {
 }
 
 func (m *MockRedisClient) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis_client.StatusCmd {
-	args := m.Called(ctx, key, value, expiration)
+	args := m.Mock.Called(ctx, key, value, expiration)
 	return args.Get(0).(*redis_client.StatusCmd)
 }
 
 func (m *MockRedisClient) Get(ctx context.Context, key string) *redis_client.StringCmd {
-	args := m.Called(ctx, key)
+	args := m.Mock.Called(ctx, key)
 	return args.Get(0).(*redis_client.StringCmd)
 }
 
@@ -69,21 +69,21 @@ func TestCacheManager_Set(t *testing.T) {
 	// Test case: Set succeeds
 	t.Run("Set_Success", func(t *testing.T) {
 		mockClient := &MockRedisClient{}
-		mockClient.On("Set", ctx, "key1", "value1", time.Minute).Return(createStatusCmd(nil))
+		mockClient.Mock.On("Set", ctx, "key1", "value1", time.Minute).Return(createStatusCmd(nil))
 
 		mockAdapter := createMockAdapter(mockClient)
 		cacheManager := NewCacheManager(mockAdapter)
 
 		err := cacheManager.Set(ctx, "key1", "value1", time.Minute)
 		assert.NoError(t, err)
-		mockClient.AssertExpectations(t)
+		mockClient.Mock.AssertExpectations(t)
 	})
 
 	// Test case: Set returns error
 	t.Run("Set_Error", func(t *testing.T) {
 		mockClient := &MockRedisClient{}
 		expectedErr := errors.New("redis set error")
-		mockClient.On("Set", ctx, "key2", "value2", time.Minute).Return(createStatusCmd(expectedErr))
+		mockClient.Mock.On("Set", ctx, "key2", "value2", time.Minute).Return(createStatusCmd(expectedErr))
 
 		mockAdapter := createMockAdapter(mockClient)
 		cacheManager := NewCacheManager(mockAdapter)
@@ -91,7 +91,7 @@ func TestCacheManager_Set(t *testing.T) {
 		err := cacheManager.Set(ctx, "key2", "value2", time.Minute)
 		assert.Error(t, err)
 		assert.Equal(t, "redis set error", err.Error())
-		mockClient.AssertExpectations(t)
+		mockClient.Mock.AssertExpectations(t)
 	})
 }
 
@@ -101,7 +101,7 @@ func TestCacheManager_Get(t *testing.T) {
 	// Test case: Get succeeds
 	t.Run("Get_Success", func(t *testing.T) {
 		mockClient := &MockRedisClient{}
-		mockClient.On("Get", ctx, "key1").Return(createStringCmd("value1", nil))
+		mockClient.Mock.On("Get", ctx, "key1").Return(createStringCmd("value1", nil))
 
 		mockAdapter := createMockAdapter(mockClient)
 		cacheManager := NewCacheManager(mockAdapter)
@@ -109,14 +109,14 @@ func TestCacheManager_Get(t *testing.T) {
 		result, err := cacheManager.Get(ctx, "key1")
 		assert.NoError(t, err)
 		assert.Equal(t, "value1", result)
-		mockClient.AssertExpectations(t)
+		mockClient.Mock.AssertExpectations(t)
 	})
 
 	// Test case: Get returns error
 	t.Run("Get_Error", func(t *testing.T) {
 		mockClient := &MockRedisClient{}
 		expectedErr := errors.New("redis get error")
-		mockClient.On("Get", ctx, "key2").Return(createStringCmd("", expectedErr))
+		mockClient.Mock.On("Get", ctx, "key2").Return(createStringCmd("", expectedErr))
 
 		mockAdapter := createMockAdapter(mockClient)
 		cacheManager := NewCacheManager(mockAdapter)
@@ -125,6 +125,6 @@ func TestCacheManager_Get(t *testing.T) {
 		assert.Error(t, err)
 		assert.Equal(t, "", result)
 		assert.Equal(t, "redis get error", err.Error())
-		mockClient.AssertExpectations(t)
+		mockClient.Mock.AssertExpectations(t)
 	})
 }
