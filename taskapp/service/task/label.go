@@ -1,4 +1,4 @@
-package label
+package task
 
 type Label struct {
 	ID          int64  `json:"id"`

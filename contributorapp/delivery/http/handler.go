@@ -5,7 +5,6 @@ import (
 	errmsg "github.com/gocasters/rankr/pkg/err_msg"
 	"github.com/gocasters/rankr/pkg/statuscode"
 	"github.com/gocasters/rankr/pkg/validator"
-	"github.com/gocasters/rankr/types"
 	"github.com/labstack/echo/v4"
 	"log/slog"
 	"net/http"

@@ -1,7 +1,7 @@
-ARG golang
-ARG 1.23.4-alpine
+ARG GO_IMAGE_NAME
+ARG GO_IMAGE_VERSION
 
-FROM golang:1.23.4-alpine
+FROM ${GO_IMAGE_NAME}:${GO_IMAGE_VERSION}
 ENV GOPROXY=https://goproxy.io,direct
 
 
@@ -11,4 +11,4 @@ WORKDIR /home/app
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY . .,
+COPY . .

@@ -45,9 +45,9 @@ func ParseUserDataMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 		if err != nil {
 			return c.JSON(http.StatusBadRequest,
 				errmsg.ErrorResponse{
-					Message: errmsg.ErrFailedUnmarshalJson.Error(),
+					Message: errmsg.ErrFailedUnmarshalJSON.Error(),
 					Errors: map[string]interface{}{
-						"decode_data_error": errmsg.MessageInvalidJsonFormat,
+						"decode_data_error": errmsg.MessageInvalidJSONFormat,
 					},
 				},
 			)

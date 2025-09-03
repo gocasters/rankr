@@ -1,7 +1,6 @@
 package contributor
 
 import (
-	"github.com/gocasters/rankr/types"
 	"time"
 )
 

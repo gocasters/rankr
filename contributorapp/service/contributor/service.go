@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/gocasters/rankr/cachemanager"
 	errmsg "github.com/gocasters/rankr/pkg/err_msg"
-	"github.com/gocasters/rankr/types"
+	"github.com/gocasters/rankr/type"
 	"log/slog"
 )
 
