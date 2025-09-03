@@ -13,26 +13,11 @@ type Handler struct {
 	Logger                 *slog.Logger
 }
 
-func NewHandler(leaderboardStatService leaderboardstat.Service, logger *slog.Logger) *Handler {
-	return &Handler{
+func NewHandler(leaderboardStatService leaderboardstat.Service, logger *slog.Logger) Handler {
+	return Handler{
 		LeaderboardStatService: leaderboardStatService,
 		Logger:                 logger,
 	}
-}
-
-func (h Handler) GetLeaderboards(c echo.Context) error {
-	var req leaderboardstat.LeaderboardFilterRequest
-
-	if err := c.Bind(&req); err != nil {
-		return err
-	}
-
-	response, err := h.LeaderboardStatService.GetLeaderboardByFilters(c.Request().Context(), req)
-
-	if err != nil {
-		return err
-	}
-	return c.JSON(http.StatusOK, response)
 }
 
 func (h Handler) GetContributorStats(c echo.Context) error {

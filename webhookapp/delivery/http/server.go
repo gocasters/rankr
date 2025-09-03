@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-
 	"github.com/gocasters/rankr/pkg/httpserver"
 	"github.com/gocasters/rankr/webhookapp/service"
 )
@@ -39,5 +38,5 @@ func (s *Server) RegisterRoutes() {
 
 	webhookRouter.GET("/health-check", s.healthCheck)
 
-	webhookRouter.POST("/", s.PublishGithubActivity)
+	webhookRouter.POST("/process", s.PublishGithubActivity)
 }

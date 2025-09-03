@@ -67,7 +67,7 @@ func Load(options Options, config interface{}) error {
 
 	if reflect.ValueOf(config).Kind() != reflect.Ptr || reflect.ValueOf(config).Elem().Kind() != reflect.Struct {
 		err := fmt.Errorf("config must be a pointer to a struct, but got %v", reflect.TypeOf(config))
-		log.Printf("Invalid config type: %v", reflect.TypeOf(config))
+		log.Printf("Invalid config types: %v", reflect.TypeOf(config))
 		return err
 	}
 
