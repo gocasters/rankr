@@ -36,7 +36,7 @@ func (s *Server) PublishGithubActivity(c echo.Context) error {
 		})
 	}
 
-	var eventError error = nil
+	var eventError error
 
 	switch service.EventType(eventName) {
 	case service.EventTypeIssues:

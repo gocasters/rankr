@@ -19,6 +19,7 @@ func NewService(repo Repository, validator Validator, logger *slog.Logger) Servi
 	return Service{
 		repository: repo,
 		validator:  validator,
+		logger:     logger,
 	}
 }
 

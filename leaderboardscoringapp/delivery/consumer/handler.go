@@ -3,11 +3,12 @@ package consumer
 import (
 	"errors"
 	"fmt"
+	"log/slog"
+
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/gocasters/rankr/protobuf/golang/eventpb"
 	"google.golang.org/protobuf/proto"
-	"log/slog"
 )
 
 type Handler struct {
@@ -83,7 +84,7 @@ func protobufToEventRequest(eventPB *eventpb.Event) (*leaderboardscoring.EventRe
 		return &leaderboardscoring.EventRequest{}, fmt.Errorf("event with ID %s has a missing timestamp", eventPB.Id)
 	}
 
-	var contribID uint64 = 0
+	var contribID uint64
 
 	switch eventPB.GetEventName() {
 	case eventpb.EventName_PULL_REQUEST_OPENED:
@@ -98,8 +99,9 @@ func protobufToEventRequest(eventPB *eventpb.Event) (*leaderboardscoring.EventRe
 		contribID = eventPB.GetIssueClosedPayload().GetUserId()
 	case eventpb.EventName_ISSUE_COMMENTED:
 		contribID = eventPB.GetIssueCommentedPayload().GetUserId()
-	case eventpb.EventName_COMMIT_PUSHED:
-		contribID = eventPB.GetPushPayload().GetUserId()
+		//TODO  : must be implement this
+	//case eventpb.EventName_COMMIT_PUSHED:
+	//	contribID = eventPB.GetPushPayload().GetUserId()
 	default:
 		return nil, fmt.Errorf(
 			"unsupported event name: %s (id=%s)",
@@ -113,7 +115,7 @@ func protobufToEventRequest(eventPB *eventpb.Event) (*leaderboardscoring.EventRe
 		EventName:      leaderboardscoring.EventType(eventPB.GetEventName()),
 		RepositoryID:   eventPB.RepositoryId,
 		RepositoryName: eventPB.RepositoryName,
-		ContributorID:  contribID,
+		ContributorID:  int(contribID),
 		Timestamp:      ts.AsTime().UTC(),
 	}
 	if contributionEvent.RepositoryID == 0 {

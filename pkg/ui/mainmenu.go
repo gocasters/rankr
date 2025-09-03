@@ -66,7 +66,7 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 		return
 	}
 
-	str := fmt.Sprintf("%s", i.title)
+	str := i.title
 
 	fn := lipgloss.NewStyle().PaddingLeft(4).Render
 	if index == m.Index() {

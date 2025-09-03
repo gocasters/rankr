@@ -3,17 +3,19 @@ package leaderboardstatapp
 import (
 	"context"
 	"fmt"
-	"github.com/gocasters/rankr/leaderboardstatapp/repository/postgres"
-	"github.com/gocasters/rankr/leaderboardstatapp/service/leaderboardstat"
-	"github.com/gocasters/rankr/pkg/httpserver"
 	"log/slog"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 
+	"github.com/gocasters/rankr/leaderboardstatapp/repository/postgres"
+	"github.com/gocasters/rankr/leaderboardstatapp/service/leaderboardstat"
+	"github.com/gocasters/rankr/pkg/httpserver"
+
 	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/leaderboardstatapp/delivery/http"
+
 	//"github.com/gocasters/rankr/leaderboardstatapp/repository/postgres"
 	"github.com/gocasters/rankr/pkg/database"
 	//"github.com/gocasters/rankr/pkg/httpserver"
@@ -90,7 +92,7 @@ func startServers(app Application, wg *sync.WaitGroup) {
 		defer wg.Done()
 		app.Logger.Info(fmt.Sprintf("✅ HTTP server started on %d", app.Config.HTTPServer.Port))
 		if err := app.HTTPServer.Serve(); err != nil {
-			app.Logger.Error(fmt.Sprintf("error in HTTP server on %d", app.Config.HTTPServer.Port), err)
+			app.Logger.Error(fmt.Sprintf("error in HTTP server on %d", app.Config.HTTPServer.Port), slog.Any("error", err))
 		}
 		app.Logger.Info(fmt.Sprintf("HTTP server stopped %d", app.Config.HTTPServer.Port))
 	}()

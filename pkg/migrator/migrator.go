@@ -3,9 +3,11 @@ package migrator
 import (
 	"database/sql"
 	"fmt"
+	"log"
+	"log/slog"
+
 	"github.com/gocasters/rankr/pkg/database"
 	migrate "github.com/rubenv/sql-migrate"
-	"log"
 
 	_ "github.com/lib/pq"
 )
@@ -30,13 +32,13 @@ func (m Migrator) Up() {
 
 	db, err := sql.Open(m.dialect, connStr)
 	if err != nil {
-		log.Fatalf("can't open postgres db: %v", err)
+		log.Fatalf("can't open postgres db: %v", slog.Any("err", err))
 	}
 	defer db.Close()
 
 	n, err := migrate.Exec(db, m.dialect, m.migrations, migrate.Up)
 	if err != nil {
-		log.Fatalf("can't apply migrations: %v", err)
+		log.Fatalf("can't apply migrations: %v", slog.Any("err", err))
 	}
 
 	fmt.Printf("Applied %d migrations!\n", n)
@@ -48,13 +50,13 @@ func (m Migrator) Down() {
 
 	db, err := sql.Open(m.dialect, connStr)
 	if err != nil {
-		log.Fatalf("can't open postgres db: %v", err)
+		log.Fatalf("can't open postgres db: %v", slog.Any("err", err))
 	}
 	defer db.Close()
 
 	n, err := migrate.Exec(db, m.dialect, m.migrations, migrate.Down)
 	if err != nil {
-		log.Fatalf("can't apply migrations: %v", err)
+		log.Fatalf("can't apply migrations: %v", slog.Any("err", err))
 	}
 
 	fmt.Printf("Rolled back %d migrations!\n", n)

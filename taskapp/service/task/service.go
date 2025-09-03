@@ -1,8 +1,9 @@
 package task
 
 import (
-	"github.com/gocasters/rankr/cachemanager"
 	"log/slog"
+
+	"github.com/gocasters/rankr/cachemanager"
 )
 
 type Repository interface {

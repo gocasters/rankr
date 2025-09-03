@@ -1,11 +1,12 @@
 package httpserver_test
 
 import (
-	"github.com/gocasters/rankr/pkg/httpserver"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
+
+	"github.com/gocasters/rankr/pkg/httpserver"
 
 	"github.com/labstack/echo/v4"
 	"github.com/stretchr/testify/assert"
@@ -125,7 +126,7 @@ func TestStopWithTimeout(t *testing.T) {
 	}()
 
 	// Stop the server and verify shutdown succeeds
-	stopErr := server.StopWithTimeout()
+	stopErr := server.Stop(t.Context())
 	assert.NoError(t, stopErr, "StopWithTimeout should not return an error when stopping a running server")
 
 	// Now verify Start() exited due to shutdown
