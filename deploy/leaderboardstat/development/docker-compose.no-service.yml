@@ -1,0 +1,23 @@
+services:
+
+  leaderboardstat-db:
+    image: postgres:17.2-alpine
+    environment:
+      POSTGRES_DB: leaderboardstat_db
+      POSTGRES_USER: "stat_admin"
+      POSTGRES_PASSWORD: "password123"
+    restart: always
+#    profiles:
+#      - leaderboardstat
+    volumes:
+      - leaderboardstat-data:/var/lib/postgresql/data
+    ports:
+      - "5437:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stat_admin -d leaderboardstat_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  leaderboardstat-data:

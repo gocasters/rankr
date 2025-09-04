@@ -30,22 +30,17 @@ go.work.sum
 # Editor/IDE
 .idea/
 .vscode/
-
-
- .idea/
- .vscode/
 .DS_Store
-.idea/
-
-.vscode/
-
-
 .history
 .cursor
 
- .idea/
- .vscode/
-.DS_Store
-
 
 vendor/
+
+# logs
+/logs/*
+/cmd/*/temp/*
+/deploy/development/traefik/logs/access.log
+deploy/development/traefik/logs/traefik.log
+
+

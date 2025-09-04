@@ -1,6 +1,15 @@
 http_server:
+  host: ""
   port: 8080
   shutdown_context_timeout: 10s
+
+rpc_server:
+  host: "127.0.0.1"
+  port: 8090
+  network_type: "tcp"
+
+leaderboard_scoring:
+  batch_size: 99
 
 postgres_db:
   host: "127.0.0.1"
@@ -9,6 +18,11 @@ postgres_db:
   password: "password123"
   db_name: "leaderboardscoring_db"
   ssl_mode: "disable"
+  max_conns: 10
+  min_conns: 2
+  max_conn_lifetime: 300 # in seconds
+  max_conn_idle_time: 60 # in seconds
+  health_check_period: 60 # in seconds
 
 redis:
   host: "127.0.0.1"
@@ -18,7 +32,7 @@ redis:
 
 logger:
   level: "debug" # Can be `debug`, `info`, `warn`, `error`
-  file_path: "logs/leaderboardscoring/service.log"
+  file_path: "logs/leaderboardscoringapp/service.log"
   use_local_time: true
   file_max_size_in_mb: 10
   file_max_age_in_days: 7
@@ -29,6 +43,11 @@ consumer:
   prefix_processed_key: "processed_events"
   prefix_lock_key: "lock"
 
+scheduler:
+  interval: 30s
+
 total_shutdown_timeout: 30s
 
-path_of_migration: "./leaderboardscoring/repository/migrations"
+path_of_migration: "./leaderboardscoringapp/repository/migrations"
+
+subscriber_topic: "CONTRIBUTION_REGISTERED"

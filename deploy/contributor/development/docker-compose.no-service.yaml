@@ -1,0 +1,31 @@
+
+services:
+  contributor-db:
+    image: postgres:17.2-alpine
+    container_name: contributor-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: contributor_admin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: contributor_db
+    restart: always
+    volumes:
+      - contributor-data:/var/lib/postgresql/data
+
+  contributor-redis:
+    image: redis:6.2-alpine
+    container_name: contributor-redis
+    ports:
+      - "6379:6379"
+    restart: always
+
+# networks:
+#   rankr:
+#     driver: bridge
+
+# DBCONFIG_OVERRIDE_PATH=./userapp/repository/dbconfig.local.yml go run cmd/contributor/main.go migrate --up
+
+
+volumes:
+  contributor-data:
