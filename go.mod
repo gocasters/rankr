@@ -33,9 +33,6 @@ require (
 	github.com/rubenv/sql-migrate v1.8.0
 	github.com/spf13/cobra v1.9.1
 
-
-
-require (
 	github.com/IBM/sarama v1.46.0
 	github.com/ThreeDotsLabs/watermill-amqp/v2 v2.1.3
 	github.com/ThreeDotsLabs/watermill-kafka/v3 v3.1.0
