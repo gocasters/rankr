@@ -1,27 +1,23 @@
 package main
 
 import (
-	"fmt"
-	tea "github.com/charmbracelet/bubbletea"
 	contributorCommand "github.com/gocasters/rankr/cmd/contributor/command"
 	leaderboardscoringCommand "github.com/gocasters/rankr/cmd/leaderboardscoring/command"
 	leaderboardstatCommand "github.com/gocasters/rankr/cmd/leaderboardstat/command"
 	taskCommand "github.com/gocasters/rankr/cmd/task/command"
 	webhookCommand "github.com/gocasters/rankr/cmd/webhook/command"
-	"github.com/gocasters/rankr/pkg/ui"
 	"github.com/spf13/cobra"
+	"os"
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "tui",
-	Short: "Interactive CI for all services",
+	Use:   "cli",
+	Short: "Command line interface for all services",
 }
 
 func main() {
-	m := ui.NewModel(rootCmd)
-	if _, err := tea.NewProgram(m).Run(); err != nil {
-		fmt.Println(err)
-		return
+	if err := rootCmd.Execute(); err != nil {
+		os.Exit(1)
 	}
 }
 
