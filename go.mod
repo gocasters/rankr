@@ -60,6 +60,7 @@ require (
 )
 
 require (
+	github.com/IBM/sarama v1.46.0
 	github.com/ThreeDotsLabs/watermill-amqp/v2 v2.1.3
 	github.com/ThreeDotsLabs/watermill-kafka/v3 v3.1.0
 	google.golang.org/protobuf v1.36.6
@@ -89,7 +90,6 @@ require (
 )
 
 require (
-	github.com/IBM/sarama v1.46.0 // indirect
 	github.com/cenkalti/backoff/v3 v3.2.2 // indirect
 	github.com/charmbracelet/colorprofile v0.2.3-0.20250311203215-f60798e515dc // indirect
 	github.com/charmbracelet/lipgloss v1.1.0 // indirect

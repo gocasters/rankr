@@ -2,6 +2,7 @@ package broker
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/IBM/sarama"
 	"github.com/ThreeDotsLabs/watermill"
@@ -36,6 +37,7 @@ func NewKafkaBroker(brokers []string, group string, logger watermill.LoggerAdapt
 	}, logger)
 
 	if err != nil {
+		_=pub.Close()
 		return nil, err
 	}
 
@@ -55,26 +57,20 @@ func (k *KafkaBroker) Subscribe(ctx context.Context, topic string) (<-chan *mess
 	return k.Subscriber.Subscribe(ctx, topic)
 }
 
+
 func (k *KafkaBroker) Close() error {
-    if err := k.Publisher.Close(); err != nil {
-        return err
-    }
-    return k.Subscriber.Close()
+	var pubErr, subErr error
+	if k.Publisher != nil {
+		pubErr = k.Publisher.Close()
+	}
+	if k.Subscriber != nil {
+		subErr = k.Subscriber.Close()
+	}
+	if pubErr != nil && subErr != nil {
+		return fmt.Errorf("publisher close: %w; subscriber close: %v", pubErr, subErr)
+	}
+	if pubErr != nil {
+		return fmt.Errorf("publisher close: %w", pubErr)
+	}
+	return subErr
 }
-
-
- // func (k *KafkaBroker) Subscribe(topic string) (<-chan *message.Message, error) {
-// 	ch := make(chan *message.Message)
-
-// 	go func() {
-// 		subCh, err := k.subscriber.Subscribe(context.Background(), topic)
-// 		if err != nil {
-// 			panic(err)
-// 		}
-// 		for msg := range subCh {
-// 			ch <- msg
-// 		}
-// 	}()
-
-// 	return ch, nil
-// }

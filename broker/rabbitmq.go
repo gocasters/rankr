@@ -2,6 +2,8 @@ package broker
 
 import (
 	"context"
+	"errors"
+
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-amqp/v2/pkg/amqp"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -32,7 +34,8 @@ func NewRabbitBroker(amqpURL, exchange, queue string, logger watermill.LoggerAda
 			Connection: amqp.ConnectionConfig{
 				AmqpURI: amqpURL,
 			},
-			Queue:      amqp.QueueConfig{GenerateName: func(_ string) string { return exchange },},
+			Queue:      amqp.QueueConfig{GenerateName: func(_ string) string { return queue }},
+			Exchange:   amqp.ExchangeConfig{GenerateName: func(_ string) string { return exchange }},
 			Consume: amqp.ConsumeConfig{Consumer: "consumer1"},
 			Marshaler:  amqp.DefaultMarshaler{},
 		}, logger)
@@ -59,10 +62,14 @@ func (r *RabbitBroker) Subscribe(ctx context.Context, topic string) (<-chan *mes
 }
 
 func (r *RabbitBroker) Close() error {
-    if err := r.Publisher.Close(); err != nil {
-        return err
+      var err error
+    if e := r.Publisher.Close(); e != nil {
+        err = errors.Join(err, e)
     }
-    return r.Subscriber.Close()
+    if e := r.Subscriber.Close(); e != nil {
+        err = errors.Join(err, e)
+    }
+   return err
 }
 
 
