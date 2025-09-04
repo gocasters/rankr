@@ -12,16 +12,14 @@ import (
 
 // ScoreRepository handles the hot path: real-time score updates in Redis.
 type ScoreRepository interface {
-	UpsertScores(ctx context.Context, keys []string, score uint8, contributorID string) error
+	UpsertScores(ctx context.Context, score *UpsertScore) error
 }
-
 
 // PersistenceQueueRepository handles the temporary buffering of events.
 // TODO- This could be implemented with Redis Lists, Kafka, etc.
 type PersistenceQueueRepository interface {
 	Enqueue(ctx context.Context, payload []byte) error
 	DequeueBatch(ctx context.Context, batchSize int) ([][]byte, error)
-
 }
 
 // DatabaseRepository handles the cold path: persisting events to the database.
@@ -61,15 +59,15 @@ func (s Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) error
 		return err
 	}
 
-	var keys = s.keys(strconv.Itoa(int(req.RepositoryID)))
-	score := s.calculateScore(req.EventName)
+	score := s.calculateScore(req)
 
-	if err := s.repo.UpsertScores(ctx, keys, score, strconv.Itoa(req.ContributorID)); err != nil {
+	if err := s.repo.UpsertScores(ctx, score); err != nil {
 		s.logger.Error(ErrFailedToUpdateScores.Error(), slog.String("error", err.Error()))
 		return err
 	}
 
 	s.logger.Debug(MsgSuccessfullyProcessedEvent, slog.String("event_id", req.ID))
+
 	return nil
 }
 
@@ -103,14 +101,12 @@ func (s Service) ProcessPersistenceQueue(ctx context.Context) error {
 		// events = append(events, event)
 	}
 
-
 	// TODO - map batchPayloadEvent to []Event,
 	if err := s.repo.PersistEventBatch(ctx, events); err != nil {
 		s.logger.Error("failed to persist batch of events to database", slog.String("error", err.Error()))
 		// TODO - Implement a dead-letter queue or retry mechanism for the failed batch.
 		return err
 	}
-
 
 	s.logger.Info("successfully persisted event batch to database", slog.Int("batch_size", len(events)))
 	return nil
@@ -130,27 +126,6 @@ func (s Service) CreateLeaderboardSnapshot(ctx context.Context) error {
 // snapshot stored in the database. This is typically called on service startup if Redis is empty.
 func (s Service) RestoreLeaderboardFromSnapshot(ctx context.Context) error {
 	return nil
-}
-
-func (s Service) calculateScore(eventType EventType) uint8 {
-	switch eventType {
-	case PullRequestOpened:
-		return 1
-	case PullRequestClosed:
-		return 5
-	case PullRequestReview:
-		return 3
-	case IssueOpened:
-		return 1
-	case IssueComment:
-		return 1
-	case IssueClosed:
-		return 5
-	case CommitPush:
-		return 3
-	default:
-		return 0
-	}
 }
 
 // All Keys
@@ -206,6 +181,64 @@ func (s Service) keys(projectID string) []string {
 
 	keys := append(globalKeys, perProjectKeys...)
 	return keys
+}
+
+func (s Service) calculateScore(req *EventRequest) *UpsertScore {
+	var keys = s.keys(strconv.Itoa(int(req.RepositoryID)))
+
+	switch payload := req.Payload.(type) {
+	case PullRequestOpenedPayload:
+		return &UpsertScore{
+			Keys:   keys,
+			Score:  1,
+			UserID: strconv.Itoa(int(payload.UserID)),
+		}
+
+	case PullRequestClosedPayload:
+		return &UpsertScore{
+			Keys:   keys,
+			Score:  2,
+			UserID: strconv.Itoa(int(payload.UserID)),
+		}
+
+	case PullRequestReviewPayload:
+		return &UpsertScore{
+			Keys:   keys,
+			Score:  3,
+			UserID: strconv.Itoa(int(payload.ReviewerUserID)),
+		}
+
+	case IssueOpenedPayload:
+		return &UpsertScore{
+			Keys:   keys,
+			Score:  4,
+			UserID: strconv.Itoa(int(payload.UserID)),
+		}
+
+	case IssueCommentedPayload:
+		return &UpsertScore{
+			Keys:   keys,
+			Score:  5,
+			UserID: strconv.Itoa(int(payload.UserID)),
+		}
+
+	case IssueClosedPayload:
+		return &UpsertScore{
+			Keys:   keys,
+			Score:  6,
+			UserID: strconv.Itoa(int(payload.UserID)),
+		}
+
+	case PushPayload:
+		return &UpsertScore{
+			Keys:   keys,
+			Score:  7,
+			UserID: strconv.Itoa(int(payload.UserID)),
+		}
+
+	default:
+		return nil
+	}
 }
 
 func getGlobalLeaderboardKey(timeframe Timeframe, period string) string {
