@@ -23,27 +23,26 @@ func NewLeaderboardscoringRepo(client *redis.Client, db *pgxpool.Pool, logger *s
 	}
 }
 
-func (l *LeaderboardRepo) UpsertScores(ctx context.Context, keys []string, score uint8, contributorID string) error {
+func (l *LeaderboardRepo) UpsertScores(ctx context.Context, score *leaderboardscoring.UpsertScore) error {
 	pipeLine := l.client.Pipeline()
 
-	for _, key := range keys {
-		pipeLine.ZIncrBy(ctx, key, float64(score), contributorID)
+	for _, key := range score.Keys {
+		pipeLine.ZIncrBy(ctx, key, float64(score.Score), score.UserID)
 	}
 
 	_, err := pipeLine.Exec(ctx)
 	if err != nil {
 		l.logger.Error(
 			"failed to execute redis pipeline for updating scores",
-			slog.String("user_id", contributorID),
+			slog.String("user_id", score.UserID),
 			slog.String("error", err.Error()),
 		)
 		return err
 	}
 
-	l.logger.Debug("successfully updated scores in redis pipeline", slog.String("user_id", contributorID))
+	l.logger.Debug("successfully updated scores in redis pipeline", slog.String("user_id", score.UserID))
 	return nil
 }
-
 
 // Enqueue TODO - Implement me
 func (l *LeaderboardRepo) Enqueue(ctx context.Context, payload []byte) error {
