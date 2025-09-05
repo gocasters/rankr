@@ -4,22 +4,18 @@ Package logger is responsible to log everything.
 package logger
 
 import (
-
-
 	"fmt"
+	"gopkg.in/natefinch/lumberjack.v2"
 	"io"
-
-
 	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
-
-	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 var (
 	globalLogger *slog.Logger
+	globalWriter io.Closer
 	once         sync.Once
 )
 
@@ -32,7 +28,6 @@ type Config struct {
 }
 
 // Init initializes the global logger instance.
-
 func Init(cfg Config) error {
 	var initError error
 	var workingDir string
@@ -42,9 +37,8 @@ func Init(cfg Config) error {
 			initError = fmt.Errorf("error getting current working directory: %w", initError)
 			return
 
-
-
 		}
+
 		fileWriter := &lumberjack.Logger{
 			Filename:  filepath.Join(workingDir, cfg.FilePath),
 			LocalTime: cfg.UseLocalTime,
@@ -58,28 +52,45 @@ func Init(cfg Config) error {
 				Level: level,
 			}),
 		)
-	})
 
+		globalWriter = fileWriter
+	})
 
 	return initError
 }
 
-// L returns the global logger instance.
-func L() (*slog.Logger, error) {
-	if globalLogger == nil {
-		return nil, fmt.Errorf("globalLogger is null")
+// MustInit initializes the global logger of panics if it fails.
+func MustInit(cfg Config) {
+	if err := Init(cfg); err != nil {
+		panic(err)
 	}
-	return globalLogger, nil
 }
 
-// New creates a new logger instance for each service with specific settings.
-func New(cfg Config) (*slog.Logger, error) {
-	var newErr error
-	var workingDir string
-	workingDir, newErr = os.Getwd()
-	if newErr != nil {
-		return nil, fmt.Errorf("error getting current working directory: %w", newErr)
+// L returns the global logger instance.
+func L() *slog.Logger {
+	if globalLogger == nil {
+		panic("logger not initialized. Call logger.Init or logger.MustInit first")
+	}
+	return globalLogger
+}
 
+// Close closes the global logger file writer.
+func Close() error {
+	if globalWriter != nil {
+		err := globalWriter.Close()
+		globalWriter = nil // To prevent the writer from being closed twice.
+
+		return err
+	}
+
+	return nil
+}
+
+// New creates a new independent logger (not singleton).
+func New(cfg Config) (*slog.Logger, io.Closer, error) {
+	workingDir, err := os.Getwd()
+	if err != nil {
+		return nil, nil, fmt.Errorf("error getting current working directory: %w", err)
 
 	}
 
@@ -90,13 +101,12 @@ func New(cfg Config) (*slog.Logger, error) {
 		MaxAge:    cfg.FileMaxAgeInDays,
 	}
 
-
 	level := mapLevel(cfg.Level)
-	return slog.New(
+	logger := slog.New(
 		slog.NewJSONHandler(io.MultiWriter(fileWriter), &slog.HandlerOptions{Level: level}),
-	), nil
+	)
 
-
+	return logger, fileWriter, nil
 }
 
 func mapLevel(levelStr string) slog.Level {
