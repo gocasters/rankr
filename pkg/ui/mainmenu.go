@@ -167,7 +167,7 @@ func (m *model) executeCommand(ctx context.Context) tea.Cmd {
 		commandName := selectedItem.command.Name()
 		args := m.parseFlags(m.textInput.Value())
 
-		cmdArgs := []string{"run", "cmd/ci/main.go", serviceName, commandName}
+		cmdArgs := []string{"run", "cmd/cli/main.go", serviceName, commandName}
 		cmdArgs = append(cmdArgs, args...)
 
 		cmd := exec.CommandContext(ctx, "go", cmdArgs...)
@@ -274,7 +274,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			// ignore other keys while executing
 			return m, nil
-		default:
+
+		case selectService, selectCommand:
 			switch keypress := msg.String(); keypress {
 			case "ctrl+c":
 				if m.state == selectCommand {
@@ -288,7 +289,6 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 				return m, tea.Quit
-
 			case "enter":
 				if m.state == selectService {
 					i, ok := m.list.SelectedItem().(item)
@@ -321,7 +321,10 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					return m, nil
 				}
-
+			default:
+				var cmd tea.Cmd
+				m.list, cmd = m.list.Update(msg)
+				return m, cmd
 			}
 		}
 	}
