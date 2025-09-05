@@ -7,7 +7,7 @@ import (
 
 	cfgloader "github.com/gocasters/rankr/pkg/config"
 	"github.com/gocasters/rankr/pkg/migrator"
-	"github.com/gocasters/rankr/projectsapp"
+	"github.com/gocasters/rankr/projectapp"
 	"github.com/spf13/cobra"
 )
 
@@ -24,14 +24,14 @@ var migrateCmd = &cobra.Command{
 }
 
 func migrate() {
-	var cfg projectsapp.Config
+	var cfg projectapp.Config
 
 	workingDir, err := os.Getwd()
 	if err != nil {
 		log.Fatalf("Error getting working directory: %v", err)
 	}
 
-	yamlPath := filepath.Join(workingDir, "projectsapp", "repository", "dbconfig.yml")
+	yamlPath := filepath.Join(workingDir, "projectapp", "repository", "dbconfig.yml")
 
 	if path := os.Getenv("DBCONFIG_OVERRIDE_PATH"); path != "" {
 		yamlPath = path

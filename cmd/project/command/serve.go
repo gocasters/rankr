@@ -11,7 +11,7 @@ import (
 	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/gocasters/rankr/pkg/migrator"
-	"github.com/gocasters/rankr/projectsapp"
+	"github.com/gocasters/rankr/projectapp"
 	"github.com/spf13/cobra"
 )
 
@@ -28,7 +28,7 @@ var serveCmd = &cobra.Command{
 }
 
 func serve() {
-	var cfg projectsapp.Config
+	var cfg projectapp.Config
 
 	workingDir, err := os.Getwd()
 	if err != nil {
@@ -50,6 +50,10 @@ func serve() {
 	if err := cfgloader.Load(options, &cfg); err != nil {
 		log.Fatalf("Failed to load project config: %v", err)
 	}
+
+	log.Printf("Using configuration file: %s", yamlPath)
+	log.Printf("Using configuration directory: %s", workingDir)
+	log.Printf("config is: %+v", cfg)
 
 	err = logger.Init(cfg.Logger)
 	if err != nil {
@@ -88,7 +92,7 @@ func serve() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	app := projectsapp.Setup(ctx, cfg, conn, projectLogger)
+	app := projectapp.Setup(ctx, cfg, conn, projectLogger)
 	app.Start()
 }
 

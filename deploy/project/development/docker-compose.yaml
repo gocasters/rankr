@@ -8,6 +8,8 @@ services:
     restart: always
     profiles:
       - project
+    ports:
+      - "5432:5432"
     volumes:
       - project-data:/var/lib/postgresql/data
     healthcheck:
@@ -27,10 +29,6 @@ services:
     command: /bin/sh -c "go run cmd/project/main.go migrate --up && air -c /home/app/.air/.air.project.toml"
     depends_on:
       project-db:
-        condition: service_healthy
-      project-redis:
-        condition: service_healthy
-      rabbitmq:
         condition: service_healthy
     volumes:
       - ./:/home/app
