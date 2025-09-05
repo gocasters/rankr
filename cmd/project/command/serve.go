@@ -62,11 +62,7 @@ func serve() {
 		log.Fatalf("Failed to initialize logger: %v", err)
 	}
 
-	projectLogger, err := logger.L()
-
-	if err != nil {
-		log.Fatalf("Failed to initialize logger: %v", err)
-	}
+	projectLogger := logger.L()
 
 	if migrateUp || migrateDown {
 		mgr := migrator.New(cfg.PostgresDB, cfg.PathOfMigration)
