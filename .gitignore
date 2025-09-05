@@ -39,3 +39,7 @@ go.work.sum
 /cmd/*/temp/*
 /deploy/development/traefik/logs/access.log
 deploy/development/traefik/logs/traefik.log
+
+# Go modules
+go.mod
+go.sum

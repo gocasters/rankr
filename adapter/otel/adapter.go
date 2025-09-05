@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gocasters/rankr/pkg/logger"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
@@ -49,7 +48,7 @@ func (a *compositeOtelAdapter) IsConfigured() bool {
 func (a *compositeOtelAdapter) AddFloat64Counter(ctx context.Context, meter metric.Meter, name, desc string, cv float64, options ...metric.Float64CounterOption) error {
 	tracer, err := a.NewTracer("otel-adapter")
 	if err != nil {
-		logger.L().Error("failed to create tracer", "error", err)
+		return err
 	}
 
 	ctx, span := tracer.Start(ctx, "add-float64-counter")
@@ -63,10 +62,7 @@ func (a *compositeOtelAdapter) AddFloat64Counter(ctx context.Context, meter metr
 			attribute.String("error", err.Error()),
 			attribute.String("counter_name", name),
 			attribute.String("description", desc)))
-		logger.L().Error("error on create counter",
-			"error", err.Error(),
-			"counter_name", name,
-			"description", desc)
+
 		return fmt.Errorf("failed to create counter %s: %w", name, err)
 	}
 

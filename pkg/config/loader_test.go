@@ -59,7 +59,7 @@ log_level: info
 }
 
 func TestLoadFromEnvironmentVariables(t *testing.T) {
-		yamlContent := `
+	yamlContent := `
 database:
   host: localhost
   port: 5432
@@ -80,9 +80,9 @@ log_level: info
 	var cfg TestConfig
 	options := config.Options{
 		YamlFilePath: tmpFile.Name(),
-		Prefix:    "APP",
-		Delimiter: ".",
-		Separator: "__",
+		Prefix:       "APP",
+		Delimiter:    ".",
+		Separator:    "__",
 	}
 
 	err := config.Load(options, &cfg)
@@ -298,7 +298,7 @@ func TestLoadComplexNestedStructure(t *testing.T) {
 		} `koanf:"app"`
 		Services struct {
 			Database struct {
-				Type string `koanf:"type"`
+				Type string `koanf:"types"`
 				Host string `koanf:"host"`
 				Port int    `koanf:"port"`
 				SSL  bool   `koanf:"ssl"`
@@ -320,7 +320,7 @@ app:
     api: true
 services:
   database:
-    type: postgres
+    types: postgres
     host: localhost
     port: 5432
     ssl: false
@@ -395,6 +395,6 @@ log_level: info
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		config.Load(options, &cfg)
+		_ = config.Load(options, &cfg)
 	}
 }
