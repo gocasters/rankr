@@ -5,15 +5,12 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 )
 
-
-
-// Test mapLevel function
-
-
+// --- mapLevel Tests ---
 func TestMapLevel(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -24,14 +21,12 @@ func TestMapLevel(t *testing.T) {
 		{"info level", "info", slog.LevelInfo},
 		{"warn level", "warn", slog.LevelWarn},
 		{"error level", "error", slog.LevelError},
-		{"unknown level defaults to info", "unknown", slog.LevelInfo},
+		{"unknown level defaults to info", "???", slog.LevelInfo},
 		{"empty string defaults to info", "", slog.LevelInfo},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
-
 			got := mapLevel(tt.levelStr)
 			if got != tt.expected {
 				t.Errorf("mapLevel(%q) = %v, want %v", tt.levelStr, got, tt.expected)
@@ -40,236 +35,376 @@ func TestMapLevel(t *testing.T) {
 	}
 }
 
-// Test Init initializes the global logger
+// --- Init Tests ---
 func TestInit(t *testing.T) {
-	// Reset global state
-	globalLogger = nil
-	once = sync.Once{}
+	resetGlobals()
 
 	tempDir := t.TempDir()
-	originalWd, _ := os.Getwd()
-	defer os.Chdir(originalWd)
+	// Change the working directory to the temporary one to avoid creating log files in the project root.
+	originalWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Could not get working directory: %v", err)
+	}
 	os.Chdir(tempDir)
-
-
+	defer os.Chdir(originalWd) // Change back to original directory after test.
 
 	cfg := Config{
 		Level:            "debug",
 		FilePath:         "test.log",
 		UseLocalTime:     true,
-		FileMaxSizeInMB:  10,
-		FileMaxAgeInDays: 7,
-	}
-
-
-
-	if err := Init(cfg); err != nil {
-		t.Fatalf("Init failed: %v", err)
-	}
-
-
-	if globalLogger == nil {
-		t.Error("Init() should initialize globalLogger")
-	}
-
-
-
-	// Test sync.Once: calling Init again should not overwrite
-	oldLogger := globalLogger
-	if err := Init(cfg); err != nil {
-		t.Fatalf("Second Init failed: %v", err)
-	}
-	if globalLogger != oldLogger {
-		t.Error("Init() should only initialize once")
-	}
-}
-
-// Test L() returns global logger correctly
-func TestL(t *testing.T) {
-	// Reset global state
-	globalLogger = nil
-	once = sync.Once{}
-
-	// L() should return error if not initialized
-	l, err := L()
-	if l != nil || err == nil {
-		t.Error("L() should return nil and error when logger is not initialized")
-
-
-	}
-
-	// Initialize logger
-	tempDir := t.TempDir()
-
-
-	originalWd, _ := os.Getwd()
-	defer os.Chdir(originalWd)
-	os.Chdir(tempDir)
-
-
-
-	cfg := Config{
-		Level:            "info",
-		FilePath:         "test.log",
-		UseLocalTime:     false,
 		FileMaxSizeInMB:  5,
 		FileMaxAgeInDays: 3,
 	}
 
-	Init(cfg)
-
-
-	l, err = L()
-	if err != nil {
-		t.Fatalf("L() returned error after Init: %v", err)
+	if err := Init(cfg); err != nil {
+		t.Fatalf("Init() failed: %v", err)
 	}
-	if l != globalLogger {
-
-
-		t.Error("L() should return the same instance as globalLogger")
-	}
-}
-
-
-// Test New() creates a fresh logger instance
-func TestNew(t *testing.T) {
-	tempDir := t.TempDir()
-	originalWd, _ := os.Getwd()
-	defer os.Chdir(originalWd)
-	os.Chdir(tempDir)
-
-
-
-	cfg := Config{
-		Level:            "warn",
-		FilePath:         "service.log",
-		UseLocalTime:     true,
-		FileMaxSizeInMB:  20,
-		FileMaxAgeInDays: 14,
+	if globalLogger == nil {
+		t.Fatal("Init() should initialize globalLogger")
 	}
 
-
-
-	l1, err := New(cfg)
-	if err != nil {
-		t.Fatalf("New() failed: %v", err)
+	// Test sync.Once: Init should not re-initialize the logger.
+	oldLogger := globalLogger
+	if err := Init(cfg); err != nil {
+		t.Fatalf("Second Init() failed: %v", err)
 	}
-	if l1 == nil {
-		t.Fatal("New() returned nil")
-	}
-
-	l2, err := New(cfg)
-	if err != nil {
-		t.Fatalf("Second New() failed: %v", err)
-	}
-	if l1 == l2 {
-		t.Error("New() should return different logger instances")
+	if globalLogger != oldLogger {
+		t.Error("Init() should only run once and not create a new logger instance")
 	}
 }
 
-// Test that Config struct works as expected
-
-
-func TestConfigStruct(t *testing.T) {
-	cfg := Config{
-		Level:            "debug",
-		FilePath:         "/var/log/app.log",
-		UseLocalTime:     true,
-		FileMaxSizeInMB:  100,
-		FileMaxAgeInDays: 30,
-	}
-
-	if cfg.Level != "debug" {
-		t.Errorf("Expected Level to be 'debug', got %s", cfg.Level)
-	}
-	if cfg.FilePath != "/var/log/app.log" {
-
-
-		t.Errorf("Expected FilePath '/var/log/app.log', got %s", cfg.FilePath)
-
-
-	}
-	if !cfg.UseLocalTime {
-		t.Error("Expected UseLocalTime to be true")
-	}
-	if cfg.FileMaxSizeInMB != 100 {
-
-
-		t.Errorf("Expected FileMaxSizeInMB 100, got %d", cfg.FileMaxSizeInMB)
-	}
-	if cfg.FileMaxAgeInDays != 30 {
-		t.Errorf("Expected FileMaxAgeInDays 30, got %d", cfg.FileMaxAgeInDays)
-	}
-}
-
-// Integration test: ensure logs are written to file
-
-
-func TestLoggerIntegration(t *testing.T) {
-	// Reset global state
-	globalLogger = nil
-	once = sync.Once{}
+// TestInit_Concurrent tests that calling Init from multiple goroutines is safe
+// and only initializes the logger once.
+func TestInit_Concurrent(t *testing.T) {
+	resetGlobals()
 
 	tempDir := t.TempDir()
-
-
-	originalWd, _ := os.Getwd()
-	defer os.Chdir(originalWd)
+	originalWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Could not get working directory: %v", err)
+	}
 	os.Chdir(tempDir)
+	defer os.Chdir(originalWd)
 
+	cfg := Config{FilePath: "concurrent.log"}
 
-
-	cfg := Config{
-		Level:            "info",
-		FilePath:         "integration.log",
-		UseLocalTime:     false,
-		FileMaxSizeInMB:  1,
-		FileMaxAgeInDays: 1,
+	var wg sync.WaitGroup
+	numGoroutines := 50
+	errs := make(chan error, numGoroutines)
+	wg.Add(numGoroutines)
+	for i := 0; i < numGoroutines; i++ {
+		go func() {
+			defer wg.Done()
+			errs <- Init(cfg)
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Errorf("Init() failed inside goroutine: %v", err)
+		}
 	}
 
+	// Capture the first logger instance and verify that subsequent calls do not change it.
+	firstInstance := L()
+	if err := Init(cfg); err != nil { // Call again from the main goroutine
+		t.Fatalf("Init() failed after goroutines: %v", err)
+	}
+	secondInstance := L()
+
+	if firstInstance != secondInstance {
+		t.Error("Init() created a new logger instance on a subsequent call, sync.Once failed")
+	}
+}
+
+// TestInit_WritesToStdout checks if the logger correctly writes to standard output,
+// in addition to the log file.
+func TestInit_WritesToStdout(t *testing.T) {
+	resetGlobals()
+	tempDir := t.TempDir()
+	originalWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Could not get working directory: %v", err)
+	}
+	os.Chdir(tempDir)
+	defer os.Chdir(originalWd)
+
+	cfg := Config{
+		FilePath: "stdout_test.log",
+		Level:    "info",
+	}
+
+	// Redirect os.Stdout to our pipe
+	originalStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	if err := Init(cfg); err != nil {
+		t.Fatalf("Init() failed: %v", err)
+	}
+	// At the end, restore stdout and close the global logger
+	defer func() {
+		os.Stdout = originalStdout
+		Close()
+	}()
+
+	// Use a channel to signal when reading is complete
+	outC := make(chan string)
+	// Read all output from the pipe in a separate goroutine
+	go func() {
+		var b strings.Builder
+		io.Copy(&b, r)
+		r.Close()
+		outC <- b.String()
+	}()
+
+	// Perform the log operation. This writes to the pipe.
+	L().Info("hello stdout", "user", "test")
+
+	// Close the write-end of the pipe. This will unblock the io.Copy in the goroutine.
+	w.Close()
+
+	// Wait for the reading goroutine to finish and get the captured output.
+	output := <-outC
+
+	if !strings.Contains(output, `"level":"INFO"`) {
+		t.Errorf("Expected stdout log to contain level, but got: %s", output)
+	}
+	if !strings.Contains(output, `"msg":"hello stdout"`) {
+		t.Errorf("Expected stdout log to contain message, but got: %s", output)
+	}
+	if !strings.Contains(output, `"user":"test"`) {
+		t.Errorf("Expected stdout log to contain attribute, but got: %s", output)
+	}
+}
+
+// --- L Tests ---
+func TestL_PanicBeforeInit(t *testing.T) {
+	resetGlobals()
+
+	// Calling L() before Init() should cause a panic.
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("L() should panic when logger is not initialized, but it did not")
+		}
+	}()
+	_ = L()
+}
+
+func TestL_AfterInit(t *testing.T) {
+	resetGlobals()
+
+	tempDir := t.TempDir()
+	originalWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Could not get working directory: %v", err)
+	}
+	os.Chdir(tempDir)
+	defer os.Chdir(originalWd)
+
+	cfg := Config{
+		Level:    "info",
+		FilePath: "test_l_after_init.log",
+	}
 
 	if err := Init(cfg); err != nil {
 		t.Fatalf("Init failed: %v", err)
 	}
+	if L() != globalLogger {
+		t.Error("L() should return the initialized globalLogger instance")
+	}
+}
 
-	l, _ := L()
-	l.Info("integration test", "key", "value")
+// --- Close Tests ---
+func TestClose(t *testing.T) {
+	t.Run("close before init", func(t *testing.T) {
+		resetGlobals()
+		// Calling Close before Init should be a no-op and not return an error.
+		err := Close()
+		if err != nil {
+			t.Errorf("Close() before Init() should not return an error, but got: %v", err)
+		}
+	})
 
-	logPath := filepath.Join(tempDir, "integration.log")
-	if _, err := os.Stat(logPath); os.IsNotExist(err) {
-		t.Fatal("Log file should exist")
+	t.Run("close multiple times", func(t *testing.T) {
+		resetGlobals()
+		tempDir := t.TempDir()
+		originalWd, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("Could not get working directory: %v", err)
+		}
+		os.Chdir(tempDir)
+		defer os.Chdir(originalWd)
+
+		cfg := Config{FilePath: "test_close.log"}
+		if err := Init(cfg); err != nil {
+			t.Fatalf("Init() failed: %v", err)
+		}
+
+		// First call should succeed.
+		err1 := Close()
+		if err1 != nil {
+			t.Errorf("First Close() should not return an error, but got: %v", err1)
+		}
+		if globalWriter != nil {
+			t.Error("globalWriter should be nil after the first Close()")
+		}
+
+		// Second call should be a no-op and not return an error.
+		err2 := Close()
+		if err2 != nil {
+			t.Errorf("Second Close() should not return an error, but got: %v", err2)
+		}
+	})
+}
+
+// --- New Tests ---
+func TestNew_ReturnsSeparateInstances(t *testing.T) {
+	tempDir := t.TempDir()
+	originalWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Could not get working directory: %v", err)
+	}
+	os.Chdir(tempDir)
+	defer os.Chdir(originalWd)
+
+	cfg := Config{
+		Level:    "warn",
+		FilePath: "service.log",
 	}
 
+	l1, closer1, err := New(cfg)
+	if err != nil {
+		t.Fatalf("First New() failed: %v", err)
+	}
+	defer closer1.Close()
 
+	l2, closer2, err := New(cfg)
+	if err != nil {
+		t.Fatalf("Second New() failed: %v", err)
+	}
+	defer closer2.Close()
 
-	content, err := os.ReadFile(logPath)
+	if l1 == nil || l2 == nil {
+		t.Fatal("New() returned a nil logger")
+	}
+	if l1 == l2 {
+		t.Error("New() should return different logger instances on each call")
+	}
+}
+
+// TestNew_Integration provides an end-to-end test for a logger created with New().
+// It checks if logging, closing, and file writing work as expected.
+func TestNew_Integration(t *testing.T) {
+	tempDir := t.TempDir()
+	originalWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Could not get working directory: %v", err)
+	}
+	os.Chdir(tempDir)
+	defer os.Chdir(originalWd)
+
+	logFilePath := "new_logger_integration.log"
+	cfg := Config{
+		Level:    "debug",
+		FilePath: logFilePath,
+	}
+
+	logger, closer, err := New(cfg)
+	if err != nil {
+		t.Fatalf("New() failed with error: %v", err)
+	}
+	if logger == nil || closer == nil {
+		t.Fatal("New() returned nil logger or closer")
+	}
+
+	// Log a message and then close the writer to ensure it's flushed to disk.
+	logger.Debug("message from New() logger", "id", 42)
+	if err := closer.Close(); err != nil {
+		t.Fatalf("Failed to close the logger writer: %v", err)
+	}
+
+	// Verify the content of the log file.
+	content, err := os.ReadFile(filepath.Join(tempDir, logFilePath))
 	if err != nil {
 		t.Fatalf("Failed to read log file: %v", err)
 	}
 
-	if len(content) == 0 {
-		t.Error("Log file should contain log entries")
+	logContent := string(content)
+	if !strings.Contains(logContent, `"msg":"message from New() logger"`) {
+		t.Error("Log file does not contain the expected message")
+	}
+	if !strings.Contains(logContent, `"level":"DEBUG"`) {
+		t.Error("Log file does not contain the expected log level")
+	}
+	if !strings.Contains(logContent, `"id":42`) {
+		t.Error("Log file does not contain the expected attribute")
 	}
 }
 
+// --- Integration Test ---
+func TestLoggerIntegration(t *testing.T) {
+	resetGlobals()
 
-// Helper: capture stdout (optional)
+	tempDir := t.TempDir()
+	originalWd, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Could not get working directory: %v", err)
+	}
+	os.Chdir(tempDir)
+	defer os.Chdir(originalWd)
 
+	cfg := Config{
+		Level:            "info",
+		FilePath:         "integration.log",
+		FileMaxSizeInMB:  1,
+		FileMaxAgeInDays: 1,
+	}
 
-func captureOutput(fn func()) string {
-	old := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
+	// Initialize the global logger.
+	if err := Init(cfg); err != nil {
+		t.Fatalf("Init failed: %v", err)
+	}
 
-	fn()
+	// Use the global logger.
+	l := L()
+	l.Info("integration test", "key", "value")
 
-	w.Close()
-	os.Stdout = old
+	// Close the logger to flush and release resources.
+	if err := Close(); err != nil {
+		t.Fatalf("Close() failed: %v", err)
+	}
 
-	out, _ := io.ReadAll(r)
-	return string(out)
+	// Verify the log file was created and contains data.
+	logPath := filepath.Join(tempDir, "integration.log")
+	data, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatalf("Failed to read log file: %v", err)
+	}
+	if len(data) == 0 {
+		t.Error("Log file is empty after writing and closing")
+	}
+	if !strings.Contains(string(data), `"msg":"integration test"`) {
+		t.Error("Log file content is incorrect")
+	}
 
-
+	// Ensure the global writer is nil after Close().
+	if globalWriter != nil {
+		t.Error("globalWriter should be nil after Close()")
+	}
 }
 
+// --- Helpers ---
 
+// resetGlobals resets the global state of the logger package.
+// This is crucial for ensuring tests are isolated from each other.
+func resetGlobals() {
+	// Close any existing global writer to release file handles.
+	if globalWriter != nil {
+		globalWriter.Close()
+		globalWriter = nil
+	}
+	globalLogger = nil
+	once = sync.Once{}
+}
