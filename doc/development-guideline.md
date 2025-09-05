@@ -17,7 +17,7 @@ We use a modular layout to enforce separation of concerns and improve navigabili
 │   └── other-app-services
 ├── cli/  # Endpoints to test each app-service(presented in separeted folders)
 ├── cmd/  # External commands(same as app-service main.go, presented in separeted folders)
-│   └── [app-service-name]/      # e.g., project, webhook, leaderboardscoring
+│   └── [service-name]/      # e.g., project, webhook, leaderboardscoring
 │       ├── command/             # All command implementations
 │       │    ├── root.go          # Root command definition
 │       │    ├── serve.go         # Serve command (start service)
@@ -33,7 +33,7 @@ We use a modular layout to enforce separation of concerns and improve navigabili
 │
 ├── [service-name1]app/ # domain name concatinated with `app` postfix 
 │       ├── delivery/ # Transport Layer
-│       │   ├──  http (grps, cli, graphQl) # different presentation of app to the clients
+│       │   ├──  http (grps, cli, GraphQl) # different presentation of app to the clients
 │       │   │    ├── server.go
 │       │   │    ├── health_check.go
 │       │   │    ├── handler.go
@@ -105,9 +105,9 @@ There are two supported communication models depending on the stage of the syste
 
 All services **must** implement a consistent Cobra-based CLI structure. This ensures uniformity in service management, configuration, and deployment across all domains. ```cmd``` contains the application entry points.
 ### Standard Structure
-```
+```text
 cmd/
-└── [service-name]/          # e.g., project, webhook, leadrboardscoring
+└── [service-name]/          # e.g., project, webhook, leaderboardscoring
     ├── main.go              # Entry point (minimal, calls command package)
     └── command/             # All command implementations
         ├── root.go          # Root command definition
@@ -131,7 +131,7 @@ Every service should implement these standard commands:
   - ```--up``` - Run migrations up
   - ```--down``` - Run migrations down
 
-### configuration Loading
+### Configuration Loading
 
 All services must support multiple configuration sources in this order of precedence:
 
@@ -142,18 +142,18 @@ All services must support multiple configuration sources in this order of preced
 **3 — YAML Config File** - Default fallback
 
 **Usage Example**
-```
+```sh
 # Start any service
 go run cmd/[service-name]/main.go serve
 
 # Start with migrations
-go run cmd/[app-service-name]/main.go serve --migrate-up
+go run cmd/[service-name]/main.go serve --migrate-up
 
 # Run migrations separately
-go run cmd/[app-service-name]/main.go migrate --up
+go run cmd/[service-name]/main.go migrate --up
 
 # Show help
-go run cmd/[app-service-name]/main.go --help
+go run cmd/[service-name]/main.go --help
 ```
 ## Project Setup & main.go
 ## Logging
@@ -261,7 +261,7 @@ Each domain package should follow this pattern:
 - Instruments with logging and tracing.
 
 ### Additional Guidelines
-- Validation and data sanitizing must happen before data enters the service layer. We uses ```ozzo-validation``` library as Golang is a ***strong type*** language and this library use this property perfectly.
+- Validation and data sanitizing must happen before data enters the service layer. We use ```ozzo-validation``` library as Golang is a ***strong type*** language and this library use this property perfectly.
 - Keep entities and use cases free of external dependencies.
 - Outer layers (delivery, repository) can depend on frameworks and libraries.
 - Dependency Injection: Use constructor functions to explicitly require dependencies.
