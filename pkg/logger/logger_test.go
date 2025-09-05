@@ -90,18 +90,21 @@ func TestInit_Concurrent(t *testing.T) {
 
 	var wg sync.WaitGroup
 	numGoroutines := 50
+	errs := make(chan error, numGoroutines)
 	wg.Add(numGoroutines)
-
 	for i := 0; i < numGoroutines; i++ {
 		go func() {
 			defer wg.Done()
-			if err := Init(cfg); err != nil {
-				// Use t.Errorf to avoid stopping the test immediately, allowing other goroutines to run.
-				t.Errorf("Init() failed inside goroutine: %v", err)
-			}
+			errs <- Init(cfg)
 		}()
 	}
 	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Errorf("Init() failed inside goroutine: %v", err)
+		}
+	}
 
 	// Capture the first logger instance and verify that subsequent calls do not change it.
 	firstInstance := L()
