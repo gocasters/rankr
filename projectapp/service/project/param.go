@@ -6,7 +6,6 @@ import (
 	"github.com/gocasters/rankr/projectapp/constant"
 )
 
-// Project request/response types
 type CreateProjectInput struct {
 	Name               string                 `json:"name"`
 	Slug               string                 `json:"slug"`

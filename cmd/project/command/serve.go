@@ -5,7 +5,9 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 
 	cfgloader "github.com/gocasters/rankr/pkg/config"
 	"github.com/gocasters/rankr/pkg/database"
@@ -58,7 +60,6 @@ func serve() {
 	err = logger.Init(cfg.Logger)
 	if err != nil {
 		log.Fatalf("Failed to initialize logger: %v", err)
-
 	}
 
 	projectLogger, err := logger.L()
@@ -89,7 +90,7 @@ func serve() {
 	}
 	defer conn.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
 	app := projectapp.Setup(ctx, cfg, conn, projectLogger)
