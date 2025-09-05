@@ -55,7 +55,7 @@ func serve() {
 
 	// Initialize logger
 	logger.Init(cfg.Logger)
-	contributorLogger, _ := logger.L()
+	contributorLogger := logger.L()
 
 	// Run migrations if flags are set
 	if migrateUp || migrateDown {

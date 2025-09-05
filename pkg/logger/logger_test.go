@@ -95,15 +95,19 @@ func TestInit_Concurrent(t *testing.T) {
 	for i := 0; i < numGoroutines; i++ {
 		go func() {
 			defer wg.Done()
-			// Use MustInit for simplicity as handling errors in goroutines within tests is complex.
-			MustInit(cfg)
+			if err := Init(cfg); err != nil {
+				// Use t.Errorf to avoid stopping the test immediately, allowing other goroutines to run.
+				t.Errorf("Init() failed inside goroutine: %v", err)
+			}
 		}()
 	}
 	wg.Wait()
 
 	// Capture the first logger instance and verify that subsequent calls do not change it.
 	firstInstance := L()
-	MustInit(cfg) // Call again from the main goroutine
+	if err := Init(cfg); err != nil { // Call again from the main goroutine
+		t.Fatalf("Init() failed after goroutines: %v", err)
+	}
 	secondInstance := L()
 
 	if firstInstance != secondInstance {
@@ -133,7 +137,9 @@ func TestInit_WritesToStdout(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	MustInit(cfg)
+	if err := Init(cfg); err != nil {
+		t.Fatalf("Init() failed: %v", err)
+	}
 	// At the end, restore stdout and close the global logger
 	defer func() {
 		os.Stdout = originalStdout
@@ -167,32 +173,6 @@ func TestInit_WritesToStdout(t *testing.T) {
 	}
 	if !strings.Contains(output, `"user":"test"`) {
 		t.Errorf("Expected stdout log to contain attribute, but got: %s", output)
-	}
-}
-
-// --- MustInit Tests ---
-func TestMustInit(t *testing.T) {
-	resetGlobals()
-
-	tempDir := t.TempDir()
-	originalWd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("Could not get working directory: %v", err)
-	}
-	os.Chdir(tempDir)
-	defer os.Chdir(originalWd)
-
-	cfg := Config{
-		Level:            "debug",
-		FilePath:         "mustinit.log",
-		FileMaxSizeInMB:  1,
-		FileMaxAgeInDays: 1,
-	}
-
-	// Should not panic on a valid configuration.
-	MustInit(cfg)
-	if globalLogger == nil {
-		t.Fatal("MustInit should initialize the global logger")
 	}
 }
 
@@ -255,7 +235,9 @@ func TestClose(t *testing.T) {
 		defer os.Chdir(originalWd)
 
 		cfg := Config{FilePath: "test_close.log"}
-		MustInit(cfg)
+		if err := Init(cfg); err != nil {
+			t.Fatalf("Init() failed: %v", err)
+		}
 
 		// First call should succeed.
 		err1 := Close()

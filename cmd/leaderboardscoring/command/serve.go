@@ -70,10 +70,7 @@ func serve() {
 	if err := logger.Init(cfg.Logger); err != nil {
 		log.Fatalf("Failed to initialize logger: %v", err)
 	}
-	lbLogger, lErr := logger.L()
-	if lErr != nil {
-		log.Fatalf("Failed to Initialize logger: %v", lErr)
-	}
+	lbLogger := logger.L()
 
 	// Run migrations if flags are set
 	if migrateUp || migrateDown {

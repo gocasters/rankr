@@ -36,7 +36,6 @@ func Init(cfg Config) error {
 		if initError != nil {
 			initError = fmt.Errorf("error getting current working directory: %w", initError)
 			return
-
 		}
 
 		fileWriter := &lumberjack.Logger{
@@ -59,17 +58,10 @@ func Init(cfg Config) error {
 	return initError
 }
 
-// MustInit initializes the global logger of panics if it fails.
-func MustInit(cfg Config) {
-	if err := Init(cfg); err != nil {
-		panic(err)
-	}
-}
-
 // L returns the global logger instance.
 func L() *slog.Logger {
 	if globalLogger == nil {
-		panic("logger not initialized. Call logger.Init or logger.MustInit first")
+		panic("logger not initialized. Call logger.Init first")
 	}
 	return globalLogger
 }

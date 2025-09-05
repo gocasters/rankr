@@ -61,7 +61,7 @@ func serve() {
 
 	// Initialize logger
 	logger.Init(cfg.Logger)
-	leaderboardLogger, _ := logger.L()
+	leaderboardLogger := logger.L()
 	// Run migrations if flags are set
 	if migrateUp || migrateDown {
 		if migrateUp && migrateDown {
