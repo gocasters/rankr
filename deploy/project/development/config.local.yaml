@@ -8,7 +8,7 @@ http_server:
 
 repository:
   cache_prefix: "projects"
-  cache_enabled: true
+  cache_enabled: false
 
 postgres_db:
   driver: "postgres"

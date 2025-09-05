@@ -83,6 +83,9 @@ func (s Service) CreateVersionControllerSystemProject(ctx context.Context, input
 
 func (s Service) GetVcsRepo(ctx context.Context, id string) (*GetVersionControllerSystemProjectByIDResponse, error) {
 	entity, err := s.VersionControllerSystemProject.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
 
 	return &GetVersionControllerSystemProjectByIDResponse{
 		ID:             entity.ID,
@@ -98,11 +101,15 @@ func (s Service) GetVcsRepo(ctx context.Context, id string) (*GetVersionControll
 		LastSyncedAt:   entity.LastSyncedAt,
 		CreatedAt:      entity.CreatedAt,
 		UpdatedAt:      entity.UpdatedAt,
-	}, err
+	}, nil
 }
 
 func (s Service) GetVcsRepoByProviderID(ctx context.Context, provider constant.VcsProvider, providerRepoID string, projectID string) (*GetVersionControllerSystemProjectByIDResponse, error) {
 	entity, err := s.VersionControllerSystemProject.FindByProviderID(ctx, provider, providerRepoID, projectID)
+	if err != nil {
+		return nil, err
+	}
+
 	return &GetVersionControllerSystemProjectByIDResponse{
 		ID:             entity.ID,
 		ProjectID:      entity.ProjectID,
@@ -117,7 +124,7 @@ func (s Service) GetVcsRepoByProviderID(ctx context.Context, provider constant.V
 		LastSyncedAt:   entity.LastSyncedAt,
 		CreatedAt:      entity.CreatedAt,
 		UpdatedAt:      entity.UpdatedAt,
-	}, err
+	}, nil
 }
 
 func (s Service) GetVcsReposByProject(ctx context.Context, projectID string) (GetVersionControllerSystemProjectListedResponse, error) {
@@ -139,7 +146,6 @@ func (s Service) ListVcsRepo(ctx context.Context) (ListVersionControllerSystemPr
 		VersionControllerSystemProjects: repos,
 	}, nil
 
-	return ListVersionControllerSystemProjectsResponse{}, nil
 }
 
 func (s Service) UpdateVcsRepo(ctx context.Context, input UpdateVersionControllerSystemProjectInput) (UpdateVersionControllerSystemProjectResponse, error) {

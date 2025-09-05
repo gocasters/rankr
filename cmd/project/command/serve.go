@@ -53,10 +53,6 @@ func serve() {
 		log.Fatalf("Failed to load project config: %v", err)
 	}
 
-	log.Printf("Using configuration file: %s", yamlPath)
-	log.Printf("Using configuration directory: %s", workingDir)
-	log.Printf("config is: %+v", cfg)
-
 	err = logger.Init(cfg.Logger)
 	if err != nil {
 		log.Fatalf("Failed to initialize logger: %v", err)

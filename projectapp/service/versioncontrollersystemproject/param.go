@@ -69,7 +69,7 @@ type GetVersionControllerSystemProjectByIDResponse struct {
 }
 
 type GetVersionControllerSystemProjectListedResponse struct {
-	Items []*VersionControllerSystemProjectEntity `json:"versionControllerSystemProject"`
+	Items []*VersionControllerSystemProjectEntity `json:"items"`
 }
 
 type ListVersionControllerSystemProjectsInput struct{}
