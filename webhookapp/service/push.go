@@ -2,7 +2,7 @@ package service
 
 import (
 	"encoding/json"
-	"github.com/gocasters/rankr/protobuf/golang/eventpb"
+	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"strings"
 )
