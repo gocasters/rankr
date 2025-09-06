@@ -1,0 +1,9 @@
+postgres_db:
+  host: "localhost"
+  port: 5432
+  user: "webhook_admin"
+  password: "password123"
+  db_name: "webhook_db"
+  ssl_mode: "disable"
+
+path_of_migration: "./webhookapp/repository/migrations"

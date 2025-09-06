@@ -1,0 +1,13 @@
+-- +migrate Up
+CREATE TABLE IF NOT EXISTS webhook_events (
+    id BIGSERIAL PRIMARY KEY,
+    provider TEXT NOT NULL,
+    delivery_id TEXT NOT NULL,
+    payload JSONB NOT NULL,
+    received_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+
+    CONSTRAINT webhook_events_provider_delivery_id_unique UNIQUE (provider, delivery_id)
+);
+
+-- +migrate Down
+DROP TABLE IF EXISTS webhook_events;
