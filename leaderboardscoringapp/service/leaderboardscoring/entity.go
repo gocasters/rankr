@@ -72,6 +72,6 @@ func (tf Timeframe) String() string {
 
 type UpsertScore struct {
 	Keys   []string
-	Score  uint8
+	Score  uint32
 	UserID string
 }

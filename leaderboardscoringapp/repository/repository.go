@@ -2,12 +2,11 @@ package repository
 
 import (
 	"context"
-	"github.com/gocasters/rankr/pkg/logger"
-	"log/slog"
-
 	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
+	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
+	"log/slog"
 )
 
 type LeaderboardRepo struct {
@@ -24,6 +23,17 @@ func NewLeaderboardscoringRepo(client *redis.Client, db *pgxpool.Pool) leaderboa
 
 func (l *LeaderboardRepo) UpsertScores(ctx context.Context, score *leaderboardscoring.UpsertScore) error {
 	logger := logger.L()
+
+	if score == nil {
+		logger.Debug("nil UpsertScore; skipping upsert")
+		return nil
+	}
+
+	if len(score.Keys) == 0 || score.UserID == "" {
+		logger.Debug("invalid UpsertScore; skipping",
+			slog.Int("keys_len", len(score.Keys)), slog.String("user_id", score.UserID))
+		return nil
+	}
 
 	pipeLine := l.client.Pipeline()
 

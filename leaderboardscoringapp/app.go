@@ -42,6 +42,16 @@ func Setup(ctx context.Context, config Config, subscriber message.Subscriber,
 	postgresConn *database.Database, wmLogger watermill.LoggerAdapter) *Application {
 	logger := logger.L()
 
+	if subscriber == nil {
+		logger.Error("subscriber is nil; provide a valid message.Subscriber")
+		panic("invalid config: subscriber is nil")
+	}
+
+	if wmLogger == nil {
+		logger.Error("watermill logger is nil; provide a valid LoggerAdapter")
+		panic("invalid config: watermill logger is nil")
+	}
+
 	if strings.TrimSpace(config.SubscriberTopic) == "" {
 		logger.Error("SubscriberTopic is empty; set config.subscriber_topic")
 		panic("invalid config: subscriber_topic")

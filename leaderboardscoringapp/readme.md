@@ -73,7 +73,7 @@ key patterns:
  
 ```
 
-## 3. API Endpoints
+## 4. API Endpoints
 
 The service exposes a basic HTTP API for health checks and querying leaderboard data.
 

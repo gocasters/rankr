@@ -61,6 +61,10 @@ func (s Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) error
 	}
 
 	score := s.calculateScore(req)
+	if score == nil {
+		logger.Debug("unsupported event payload; skipping", slog.String("event_id", req.ID))
+		return nil
+	}
 
 	if err := s.repo.UpsertScores(ctx, score); err != nil {
 		logger.Error(ErrFailedToUpdateScores.Error(), slog.String("error", err.Error()))
@@ -187,56 +191,56 @@ func (s Service) keys(projectID string) []string {
 }
 
 func (s Service) calculateScore(req *EventRequest) *UpsertScore {
-	var keys = s.keys(strconv.Itoa(int(req.RepositoryID)))
+	var keys = s.keys(strconv.FormatUint(req.RepositoryID, 10))
 
 	switch payload := req.Payload.(type) {
 	case PullRequestOpenedPayload:
 		return &UpsertScore{
 			Keys:   keys,
 			Score:  1,
-			UserID: strconv.Itoa(int(payload.UserID)),
+			UserID: strconv.FormatUint(payload.UserID, 10),
 		}
 
 	case PullRequestClosedPayload:
 		return &UpsertScore{
 			Keys:   keys,
 			Score:  2,
-			UserID: strconv.Itoa(int(payload.UserID)),
+			UserID: strconv.FormatUint(payload.UserID, 10),
 		}
 
 	case PullRequestReviewPayload:
 		return &UpsertScore{
 			Keys:   keys,
 			Score:  3,
-			UserID: strconv.Itoa(int(payload.ReviewerUserID)),
+			UserID: strconv.FormatUint(payload.ReviewerUserID, 10),
 		}
 
 	case IssueOpenedPayload:
 		return &UpsertScore{
 			Keys:   keys,
 			Score:  4,
-			UserID: strconv.Itoa(int(payload.UserID)),
+			UserID: strconv.FormatUint(payload.UserID, 10),
 		}
 
 	case IssueCommentedPayload:
 		return &UpsertScore{
 			Keys:   keys,
 			Score:  5,
-			UserID: strconv.Itoa(int(payload.UserID)),
+			UserID: strconv.FormatUint(payload.UserID, 10),
 		}
 
 	case IssueClosedPayload:
 		return &UpsertScore{
 			Keys:   keys,
 			Score:  6,
-			UserID: strconv.Itoa(int(payload.UserID)),
+			UserID: strconv.FormatUint(payload.UserID, 10),
 		}
 
 	case PushPayload:
 		return &UpsertScore{
 			Keys:   keys,
 			Score:  7,
-			UserID: strconv.Itoa(int(payload.UserID)),
+			UserID: strconv.FormatUint(payload.UserID, 10),
 		}
 
 	default:
