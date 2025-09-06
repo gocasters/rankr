@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS webhook_events (
     id BIGSERIAL PRIMARY KEY,
     provider TEXT NOT NULL,
     delivery_id TEXT NOT NULL,
+    event_type VARCHAR(50) NOT NULL,
     payload JSONB NOT NULL,
     received_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 

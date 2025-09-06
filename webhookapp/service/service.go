@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -8,13 +9,19 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type Service struct {
-	Publisher message.Publisher
+type EventRepository interface {
+	Save(ctx context.Context, event *eventpb.Event) error
 }
 
-func New(publisher message.Publisher) *Service {
+type Service struct {
+	repo      EventRepository
+	publisher message.Publisher
+}
+
+func New(repo EventRepository, publisher message.Publisher) *Service {
 	return &Service{
-		Publisher: publisher,
+		repo:      repo,
+		publisher: publisher,
 	}
 }
 
@@ -32,7 +39,13 @@ func (s *Service) publishEvent(ev *eventpb.Event, evName eventpb.EventName, topi
 
 	fmt.Printf("event %s published to %s\n", evName, topic)
 
-	if err := s.Publisher.Publish(string(topic), msg); err != nil {
+	sErr := s.repo.Save(context.Background(), ev)
+	if sErr != nil {
+		return fmt.Errorf("failed to save event. eventname: %s, error: %w",
+			evName, err)
+	}
+
+	if err := s.publisher.Publish(string(topic), msg); err != nil {
 		return fmt.Errorf("failed to publish event. topic: %s, eventname: %s, error: %w",
 			topic, evName, err)
 	}

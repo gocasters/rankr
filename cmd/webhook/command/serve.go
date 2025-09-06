@@ -4,7 +4,9 @@ import (
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-nats/v2/pkg/nats"
 	"github.com/gocasters/rankr/pkg/config"
+	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/pkg/logger"
+	"github.com/gocasters/rankr/pkg/migrator"
 	"github.com/gocasters/rankr/pkg/path"
 	"github.com/gocasters/rankr/webhookapp"
 	nc "github.com/nats-io/nats.go"
@@ -14,6 +16,9 @@ import (
 	"os"
 	"path/filepath"
 )
+
+var migrateUp bool
+var migrateDown bool
 
 var serveCmd = &cobra.Command{
 	Use:   "serve",
@@ -25,6 +30,9 @@ var serveCmd = &cobra.Command{
 }
 
 func init() {
+	serveCmd.Flags().BoolVar(&migrateUp, "migrate-up", false, "Run migrations up before starting the server")
+	serveCmd.Flags().BoolVar(&migrateDown, "migrate-down", false, "Run migrations down before starting the server")
+	serveCmd.MarkFlagsMutuallyExclusive("migrate-up", "migrate-down")
 	RootCmd.AddCommand(serveCmd)
 }
 
@@ -63,6 +71,34 @@ func serve() {
 		}
 	}()
 	lbLogger := logger.L()
+
+	// Run migrations if flags are set
+	if migrateUp || migrateDown {
+		if migrateUp && migrateDown {
+			lbLogger.Error("invalid flags: --migrate-up and --migrate-down cannot be used together")
+
+			return
+		}
+
+		mgr := migrator.New(cfg.PostgresDB, cfg.PathOfMigration)
+		if migrateUp {
+			lbLogger.Info("Running migrations up...")
+			mgr.Up()
+			lbLogger.Info("Migrations up completed.")
+		}
+		if migrateDown {
+			lbLogger.Info("Running migrations down...")
+			mgr.Down()
+			lbLogger.Info("Migrations down completed.")
+		}
+	}
+
+	databaseConn, cnErr := database.Connect(cfg.PostgresDB)
+	if cnErr != nil {
+		lbLogger.Error("fatal error occurred", "reason", "failed to connect to database", slog.Any("error", cnErr))
+		panic(cnErr)
+	}
+	defer databaseConn.Close()
 
 	// Initialize nats
 	marshaler := &nats.GobMarshaler{}
@@ -124,7 +160,7 @@ func serve() {
 		lbLogger.Error("Failed to start publisher", slog.String("error", pErr.Error()))
 		panic(pErr)
 	} else {
-		lbLogger.Info("Publisher started on " + natsURL)
+		lbLogger.Info("publisher started on " + natsURL)
 	}
 	defer func() {
 		if pcErr := publisher.Close(); pcErr != nil {
@@ -132,6 +168,6 @@ func serve() {
 		}
 	}()
 
-	app := webhookapp.Setup(cfg, lbLogger, publisher)
+	app := webhookapp.Setup(cfg, lbLogger, databaseConn, publisher)
 	app.Start()
 }
