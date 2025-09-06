@@ -3,7 +3,7 @@ package grpc
 import (
 	"context"
 	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
-	"github.com/gocasters/rankr/protobuf/leaderboardscoring/golang/leaderboardscoringpb"
+	leaderboardscoringpb "github.com/gocasters/rankr/protobuf/golang/leaderboardscoring/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"log/slog"

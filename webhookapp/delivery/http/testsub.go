@@ -7,7 +7,7 @@ import (
 	"time"
 
 	wnats "github.com/ThreeDotsLabs/watermill-nats/v2/pkg/nats"
-	"github.com/gocasters/rankr/protobuf/golang/eventpb"
+	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 	"github.com/labstack/echo/v4"
 	nc "github.com/nats-io/nats.go"
 	"google.golang.org/protobuf/proto"

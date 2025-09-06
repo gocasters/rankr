@@ -3,7 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gocasters/rankr/protobuf/golang/eventpb"
+	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -24,7 +24,7 @@ func (s *Service) HandlePullRequestReviewEvent(action string, body []byte, deliv
 func (s *Service) PublishPullRequestReviewSubmitted(req PullRequestReviewSubmittedRequest, deliveryUID string) error {
 	ev := &eventpb.Event{
 		Id:             deliveryUID,
-		EventName:      eventpb.EventName_PULL_REQUEST_REVIEW_SUBMITTED,
+		EventName:      eventpb.EventName_EVENT_NAME_PULL_REQUEST_REVIEW_SUBMITTED,
 		Time:           timestamppb.New(req.Review.SubmittedAt),
 		RepositoryId:   req.Repository.ID,
 		RepositoryName: req.Repository.FullName,
@@ -41,5 +41,5 @@ func (s *Service) PublishPullRequestReviewSubmitted(req PullRequestReviewSubmitt
 
 	metadata := map[string]string{}
 
-	return s.publishEvent(ev, eventpb.EventName_PULL_REQUEST_REVIEW_SUBMITTED, TopicGithubReview, metadata)
+	return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PULL_REQUEST_REVIEW_SUBMITTED, TopicGithubReview, metadata)
 }
