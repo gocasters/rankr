@@ -26,6 +26,12 @@ func New(repo EventRepository, publisher message.Publisher) *Service {
 }
 
 func (s *Service) publishEvent(ev *eventpb.Event, evName eventpb.EventName, topic Topic, metadata map[string]string) error {
+	sErr := s.repo.Save(context.Background(), ev)
+	if sErr != nil {
+		return fmt.Errorf("failed to save event. eventname: %s, error: %w",
+			evName, sErr)
+	}
+
 	payload, err := proto.Marshal(ev)
 	if err != nil {
 		return fmt.Errorf("failed to marshal protobuf event. eventname: %s. error: %w",
@@ -38,12 +44,6 @@ func (s *Service) publishEvent(ev *eventpb.Event, evName eventpb.EventName, topi
 	}
 
 	fmt.Printf("event %s published to %s\n", evName, topic)
-
-	sErr := s.repo.Save(context.Background(), ev)
-	if sErr != nil {
-		return fmt.Errorf("failed to save event. eventname: %s, error: %w",
-			evName, err)
-	}
 
 	if err := s.publisher.Publish(string(topic), msg); err != nil {
 		return fmt.Errorf("failed to publish event. topic: %s, eventname: %s, error: %w",

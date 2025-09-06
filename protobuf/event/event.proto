@@ -39,12 +39,17 @@ enum PrCloseReason {
   DRAFT_CONVERTED = 3;
 }
 
+enum EventProvider{
+  Event_Provider_Github = 0;
+}
+
 message Event {
   string id = 1;
   EventName event_name = 2;
   google.protobuf.Timestamp time = 3;
   uint64 repository_id = 4;
   string repository_name = 5;
+  EventProvider provider = 6;
 
   oneof payload {
     PullRequestOpenedPayload pr_opened_payload = 100;

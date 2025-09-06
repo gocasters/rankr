@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/gocasters/rankr/protobuf/golang/eventpb"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"time"
@@ -28,7 +29,7 @@ func (repo WebhookRepository) Save(ctx context.Context, event *eventpb.Event) er
 		return err
 	}
 
-	_, exErr := repo.db.Exec(
+	tag, exErr := repo.db.Exec(
 		ctx,
 		`
 		INSERT INTO webhook_events (provider, delivery_id, event_type, payload, received_at)
@@ -42,5 +43,13 @@ func (repo WebhookRepository) Save(ctx context.Context, event *eventpb.Event) er
 		time.Now(),
 	)
 
-	return exErr
+	if exErr != nil {
+		return exErr
+	}
+
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("no rows affected")
+	}
+
+	return nil
 }
