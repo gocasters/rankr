@@ -4,21 +4,21 @@ import (
 	"time"
 )
 
-type EventType string
+type EventName string
 
 const (
-	PullRequestOpened EventType = "pull_request_opened"
-	PullRequestClosed EventType = "pull_request_closed"
-	PullRequestReview EventType = "pull_request_review"
+	PullRequestOpened EventName = "pull_request_opened"
+	PullRequestClosed EventName = "pull_request_closed"
+	PullRequestReview EventName = "pull_request_review"
 
-	IssueOpened  EventType = "issue_opened"
-	IssueClosed  EventType = "issue_closed"
-	IssueComment EventType = "issue_comment"
+	IssueOpened  EventName = "issue_opened"
+	IssueClosed  EventName = "issue_closed"
+	IssueComment EventName = "issue_comment"
 
-	CommitPush EventType = "commit_push"
+	CommitPush EventName = "commit_push"
 )
 
-var EventTypes = []EventType{
+var EventNames = []EventName{
 	PullRequestOpened,
 	PullRequestClosed,
 	PullRequestReview,
@@ -30,7 +30,7 @@ var EventTypes = []EventType{
 
 type Event struct {
 	ID             string
-	EventName      EventType
+	EventName      EventName
 	RepositoryID   uint64
 	RepositoryName string
 	ContributorID  int
@@ -68,4 +68,10 @@ func (tf Timeframe) String() string {
 	default:
 		return "unknown"
 	}
+}
+
+type UpsertScore struct {
+	Keys   []string
+	Score  uint8
+	UserID string
 }
