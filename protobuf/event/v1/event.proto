@@ -40,7 +40,8 @@ enum PrCloseReason {
 }
 
 enum EventProvider{
-  Event_Provider_Github = 0;
+  EVENT_PROVIDER_UNSPECIFIED = 0;
+  EVENT_PROVIDER_GITHUB = 1;
 }
 
 message Event {

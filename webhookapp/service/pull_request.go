@@ -8,7 +8,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func (s *Service) HandlePullRequestEvent(action string, body []byte, deliveryUID string) error {
+func (s *Service) HandlePullRequestEvent(provider eventpb.EventProvider, action string, body []byte, deliveryUID string) error {
 	switch action {
 	case "opened":
 		var req PullRequestOpenedRequest
@@ -16,24 +16,25 @@ func (s *Service) HandlePullRequestEvent(action string, body []byte, deliveryUID
 			return err
 		}
 
-		return s.publishPullRequestOpened(req, deliveryUID)
+		return s.publishPullRequestOpened(req, provider, deliveryUID)
 
 	case "closed":
 		var req PullRequestClosedRequest
 		if err := json.Unmarshal(body, &req); err != nil {
 			return err
 		}
-		return s.publishPullRequestClosed(req, deliveryUID)
+		return s.publishPullRequestClosed(req, provider, deliveryUID)
 
 	default:
 		return fmt.Errorf("pull request action '%s' not handled", action)
 	}
 }
 
-func (s *Service) publishPullRequestOpened(req PullRequestOpenedRequest, deliveryUID string) error {
+func (s *Service) publishPullRequestOpened(req PullRequestOpenedRequest, provider eventpb.EventProvider, deliveryUID string) error {
 	ev := &eventpb.Event{
 		Id:             deliveryUID,
 		EventName:      eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED,
+		Provider:       provider,
 		Time:           timestamppb.New(req.PullRequest.CreatedAt),
 		RepositoryId:   req.Repository.ID,
 		RepositoryName: req.Repository.FullName,
@@ -56,10 +57,11 @@ func (s *Service) publishPullRequestOpened(req PullRequestOpenedRequest, deliver
 	return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED, TopicGithubPullRequest, metadata)
 }
 
-func (s *Service) publishPullRequestClosed(req PullRequestClosedRequest, deliveryUID string) error {
+func (s *Service) publishPullRequestClosed(req PullRequestClosedRequest, provider eventpb.EventProvider, deliveryUID string) error {
 	ev := &eventpb.Event{
 		Id:             deliveryUID,
 		EventName:      eventpb.EventName_EVENT_NAME_PULL_REQUEST_CLOSED,
+		Provider:       provider,
 		Time:           timestamppb.New(*req.PullRequest.ClosedAt),
 		RepositoryId:   req.Repository.ID,
 		RepositoryName: req.Repository.FullName,

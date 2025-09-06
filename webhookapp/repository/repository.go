@@ -4,13 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/gocasters/rankr/protobuf/golang/eventpb"
+	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"time"
-)
-
-const (
-	EventSourceGithub string = "github"
 )
 
 type WebhookRepository struct {
@@ -24,7 +20,7 @@ func NewWebhookRepository(db *pgxpool.Pool) WebhookRepository {
 }
 
 func (repo WebhookRepository) Save(ctx context.Context, event *eventpb.Event) error {
-	payload, err := json.Marshal(event)
+	payload, err := json.Marshal(event.Payload)
 	if err != nil {
 		return err
 	}
@@ -36,7 +32,7 @@ func (repo WebhookRepository) Save(ctx context.Context, event *eventpb.Event) er
 		VALUES ($1, $2, $3, $4, $5)
 		ON CONFLICT (provider, delivery_id) DO NOTHING
 	`,
-		EventSourceGithub,
+		event.Provider,
 		event.Id,
 		event.EventName,
 		payload,
