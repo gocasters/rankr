@@ -7,6 +7,7 @@ package scheduler
 import (
 	"context"
 	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
+	"github.com/gocasters/rankr/pkg/logger"
 	"log/slog"
 	"time"
 )
@@ -17,23 +18,22 @@ type Config struct {
 type Scheduler struct {
 	leaderboardScoringSvc leaderboardscoring.Service
 	cfg                   Config
-	logger                *slog.Logger
 	stopChan              chan struct{}
 }
 
-func New(lbScoringSvc leaderboardscoring.Service, logger *slog.Logger, cfg Config) *Scheduler {
+func New(lbScoringSvc leaderboardscoring.Service, cfg Config) *Scheduler {
 	return &Scheduler{
 		leaderboardScoringSvc: lbScoringSvc,
 		cfg:                   cfg,
-		logger:                logger,
 		stopChan:              make(chan struct{}),
 	}
 }
 
 // Start begins the periodic execution of the persistence job.
 func (s *Scheduler) Start(ctx context.Context) {
+	logger := logger.L()
 	if s.cfg.Interval <= 0 {
-		s.logger.Error("scheduler not started: non-positive interval", slog.Duration("interval", s.cfg.Interval))
+		logger.Error("scheduler not started: non-positive interval", slog.Duration("interval", s.cfg.Interval))
 		return
 	}
 	ticker := time.NewTicker(s.cfg.Interval)
@@ -42,13 +42,13 @@ func (s *Scheduler) Start(ctx context.Context) {
 		for {
 			select {
 			case <-ticker.C:
-				s.logger.Debug("Scheduler ticked. Processing persistence queue...")
+				logger.Debug("Scheduler ticked. Processing persistence queue...")
 				if err := s.leaderboardScoringSvc.ProcessPersistenceQueue(ctx); err != nil {
-					s.logger.Error("Error processing persistence queue", slog.String("error", err.Error()))
+					logger.Error("Error processing persistence queue", slog.String("error", err.Error()))
 				}
 			case <-s.stopChan:
 				ticker.Stop()
-				s.logger.Info("Persistence scheduler stopped.")
+				logger.Info("Persistence scheduler stopped.")
 				return
 			}
 		}

@@ -4,22 +4,19 @@ import (
 	"context"
 	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/gocasters/rankr/pkg/httpserver"
-	"log/slog"
 )
 
 type Server struct {
 	LeaderboardscoringSvc leaderboardscoring.Service
 	HTTPServer            *httpserver.Server
 	Handler               Handler
-	logger                *slog.Logger
 }
 
-func New(server *httpserver.Server, handler Handler, logger *slog.Logger, leaderboardscoringSvc leaderboardscoring.Service) Server {
+func New(server *httpserver.Server, handler Handler, leaderboardscoringSvc leaderboardscoring.Service) Server {
 	return Server{
 		LeaderboardscoringSvc: leaderboardscoringSvc,
 		HTTPServer:            server,
 		Handler:               handler,
-		logger:                logger,
 	}
 }
 

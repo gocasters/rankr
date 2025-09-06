@@ -3,6 +3,7 @@ package leaderboardscoring
 import (
 	"context"
 	"fmt"
+	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/gocasters/rankr/pkg/timettl"
 	"github.com/gocasters/rankr/protobuf/golang/eventpb"
 	"google.golang.org/protobuf/proto"
@@ -12,16 +13,14 @@ import (
 
 // ScoreRepository handles the hot path: real-time score updates in Redis.
 type ScoreRepository interface {
-	UpsertScores(ctx context.Context, keys []string, score uint8, contributorID string) error
+	UpsertScores(ctx context.Context, score *UpsertScore) error
 }
-
 
 // PersistenceQueueRepository handles the temporary buffering of events.
 // TODO- This could be implemented with Redis Lists, Kafka, etc.
 type PersistenceQueueRepository interface {
 	Enqueue(ctx context.Context, payload []byte) error
 	DequeueBatch(ctx context.Context, batchSize int) ([][]byte, error)
-
 }
 
 // DatabaseRepository handles the cold path: persisting events to the database.
@@ -42,34 +41,38 @@ type Config struct {
 type Service struct {
 	repo      Repository
 	validator Validator
-	logger    *slog.Logger
 	cfg       Config
 }
 
-func NewService(repo Repository, validator Validator, logger *slog.Logger, cfg Config) Service {
+func NewService(repo Repository, validator Validator, cfg Config) Service {
 	return Service{
 		repo:      repo,
 		validator: validator,
-		logger:    logger,
 		cfg:       cfg,
 	}
 }
 
 // ProcessScoreEvent handles only the critical, real-time login.
 func (s Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) error {
+	logger := logger.L()
+
 	if err := s.validator.ValidateEvent(req); err != nil {
 		return err
 	}
 
-	var keys = s.keys(strconv.Itoa(int(req.RepositoryID)))
-	score := s.calculateScore(req.EventName)
+	score := s.calculateScore(req)
+	if score == nil {
+		logger.Debug("unsupported event payload; skipping", slog.String("event_id", req.ID))
+		return nil
+	}
 
-	if err := s.repo.UpsertScores(ctx, keys, score, strconv.Itoa(req.ContributorID)); err != nil {
-		s.logger.Error(ErrFailedToUpdateScores.Error(), slog.String("error", err.Error()))
+	if err := s.repo.UpsertScores(ctx, score); err != nil {
+		logger.Error(ErrFailedToUpdateScores.Error(), slog.String("error", err.Error()))
 		return err
 	}
 
-	s.logger.Debug(MsgSuccessfullyProcessedEvent, slog.String("event_id", req.ID))
+	logger.Debug(MsgSuccessfullyProcessedEvent, slog.String("event_id", req.ID))
+
 	return nil
 }
 
@@ -80,13 +83,14 @@ func (s Service) QueueEventForPersistence(ctx context.Context, eventPayload []by
 
 // ProcessPersistenceQueue is the method called by the scheduler for persist async Event to Database.
 func (s Service) ProcessPersistenceQueue(ctx context.Context) error {
+	logger := logger.L()
 	rawEvents, err := s.repo.DequeueBatch(ctx, s.cfg.BatchSize)
 	if err != nil {
-		s.logger.Error("failed to dequeue events from persistence queue", slog.String("error", err.Error()))
+		logger.Error("failed to dequeue events from persistence queue", slog.String("error", err.Error()))
 		return err
 	}
 	if len(rawEvents) == 0 {
-		s.logger.Debug("no events in persistence queue to process.")
+		logger.Debug("no events in persistence queue to process.")
 		return nil
 	}
 
@@ -94,7 +98,7 @@ func (s Service) ProcessPersistenceQueue(ctx context.Context) error {
 	for _, payload := range rawEvents {
 		var protoEvent eventpb.Event
 		if err := proto.Unmarshal(payload, &protoEvent); err != nil {
-			s.logger.Error("failed to unmarshal event from queue, skipping", slog.String("error", err.Error()))
+			logger.Error("failed to unmarshal event from queue, skipping", slog.String("error", err.Error()))
 			continue
 		}
 
@@ -103,16 +107,15 @@ func (s Service) ProcessPersistenceQueue(ctx context.Context) error {
 		// events = append(events, event)
 	}
 
-
 	// TODO - map batchPayloadEvent to []Event,
 	if err := s.repo.PersistEventBatch(ctx, events); err != nil {
-		s.logger.Error("failed to persist batch of events to database", slog.String("error", err.Error()))
+		logger.Error("failed to persist batch of events to database", slog.String("error", err.Error()))
 		// TODO - Implement a dead-letter queue or retry mechanism for the failed batch.
 		return err
 	}
 
+	logger.Info("successfully persisted event batch to database", slog.Int("batch_size", len(events)))
 
-	s.logger.Info("successfully persisted event batch to database", slog.Int("batch_size", len(events)))
 	return nil
 }
 
@@ -130,27 +133,6 @@ func (s Service) CreateLeaderboardSnapshot(ctx context.Context) error {
 // snapshot stored in the database. This is typically called on service startup if Redis is empty.
 func (s Service) RestoreLeaderboardFromSnapshot(ctx context.Context) error {
 	return nil
-}
-
-func (s Service) calculateScore(eventType EventType) uint8 {
-	switch eventType {
-	case PullRequestOpened:
-		return 1
-	case PullRequestClosed:
-		return 5
-	case PullRequestReview:
-		return 3
-	case IssueOpened:
-		return 1
-	case IssueComment:
-		return 1
-	case IssueClosed:
-		return 5
-	case CommitPush:
-		return 3
-	default:
-		return 0
-	}
 }
 
 // All Keys
@@ -206,6 +188,64 @@ func (s Service) keys(projectID string) []string {
 
 	keys := append(globalKeys, perProjectKeys...)
 	return keys
+}
+
+func (s Service) calculateScore(req *EventRequest) *UpsertScore {
+	var keys = s.keys(strconv.FormatUint(req.RepositoryID, 10))
+
+	switch payload := req.Payload.(type) {
+	case PullRequestOpenedPayload:
+		return &UpsertScore{
+			Keys:   keys,
+			Score:  1,
+			UserID: strconv.FormatUint(payload.UserID, 10),
+		}
+
+	case PullRequestClosedPayload:
+		return &UpsertScore{
+			Keys:   keys,
+			Score:  2,
+			UserID: strconv.FormatUint(payload.UserID, 10),
+		}
+
+	case PullRequestReviewPayload:
+		return &UpsertScore{
+			Keys:   keys,
+			Score:  3,
+			UserID: strconv.FormatUint(payload.ReviewerUserID, 10),
+		}
+
+	case IssueOpenedPayload:
+		return &UpsertScore{
+			Keys:   keys,
+			Score:  4,
+			UserID: strconv.FormatUint(payload.UserID, 10),
+		}
+
+	case IssueCommentedPayload:
+		return &UpsertScore{
+			Keys:   keys,
+			Score:  5,
+			UserID: strconv.FormatUint(payload.UserID, 10),
+		}
+
+	case IssueClosedPayload:
+		return &UpsertScore{
+			Keys:   keys,
+			Score:  6,
+			UserID: strconv.FormatUint(payload.UserID, 10),
+		}
+
+	case PushPayload:
+		return &UpsertScore{
+			Keys:   keys,
+			Score:  7,
+			UserID: strconv.FormatUint(payload.UserID, 10),
+		}
+
+	default:
+		return nil
+	}
 }
 
 func getGlobalLeaderboardKey(timeframe Timeframe, period string) string {
