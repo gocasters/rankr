@@ -5,20 +5,17 @@ import (
 	lbscoring "github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/gocasters/rankr/pkg/grpc"
 	"github.com/gocasters/rankr/protobuf/leaderboardscoring/golang/leaderboardscoringpb"
-	"log/slog"
 )
 
 type Client struct {
 	rpcClient                *grpc.RPCClient
 	leaderboardScoringClient leaderboardscoringpb.LeaderboardScoringServiceClient
-	logger                   *slog.Logger
 }
 
-func New(rpcClient *grpc.RPCClient, logger *slog.Logger) Client {
+func New(rpcClient *grpc.RPCClient) Client {
 	return Client{
 		rpcClient:                rpcClient,
 		leaderboardScoringClient: leaderboardscoringpb.NewLeaderboardScoringServiceClient(rpcClient.Conn),
-		logger:                   logger,
 	}
 }
 
