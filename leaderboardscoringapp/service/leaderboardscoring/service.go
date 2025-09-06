@@ -111,6 +111,7 @@ func (s Service) ProcessPersistenceQueue(ctx context.Context) error {
 	}
 
 	logger.Info("successfully persisted event batch to database", slog.Int("batch_size", len(events)))
+
 	return nil
 }
 

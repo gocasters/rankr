@@ -24,6 +24,7 @@ func NewLeaderboardscoringRepo(client *redis.Client, db *pgxpool.Pool) leaderboa
 
 func (l *LeaderboardRepo) UpsertScores(ctx context.Context, score *leaderboardscoring.UpsertScore) error {
 	logger := logger.L()
+
 	pipeLine := l.client.Pipeline()
 
 	for _, key := range score.Keys {
@@ -41,6 +42,7 @@ func (l *LeaderboardRepo) UpsertScores(ctx context.Context, score *leaderboardsc
 	}
 
 	logger.Debug("successfully updated scores in redis pipeline", slog.String("user_id", score.UserID))
+
 	return nil
 }
 
