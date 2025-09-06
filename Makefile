@@ -257,3 +257,8 @@ stop-contributor-debug: ## Stop user debug mode (keep volumes)
 	down --remove-orphans
 
 
+start-project-app-dev:
+	./deploy/docker-compose-dev.bash --profile project up -d
+
+start-project-app-dev-log:
+	./deploy/docker-compose-dev.bash --profile project up
