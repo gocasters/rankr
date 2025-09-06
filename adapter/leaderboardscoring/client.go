@@ -4,7 +4,7 @@ import (
 	"context"
 	lbscoring "github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/gocasters/rankr/pkg/grpc"
-	"github.com/gocasters/rankr/protobuf/leaderboardscoring/golang/leaderboardscoringpb"
+	leaderboardscoringpb "github.com/gocasters/rankr/protobuf/golang/leaderboardscoring/v1"
 	"log/slog"
 )
 

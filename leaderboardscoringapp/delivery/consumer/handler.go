@@ -7,7 +7,7 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
-	"github.com/gocasters/rankr/protobuf/golang/eventpb"
+	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -87,17 +87,17 @@ func protobufToEventRequest(eventPB *eventpb.Event) (*leaderboardscoring.EventRe
 	var contribID uint64
 
 	switch eventPB.GetEventName() {
-	case eventpb.EventName_PULL_REQUEST_OPENED:
+	case eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED:
 		contribID = eventPB.GetPrOpenedPayload().GetUserId()
-	case eventpb.EventName_PULL_REQUEST_CLOSED:
+	case eventpb.EventName_EVENT_NAME_PULL_REQUEST_CLOSED:
 		contribID = eventPB.GetPrClosedPayload().GetUserId()
-	case eventpb.EventName_PULL_REQUEST_REVIEW_SUBMITTED:
+	case eventpb.EventName_EVENT_NAME_PULL_REQUEST_REVIEW_SUBMITTED:
 		contribID = eventPB.GetPrReviewPayload().GetReviewerUserId()
-	case eventpb.EventName_ISSUE_OPENED:
+	case eventpb.EventName_EVENT_NAME_ISSUE_OPENED:
 		contribID = eventPB.GetIssueOpenedPayload().GetUserId()
-	case eventpb.EventName_ISSUE_CLOSED:
+	case eventpb.EventName_EVENT_NAME_ISSUE_CLOSED:
 		contribID = eventPB.GetIssueClosedPayload().GetUserId()
-	case eventpb.EventName_ISSUE_COMMENTED:
+	case eventpb.EventName_EVENT_NAME_ISSUE_COMMENTED:
 		contribID = eventPB.GetIssueCommentedPayload().GetUserId()
 		//TODO  : must be implement this
 	//case eventpb.EventName_COMMIT_PUSHED:

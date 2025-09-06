@@ -1,42 +1,42 @@
 syntax = "proto3";
 
-package event;
+package event.v1;
 import "google/protobuf/timestamp.proto";
-option go_package = "github.com/gocasters/rankr/protobuf/golang/eventpb";
+option go_package = "protobuf/golang/eventpb";
 
 enum EventName {
   EVENT_NAME_UNSPECIFIED = 0;
 
-  PULL_REQUEST_OPENED = 1;
-  PULL_REQUEST_CLOSED = 2;
-  PULL_REQUEST_REVIEW_SUBMITTED = 3;
+  EVENT_NAME_PULL_REQUEST_OPENED = 1;
+  EVENT_NAME_PULL_REQUEST_CLOSED = 2;
+  EVENT_NAME_PULL_REQUEST_REVIEW_SUBMITTED = 3;
 
-  ISSUE_OPENED = 4;
-  ISSUE_CLOSED = 5;
-  ISSUE_COMMENTED = 6;
+  EVENT_NAME_ISSUE_OPENED = 4;
+  EVENT_NAME_ISSUE_CLOSED = 5;
+  EVENT_NAME_ISSUE_COMMENTED = 6;
 
-  PUSHED = 7;
+  EVENT_NAME_PUSHED = 7;
 }
 
 enum ReviewState {
   REVIEW_STATE_UNSPECIFIED = 0;
-  APPROVED = 1;
-  CHANGES_REQUESTED = 2;
-  COMMENTED = 3;
+  REVIEW_STATE_APPROVED = 1;
+  REVIEW_STATE_CHANGES_REQUESTED = 2;
+  REVIEW_STATE_COMMENTED = 3;
 }
 
 enum IssueCloseReason {
   ISSUE_CLOSE_REASON_UNSPECIFIED = 0;
-  COMPLETED = 1;
-  NOT_PLANNED = 2;        // Won't fix, duplicate, etc.
-  REOPENED = 3;
+  ISSUE_CLOSE_REASON_COMPLETED = 1;
+  ISSUE_CLOSE_REASON_NOT_PLANNED = 2;        // Won't fix, duplicate, etc.
+  ISSUE_CLOSE_REASON_REOPENED = 3;
 }
 
 enum PrCloseReason {
   PR_CLOSE_REASON_UNSPECIFIED = 0;
-  MERGED = 1;
-  CLOSED_WITHOUT_MERGE = 2;
-  DRAFT_CONVERTED = 3;
+  PR_CLOSE_REASON_MERGED = 1;
+  PR_CLOSE_REASON_CLOSED_WITHOUT_MERGE = 2;
+  PR_CLOSE_REASON_DRAFT_CONVERTED = 3;
 }
 
 enum EventProvider{

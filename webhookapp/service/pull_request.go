@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/gocasters/rankr/protobuf/golang/eventpb"
+	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -33,7 +33,7 @@ func (s *Service) HandlePullRequestEvent(action string, body []byte, deliveryUID
 func (s *Service) publishPullRequestOpened(req PullRequestOpenedRequest, deliveryUID string) error {
 	ev := &eventpb.Event{
 		Id:             deliveryUID,
-		EventName:      eventpb.EventName_PULL_REQUEST_OPENED,
+		EventName:      eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED,
 		Time:           timestamppb.New(req.PullRequest.CreatedAt),
 		RepositoryId:   req.Repository.ID,
 		RepositoryName: req.Repository.FullName,
@@ -53,13 +53,13 @@ func (s *Service) publishPullRequestOpened(req PullRequestOpenedRequest, deliver
 
 	metadata := map[string]string{}
 
-	return s.publishEvent(ev, eventpb.EventName_PULL_REQUEST_OPENED, TopicGithubPullRequest, metadata)
+	return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED, TopicGithubPullRequest, metadata)
 }
 
 func (s *Service) publishPullRequestClosed(req PullRequestClosedRequest, deliveryUID string) error {
 	ev := &eventpb.Event{
 		Id:             deliveryUID,
-		EventName:      eventpb.EventName_PULL_REQUEST_CLOSED,
+		EventName:      eventpb.EventName_EVENT_NAME_PULL_REQUEST_CLOSED,
 		Time:           timestamppb.New(*req.PullRequest.ClosedAt),
 		RepositoryId:   req.Repository.ID,
 		RepositoryName: req.Repository.FullName,
@@ -89,5 +89,5 @@ func (s *Service) publishPullRequestClosed(req PullRequestClosedRequest, deliver
 
 	metadata := map[string]string{}
 
-	return s.publishEvent(ev, eventpb.EventName_PULL_REQUEST_CLOSED, TopicGithubPullRequest, metadata)
+	return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PULL_REQUEST_CLOSED, TopicGithubPullRequest, metadata)
 }

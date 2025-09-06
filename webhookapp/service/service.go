@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/gocasters/rankr/protobuf/golang/eventpb"
+	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 	"google.golang.org/protobuf/proto"
 )
 
