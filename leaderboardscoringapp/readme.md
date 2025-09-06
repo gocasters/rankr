@@ -48,6 +48,31 @@ key patterns:
   leaderboards to PostgreSQL. A restore function can quickly rebuild the leaderboards from the latest snapshot after a
   failure, avoiding the need to reprocess the entire event history.
 
+## 3. Usage
+
+### Run leaderboard-scoring app
+
+```bash
+  # run compose file
+ docker compose -f deploy/leaderboardscoring/development/docker-compose.no-service.yml up -d
+  # run leaderboard-scoring app
+ go run ./cmd/leaderboardscoring/main.go serve
+ 
+  # for show containers log
+ docker compose -f deploy/leaderboardscoring/development/docker-compose.no-service.yml logs -f
+```
+
+### Stopping service
+
+```bash
+  # stopping leaderboard-scoring service
+ ctrl + c
+ 
+  # for down containers
+ docker compose -f deploy/leaderboardscoring/development/docker-compose.no-service.yml down -v
+ 
+```
+
 ## 3. API Endpoints
 
 The service exposes a basic HTTP API for health checks and querying leaderboard data.

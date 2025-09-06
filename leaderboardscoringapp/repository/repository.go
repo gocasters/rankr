@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"github.com/gocasters/rankr/pkg/logger"
 	"log/slog"
 
 	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
@@ -12,18 +13,18 @@ import (
 type LeaderboardRepo struct {
 	client *redis.Client
 	db     *pgxpool.Pool
-	logger *slog.Logger
 }
 
-func NewLeaderboardscoringRepo(client *redis.Client, db *pgxpool.Pool, logger *slog.Logger) leaderboardscoring.Repository {
+func NewLeaderboardscoringRepo(client *redis.Client, db *pgxpool.Pool) leaderboardscoring.Repository {
 	return &LeaderboardRepo{
 		client: client,
 		db:     db,
-		logger: logger,
 	}
 }
 
 func (l *LeaderboardRepo) UpsertScores(ctx context.Context, score *leaderboardscoring.UpsertScore) error {
+	logger := logger.L()
+
 	pipeLine := l.client.Pipeline()
 
 	for _, key := range score.Keys {
@@ -32,7 +33,7 @@ func (l *LeaderboardRepo) UpsertScores(ctx context.Context, score *leaderboardsc
 
 	_, err := pipeLine.Exec(ctx)
 	if err != nil {
-		l.logger.Error(
+		logger.Error(
 			"failed to execute redis pipeline for updating scores",
 			slog.String("user_id", score.UserID),
 			slog.String("error", err.Error()),
@@ -40,7 +41,8 @@ func (l *LeaderboardRepo) UpsertScores(ctx context.Context, score *leaderboardsc
 		return err
 	}
 
-	l.logger.Debug("successfully updated scores in redis pipeline", slog.String("user_id", score.UserID))
+	logger.Debug("successfully updated scores in redis pipeline", slog.String("user_id", score.UserID))
+
 	return nil
 }
 

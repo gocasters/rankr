@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"log/slog"
@@ -21,14 +22,12 @@ type Config struct {
 type IdempotencyChecker struct {
 	redisClient *redis.Client
 	config      Config
-	logger      *slog.Logger
 }
 
-func NewIdempotencyChecker(client *redis.Client, config Config, logger *slog.Logger) *IdempotencyChecker {
+func NewIdempotencyChecker(client *redis.Client, config Config) *IdempotencyChecker {
 	return &IdempotencyChecker{
 		redisClient: client,
 		config:      config,
-		logger:      logger,
 	}
 }
 
@@ -81,7 +80,7 @@ func (ic *IdempotencyChecker) CheckEvent(ctx context.Context, eventID string,
 	// 5. If successful, mark the event as permanently processed.
 	if sErr := ic.redisClient.Set(ctx, processedKey, 1, ic.config.ProcessedKeyTTL).Err(); sErr != nil {
 		// This is a critical failure. The event was processed, but we couldn't mark it as such.
-		ic.logger.Error(
+		logger.L().Error(
 			"CRITICAL: Failed to mark event as processed after successful execution",
 			slog.String("event_id", eventID),
 			slog.String("error", sErr.Error()),
