@@ -3,7 +3,7 @@ package leaderboardscoring
 import (
 	"fmt"
 	"github.com/gocasters/rankr/pkg/timettl"
-	"github.com/gocasters/rankr/protobuf/golang/eventpb"
+	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 	"time"
 )
 
@@ -165,7 +165,7 @@ func protobufToPayload(eventPB *eventpb.Event) (interface{}, error) {
 	var payload interface{}
 
 	switch eventPB.GetEventName() {
-	case eventpb.EventName_PULL_REQUEST_OPENED:
+	case eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED:
 		p := eventPB.GetPrOpenedPayload()
 		if p == nil {
 			return nil, fmt.Errorf("missing pr_opened payload (id=%s)", eventPB.Id)
@@ -182,7 +182,7 @@ func protobufToPayload(eventPB *eventpb.Event) (interface{}, error) {
 		}
 		payload = prPayload
 
-	case eventpb.EventName_PULL_REQUEST_CLOSED:
+	case eventpb.EventName_EVENT_NAME_PULL_REQUEST_CLOSED:
 		p := eventPB.GetPrClosedPayload()
 		if p == nil {
 			return nil, fmt.Errorf("missing pr_closed payload (id=%s)", eventPB.Id)
@@ -204,7 +204,7 @@ func protobufToPayload(eventPB *eventpb.Event) (interface{}, error) {
 		}
 		payload = prClosedPayload
 
-	case eventpb.EventName_PULL_REQUEST_REVIEW_SUBMITTED:
+	case eventpb.EventName_EVENT_NAME_PULL_REQUEST_REVIEW_SUBMITTED:
 		p := eventPB.GetPrReviewPayload()
 		if p == nil {
 			return nil, fmt.Errorf("missing pr_review payload (id=%s)", eventPB.Id)
@@ -217,7 +217,7 @@ func protobufToPayload(eventPB *eventpb.Event) (interface{}, error) {
 		}
 		payload = prReviewPayload
 
-	case eventpb.EventName_ISSUE_OPENED:
+	case eventpb.EventName_EVENT_NAME_ISSUE_OPENED:
 		p := eventPB.GetIssueOpenedPayload()
 		if p == nil {
 			return nil, fmt.Errorf("missing issue_opened payload (id=%s)", eventPB.Id)
@@ -231,7 +231,7 @@ func protobufToPayload(eventPB *eventpb.Event) (interface{}, error) {
 		}
 		payload = issueOpened
 
-	case eventpb.EventName_ISSUE_CLOSED:
+	case eventpb.EventName_EVENT_NAME_ISSUE_CLOSED:
 		p := eventPB.GetIssueClosedPayload()
 		if p == nil {
 			return nil, fmt.Errorf("missing issue_closed payload (id=%s)", eventPB.Id)
@@ -249,7 +249,7 @@ func protobufToPayload(eventPB *eventpb.Event) (interface{}, error) {
 		}
 		payload = issueClosed
 
-	case eventpb.EventName_ISSUE_COMMENTED:
+	case eventpb.EventName_EVENT_NAME_ISSUE_COMMENTED:
 		p := eventPB.GetIssueCommentedPayload()
 		if p == nil {
 			return nil, fmt.Errorf("missing issue_commented payload (id=%s)", eventPB.Id)
@@ -264,7 +264,7 @@ func protobufToPayload(eventPB *eventpb.Event) (interface{}, error) {
 		}
 		payload = issueCommented
 
-	case eventpb.EventName_PUSHED:
+	case eventpb.EventName_EVENT_NAME_PUSHED:
 		p := eventPB.GetPushPayload()
 		if p == nil {
 			return nil, fmt.Errorf("missing pushed payload (id=%s)", eventPB.Id)
@@ -305,19 +305,19 @@ func protobufToPayload(eventPB *eventpb.Event) (interface{}, error) {
 
 func mapPbEventName(n eventpb.EventName) (EventName, error) {
 	switch n {
-	case eventpb.EventName_PULL_REQUEST_OPENED:
+	case eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED:
 		return PullRequestOpened, nil
-	case eventpb.EventName_PULL_REQUEST_CLOSED:
+	case eventpb.EventName_EVENT_NAME_PULL_REQUEST_CLOSED:
 		return PullRequestClosed, nil
-	case eventpb.EventName_PULL_REQUEST_REVIEW_SUBMITTED:
+	case eventpb.EventName_EVENT_NAME_PULL_REQUEST_REVIEW_SUBMITTED:
 		return PullRequestReview, nil
-	case eventpb.EventName_ISSUE_OPENED:
+	case eventpb.EventName_EVENT_NAME_ISSUE_OPENED:
 		return IssueOpened, nil
-	case eventpb.EventName_ISSUE_CLOSED:
+	case eventpb.EventName_EVENT_NAME_ISSUE_CLOSED:
 		return IssueClosed, nil
-	case eventpb.EventName_ISSUE_COMMENTED:
+	case eventpb.EventName_EVENT_NAME_ISSUE_COMMENTED:
 		return IssueComment, nil
-	case eventpb.EventName_PUSHED:
+	case eventpb.EventName_EVENT_NAME_PUSHED:
 		return CommitPush, nil
 	default:
 		return "", fmt.Errorf("unsupported event name: %s", n.String())
