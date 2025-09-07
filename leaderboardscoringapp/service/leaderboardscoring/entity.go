@@ -75,3 +75,19 @@ type UpsertScore struct {
 	Score  uint32
 	UserID string
 }
+
+type LeaderboardQuery struct {
+	Key   string
+	Start int64
+	Stop  int64
+}
+
+type LeaderboardEntry struct {
+	Rank   uint64
+	UserID string
+	Score  uint64
+}
+
+type LeaderboardQueryResult struct {
+	LeaderboardRows []LeaderboardEntry
+}

@@ -23,3 +23,8 @@ func (v Validator) ValidateEvent(event *EventRequest) error {
 		validation.Field(&event.Timestamp, validation.Required),
 	)
 }
+
+func (v Validator) ValidateGetLeaderboard(request *GetLeaderboardRequest) error {
+	// TODO - Implement validation for GetLeaderboardRequest
+	return validation.ValidateStruct(request)
+}

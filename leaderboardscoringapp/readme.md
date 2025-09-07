@@ -22,28 +22,6 @@ key patterns:
 
     2. **Idempotent Consumer**: A robust idempotency check using a temporary lock and a processed-event list in Redis
        prevents duplicate messages from being processed more than once.
-
-* **Dual Storage Strategy**:
-
-    * **Redis (Hot Storage)**: All leaderboards are stored in Redis `Sorted Sets` for extremely fast, real-time read and
-      write operations.
-
-    * **PostgreSQL (Cold Storage)**: A permanent, auditable log of every processed contribution event is persisted in a
-      PostgreSQL database for analytical purposes.
-
-* **Asynchronous Event Persistence**: To maximize performance, the persistence of historical events to PostgreSQL is
-  decoupled from the critical path of real-time scoring. This is achieved using an **Asynchronous Batch Processing
-  Pattern**:
-
-    1. **Hot Path (Real-time)**: The consumer immediately updates the scores in Redis and acknowledges the message.
-
-    2. **Cold Path (Background)**: The raw event is then pushed into a persistent, temporary queue (e.g., Kafka,
-       RabbitMQ, Nats).
-
-    3. **Batch Worker**: A separate background worker runs periodically, dequeues events from this queue in batches, and
-       performs an efficient bulk insert into PostgreSQL. This ensures that any latency from the database does not
-       impact the real-time scoring performance.
-
 * **Disaster Recovery**: The service includes a snapshot mechanism to periodically save the state of the Redis
   leaderboards to PostgreSQL. A restore function can quickly rebuild the leaderboards from the latest snapshot after a
   failure, avoiding the need to reprocess the entire event history.

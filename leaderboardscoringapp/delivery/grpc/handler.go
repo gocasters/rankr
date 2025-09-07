@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"errors"
 	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/gocasters/rankr/pkg/logger"
 	leaderboardscoringpb "github.com/gocasters/rankr/protobuf/golang/leaderboardscoring/v1"
@@ -17,13 +18,14 @@ type Handler struct {
 
 func NewHandler(leaderboardScoringSvc leaderboardscoring.Service) Handler {
 	return Handler{
-		UnimplementedLeaderboardScoringServiceServer: leaderboardscoringpb.UnimplementedLeaderboardScoringServiceServer{},
-		leaderboardScoringSvc:                        leaderboardScoringSvc,
+		//UnimplementedLeaderboardScoringServiceServer: leaderboardscoringpb.UnimplementedLeaderboardScoringServiceServer{},
+		leaderboardScoringSvc: leaderboardScoringSvc,
 	}
 }
 
 func (h Handler) GetLeaderboard(ctx context.Context, req *leaderboardscoringpb.GetLeaderboardRequest) (*leaderboardscoringpb.GetLeaderboardResponse, error) {
-	logger := logger.L()
+	log := logger.L()
+	log.Info("gRPC GetLeaderboard request received", slog.Any("request", req))
 
 	var projectIDPtr *string
 	if pid := req.GetProjectId(); pid != "" {
@@ -39,18 +41,26 @@ func (h Handler) GetLeaderboard(ctx context.Context, req *leaderboardscoringpb.G
 
 	leaderboardRes, err := h.leaderboardScoringSvc.GetLeaderboard(ctx, leaderboardReq)
 	if err != nil {
-		logger.Error(
+		log.Error(
 			"failed to get leaderboard scoring from service",
 			slog.String("error", err.Error()),
 			slog.Any("request", req),
 		)
 
-		// TODO: replace with concrete error mapping from service layer
-		return nil, status.Errorf(codes.Internal, "get leaderboard failed: %v", err)
+		switch {
+		case errors.Is(err, leaderboardscoring.ErrLeaderboardNotFound):
+			return nil, status.Error(codes.NotFound, "The requested leaderboard could not be found.")
+
+		case errors.Is(err, leaderboardscoring.ErrInvalidArguments):
+			return nil, status.Error(codes.InvalidArgument, "Invalid request parameters provided.")
+
+		default:
+			return nil, status.Error(codes.Internal, "An unexpected internal error occurred.")
+		}
 	}
 
 	leaderboardPBRes := leaderboardResToProtobuf(leaderboardRes)
-
+	log.Debug("Successfully prepared gRPC response", slog.Int("row_count", len(leaderboardPBRes.Rows)))
 	return leaderboardPBRes, nil
 }
 

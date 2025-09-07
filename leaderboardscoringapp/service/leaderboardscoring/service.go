@@ -12,6 +12,7 @@ import (
 // ScoreRepository handles the hot path: real-time score updates in Redis.
 type ScoreRepository interface {
 	UpsertScores(ctx context.Context, score *UpsertScore) error
+	GetLeaderboard(ctx context.Context, leaderboard *LeaderboardQuery) (LeaderboardQueryResult, error)
 }
 
 // DatabaseRepository handles the cold path: persisting events to the database.
@@ -60,7 +61,66 @@ func (s Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) error
 }
 
 func (s Service) GetLeaderboard(ctx context.Context, req *GetLeaderboardRequest) (GetLeaderboardResponse, error) {
-	return GetLeaderboardResponse{}, nil
+	log := logger.L()
+	log.Debug(
+		"GetLeaderboard request received in service layer",
+		slog.Any("request", req),
+	)
+
+	if err := s.validator.ValidateGetLeaderboard(req); err != nil {
+		log.Warn("Invalid leaderboard request", slog.String("error", err.Error()))
+		return GetLeaderboardResponse{}, ErrInvalidArguments
+	}
+
+	key := req.BuildKey()
+	stop := int64(req.Offset + req.PageSize - 1)
+	if req.PageSize == 0 {
+		stop = -1
+	}
+
+	lbQuery := &LeaderboardQuery{
+		Key:   key,
+		Start: int64(req.Offset),
+		Stop:  stop,
+	}
+
+	leaderboardScoring, err := s.repo.GetLeaderboard(ctx, lbQuery)
+	if err != nil {
+		log.Error("Failed to get leaderboard from repository", slog.String("error", err.Error()))
+		return GetLeaderboardResponse{}, err
+	}
+
+	if len(leaderboardScoring.LeaderboardRows) == 0 {
+		log.Debug("No leaderboard data found for the given criteria", slog.String("key", key))
+		return GetLeaderboardResponse{}, ErrLeaderboardNotFound
+	}
+
+	leaderboardRes := mapLeaderboardScoringToParam(leaderboardScoring)
+	leaderboardRes.Timeframe = req.Timeframe
+	leaderboardRes.ProjectID = req.ProjectID
+
+	log.Debug("Successfully retrieved leaderboard data", slog.Int("row_count", len(leaderboardRes.LeaderboardRows)))
+	return leaderboardRes, nil
+}
+
+func mapLeaderboardScoringToParam(scoring LeaderboardQueryResult) GetLeaderboardResponse {
+	leaderboardRes := GetLeaderboardResponse{
+		Timeframe:       0,
+		ProjectID:       nil,
+		LeaderboardRows: make([]LeaderboardRow, 0, len(scoring.LeaderboardRows)),
+	}
+
+	for _, r := range scoring.LeaderboardRows {
+		row := LeaderboardRow{
+			Rank:   r.Rank,
+			UserID: r.UserID,
+			Score:  r.Score,
+		}
+
+		leaderboardRes.LeaderboardRows = append(leaderboardRes.LeaderboardRows, row)
+	}
+
+	return leaderboardRes
 }
 
 // CreateLeaderboardSnapshot TODO - reads the current state of the all-time leaderboards from Redis
