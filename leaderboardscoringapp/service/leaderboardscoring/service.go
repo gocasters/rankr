@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/gocasters/rankr/pkg/timettl"
-	"github.com/gocasters/rankr/protobuf/golang/eventpb"
+	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 	"google.golang.org/protobuf/proto"
 	"log/slog"
 	"strconv"
@@ -115,7 +115,6 @@ func (s Service) ProcessPersistenceQueue(ctx context.Context) error {
 	}
 
 	logger.Info("successfully persisted event batch to database", slog.Int("batch_size", len(events)))
-
 	return nil
 }
 

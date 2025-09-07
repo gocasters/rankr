@@ -2,13 +2,12 @@ package consumer
 
 import (
 	"errors"
-	"github.com/gocasters/rankr/pkg/logger"
-	"log/slog"
-
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
-	"github.com/gocasters/rankr/protobuf/golang/eventpb"
+	"github.com/gocasters/rankr/pkg/logger"
+	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 	"google.golang.org/protobuf/proto"
+	"log/slog"
 )
 
 type Handler struct {
