@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/gocasters/rankr/pkg/timettl"
-	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
-	"google.golang.org/protobuf/proto"
 	"log/slog"
 	"strconv"
 )
@@ -16,39 +14,24 @@ type ScoreRepository interface {
 	UpsertScores(ctx context.Context, score *UpsertScore) error
 }
 
-// PersistenceQueueRepository handles the temporary buffering of events.
-// TODO- This could be implemented with Redis Lists, Kafka, etc.
-type PersistenceQueueRepository interface {
-	Enqueue(ctx context.Context, payload []byte) error
-	DequeueBatch(ctx context.Context, batchSize int) ([][]byte, error)
-}
-
 // DatabaseRepository handles the cold path: persisting events to the database.
 type DatabaseRepository interface {
-	PersistEventBatch(ctx context.Context, events []*Event) error
 }
 
 type Repository interface {
 	ScoreRepository
-	PersistenceQueueRepository
 	DatabaseRepository
-}
-
-type Config struct {
-	BatchSize int `koanf:"batch_size"`
 }
 
 type Service struct {
 	repo      Repository
 	validator Validator
-	cfg       Config
 }
 
-func NewService(repo Repository, validator Validator, cfg Config) Service {
+func NewService(repo Repository, validator Validator) Service {
 	return Service{
 		repo:      repo,
 		validator: validator,
-		cfg:       cfg,
 	}
 }
 
@@ -73,48 +56,6 @@ func (s Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) error
 
 	logger.Debug(MsgSuccessfullyProcessedEvent, slog.String("event_id", req.ID))
 
-	return nil
-}
-
-// QueueEventForPersistence handles the non-critical, async part.
-func (s Service) QueueEventForPersistence(ctx context.Context, eventPayload []byte) error {
-	return s.repo.Enqueue(ctx, eventPayload)
-}
-
-// ProcessPersistenceQueue is the method called by the scheduler for persist async Event to Database.
-func (s Service) ProcessPersistenceQueue(ctx context.Context) error {
-	logger := logger.L()
-	rawEvents, err := s.repo.DequeueBatch(ctx, s.cfg.BatchSize)
-	if err != nil {
-		logger.Error("failed to dequeue events from persistence queue", slog.String("error", err.Error()))
-		return err
-	}
-	if len(rawEvents) == 0 {
-		logger.Debug("no events in persistence queue to process.")
-		return nil
-	}
-
-	var events = make([]*Event, 0, len(rawEvents))
-	for _, payload := range rawEvents {
-		var protoEvent eventpb.Event
-		if err := proto.Unmarshal(payload, &protoEvent); err != nil {
-			logger.Error("failed to unmarshal event from queue, skipping", slog.String("error", err.Error()))
-			continue
-		}
-
-		// TODO - Map the protoEvent to internal Event struct.
-		// event := MapProtoToDomain(&protoEvent)
-		// events = append(events, event)
-	}
-
-	// TODO - map batchPayloadEvent to []Event,
-	if err := s.repo.PersistEventBatch(ctx, events); err != nil {
-		logger.Error("failed to persist batch of events to database", slog.String("error", err.Error()))
-		// TODO - Implement a dead-letter queue or retry mechanism for the failed batch.
-		return err
-	}
-
-	logger.Info("successfully persisted event batch to database", slog.Int("batch_size", len(events)))
 	return nil
 }
 

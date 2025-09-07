@@ -9,7 +9,6 @@ import (
 	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/consumer"
 	leaderboardGRPC "github.com/gocasters/rankr/leaderboardscoringapp/delivery/grpc"
 	leaderboardHTTP "github.com/gocasters/rankr/leaderboardscoringapp/delivery/http"
-	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/scheduler"
 	"github.com/gocasters/rankr/leaderboardscoringapp/repository"
 	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/gocasters/rankr/pkg/database"
@@ -28,7 +27,6 @@ import (
 type Application struct {
 	HTTPServer                leaderboardHTTP.Server
 	LeaderboardGrpcServer     leaderboardGRPC.Server
-	Scheduler                 *scheduler.Scheduler
 	LeaderboardSvc            leaderboardscoring.Service
 	LeaderboardscoringHandler leaderboardHTTP.Handler
 	WMRouter                  *message.Router
@@ -70,7 +68,7 @@ func Setup(ctx context.Context, config Config, subscriber message.Subscriber,
 
 	lbScoringRepo := repository.NewLeaderboardscoringRepo(redisAdapter.Client(), postgresConn.Pool)
 	lbScoringValidator := leaderboardscoring.NewValidator()
-	lbScoringService := leaderboardscoring.NewService(lbScoringRepo, lbScoringValidator, config.LeaderboardScoring)
+	lbScoringService := leaderboardscoring.NewService(lbScoringRepo, lbScoringValidator)
 
 	httpServer, hErr := httpserver.New(config.HTTPServer)
 	if hErr != nil {
@@ -79,8 +77,6 @@ func Setup(ctx context.Context, config Config, subscriber message.Subscriber,
 	}
 	lbScoringHandler := leaderboardHTTP.NewHandler()
 	leaderboardHttpServer := leaderboardHTTP.New(httpServer, lbScoringHandler, lbScoringService)
-
-	sch := scheduler.New(lbScoringService, config.Scheduler)
 
 	rpcServer, gErr := grpc.NewServer(config.RPCServer)
 	if gErr != nil {
@@ -93,7 +89,6 @@ func Setup(ctx context.Context, config Config, subscriber message.Subscriber,
 	return &Application{
 		HTTPServer:                leaderboardHttpServer,
 		LeaderboardGrpcServer:     leaderboardGrpcServer,
-		Scheduler:                 sch,
 		LeaderboardSvc:            lbScoringService,
 		LeaderboardscoringHandler: lbScoringHandler,
 		WMRouter:                  nil,
@@ -113,7 +108,6 @@ func (app *Application) Start() {
 
 	app.startHTTPServer(&wg)
 	app.startWaterMill(ctx, &wg)
-	app.startScheduler(ctx, &wg)
 	app.startGRPCServer(&wg)
 
 	logger.Info("Leaderboard Scoring application started.")
@@ -199,15 +193,6 @@ func (app *Application) setupWatermill() {
 	app.WMRouter = router
 }
 
-func (app *Application) startScheduler(ctx context.Context, wg *sync.WaitGroup) {
-	logger.L().Info("Starting Scheduler...")
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		app.Scheduler.Start(ctx)
-	}()
-}
-
 func (app *Application) startGRPCServer(wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {
@@ -232,8 +217,6 @@ func (app *Application) shutdownServers(ctx context.Context) bool {
 
 		shutdownWg.Add(1)
 		go app.shutdownWatermillAndSubscriber(ctx, &shutdownWg)
-
-		app.Scheduler.Stop()
 
 		shutdownWg.Add(1)
 		go app.shutdownGRPCServer(ctx, &shutdownWg)
