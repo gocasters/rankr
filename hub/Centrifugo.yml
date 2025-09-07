@@ -1,0 +1,12 @@
+version: "3.9"
+
+services:
+  centrifugo:
+    image: centrifugo/centrifugo:latest
+    container_name: centrifugo
+    command: centrifugo --config=/centrifugo/config.json
+    volumes:
+      - ./hub/config.json:/hub/config.json
+    ports:
+      - "8000:8000"   # WebSocket & HTTP API
+    restart: unless-stopped
