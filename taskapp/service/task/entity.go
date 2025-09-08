@@ -12,7 +12,7 @@ type Task struct {
 	Description string     `json:"description"`
 	State       string     `json:"state"` // open / closed
 	Author      string     `json:"author"`
-	Assignees   int64      `json:"assignees"`
+	Assignees   []int64    `json:"assignees"`
 	Labels      []Label    `json:"labels"`
 	Milestone   Milestone  `json:"milestone"`
 	CreatedAt   time.Time  `json:"created_at"`

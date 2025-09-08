@@ -7,8 +7,8 @@ http_server:
 postgres_db:
   host: task-db
   port: 5432
-  user: "task_admin"
-  password: "password123"
+  user: ${TASK_DB_USER:-task_admin}
+  password: ${TASK_DB_PASSWORD:-password123}
   db_name: task_db
   ssl_mode: disable
   max_conns: 20
