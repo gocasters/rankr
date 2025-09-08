@@ -52,7 +52,6 @@ func serve() {
 	if err := cfgloader.Load(options, &cfg); err != nil {
 		log.Fatalf("Failed to load task config: %v", err)
 	}
-
 	// Initialize logger
 	logger.Init(cfg.Logger)
 	taskLogger, lerr := logger.L()
@@ -88,7 +87,11 @@ func serve() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	app := taskapp.Setup(ctx, cfg, conn, taskLogger)
+	app, sErr := taskapp.Setup(ctx, cfg, conn, taskLogger)
+	if sErr != nil {
+		taskLogger.Error("Failed to setup taskapp", slog.Any("error", sErr))
+		os.Exit(1)
+	}
 	app.Start()
 }
 

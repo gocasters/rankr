@@ -9,15 +9,6 @@ services:
     restart: always
     profiles:
       - task
-    volumes:
-      - task-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U task_admin -d task_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    ports:
-      - "5432:5432"
 
   task-service:
     build:
@@ -27,15 +18,12 @@ services:
         GO_IMAGE_NAME: ${GO_IMAGE_NAME}
         GO_IMAGE_VERSION: ${GO_IMAGE_VERSION}
     image: ${SERVICE_NAME}-task:${GO_IMAGE_NAME}-${GO_IMAGE_VERSION}
-
-    command: /bin/sh -c "go run cmd/task/main.go migrate --up"
-    depends_on:
-      task-db:
-        condition: service_healthy
-
+    entrypoint:
+      - air
+      - "-c"
+      - /home/app/.air/.air.task.toml
     volumes:
       - ./:/home/app
-      - task-go-mod-cache:/go/pkg/mod
     profiles:
       - task
     labels:
@@ -46,7 +34,3 @@ services:
       - "traefik.http.routers.${SERVICE_NAME}_task.entrypoints=web"
       - "traefik.http.services.${SERVICE_NAME}_task.loadbalancer.server.port=5001"
       - "traefik.http.middlewares.${SERVICE_NAME}_strip_task.stripprefix.prefixes=/task"
-
-volumes:
-  task-data:
-  task-go-mod-cache:

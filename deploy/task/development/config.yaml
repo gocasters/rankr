@@ -1,4 +1,4 @@
-server:
+http_server:
   port: 5001
   cors:
     allow_origins: "*"
