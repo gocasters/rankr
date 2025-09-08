@@ -3,10 +3,10 @@ package leaderboardscoring
 import "errors"
 
 var (
-	ErrFailedToUpdateScores        = errors.New("failed to update scores in redis")
-	ErrFailedToPersistContribution = errors.New("failed to persist contribution to database")
-	ErrNotImplemented              = errors.New("repository method not implemented")
-	ErrFailedToAddToRedisStream    = errors.New("failed to add event to redis stream")
+	ErrFailedToUpdateScores = errors.New("failed to update scores in redis")
+	ErrInvalidArguments     = errors.New("invalid arguments provided for the request")
+	ErrNotImplemented       = errors.New("repository method not implemented")
+	ErrLeaderboardNotFound  = errors.New("leaderboard data not found for the given criteria")
 )
 
 const MsgSuccessfullyProcessedEvent = "successfully processed score event"

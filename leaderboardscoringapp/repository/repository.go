@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -10,14 +11,14 @@ import (
 )
 
 type LeaderboardRepo struct {
-	client *redis.Client
-	db     *pgxpool.Pool
+	redisClient *redis.Client
+	db          *pgxpool.Pool
 }
 
 func NewLeaderboardscoringRepo(client *redis.Client, db *pgxpool.Pool) leaderboardscoring.Repository {
 	return &LeaderboardRepo{
-		client: client,
-		db:     db,
+		redisClient: client,
+		db:          db,
 	}
 }
 
@@ -35,7 +36,7 @@ func (l *LeaderboardRepo) UpsertScores(ctx context.Context, score *leaderboardsc
 		return nil
 	}
 
-	pipeLine := l.client.Pipeline()
+	pipeLine := l.redisClient.Pipeline()
 
 	for _, key := range score.Keys {
 		pipeLine.ZIncrBy(ctx, key, float64(score.Score), score.UserID)
@@ -44,14 +45,34 @@ func (l *LeaderboardRepo) UpsertScores(ctx context.Context, score *leaderboardsc
 	_, err := pipeLine.Exec(ctx)
 	if err != nil {
 		logger.Error(
-			"failed to execute redis pipeline for updating scores",
+			"failed to execute redisClient pipeline for updating scores",
 			slog.String("user_id", score.UserID),
 			slog.String("error", err.Error()),
 		)
 		return err
 	}
 
-	logger.Debug("successfully updated scores in redis pipeline", slog.String("user_id", score.UserID))
+	logger.Debug("successfully updated scores in redisClient pipeline", slog.String("user_id", score.UserID))
 
 	return nil
+}
+
+func (l *LeaderboardRepo) GetLeaderboard(ctx context.Context, leaderboard *leaderboardscoring.LeaderboardQuery) (leaderboardscoring.LeaderboardQueryResult, error) {
+	data, err := l.redisClient.ZRevRangeWithScores(ctx, leaderboard.Key, leaderboard.Start, leaderboard.Stop).Result()
+	if err != nil {
+		return leaderboardscoring.LeaderboardQueryResult{}, err
+	}
+
+	var rows = make([]leaderboardscoring.LeaderboardEntry, 0, int(leaderboard.Stop-leaderboard.Start))
+	for i, entry := range data {
+		var row = leaderboardscoring.LeaderboardEntry{
+			Rank:   uint64(leaderboard.Start + int64(i) + 1),
+			UserID: fmt.Sprintf("%v", entry.Member),
+			Score:  uint64(entry.Score),
+		}
+
+		rows = append(rows, row)
+	}
+
+	return leaderboardscoring.LeaderboardQueryResult{LeaderboardRows: rows}, nil
 }
