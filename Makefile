@@ -262,3 +262,26 @@ start-project-app-dev:
 
 start-project-app-dev-log:
 	./deploy/docker-compose-dev.bash --profile project up
+
+## ------------------------------------------------------------------------------------
+## Service Lifecycle Commands Leaderboard-Scoring App
+## ------------------------------------------------------------------------------------
+
+lbscoring-compose-up: ## Start all required background services (Postgres, Redis, NATS)
+	@./deploy/leaderboardscoring/development/service.sh up
+
+lbscoring-compose-logs: ## Follow the logs of the background services
+	@./deploy/leaderboardscoring/development/service.sh logs
+
+lbscoring-compose-stop: ## Stop the background services without deleting data
+	@./deploy/leaderboardscoring/development/service.sh stop
+
+lbscoring-compose-down: ## Stop and remove all background services and their data volumes
+	@./deploy/leaderboardscoring/development/service.sh down
+
+lbscoring-service-run: ## Start the leaderboardscoring Go service
+	@./deploy/leaderboardscoring/development/service.sh run
+
+lbscoring-help: ## Show the help message from the script
+	@./deploy/leaderboardscoring/development/service.sh help
+
