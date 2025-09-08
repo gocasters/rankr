@@ -132,17 +132,17 @@ type PushPayload struct {
 
 func (er *EventRequest) ProtobufToEventRequest(eventPB *eventpb.Event) (*EventRequest, error) {
 	if eventPB == nil {
-		return &EventRequest{}, fmt.Errorf("nil event")
+		return nil, fmt.Errorf("nil event")
 	}
 
 	ts := eventPB.GetTime()
 	if ts == nil || !ts.IsValid() {
-		return &EventRequest{}, fmt.Errorf("event with ID %s has a missing timestamp", eventPB.Id)
+		return nil, fmt.Errorf("event with ID %s has a missing timestamp", eventPB.Id)
 	}
 
 	payload, err := protobufToPayload(eventPB)
 	if err != nil {
-		return &EventRequest{}, err
+		return nil, err
 	}
 
 	eventName, err := mapPbEventName(eventPB.GetEventName())
@@ -236,6 +236,10 @@ func protobufToPayload(eventPB *eventpb.Event) (interface{}, error) {
 		if p == nil {
 			return nil, fmt.Errorf("missing issue_closed payload (id=%s)", eventPB.Id)
 		}
+		openedAtTS := p.GetOpenedAt()
+		if openedAtTS == nil || !openedAtTS.IsValid() {
+			return nil, fmt.Errorf("missing or invalid issue_closed.opened_at (id=%s)", eventPB.Id)
+		}
 		issueClosed := IssueClosedPayload{
 			UserID:          p.GetUserId(),
 			IssueAuthorID:   p.GetIssueAuthorId(),
@@ -243,7 +247,7 @@ func protobufToPayload(eventPB *eventpb.Event) (interface{}, error) {
 			IssueNumber:     p.GetIssueNumber(),
 			CloseReason:     IssueCloseReason(p.GetCloseReason()),
 			Labels:          p.GetLabels(),
-			OpenedAt:        p.GetOpenedAt().AsTime().UTC(),
+			OpenedAt:        openedAtTS.AsTime().UTC(),
 			CommentsCount:   p.GetCommentsCount(),
 			ClosingPrNumber: p.GetClosingPrNumber(),
 		}

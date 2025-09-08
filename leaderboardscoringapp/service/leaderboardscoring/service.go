@@ -74,10 +74,16 @@ func (s Service) GetLeaderboard(ctx context.Context, req *GetLeaderboardRequest)
 	}
 
 	key := req.BuildKey()
-	stop := int64(req.Offset + req.PageSize - 1)
-	if req.PageSize == 0 {
-		stop = -1
+
+	const maxPageSize = 1000 // TODO: consider making this configurable
+	if req.Offset < 0 {
+		return GetLeaderboardResponse{}, errors.Join(ErrInvalidArguments, fmt.Errorf("offset must be >= 0"))
 	}
+	pageSize := req.PageSize
+	if pageSize <= 0 || pageSize > maxPageSize {
+		pageSize = maxPageSize
+	}
+	stop := int64(req.Offset) + int64(pageSize) - 1
 
 	lbQuery := &LeaderboardQuery{
 		Key:   key,
