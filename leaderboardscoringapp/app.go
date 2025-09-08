@@ -183,7 +183,7 @@ func (app *Application) setupWatermill() {
 	checker := consumer.NewIdempotencyChecker(app.RedisAdapter.Client(), app.Config.Consumer)
 	handler := consumer.NewHandler(app.LeaderboardSvc, checker)
 
-	router.AddNoPublisherHandler(
+	router.AddConsumerHandler(
 		"ContributionHandler",
 		app.Config.SubscriberTopic,
 		app.Subscriber,

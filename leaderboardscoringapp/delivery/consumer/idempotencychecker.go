@@ -38,7 +38,6 @@ var (
 
 // CheckEvent It returns specific errors if the event is a duplicate or is locked.
 func (ic *IdempotencyChecker) CheckEvent(ctx context.Context, eventID string, processEventFunc func() error) error {
-
 	if eventID == "" {
 		return fmt.Errorf("invalid eventID: empty")
 	}
@@ -94,7 +93,9 @@ else
   return 0
 end
 `)
-	_ = releaseLockLua.Run(ctx, ic.redisClient, []string{lockKey}, token).Err()
+	if err := releaseLockLua.Run(ctx, ic.redisClient, []string{lockKey}, token).Err(); err != nil {
+		logger.L().Warn("failed to release lock (will expire by TTL)", slog.String("key", lockKey), slog.String("error", err.Error()))
+	}
 }
 
 func (ic *IdempotencyChecker) processedKey(eventID string) string {
