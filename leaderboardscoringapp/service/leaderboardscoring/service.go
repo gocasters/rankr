@@ -2,6 +2,7 @@ package leaderboardscoring
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/gocasters/rankr/pkg/timettl"
@@ -41,7 +42,7 @@ func (s Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) error
 	logger := logger.L()
 
 	if err := s.validator.ValidateEvent(req); err != nil {
-		return err
+		return errors.Join(ErrInvalidEventRequest, err)
 	}
 
 	score := s.calculateScore(req)
@@ -52,7 +53,7 @@ func (s Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) error
 
 	if err := s.repo.UpsertScores(ctx, score); err != nil {
 		logger.Error(ErrFailedToUpdateScores.Error(), slog.String("error", err.Error()))
-		return err
+		return errors.Join(ErrFailedToUpdateScores, err)
 	}
 
 	logger.Debug(MsgSuccessfullyProcessedEvent, slog.String("event_id", req.ID))
@@ -69,7 +70,7 @@ func (s Service) GetLeaderboard(ctx context.Context, req *GetLeaderboardRequest)
 
 	if err := s.validator.ValidateGetLeaderboard(req); err != nil {
 		log.Warn("Invalid leaderboard request", slog.String("error", err.Error()))
-		return GetLeaderboardResponse{}, ErrInvalidArguments
+		return GetLeaderboardResponse{}, errors.Join(ErrInvalidArguments, err) // fmt.Errorf("%w:%v", ErrInvalidArguments, err)
 	}
 
 	key := req.BuildKey()

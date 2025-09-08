@@ -76,13 +76,9 @@ func leaderboardResToProtobuf(leaderboardRes leaderboardscoring.GetLeaderboardRe
 		rows = append(rows, leaderboardRow)
 	}
 
-	var projectID string
-	if leaderboardRes.ProjectID != nil {
-		projectID = *leaderboardRes.ProjectID
-	}
 	leaderboardPBRes := &leaderboardscoringpb.GetLeaderboardResponse{
 		Timeframe: leaderboardscoringpb.Timeframe(leaderboardRes.Timeframe),
-		ProjectId: &projectID,
+		ProjectId: leaderboardRes.ProjectID,
 		Rows:      rows,
 	}
 	return leaderboardPBRes
