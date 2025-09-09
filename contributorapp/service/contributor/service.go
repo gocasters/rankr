@@ -10,6 +10,7 @@ import (
 
 type Repository interface {
 	GetContributorByID(ctx context.Context, ID types.ID) (*Contributor, error)
+	CreateContributor(ctx context.Context, contributor Contributor) (*Contributor, error)
 }
 
 type Service struct {
@@ -54,5 +55,31 @@ func (s Service) GetProfile(ctx context.Context, req GetProfileRequest) (GetProf
 		Bio:          contributor.Bio,
 		PrivacyMode:  contributor.PrivacyMode,
 		CreatedAt:    contributor.CreatedAt,
+	}, nil
+}
+
+func (s Service) CreateContributor(ctx context.Context, req CreateContributorRequest) (CreateContributorResponse, error) {
+
+	vErr := s.validator.ValidateCreateContributorRequest(ctx, req)
+	if vErr != nil {
+		return CreateContributorResponse{}, vErr
+	}
+
+	contributor := Contributor{
+		GitHubID:       req.GitHubID,
+		GitHubUsername: req.GitHubUsername,
+		DisplayName:    req.DisplayName,
+		ProfileImage:   req.ProfileImage,
+		Bio:            req.Bio,
+		PrivacyMode:    req.PrivacyMode,
+	}
+
+	createdContributor, err := s.repository.CreateContributor(ctx, contributor)
+	if err != nil {
+		return CreateContributorResponse{}, err
+	}
+
+	return CreateContributorResponse{
+		ID: types.ID(createdContributor.ID),
 	}, nil
 }

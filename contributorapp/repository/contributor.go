@@ -7,6 +7,7 @@ import (
 	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/contributorapp/service/contributor"
 	"github.com/gocasters/rankr/pkg/database"
+	"github.com/gocasters/rankr/type"
 	"log/slog"
 )
 
@@ -57,4 +58,30 @@ func (repo ContributorRepo) GetContributorByID(ctx context.Context, ID types.ID)
 	}
 
 	return &contrib, nil
+}
+func (repo *ContributorRepo) CreateContributor(ctx context.Context, contributor contributor.Contributor) (*contributor.Contributor, error) {
+	query := `
+    	INSERT INTO contributors (github_id, github_username, email , privacy_mode, display_name, profile_image, bio, created_at)
+    	VALUES ($1, $2, $3, $4 ,$5, $6, $7, $8)
+    	RETURNING id;
+    `
+
+	var id int64
+	err := repo.PostgreSQL.Pool.QueryRow(ctx, query,
+		contributor.GitHubID,
+		contributor.GitHubUsername,
+		contributor.Email,
+		contributor.PrivacyMode,
+		contributor.DisplayName,
+		contributor.ProfileImage,
+		contributor.Bio,
+		contributor.CreatedAt,
+	).Scan(&id)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create contributor: %w", err)
+	}
+
+	contributor.ID = id
+	return &contributor, nil
 }

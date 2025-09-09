@@ -1,12 +1,5 @@
 package service
 
-type CommitCommentCreatedRequest struct {
-	Comment    CommitComment `json:"comment"`
-	Repository Repository    `json:"repository"`
-	Sender     User          `json:"sender"`
-}
-type CommitCommentCreatedResponse struct{}
-
 type IssueCommentCreatedRequest struct {
 	Issue      Issue        `json:"issue"`
 	Comment    IssueComment `json:"comment"`
@@ -25,7 +18,6 @@ type IssueCommentDeletedResponse struct{}
 
 type IssueOpenedRequest struct {
 	Issue      Issue      `json:"issue"`
-	Type       IssueType  `json:"type"`
 	Repository Repository `json:"repository"`
 	Sender     User       `json:"sender"`
 }
@@ -33,45 +25,45 @@ type IssueOpenedResponse struct{}
 
 type IssueClosedRequest struct {
 	Issue      Issue      `json:"issue"`
-	Type       IssueType  `json:"type"`
+	Type       IssueType  `json:"types"`
 	Repository Repository `json:"repository"`
 	Sender     User       `json:"sender"`
 }
 type IssueClosedResponse struct{}
 
-type IssueTypedRequest struct {
-	Issue      Issue      `json:"issue"`
-	Type       IssueType  `json:"type"`
-	Label      *Label     `json:"label"`
-	Repository Repository `json:"repository"`
-	Sender     User       `json:"sender"`
-}
-type IssueTypedResponse struct{}
-
-type IssueUntypedRequest struct {
-	Issue      Issue      `json:"issue"`
-	Type       IssueType  `json:"type"`
-	Label      *Label     `json:"label"`
-	Repository Repository `json:"repository"`
-	Sender     User       `json:"sender"`
-}
-type IssueUntypedResponse struct{}
-
-type LabelCreatedRequest struct {
-	Label      Label      `json:"label"`
-	Repository Repository `json:"repository"`
-	Sender     User       `json:"sender"`
-}
-type LabelCreatedResponse struct{}
-type LabelDeletedRequest struct {
-	Label      Label      `json:"label"`
-	Repository Repository `json:"repository"`
-	Sender     User       `json:"sender"`
-}
-type LabelDeletedResponse struct{}
+//types IssueTypedRequest struct {
+//	Issue      Issue      `json:"issue"`
+//	Type       IssueType  `json:"types"`
+//	Label      *Label     `json:"label"`
+//	Repository Repository `json:"repository"`
+//	Sender     User       `json:"sender"`
+//}
+//types IssueTypedResponse struct{}
+//
+//types IssueUntypedRequest struct {
+//	Issue      Issue      `json:"issue"`
+//	Type       IssueType  `json:"types"`
+//	Label      *Label     `json:"label"`
+//	Repository Repository `json:"repository"`
+//	Sender     User       `json:"sender"`
+//}
+//types IssueUntypedResponse struct{}
+//
+//types LabelCreatedRequest struct {
+//	Label      Label      `json:"label"`
+//	Repository Repository `json:"repository"`
+//	Sender     User       `json:"sender"`
+//}
+//types LabelCreatedResponse struct{}
+//types LabelDeletedRequest struct {
+//	Label      Label      `json:"label"`
+//	Repository Repository `json:"repository"`
+//	Sender     User       `json:"sender"`
+//}
+//types LabelDeletedResponse struct{}
 
 type PullRequestOpenedRequest struct {
-	Number      int         `json:"number"`
+	Number      int32       `json:"number"`
 	PullRequest PullRequest `json:"pull_request"`
 	Repository  Repository  `json:"repository"`
 	Sender      User        `json:"sender"`
@@ -79,28 +71,28 @@ type PullRequestOpenedRequest struct {
 type PullRequestOpenedResponse struct{}
 
 type PullRequestClosedRequest struct {
-	Number      int         `json:"number"`
+	Number      int32       `json:"number"`
 	PullRequest PullRequest `json:"pull_request"`
 	Repository  Repository  `json:"repository"`
 	Sender      User        `json:"sender"`
 }
 type PullRequestClosedResponse struct{}
 
-type PullRequestReviewCommentCreatedRequest struct {
-	PullRequest PullRequest `json:"pull_request"`
-	Comment     interface{} `json:"comment"`
-	Repository  Repository  `json:"repository"`
-	Sender      User        `json:"sender"`
-}
-type PullRequestReviewCommentCreatedResponse struct{}
-
-type PullRequestReviewCommentDeletedRequest struct {
-	PullRequest PullRequest `json:"pull_request"`
-	Comment     interface{} `json:"comment"`
-	Repository  Repository  `json:"repository"`
-	Sender      User        `json:"sender"`
-}
-type PullRequestReviewCommentDeletedResponse struct{}
+//types PullRequestReviewCommentCreatedRequest struct {
+//	PullRequest PullRequest `json:"pull_request"`
+//	Comment     interface{} `json:"comment"`
+//	Repository  Repository  `json:"repository"`
+//	Sender      User        `json:"sender"`
+//}
+//types PullRequestReviewCommentCreatedResponse struct{}
+//
+//types PullRequestReviewCommentDeletedRequest struct {
+//	PullRequest PullRequest `json:"pull_request"`
+//	Comment     interface{} `json:"comment"`
+//	Repository  Repository  `json:"repository"`
+//	Sender      User        `json:"sender"`
+//}
+//types PullRequestReviewCommentDeletedResponse struct{}
 
 type PullRequestReviewSubmittedRequest struct {
 	Review      PullRequestReview `json:"review"`
@@ -109,3 +101,12 @@ type PullRequestReviewSubmittedRequest struct {
 	Sender      User              `json:"sender"`
 }
 type PullRequestReviewSubmittedResponse struct{}
+
+type PushRequest struct {
+	Ref        string     `json:"ref"`
+	Repository Repository `json:"repository"`
+	HeadCommit *Commit    `json:"head_commit"`
+	Commits    []Commit   `json:"commits"`
+	Sender     User       `json:"sender"`
+}
+type PushResponse struct{}

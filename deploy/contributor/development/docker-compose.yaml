@@ -63,7 +63,8 @@ services:
       - "traefik.http.routers.${SERVICE_NAME}_user_no_auth.service=${SERVICE_NAME}_user"
       - "traefik.http.routers.${SERVICE_NAME}_user_no_auth.rule=Host(`${SERVICE_DOMAIN}`) && (
           PathPrefix(`/contributors/v1/health-check`) ||
-          PathPrefix(`/contributors/v1/profile`)
+          PathPrefix(`/contributors/v1/profile`) ||
+          PathPrefix(`/contributors/v1/create`)
         )"
       - "traefik.http.routers.${SERVICE_NAME}_user_no_auth.entrypoints=web"
       - "traefik.http.routers.${SERVICE_NAME}_user_no_auth.middlewares=${SERVICE_NAME}_strip_user"

@@ -3,7 +3,6 @@ package taskapp
 import (
 	"context"
 	"fmt"
-	"github.com/gocasters/rankr/taskapp/service/task"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -14,6 +13,7 @@ import (
 	"github.com/gocasters/rankr/pkg/httpserver"
 	"github.com/gocasters/rankr/taskapp/delivery/http"
 	"github.com/gocasters/rankr/taskapp/repository"
+	"github.com/gocasters/rankr/taskapp/service/task"
 )
 
 type Application struct {
@@ -89,7 +89,7 @@ func startServers(app Application, wg *sync.WaitGroup) {
 		defer wg.Done()
 		app.Logger.Info(fmt.Sprintf("✅ HTTP server started on %d", app.Config.HTTPServer.Port))
 		if err := app.HTTPServer.Serve(); err != nil {
-			app.Logger.Error(fmt.Sprintf("error in HTTP server on %d", app.Config.HTTPServer.Port), err)
+			app.Logger.Error(fmt.Sprintf("error in HTTP server on %d", app.Config.HTTPServer.Port), slog.Any("error", err))
 		}
 		app.Logger.Info(fmt.Sprintf("HTTP server stopped %d", app.Config.HTTPServer.Port))
 	}()

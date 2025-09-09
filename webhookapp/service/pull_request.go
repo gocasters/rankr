@@ -5,10 +5,6 @@ import (
 	"fmt"
 
 	"github.com/gocasters/rankr/protobuf/golang/eventpb"
-
-	"github.com/ThreeDotsLabs/watermill"
-	"github.com/ThreeDotsLabs/watermill/message"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -20,85 +16,78 @@ func (s *Service) HandlePullRequestEvent(action string, body []byte, deliveryUID
 			return err
 		}
 
-		return s.ProcessPullRequestOpened(req, deliveryUID)
+		return s.publishPullRequestOpened(req, deliveryUID)
 
 	case "closed":
 		var req PullRequestClosedRequest
 		if err := json.Unmarshal(body, &req); err != nil {
 			return err
 		}
-		return s.ProcessPullRequestClosed(req, deliveryUID)
+		return s.publishPullRequestClosed(req, deliveryUID)
 
 	default:
 		return fmt.Errorf("pull request action '%s' not handled", action)
 	}
 }
 
-func (s *Service) ProcessPullRequestOpened(req PullRequestOpenedRequest, deliveryUID string) error {
-	ev := ActivityEvent{
-		Event:       EventTypePullRequest,
-		Delivery:    deliveryUID,
-		PayloadType: PayloadTypePullRequestOpened,
-		Payload:     req,
-	}
-
-	payload, pErr := json.Marshal(ev)
-	if pErr != nil {
-		return pErr
-	}
-	msg := message.NewMessage(watermill.NewUUID(), payload)
-
-	metadata := map[string]string{
-		"delivery": deliveryUID,
-		"action":   "opened",
-	}
-
-	for k, v := range metadata {
-		msg.Metadata.Set(k, v)
-	}
-
-	if err := s.Publisher.Publish(TopicGithubUserActivity, msg); err != nil {
-		return fmt.Errorf("failed to publish event: %w", err)
-	}
-
-	return nil
-}
-
-func (s *Service) ProcessPullRequestClosed(req PullRequestClosedRequest, deliveryUID string) error {
+func (s *Service) publishPullRequestOpened(req PullRequestOpenedRequest, deliveryUID string) error {
 	ev := &eventpb.Event{
-		Id:        deliveryUID,
-		EventName: eventpb.EventName_PULL_REQUEST_CLOSED,
-		Time:      timestamppb.Now(),
-		Payload: &eventpb.Event_PrClosedPayload{ // wrapper
-			PrClosedPayload: &eventpb.PullRequestClosedPayload{
-				UserId:    req.Sender.Login,
-				ProjectId: req.Repository.FullName,
-				Merged:    *req.PullRequest.Merged,
-				Additions: int32(req.PullRequest.Additions),
-				Deletions: int32(req.PullRequest.Deletions),
+		Id:             deliveryUID,
+		EventName:      eventpb.EventName_PULL_REQUEST_OPENED,
+		Time:           timestamppb.New(req.PullRequest.CreatedAt),
+		RepositoryId:   req.Repository.ID,
+		RepositoryName: req.Repository.FullName,
+		Payload: &eventpb.Event_PrOpenedPayload{
+			PrOpenedPayload: &eventpb.PullRequestOpenedPayload{
+				UserId:       req.Sender.ID,
+				PrId:         req.PullRequest.ID,
+				PrNumber:     req.PullRequest.Number,
+				Title:        req.PullRequest.Title,
+				BranchName:   req.PullRequest.Head.Ref,
+				TargetBranch: req.PullRequest.Base.Ref,
+				Labels:       extractLabelsNames(req.PullRequest.Labels),
+				Assignees:    extractAssigneesIDs(req.PullRequest.Assignees),
 			},
 		},
 	}
 
-	payload, err := proto.Marshal(ev)
-	if err != nil {
-		return fmt.Errorf("failed to marshal protobuf: %w", err)
+	metadata := map[string]string{}
+
+	return s.publishEvent(ev, eventpb.EventName_PULL_REQUEST_OPENED, TopicGithubPullRequest, metadata)
+}
+
+func (s *Service) publishPullRequestClosed(req PullRequestClosedRequest, deliveryUID string) error {
+	ev := &eventpb.Event{
+		Id:             deliveryUID,
+		EventName:      eventpb.EventName_PULL_REQUEST_CLOSED,
+		Time:           timestamppb.New(*req.PullRequest.ClosedAt),
+		RepositoryId:   req.Repository.ID,
+		RepositoryName: req.Repository.FullName,
+		Payload: &eventpb.Event_PrClosedPayload{
+			PrClosedPayload: &eventpb.PullRequestClosedPayload{
+				UserId: req.Sender.ID,
+				MergerUserId: func() uint64 {
+					if req.PullRequest.Merged != nil && *req.PullRequest.Merged && req.PullRequest.MergedBy != nil {
+						return req.PullRequest.MergedBy.ID
+					}
+					return req.Sender.ID
+				}(),
+				PrId:         req.PullRequest.ID,
+				PrNumber:     req.PullRequest.Number,
+				Merged:       req.PullRequest.Merged,
+				CloseReason:  determineCloseReason(req.PullRequest.Merged),
+				Additions:    req.PullRequest.Additions,
+				Deletions:    req.PullRequest.Deletions,
+				FilesChanged: req.PullRequest.ChangedFiles,
+				CommitsCount: req.PullRequest.Commits,
+				Labels:       extractLabelsNames(req.PullRequest.Labels),
+				TargetBranch: req.PullRequest.Base.Ref,
+				Assignees:    extractAssigneesIDs(req.PullRequest.Assignees),
+			},
+		},
 	}
 
-	msg := message.NewMessage(watermill.NewUUID(), payload)
+	metadata := map[string]string{}
 
-	metadata := map[string]string{
-		"delivery": deliveryUID,
-		"action":   "closed",
-	}
-
-	for k, v := range metadata {
-		msg.Metadata.Set(k, v)
-	}
-
-	if err := s.Publisher.Publish(TopicGithubUserActivity, msg); err != nil {
-		return fmt.Errorf("failed to publish event: %w", err)
-	}
-
-	return nil
+	return s.publishEvent(ev, eventpb.EventName_PULL_REQUEST_CLOSED, TopicGithubPullRequest, metadata)
 }
