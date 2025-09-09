@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <script type="text/javascript" src="https://unpkg.com/centrifuge@^5/dist/centrifuge.js"></script>
+        <title>Centrifuge chat example</title>
+    </head>
+    <body>
+        <input type="text" id="input" />
+        <script type="text/javascript">
+            function drawText(text) {
+                const div = document.createElement('div');
+                div.innerHTML = text + '<br>';
+                document.body.appendChild(div);
+            }
+            
+            // Create Centrifuge object with Websocket endpoint address set in main.go
+            const centrifuge = new Centrifuge('ws://localhost:5000/connection/websocket');
+
+            centrifuge.on('connected', function(ctx){
+                drawText('Connected over ' + ctx.transport);
+            });
+            
+            const sub = centrifuge.newSubscription("chat");
+            sub.on('publication', function(ctx) {
+                drawText(JSON.stringify(ctx.data));
+            });
+            // Move subscription to subscribing state.
+            sub.subscribe();
+            
+            const input = document.getElementById("input");
+            input.addEventListener('keyup', function(e) {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    sub.publish(this.value);
+                    input.value = '';
+                }
+            });
+            // After setting event handlers – initiate actual connection with server.
+            centrifuge.connect();
+        </script>
+    </body>
+</html>

@@ -1,9 +1,13 @@
 package repository
 
 import (
+	"context"
+	"database/sql"
+	"fmt"
 	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/contributorapp/service/contributor"
 	"github.com/gocasters/rankr/pkg/database"
+	"github.com/gocasters/rankr/type"
 	"log/slog"
 )
 
@@ -25,4 +29,59 @@ func NewContributorRepo(config Config, db *database.Database, logger *slog.Logge
 		Logger:     logger,
 		PostgreSQL: db,
 	}
+}
+
+func (repo ContributorRepo) GetContributorByID(ctx context.Context, ID types.ID) (*contributor.Contributor, error) {
+	query := "SELECT id, github_id, github_username, email, is_verified, two_factor_enabled, privacy_mode, display_name, profile_image, bio, created_at FROM contributors WHERE id=$1"
+	row := repo.PostgreSQL.Pool.QueryRow(ctx, query, ID)
+
+	var contrib contributor.Contributor
+	err := row.Scan(
+		&contrib.ID,
+		&contrib.GitHubID,
+		&contrib.GitHubUsername,
+		&contrib.Email,
+		&contrib.IsVerified,
+		&contrib.TwoFactor,
+		&contrib.PrivacyMode,
+		&contrib.DisplayName,
+		&contrib.ProfileImage,
+		&contrib.Bio,
+		&contrib.CreatedAt,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("result with id %d not found", ID)
+		}
+		return nil, fmt.Errorf("error retrieving contributor with id: %d, error: %v", ID, err)
+	}
+
+	return &contrib, nil
+}
+func (repo *ContributorRepo) CreateContributor(ctx context.Context, contributor contributor.Contributor) (*contributor.Contributor, error) {
+	query := `
+    	INSERT INTO contributors (github_id, github_username, email , privacy_mode, display_name, profile_image, bio, created_at)
+    	VALUES ($1, $2, $3, $4 ,$5, $6, $7, $8)
+    	RETURNING id;
+    `
+
+	var id int64
+	err := repo.PostgreSQL.Pool.QueryRow(ctx, query,
+		contributor.GitHubID,
+		contributor.GitHubUsername,
+		contributor.Email,
+		contributor.PrivacyMode,
+		contributor.DisplayName,
+		contributor.ProfileImage,
+		contributor.Bio,
+		contributor.CreatedAt,
+	).Scan(&id)
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to create contributor: %w", err)
+	}
+
+	contributor.ID = id
+	return &contributor, nil
 }

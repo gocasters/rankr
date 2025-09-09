@@ -45,7 +45,7 @@ func newHttpServerWithoutOtel() {
 		},
 	)
 
-	fmt.Println("Server without Otel is ready.")
+	fmt.Println("HTTPServer without Otel is ready.")
 	if err := server.Start(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("failed to start server: %v", err)
 	}
@@ -84,7 +84,7 @@ func initTracerProvider() (*sdktrace.TracerProvider, error) {
 
 	resource := resource.NewWithAttributes(
 		semconv.SchemaURL,
-		semconv.ServiceNameKey.String("httpserver"),
+		semconv.ServiceNameKey.String("http"),
 	)
 
 	tp := sdktrace.NewTracerProvider(
@@ -105,7 +105,7 @@ func newHttpServerWithOtel() {
 
 	otel.SetTracerProvider(traceProvider)
 
-	otelMiddleware := otelecho.Middleware("httpserver")
+	otelMiddleware := otelecho.Middleware("http")
 	serverConfig := httpserver.Config{
 		Port:            8080,
 		CORS:            httpserver.CORS{AllowOrigins: []string{"*"}},

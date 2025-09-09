@@ -1,7 +1,7 @@
 package command
 
 import (
-	"github.com/gocasters/rankr/leaderboardscoring"
+	"github.com/gocasters/rankr/leaderboardscoringapp"
 	"github.com/gocasters/rankr/pkg/config"
 	"github.com/gocasters/rankr/pkg/migrator"
 	"github.com/spf13/cobra"
@@ -29,14 +29,14 @@ func init() {
 }
 
 func migrate() {
-	var cfg leaderboardscoring.Config
+	var cfg leaderboardscoringapp.Config
 
 	workingDir, err := os.Getwd()
 	if err != nil {
 		log.Fatalf("Error getting working directory: %v", err)
 	}
 
-	yamlPath := filepath.Join(workingDir, "leaderboardscoring", "repository", "dbconfig.yml")
+	yamlPath := filepath.Join(workingDir, "leaderboardscoringapp", "repository", "dbconfig.yml")
 
 	// to run migrations when you want to run leaderboardscoring service locally
 	if path := os.Getenv("DBCONFIG_OVERRIDE_PATH"); path != "" {

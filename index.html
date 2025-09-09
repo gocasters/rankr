@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Centrifugo JWT Example</title>
+  <script src="https://unpkg.com/centrifuge@5.4.0/dist/centrifuge.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/10.5.23/jsrsasign-all-min.js"></script>
+</head>
+<body>
+<h2>Send data to Centrifugo channel</h2>
+<input id="inputValue" type="number" placeholder="Enter value">
+<button id="sendBtn">Send</button>
+
+<div id="messages"></div>
+
+<script>
+  const secret = "bbe7d157-a253-4094-9759-06a8236543f9";
+
+  function generateToken(userId) {
+    const header = { alg: "HS256", typ: "JWT" };
+    const payload = {
+      sub: userId,
+      info: { name: "Alice" },
+      exp: Math.floor(Date.now() / 1000) + 60 // 1 min expiry
+    };
+    return KJUR.jws.JWS.sign("HS256", JSON.stringify(header), JSON.stringify(payload), secret);
+  }
+
+  const token = generateToken("user123");
+  console.log("JWT Token:", token);
+
+  const centrifuge = new Centrifuge("ws://localhost:8000/connection/websocket", { token });
+
+  const messagesDiv = document.getElementById("messages");
+
+  centrifuge.on('connected', ctx => {
+    console.log("Connected over:", ctx.transport);
+  }).on('disconnected', ctx => {
+    console.log("Disconnected:", ctx.code, ctx.reason);
+  });
+
+  centrifuge.connect();
+
+  const sub = centrifuge.newSubscription("channel");
+  sub.on('subscribed', () => console.log("Subscribed!"))
+     .on('publication', ctx => {
+        console.log("Received:", ctx.data);
+        messagesDiv.innerHTML += `<div>Received: ${ctx.data.value}</div>`;
+     })
+     .subscribe();
+
+  // Send data on button click
+  document.getElementById("sendBtn").addEventListener("click", () => {
+    const value = Number(document.getElementById("inputValue").value);
+    if (!isNaN(value)) {
+      centrifuge.publish("channel", { value }, (err, res) => {
+        if (err) {
+          console.error("Publish error:", err);
+        } else {
+          console.log("Published:", value);
+        }
+      });
+    }
+  });
+</script>
+</body>
+</html>

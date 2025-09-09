@@ -1,0 +1,14 @@
+version: "3.8"
+services:
+  emqx:
+    image: emqx/emqx:latest
+    container_name: emqx
+    restart: always
+    environment:
+      - EMQX_ALLOW_ANONYMOUS=false          # disable anonymous
+      - EMQX_DEFAULT_USER_USERNAME=test     # set default username
+      - EMQX_DEFAULT_USER_PASSWORD=secret   # set default password
+    ports:
+      - "1883:1883"   # MQTT TCP
+      - "8083:8083"   # MQTT WebSocket
+      - "18083:18083" # Dashboard
