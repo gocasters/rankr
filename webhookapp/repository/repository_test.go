@@ -70,12 +70,11 @@ func (suite *WebhookRepositoryTestSuite) createTable() {
 		id BIGSERIAL PRIMARY KEY,
 		provider smallint NOT NULL,
 		delivery_id TEXT NOT NULL,
-		event_type VARCHAR(50) NOT NULL,
-		payload JSONB NOT NULL,
+		event_type smallint NOT NULL,
+		payload BYTEA NOT NULL,
 		received_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 		CONSTRAINT webhook_events_provider_delivery_id_unique UNIQUE (provider, delivery_id)
 	)`
-
 	_, err := suite.db.Exec(suite.ctx, query)
 	require.NoError(suite.T(), err, "Failed to create test table")
 }
@@ -360,7 +359,7 @@ func (suite *WebhookRepositoryTestSuite) TestSave_DuplicateIgnored() {
 	// Save duplicate - should return error but not fail
 	err = suite.repo.Save(suite.ctx, event)
 	assert.Error(suite.T(), err)
-	assert.Contains(suite.T(), err.Error(), "already exists")
+	assert.Contains(suite.T(), err.Error(), "no rows affected")
 
 	// Verify only one event exists
 	count, err := suite.repo.CountEvents(suite.ctx)
@@ -428,7 +427,7 @@ func (suite *WebhookRepositoryTestSuite) TestFindEvents_WithEventTypeFilter() {
 	err = suite.repo.Save(suite.ctx, event2)
 	require.NoError(suite.T(), err)
 
-	eventType := "EVENT_NAME_PULL_REQUEST_OPENED"
+	eventType := int32(eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED)
 	filter := EventFilter{EventType: &eventType}
 
 	events, err := suite.repo.FindEvents(suite.ctx, filter)
@@ -499,7 +498,7 @@ func (suite *WebhookRepositoryTestSuite) TestGetEventsByType() {
 	err = suite.repo.Save(suite.ctx, event2)
 	require.NoError(suite.T(), err)
 
-	events, err := suite.repo.GetEventsByType(suite.ctx, "EVENT_NAME_PULL_REQUEST_OPENED", 10)
+	events, err := suite.repo.GetEventsByType(suite.ctx, int32(eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED), 10)
 	assert.NoError(suite.T(), err)
 	assert.Len(suite.T(), events, 1)
 	assert.Equal(suite.T(), eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED, events[0].EventName)
