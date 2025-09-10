@@ -18,6 +18,9 @@ type Service struct {
 	publisher message.Publisher
 }
 
+// New creates a Service that persists events using repo and publishes them with publisher.
+// The returned *Service coordinates saving events via the provided EventRepository and
+// publishing Watermill messages using the provided message.Publisher.
 func New(repo EventRepository, publisher message.Publisher) *Service {
 	return &Service{
 		repo:      repo,

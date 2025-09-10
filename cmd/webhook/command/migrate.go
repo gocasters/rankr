@@ -22,12 +22,25 @@ var migrateCmd = &cobra.Command{
 	},
 }
 
+// init registers the migrate command with the root command and defines its CLI flags.
+// It adds boolean flags `--up` and `--down` to control migration direction.
 func init() {
 	migrateCmd.Flags().BoolVar(&up, "up", false, "Run migrations up")
 	migrateCmd.Flags().BoolVar(&down, "down", false, "Run migrations down")
 	RootCmd.AddCommand(migrateCmd)
 }
 
+// migrate runs database migrations for the webhook service.
+// 
+// It loads configuration into a webhookapp.Config from a YAML file located by
+// default at "<workingDir>/webhookapp/repository/dbconfig.local.yml" unless the
+// path is overridden via the DBCONFIG_OVERRIDE_PATH environment variable.
+// The loaded configuration is used to construct a migrator (from cfg.PostgresDB
+// and cfg.PathOfMigration). The command honors the package-level boolean flags
+// `up` and `down`: `--up` runs migrations up, `--down` runs migrations down.
+// If both flags are set the function logs a fatal error and exits; if neither
+// is set it logs a message asking the user to specify a direction. Errors
+// obtaining the working directory or loading the config are logged fatally.
 func migrate() {
 	var cfg webhookapp.Config
 

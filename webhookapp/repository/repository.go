@@ -36,6 +36,7 @@ type WebhookRepository struct {
 	db *pgxpool.Pool
 }
 
+// NewWebhookRepository returns a WebhookRepository backed by the provided pgx connection pool.
 func NewWebhookRepository(db *pgxpool.Pool) WebhookRepository {
 	return WebhookRepository{db: db}
 }
