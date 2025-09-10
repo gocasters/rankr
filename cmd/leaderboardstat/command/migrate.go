@@ -17,7 +17,7 @@ var down bool
 var migrateCmd = &cobra.Command{
 	Use:   "migrate",
 	Short: "Run database migrations",
-	Long:  `This command runs the database migrations for the food service.`,
+	Long:  `This command runs the database migrations for the leaderboardstat service.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		migrate()
 	},
@@ -31,7 +31,7 @@ func migrate() {
 		log.Fatalf("Error getting working directory: %v", err)
 	}
 
-	yamlPath := filepath.Join(workingDir, "leaderboardstatapp", "repository", "postgres", "dbconfig.yml")
+	yamlPath := filepath.Join(workingDir, "leaderboardstatapp", "repository", "dbconfig.yml")
 
 	// to run migrations when you want to run leaderboardstat service locally
 	if path := os.Getenv("DBCONFIG_OVERRIDE_PATH"); path != "" {
@@ -50,7 +50,7 @@ func migrate() {
 	}
 
 	if err := cfgloader.Load(options, &cfg); err != nil {
-		log.Fatalf("Failed to load food config: %v", err)
+		log.Fatalf("Failed to load leaderboardstat config: %v", err)
 	}
 
 	mgr := migrator.New(cfg.PostgresDB, cfg.PathOfMigration)

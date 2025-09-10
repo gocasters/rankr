@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"fmt"
 	"github.com/gocasters/rankr/leaderboardstatapp"
 	"github.com/gocasters/rankr/pkg/config"
@@ -52,7 +53,7 @@ func serve() {
 	options := config.Options{
 		Prefix:       "LEADERBOARDSTAT_",
 		Delimiter:    ".",
-		Separator:    "__",
+		Separator:    "_",
 		YamlFilePath: yamlPath,
 	}
 	if lErr := config.Load(options, &cfg); lErr != nil {
@@ -90,9 +91,25 @@ func serve() {
 
 	if cnErr != nil {
 		leaderboardLogger.Error("fatal error occurred", "reason", "failed to connect to database", slog.Any("error", cnErr))
+
 		return
 	}
+
 	defer databaseConn.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	app, sErr := leaderboardstatapp.Setup(ctx, cfg, databaseConn)
+
+	if sErr != nil {
+		leaderboardLogger.Error("leaderboardstat setup faild", sErr)
+		fmt.Println("2...")
+		return
+	}
 
 	leaderboardLogger.Info("Leaderboard-stat service started")
+
+	// This will start the HTTP server and keep it running
+	app.Start()
+
 }

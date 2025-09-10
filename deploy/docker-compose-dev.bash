@@ -14,4 +14,5 @@ docker compose \
 -f ./deploy/development/temporal-compose.yml \
 -f ./deploy/argus/development/docker-compose.yaml \
 -f ./deploy/contributor/development/docker-compose.yaml \
+-f ./deploy/leaderboardstat/development/docker-compose.yml \
 "$@"
