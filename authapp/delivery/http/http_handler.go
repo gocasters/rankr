@@ -71,7 +71,6 @@ func (h *AuthHandler) VerifyToken(c echo.Context) error {
 
     if err != nil {
                 // RFC 6750 guidance
-                // RFC 6750 guidance
                 c.Response().Header().Set("WWW-Authenticate", `Bearer error="invalid_token"`)
                 c.Response().Header().Set("Cache-Control", "no-store")
                 c.Response().Header().Set("Pragma", "no-cache")
