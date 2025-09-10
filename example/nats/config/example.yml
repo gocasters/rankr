@@ -1,0 +1,102 @@
+development:
+  nats:
+    url: "nats://127.0.0.1:4222"
+    client_id: "rankr-dev"
+    use_jetstream: true
+    connect_timeout: 10s
+
+production:
+  nats:
+
+    url: "nats://nats-cluster.production.com:4222"
+    client_id: "rankr-prod-service"
+    
+
+    durable_name: "prod-consumer"
+    queue_group: "rankr-prod-group"
+    ack_wait_timeout: 30s
+    max_inflight: 1024
+    
+
+    connect_timeout: 10s
+    reconnect_wait: 2s
+    max_reconnects: -1
+    ping_interval: 2m
+    max_pings_out: 2
+    allow_reconnect: true
+    
+
+    use_jetstream: true
+
+
+high_throughput:
+  nats:
+    url: "nats://127.0.0.1:4222"
+    client_id: "rankr-high-throughput"
+    durable_name: "high-throughput-consumer"
+    queue_group: "high-throughput-group"
+    
+
+    ack_wait_timeout: 60s
+    max_inflight: 5000
+    
+
+    connect_timeout: 5s
+    reconnect_wait: 500ms
+    ping_interval: 30s
+    
+    use_jetstream: true
+
+
+reliable:
+  nats:
+    url: "nats://127.0.0.1:4222"
+    client_id: "rankr-reliable"
+    durable_name: "reliable-consumer"
+    queue_group: "reliable-group"
+    
+
+    ack_wait_timeout: 5m
+    max_inflight: 10
+    
+
+    connect_timeout: 30s
+    reconnect_wait: 5s
+    ping_interval: 30s
+    max_pings_out: 1
+    
+    use_jetstream: true
+
+
+testing:
+  nats:
+    url: "nats://127.0.0.1:4222"
+    client_id: "rankr-test"
+    durable_name: "test-consumer"
+    queue_group: "test-group"
+    
+
+    ack_wait_timeout: 5s
+    max_inflight: 100
+    connect_timeout: 5s
+    reconnect_wait: 100ms
+    max_reconnects: 3
+    
+    use_jetstream: true
+
+
+load_test:
+  nats:
+    url: "nats://127.0.0.1:4222"
+    client_id: "rankr-load-test"
+    durable_name: "load-test-consumer"  
+    queue_group: "load-test-group"
+    
+
+    ack_wait_timeout: 10s
+    max_inflight: 10000
+    connect_timeout: 2s
+    reconnect_wait: 100ms
+    ping_interval: 10s
+    
+    use_jetstream: true
