@@ -57,7 +57,7 @@ func (h *AuthHandler) VerifyToken(c echo.Context) error {
                 c.Response().Header().Set("WWW-Authenticate", `Bearer error="invalid_request"`)
                 c.Response().Header().Set("Cache-Control", "no-store")
                 c.Response().Header().Set("Pragma", "no-cache")
-               return c.JSON(stdhttp.StatusBadRequest, map[string]string{"error": "invalid request"})
+               return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
             }
             token = strings.TrimSpace(req.Token)
         }
@@ -65,7 +65,7 @@ func (h *AuthHandler) VerifyToken(c echo.Context) error {
             c.Response().Header().Set("WWW-Authenticate", `Bearer error="invalid_request"`)
             c.Response().Header().Set("Cache-Control", "no-store")
             c.Response().Header().Set("Pragma", "no-cache")
-            return c.JSON(stdhttp.StatusBadRequest, map[string]string{"error": "token is required"})
+            return c.JSON(http.StatusBadRequest, map[string]string{"error": "token is required"})
         }
 
     claims, err := h.authService.VerifyToken(token)
@@ -77,7 +77,7 @@ func (h *AuthHandler) VerifyToken(c echo.Context) error {
 
                 c.Response().Header().Set("Cache-Control", "no-store")
                 c.Response().Header().Set("Pragma", "no-cache")
-                return c.JSON(stdhttp.StatusUnauthorized, map[string]string{"error": "invalid token"})
+                return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid token"})
     }
 
 
