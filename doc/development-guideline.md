@@ -12,7 +12,7 @@ We use a modular layout to enforce separation of concerns and improve navigabili
 
 ```
 ├── adapter/ # Tools which other services use
-│   ├── redis
+│   ├── redisClient
 │   ├── nats
 │   └── other-app-services
 ├── cli/  # Endpoints to test each app-service(presented in separeted folders)

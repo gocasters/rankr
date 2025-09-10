@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/ThreeDotsLabs/watermill"
 	wnats "github.com/ThreeDotsLabs/watermill-nats/v2/pkg/nats"
+	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/gocasters/rankr/leaderboardscoringapp"
 	"github.com/gocasters/rankr/pkg/config"
 	"github.com/gocasters/rankr/pkg/database"
@@ -13,13 +14,10 @@ import (
 	"github.com/nats-io/nats.go"
 	"github.com/spf13/cobra"
 	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"time"
-
-	"log/slog"
-
-	"github.com/ThreeDotsLabs/watermill/message"
 )
 
 var migrateUp bool
@@ -75,37 +73,37 @@ func serve() {
 			log.Printf("logger close error: %v", err)
 		}
 	}()
-	lbLogger := logger.L()
+	logger := logger.L()
 
 	// Run migrations if flags are set
 	if migrateUp || migrateDown {
 		if migrateUp && migrateDown {
-			lbLogger.Error("invalid flags: --migrate-up and --migrate-down cannot be used together")
+			logger.Error("invalid flags: --migrate-up and --migrate-down cannot be used together")
 
 			return
 		}
 
 		mgr := migrator.New(cfg.PostgresDB, cfg.PathOfMigration)
 		if migrateUp {
-			lbLogger.Info("Running migrations up...")
+			logger.Info("Running migrations up...")
 			mgr.Up()
-			lbLogger.Info("Migrations up completed.")
+			logger.Info("Migrations up completed.")
 		}
 		if migrateDown {
-			lbLogger.Info("Running migrations down...")
+			logger.Info("Running migrations down...")
 			mgr.Down()
-			lbLogger.Info("Migrations down completed.")
+			logger.Info("Migrations down completed.")
 		}
 	}
 
 	// TODO - Start otel tracer
 
-	lbLogger.Info("Starting leaderboardscoring Service...")
+	logger.Info("Starting leaderboardscoring Service...")
 
 	// Connect to the database
 	databaseConn, cnErr := database.Connect(cfg.PostgresDB)
 	if cnErr != nil {
-		lbLogger.Error("fatal error occurred", "reason", "failed to connect to database", slog.Any("error", cnErr))
+		logger.Error("fatal error occurred", "reason", "failed to connect to database", slog.Any("error", cnErr))
 
 		return
 	}
@@ -115,17 +113,17 @@ func serve() {
 	wmLogger := watermill.NewStdLogger(true, true)
 	subscriber, sErr := newJetStreamSubscriber("nats://127.0.0.1:4222", wmLogger)
 	if sErr != nil {
-		lbLogger.Error("Failed to create Subscriber", slog.String("error", sErr.Error()))
+		logger.Error("Failed to create Subscriber", slog.String("error", sErr.Error()))
 		panic(sErr)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	app := leaderboardscoringapp.Setup(ctx, cfg, lbLogger, subscriber, databaseConn, wmLogger)
+	app := leaderboardscoringapp.Setup(ctx, cfg, subscriber, databaseConn, wmLogger)
 	app.Start()
 
-	lbLogger.Info("Leaderboard-scoring service started")
+	logger.Info("Leaderboard-scoring service started")
 }
 
 // TODO - When the NATS adapter is created, make sure to use that adapter and its Subscriber method to create the subscriber.
