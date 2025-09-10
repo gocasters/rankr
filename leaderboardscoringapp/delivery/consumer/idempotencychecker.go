@@ -37,13 +37,14 @@ var (
 	ErrEventLocked           = errors.New("event is currently locked by another processor")
 )
 
-// Process It returns specific errors if the event is a duplicate or is locked.
-func (ic *IdempotencyChecker) Process(ctx context.Context, eventID string, processFunc func() error) error {
+// CheckEvent It returns specific errors if the event is a duplicate or is locked.
+func (ic *IdempotencyChecker) CheckEvent(ctx context.Context, eventID string,
+	processEventFunc func() error, bufferedEventFunc func() error) error {
 
 	if eventID == "" {
 		return fmt.Errorf("invalid eventID: empty")
 	}
-	
+
 	processedKey := ic.processedKey(eventID)
 	lockKey := ic.lockKey(eventID)
 
@@ -68,11 +69,16 @@ func (ic *IdempotencyChecker) Process(ctx context.Context, eventID string, proce
 	defer ic.releaseLock(ctx, lockKey, token)
 
 	// 3. Execute the core business logic.
-	if pErr := processFunc(); pErr != nil {
+	if pErr := processEventFunc(); pErr != nil {
 		return pErr
 	}
 
-	// 4. If successful, mark the event as permanently processed.
+	// 4. Buffered Event
+	if pErr := bufferedEventFunc(); pErr != nil {
+		return pErr
+	}
+
+	// 5. If successful, mark the event as permanently processed.
 	if sErr := ic.redisClient.Set(ctx, processedKey, 1, ic.config.ProcessedKeyTTL).Err(); sErr != nil {
 		// This is a critical failure. The event was processed, but we couldn't mark it as such.
 		ic.logger.Error(

@@ -3,30 +3,26 @@ package taskapp
 import (
 	"context"
 	"fmt"
-	"github.com/gocasters/rankr/cachemanager"
-	"github.com/gocasters/rankr/taskapp/service/task"
 	"log/slog"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 
-	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/pkg/httpserver"
 	"github.com/gocasters/rankr/taskapp/delivery/http"
 	"github.com/gocasters/rankr/taskapp/repository"
+	"github.com/gocasters/rankr/taskapp/service/task"
 )
 
 type Application struct {
-	TaskRepo     task.Repository
-	TaskSrv      task.Service
-	TaskHandler  http.Handler
-	HTTPServer   http.Server
-	Config       Config
-	Logger       *slog.Logger
-	Redis        *redis.Adapter
-	CacheManager cachemanager.CacheManager
+	TaskRepo    task.Repository
+	TaskSrv     task.Service
+	TaskHandler http.Handler
+	HTTPServer  http.Server
+	Config      Config
+	Logger      *slog.Logger
 }
 
 func Setup(
@@ -34,31 +30,33 @@ func Setup(
 	config Config,
 	postgresConn *database.Database,
 	logger *slog.Logger,
-) Application {
-
-	redisAdapter, _ := redis.New(ctx, config.Redis)
-	cache := cachemanager.NewCacheManager(redisAdapter)
+) (Application, error) {
 
 	taskRepo := repository.NewTaskRepo(config.Repository, postgresConn, logger)
 	taskValidator := task.NewValidator(taskRepo)
-	taskSvc := task.NewService(taskRepo, *cache, taskValidator, logger)
+	taskSvc := task.NewService(taskRepo, taskValidator, logger)
 
 	taskHandler := http.NewHandler(taskSvc, logger)
 
-	httpServer, _ := httpserver.New(config.HTTPServer)
+	server, err := httpserver.New(config.HTTPServer)
+	if err != nil {
+		logger.Error("failed to initialize HTTP server", "err", err)
+		return Application{}, err
+	}
 
+	httpServer := http.New(
+		*server,
+		taskHandler,
+		logger,
+	)
 	return Application{
 		TaskRepo:    taskRepo,
 		TaskSrv:     taskSvc,
 		TaskHandler: taskHandler,
-		HTTPServer: http.New(
-			*httpServer,
-			taskHandler,
-			logger,
-		),
-		Config: config,
-		Logger: logger,
-	}
+		HTTPServer:  httpServer,
+		Config:      config,
+		Logger:      logger,
+	}, nil
 }
 
 func (app Application) Start() {
@@ -91,7 +89,7 @@ func startServers(app Application, wg *sync.WaitGroup) {
 		defer wg.Done()
 		app.Logger.Info(fmt.Sprintf("✅ HTTP server started on %d", app.Config.HTTPServer.Port))
 		if err := app.HTTPServer.Serve(); err != nil {
-			app.Logger.Error(fmt.Sprintf("error in HTTP server on %d", app.Config.HTTPServer.Port), err)
+			app.Logger.Error(fmt.Sprintf("error in HTTP server on %d", app.Config.HTTPServer.Port), slog.Any("error", err))
 		}
 		app.Logger.Info(fmt.Sprintf("HTTP server stopped %d", app.Config.HTTPServer.Port))
 	}()

@@ -1,0 +1,46 @@
+services:
+
+  leaderboardstat-db:
+    image: postgres:17.2-alpine
+    environment:
+      POSTGRES_DB: leaderboardstat_db
+      POSTGRES_USER: "stat_admin"
+      POSTGRES_PASSWORD: "password123"
+    restart: always
+    profiles:
+      - leaderboardstat
+    volumes:
+      - leaderboardstat-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stat_admin -d leaderboardstat_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  leaderboardstat-service:
+    build:
+      context: .
+      dockerfile: ./deploy/leaderboardstat/development/Dockerfile
+      args:
+        GO_IMAGE_NAME: golang
+        GO_IMAGE_VERSION: 1.23.4-alpine
+    image: rankr-leaderboardstat:golang-1.23.4-alpine
+
+    command: /bin/sh -c "go run cmd/leaderboardstat/main.go migrate --up"
+    depends_on:
+      leaderboardstat-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+    volumes:
+      - ./:/home/app
+#      - leaderboardstat-go-mod-cache:/go/pkg/mod
+    profiles:
+      - leaderboardstat
+    ports:
+      - "6011:6011"
+
+volumes:
+  leaderboardstat-data:
+#  leaderboardstat-go-mod-cache:

@@ -1,33 +1,32 @@
-server:
+http_server:
   port: 5001
   cors:
     allow_origins: "*"
-
-
-total_shutdown_timeout: 15s
+  total_shutdown_timeout: 15s
 
 postgres_db:
-  driver: postgres
   host: task-db
-  port: 5433
+  port: 5432
   user: "task_admin"
   password: "password123"
   db_name: task_db
   ssl_mode: disable
-  max_idle_conns: 15
-  max_open_conns: 100
-  conn_max_lifetime: 5
+  max_conns: 20
+  min_conns: 5
+  max_conn_lifetime: 1800
+  max_conn_idle_time: 600
+  health_check_period: 30
 
 #grpc_client:
 #  Host: "rankr-app-service-1"
 #  port: 6003
-#  type: "tcp"
+#  types: "tcp"
 #  shutdown_context_timeout: "10s"
 #
 #grpc_server:
 #  Host: "localhost"
 #  port: 6002
-#  type: "tcp"
+#  types: "tcp"
 
 logger:
   level: "debug"
