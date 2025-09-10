@@ -5,6 +5,7 @@ cp ./deploy/development/traefik/overrides/dynamic.contributor-middleware.yml ./d
 docker compose \
 --env-file ./deploy/.env \
 --project-directory . \
+-f ./deploy/development/rabbitmq-compose.yml \
 -f ./deploy/development/grafana-compose.yml \
 -f ./deploy/development/jaeger-compose.yml \
 -f ./deploy/development/otel_collector-compose.yml \
@@ -14,4 +15,5 @@ docker compose \
 -f ./deploy/development/temporal-compose.yml \
 -f ./deploy/argus/development/docker-compose.yaml \
 -f ./deploy/contributor/development/docker-compose.yaml \
+-f ./deploy/task/development/docker-compose.yaml \
 "$@"
