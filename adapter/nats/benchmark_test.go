@@ -63,6 +63,8 @@ func BenchmarkNewAdapter_ConfigValidation(b *testing.B) {
 
 		config := validConfig
 		config.URL = "nats://invalid-host:4222"
+		config.ConnectTimeout = 1 * time.Millisecond
+		config.AllowReconnect = false
 
 		_, _ = New(ctx, config, logger)
 	}

@@ -272,6 +272,8 @@ func TestNew_NilLogger(t *testing.T) {
 
 	testConfig := validConfig
 	testConfig.URL = "nats://invalid-host:4222"
+	testConfig.ConnectTimeout = 50 * time.Millisecond
+	testConfig.AllowReconnect = false
 
 	adapter, err := New(ctx, testConfig, nil)
 

@@ -9,7 +9,6 @@ import (
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-nats/v2/pkg/nats"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/labstack/gommon/log"
 	natsgo "github.com/nats-io/nats.go"
 )
 
@@ -43,20 +42,12 @@ func (c Config) Validate() map[string]error {
 		errs["client_id"] = fmt.Errorf("client ID cannot be empty")
 	}
 
-	if c.ConnectTimeout <= 0 {
-		errs["connect_timeout"] = fmt.Errorf("connect timeout must be positive, got: %v", c.ConnectTimeout)
-	}
-
-	if c.AckWaitTimeout <= 0 {
-		errs["ack_wait_timeout"] = fmt.Errorf("ack wait timeout must be positive, got: %v", c.AckWaitTimeout)
-	}
-
 	if c.MaxInflight <= 0 {
 		errs["max_inflight"] = fmt.Errorf("max inflight must be positive, got: %d", c.MaxInflight)
 	}
 
-	if c.MaxReconnects < -1 {
-		errs["max_reconnects"] = fmt.Errorf("max reconnects must be -1 (unlimited) or positive, got: %d", c.MaxReconnects)
+	if c.MaxReconnects < -1 || c.MaxReconnects == 0 {
+		errs["max_reconnects"] = fmt.Errorf("max reconnects must be -1 (unlimited) or positive (0 is not allowed, use -1 for unlimited), got: %d", c.MaxReconnects)
 	}
 
 	if c.PingInterval <= 0 {
@@ -123,7 +114,7 @@ type Adapter struct {
 }
 
 // New creates a new NATS adapter with Watermill integration
-func New(ctx context.Context, config Config, logger watermill.LoggerAdapter) (*Adapter, error) {
+func New(ctx context.Context, config Config, logger watermill.LoggerAdapter) (adapter *Adapter, initErr error) {
 	if ctx == nil {
 		return nil, fmt.Errorf("context cannot be nil")
 	}
@@ -154,6 +145,13 @@ func New(ctx context.Context, config Config, logger watermill.LoggerAdapter) (*A
 		return nil, fmt.Errorf("failed to connect to NATS at %s: %w", config.URL, err)
 	}
 
+	// Ensure connection is closed on initialization error
+	defer func() {
+		if initErr != nil && conn != nil {
+			conn.Close()
+		}
+	}()
+
 	var publisher message.Publisher
 	var subscriber message.Subscriber
 
@@ -183,8 +181,8 @@ func New(ctx context.Context, config Config, logger watermill.LoggerAdapter) (*A
 
 		publisher, err = nats.NewPublisher(publisherConfig, logger)
 		if err != nil {
-			conn.Close()
-			return nil, fmt.Errorf("failed to create JetStream publisher: %w", err)
+			initErr = fmt.Errorf("failed to create JetStream publisher: %w", err)
+			return
 		}
 
 		subscriberConfig := nats.SubscriberConfig{
@@ -197,8 +195,8 @@ func New(ctx context.Context, config Config, logger watermill.LoggerAdapter) (*A
 
 		subscriber, err = nats.NewSubscriber(subscriberConfig, logger)
 		if err != nil {
-			conn.Close()
-			return nil, fmt.Errorf("failed to create JetStream subscriber: %w", err)
+			initErr = fmt.Errorf("failed to create JetStream subscriber: %w", err)
+			return
 		}
 	} else {
 		publisherConfig := nats.PublisherConfig{
@@ -209,8 +207,8 @@ func New(ctx context.Context, config Config, logger watermill.LoggerAdapter) (*A
 
 		publisher, err = nats.NewPublisher(publisherConfig, logger)
 		if err != nil {
-			conn.Close()
-			return nil, fmt.Errorf("failed to create NATS publisher: %w", err)
+			initErr = fmt.Errorf("failed to create NATS publisher: %w", err)
+			return
 		}
 
 		subscriberConfig := nats.SubscriberConfig{
@@ -222,17 +220,17 @@ func New(ctx context.Context, config Config, logger watermill.LoggerAdapter) (*A
 
 		subscriber, err = nats.NewSubscriber(subscriberConfig, logger)
 		if err != nil {
-			conn.Close()
-			return nil, fmt.Errorf("failed to create NATS subscriber: %w", err)
+			initErr = fmt.Errorf("failed to create NATS subscriber: %w", err)
+			return
 		}
 	}
 
 	if err := conn.Flush(); err != nil {
-		conn.Close()
-		return nil, fmt.Errorf("failed to flush NATS connection: %w", err)
+		initErr = fmt.Errorf("failed to flush NATS connection: %w", err)
+		return
 	}
 
-	adapter := &Adapter{
+	adapter = &Adapter{
 		config:     config,
 		publisher:  publisher,
 		subscriber: subscriber,
@@ -240,8 +238,12 @@ func New(ctx context.Context, config Config, logger watermill.LoggerAdapter) (*A
 		logger:     logger,
 	}
 
-	log.Infof("NATS adapter successfully connected to %s (ClientID: %s, JetStream: %t)",
-		config.URL, config.ClientID, config.UseJetStream)
+	logger.Info("NATS adapter successfully connected",
+		watermill.LogFields{
+			"url":       config.URL,
+			"client_id": config.ClientID,
+			"jetstream": config.UseJetStream,
+		})
 
 	return adapter, nil
 }
@@ -319,7 +321,7 @@ func (a *Adapter) Close() error {
 		return fmt.Errorf("errors during NATS adapter shutdown: %v", errs)
 	}
 
-	log.Info("NATS adapter closed successfully")
+	a.logger.Info("NATS adapter closed successfully", nil)
 	return nil
 }
 
