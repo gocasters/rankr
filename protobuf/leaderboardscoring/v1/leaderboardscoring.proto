@@ -1,16 +1,16 @@
 syntax = "proto3";
 
-package leaderboardscoring;
+package leaderboardscoring.v1;
 
-option go_package = "protobuf/leaderboardscoring/golang/leaderboardscoringpb";
+option go_package = "protobuf/golang/leaderboardscoringpb";
 
 // Enum to define standard timeframes for requests, preventing typos.
 enum Timeframe {
   TIMEFRAME_UNSPECIFIED = 0;
-  ALL_TIME = 1;
-  YEARLY = 2; // Represents the last year
-  MONTHLY = 3; // Represents the last month
-  WEEKLY = 4;  // Represents the last week
+  TIMEFRAME_ALL_TIME = 1;
+  TIMEFRAME_YEARLY = 2; // Represents the last year
+  TIMEFRAME_MONTHLY = 3; // Represents the last month
+  TIMEFRAME_WEEKLY = 4;  // Represents the last week
 }
 
 // Represents a single entry in any leaderboard.

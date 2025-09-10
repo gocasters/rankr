@@ -2,7 +2,7 @@ package service
 
 import (
 	"encoding/json"
-	"github.com/gocasters/rankr/protobuf/golang/eventpb"
+	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"strings"
 )
@@ -37,7 +37,7 @@ func (s *Service) publishPush(req PushRequest, deliveryUID string) error {
 
 	ev := &eventpb.Event{
 		Id:        deliveryUID,
-		EventName: eventpb.EventName_PUSHED,
+		EventName: eventpb.EventName_EVENT_NAME_PUSHED,
 		//TODO we have no time for when push happened
 		Time: func() *timestamppb.Timestamp {
 			if req.HeadCommit != nil && req.HeadCommit.Timestamp != "" {
@@ -59,5 +59,5 @@ func (s *Service) publishPush(req PushRequest, deliveryUID string) error {
 
 	metadata := map[string]string{}
 
-	return s.publishEvent(ev, eventpb.EventName_PUSHED, TopicGithubPush, metadata)
+	return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PUSHED, TopicGithubPush, metadata)
 }

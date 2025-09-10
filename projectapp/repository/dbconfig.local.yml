@@ -1,0 +1,10 @@
+postgres_db:
+  driver: postgres
+  host: localhost
+  port: 5454
+  user: project_admin
+  password: password123
+  db_name: project_db
+  ssl_mode: disable
+
+path_of_migration: ./projectapp/repository/migrations

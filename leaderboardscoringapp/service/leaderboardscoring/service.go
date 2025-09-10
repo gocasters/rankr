@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/gocasters/rankr/pkg/timettl"
-	"github.com/gocasters/rankr/protobuf/golang/eventpb"
+	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 	"google.golang.org/protobuf/proto"
 	"log/slog"
 	"strconv"
@@ -15,13 +15,11 @@ type ScoreRepository interface {
 	UpsertScores(ctx context.Context, keys []string, score uint8, contributorID string) error
 }
 
-
 // PersistenceQueueRepository handles the temporary buffering of events.
 // TODO- This could be implemented with Redis Lists, Kafka, etc.
 type PersistenceQueueRepository interface {
 	Enqueue(ctx context.Context, payload []byte) error
 	DequeueBatch(ctx context.Context, batchSize int) ([][]byte, error)
-
 }
 
 // DatabaseRepository handles the cold path: persisting events to the database.
@@ -103,14 +101,12 @@ func (s Service) ProcessPersistenceQueue(ctx context.Context) error {
 		// events = append(events, event)
 	}
 
-
 	// TODO - map batchPayloadEvent to []Event,
 	if err := s.repo.PersistEventBatch(ctx, events); err != nil {
 		s.logger.Error("failed to persist batch of events to database", slog.String("error", err.Error()))
 		// TODO - Implement a dead-letter queue or retry mechanism for the failed batch.
 		return err
 	}
-
 
 	s.logger.Info("successfully persisted event batch to database", slog.Int("batch_size", len(events)))
 	return nil
