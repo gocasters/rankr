@@ -247,6 +247,9 @@ start-contributor-debug: ## Start user in debug mode (local)
 start-contributor-debug-log: ## Start user in debug mode (local) with logs
 	./deploy/docker-compose-dev-user-local.bash up
 
+start-task-app-dev:
+	./deploy/docker-compose-dev.bash --profile task up
+
 stop-contributor-debug: ## Stop user debug mode (keep volumes)
 	docker compose \
 	--env-file ./deploy/.env \
@@ -256,12 +259,12 @@ stop-contributor-debug: ## Stop user debug mode (keep volumes)
 	-f ./deploy/user/development/docker-compose.no-service.yaml \
 	down --remove-orphans
 
-
 start-project-app-dev:
 	./deploy/docker-compose-dev.bash --profile project up -d
 
 start-project-app-dev-log:
 	./deploy/docker-compose-dev.bash --profile project up
+
 
 ## ------------------------------------------------------------------------------------
 ## Service Lifecycle Commands Leaderboard-Scoring App
@@ -284,4 +287,3 @@ lbscoring-service-run: ## Start the leaderboardscoring Go service
 
 lbscoring-help: ## Show the help message from the script
 	@./deploy/leaderboardscoring/development/service.sh help
-
