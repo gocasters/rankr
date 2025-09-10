@@ -4,7 +4,9 @@ import (
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-nats/v2/pkg/nats"
 	"github.com/gocasters/rankr/pkg/config"
+	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/pkg/logger"
+	"github.com/gocasters/rankr/pkg/migrator"
 	"github.com/gocasters/rankr/pkg/path"
 	"github.com/gocasters/rankr/webhookapp"
 	nc "github.com/nats-io/nats.go"
@@ -15,6 +17,9 @@ import (
 	"path/filepath"
 )
 
+var migrateUp bool
+var migrateDown bool
+
 var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Start the webhook service",
@@ -24,10 +29,28 @@ var serveCmd = &cobra.Command{
 	},
 }
 
+// init registers the serve command with the root command and configures its CLI flags.
+// It adds the --migrate-up and --migrate-down boolean flags (marked mutually exclusive)
+// which control whether database migrations run before the server starts.
 func init() {
+	serveCmd.Flags().BoolVar(&migrateUp, "migrate-up", false, "Run migrations up before starting the server")
+	serveCmd.Flags().BoolVar(&migrateDown, "migrate-down", false, "Run migrations down before starting the server")
+	serveCmd.MarkFlagsMutuallyExclusive("migrate-up", "migrate-down")
 	RootCmd.AddCommand(serveCmd)
 }
 
+// serve starts the webhook service: it loads configuration, initializes logging,
+// optionally runs database migrations, connects to Postgres, sets up NATS
+// (optionally JetStream), creates the message publisher, constructs the webhook
+// application, and starts it.
+//
+// The function reads configuration from the YAML file specified by the
+// CONFIG_PATH environment variable (falls back to a project-local default).
+// If the package-level flags `migrateUp` or `migrateDown` are set, migrations
+// will be executed before the server starts; those flags are mutually
+// exclusive. On irrecoverable failures (config load, logger init, DB connect,
+// NATS/JetStream or publisher initialization) the function logs the error and
+// terminates the process.
 func serve() {
 	var cfg webhookapp.Config
 
@@ -57,10 +80,40 @@ func serve() {
 	if err := logger.Init(cfg.Logger); err != nil {
 		log.Fatalf("Failed to initialize logger: %v", err)
 	}
-	lbLogger, lErr := logger.L()
-	if lErr != nil {
-		log.Fatalf("Failed to Initialize logger: %v", lErr)
+	defer func() {
+		if err := logger.Close(); err != nil {
+			log.Printf("logger close error: %v", err)
+		}
+	}()
+	lbLogger := logger.L()
+
+	// Run migrations if flags are set
+	if migrateUp || migrateDown {
+		if migrateUp && migrateDown {
+			lbLogger.Error("invalid flags: --migrate-up and --migrate-down cannot be used together")
+
+			return
+		}
+
+		mgr := migrator.New(cfg.PostgresDB, cfg.PathOfMigration)
+		if migrateUp {
+			lbLogger.Info("Running migrations up...")
+			mgr.Up()
+			lbLogger.Info("Migrations up completed.")
+		}
+		if migrateDown {
+			lbLogger.Info("Running migrations down...")
+			mgr.Down()
+			lbLogger.Info("Migrations down completed.")
+		}
 	}
+
+	databaseConn, cnErr := database.Connect(cfg.PostgresDB)
+	if cnErr != nil {
+		lbLogger.Error("fatal error occurred", "reason", "failed to connect to database", slog.Any("error", cnErr))
+		panic(cnErr)
+	}
+	defer databaseConn.Close()
 
 	// Initialize nats
 	marshaler := &nats.GobMarshaler{}
@@ -122,7 +175,7 @@ func serve() {
 		lbLogger.Error("Failed to start publisher", slog.String("error", pErr.Error()))
 		panic(pErr)
 	} else {
-		lbLogger.Info("Publisher started on " + natsURL)
+		lbLogger.Info("publisher started on " + natsURL)
 	}
 	defer func() {
 		if pcErr := publisher.Close(); pcErr != nil {
@@ -130,6 +183,6 @@ func serve() {
 		}
 	}()
 
-	app := webhookapp.Setup(cfg, lbLogger, publisher)
+	app := webhookapp.Setup(cfg, lbLogger, databaseConn, publisher)
 	app.Start()
 }

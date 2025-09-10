@@ -2,24 +2,26 @@ package leaderboardscoring
 
 import (
 	"context"
+	"fmt"
 	lbscoring "github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/gocasters/rankr/pkg/grpc"
-	"github.com/gocasters/rankr/protobuf/leaderboardscoring/golang/leaderboardscoringpb"
-	"log/slog"
+	leaderboardscoringpb "github.com/gocasters/rankr/protobuf/golang/leaderboardscoring/v1"
 )
 
 type Client struct {
 	rpcClient                *grpc.RPCClient
 	leaderboardScoringClient leaderboardscoringpb.LeaderboardScoringServiceClient
-	logger                   *slog.Logger
 }
 
-func New(rpcClient *grpc.RPCClient, logger *slog.Logger) Client {
-	return Client{
+func New(rpcClient *grpc.RPCClient) (*Client, error) {
+	if rpcClient == nil || rpcClient.Conn == nil {
+		return nil, fmt.Errorf("grpc RPC client no initialized (nil connection)")
+	}
+
+	return &Client{
 		rpcClient:                rpcClient,
 		leaderboardScoringClient: leaderboardscoringpb.NewLeaderboardScoringServiceClient(rpcClient.Conn),
-		logger:                   logger,
-	}
+	}, nil
 }
 
 func (c *Client) GetLeaderboard(ctx context.Context, getLeaderboardReq *lbscoring.GetLeaderboardRequest) (*lbscoring.GetLeaderboardResponse, error) {

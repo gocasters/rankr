@@ -52,13 +52,16 @@ func serve() {
 	if err := cfgloader.Load(options, &cfg); err != nil {
 		log.Fatalf("Failed to load task config: %v", err)
 	}
-
 	// Initialize logger
-	logger.Init(cfg.Logger)
-	taskLogger, lerr := logger.L()
-	if lerr != nil {
-		log.Fatalf("Failed to get global logger: %v", lerr)
+	if err := logger.Init(cfg.Logger); err != nil {
+		log.Fatalf("Failed to initialize logger: %v", err)
 	}
+	defer func() {
+		if err := logger.Close(); err != nil {
+			log.Printf("logger close error: %v", err)
+		}
+	}()
+	taskLogger := logger.L()
 
 	// Run migrations if flags are set
 	if migrateUp || migrateDown {
@@ -76,7 +79,7 @@ func serve() {
 	}
 
 	// Start the server
-	taskLogger.Info("Starting contributor Service...")
+	taskLogger.Info("Starting task Service...")
 	// Connect to the database
 	conn, cnErr := database.Connect(cfg.PostgresDB)
 	if cnErr != nil {
@@ -88,7 +91,11 @@ func serve() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	app := taskapp.Setup(ctx, cfg, conn, taskLogger)
+	app, sErr := taskapp.Setup(ctx, cfg, conn, taskLogger)
+	if sErr != nil {
+		taskLogger.Error("Failed to setup taskapp", slog.Any("error", sErr))
+		os.Exit(1)
+	}
 	app.Start()
 }
 

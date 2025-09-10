@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"log/slog"
@@ -21,14 +22,12 @@ type Config struct {
 type IdempotencyChecker struct {
 	redisClient *redis.Client
 	config      Config
-	logger      *slog.Logger
 }
 
-func NewIdempotencyChecker(client *redis.Client, config Config, logger *slog.Logger) *IdempotencyChecker {
+func NewIdempotencyChecker(client *redis.Client, config Config) *IdempotencyChecker {
 	return &IdempotencyChecker{
 		redisClient: client,
 		config:      config,
-		logger:      logger,
 	}
 }
 
@@ -38,9 +37,7 @@ var (
 )
 
 // CheckEvent It returns specific errors if the event is a duplicate or is locked.
-func (ic *IdempotencyChecker) CheckEvent(ctx context.Context, eventID string,
-	processEventFunc func() error, bufferedEventFunc func() error) error {
-
+func (ic *IdempotencyChecker) CheckEvent(ctx context.Context, eventID string, processEventFunc func() error) error {
 	if eventID == "" {
 		return fmt.Errorf("invalid eventID: empty")
 	}
@@ -73,15 +70,10 @@ func (ic *IdempotencyChecker) CheckEvent(ctx context.Context, eventID string,
 		return pErr
 	}
 
-	// 4. Buffered Event
-	if pErr := bufferedEventFunc(); pErr != nil {
-		return pErr
-	}
-
-	// 5. If successful, mark the event as permanently processed.
+	// 4. If successful, mark the event as permanently processed.
 	if sErr := ic.redisClient.Set(ctx, processedKey, 1, ic.config.ProcessedKeyTTL).Err(); sErr != nil {
 		// This is a critical failure. The event was processed, but we couldn't mark it as such.
-		ic.logger.Error(
+		logger.L().Error(
 			"CRITICAL: Failed to mark event as processed after successful execution",
 			slog.String("event_id", eventID),
 			slog.String("error", sErr.Error()),
@@ -101,7 +93,9 @@ else
   return 0
 end
 `)
-	_ = releaseLockLua.Run(ctx, ic.redisClient, []string{lockKey}, token).Err()
+	if err := releaseLockLua.Run(ctx, ic.redisClient, []string{lockKey}, token).Err(); err != nil {
+		logger.L().Warn("failed to release lock (will expire by TTL)", slog.String("key", lockKey), slog.String("error", err.Error()))
+	}
 }
 
 func (ic *IdempotencyChecker) processedKey(eventID string) string {

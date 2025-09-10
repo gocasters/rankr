@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gocasters/rankr/protobuf/golang/eventpb"
+	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 )
 
 func getReviewState(state string) eventpb.ReviewState {
@@ -13,11 +13,11 @@ func getReviewState(state string) eventpb.ReviewState {
 
 	switch lowerCasedState {
 	case "approved":
-		reviewState = eventpb.ReviewState_APPROVED
+		reviewState = eventpb.ReviewState_REVIEW_STATE_APPROVED
 	case "changes_requested":
-		reviewState = eventpb.ReviewState_CHANGES_REQUESTED
+		reviewState = eventpb.ReviewState_REVIEW_STATE_CHANGES_REQUESTED
 	case "commented":
-		reviewState = eventpb.ReviewState_COMMENTED
+		reviewState = eventpb.ReviewState_REVIEW_STATE_COMMENTED
 	default:
 		reviewState = eventpb.ReviewState_REVIEW_STATE_UNSPECIFIED
 	}
@@ -64,10 +64,10 @@ func extractAssigneesIDs(assignees []*User) []uint64 {
 func determineCloseReason(merged *bool) eventpb.PrCloseReason {
 	if merged != nil {
 		if *merged {
-			return eventpb.PrCloseReason_MERGED
+			return eventpb.PrCloseReason_PR_CLOSE_REASON_MERGED
 		}
 	}
-	return eventpb.PrCloseReason_CLOSED_WITHOUT_MERGE
+	return eventpb.PrCloseReason_PR_CLOSE_REASON_CLOSED_WITHOUT_MERGE
 }
 
 func containsCode(text string) bool {

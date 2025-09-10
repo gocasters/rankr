@@ -5,6 +5,7 @@ cp ./deploy/development/traefik/overrides/dynamic.contributor-middleware.yml ./d
 docker compose \
 --env-file ./deploy/.env \
 --project-directory . \
+-f ./deploy/development/rabbitmq-compose.yml \
 -f ./deploy/development/grafana-compose.yml \
 -f ./deploy/development/jaeger-compose.yml \
 -f ./deploy/development/otel_collector-compose.yml \

@@ -3,35 +3,36 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gocasters/rankr/protobuf/golang/eventpb"
+	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func (s *Service) HandleIssuesEvent(action string, body []byte, deliveryUID string) error {
+func (s *Service) HandleIssuesEvent(provider eventpb.EventProvider, action string, body []byte, deliveryUID string) error {
 	switch action {
 	case "opened":
 		var req IssueOpenedRequest
 		if err := json.Unmarshal(body, &req); err != nil {
 			return err
 		}
-		return s.publishIssueOpened(req, deliveryUID)
+		return s.publishIssueOpened(req, provider, deliveryUID)
 
 	case "closed":
 		var req IssueClosedRequest
 		if err := json.Unmarshal(body, &req); err != nil {
 			return err
 		}
-		return s.publishIssueClosed(req, deliveryUID)
+		return s.publishIssueClosed(req, provider, deliveryUID)
 
 	default:
 		return fmt.Errorf("issue action '%s' not handled", action)
 	}
 }
 
-func (s *Service) publishIssueOpened(req IssueOpenedRequest, deliveryUID string) error {
+func (s *Service) publishIssueOpened(req IssueOpenedRequest, provider eventpb.EventProvider, deliveryUID string) error {
 	ev := &eventpb.Event{
 		Id:             deliveryUID,
-		EventName:      eventpb.EventName_ISSUE_OPENED,
+		EventName:      eventpb.EventName_EVENT_NAME_ISSUE_OPENED,
+		Provider:       provider,
 		Time:           timestamppb.New(req.Issue.CreatedAt),
 		RepositoryId:   req.Repository.ID,
 		RepositoryName: req.Repository.FullName,
@@ -46,20 +47,20 @@ func (s *Service) publishIssueOpened(req IssueOpenedRequest, deliveryUID string)
 	}
 	metadata := map[string]string{}
 
-	return s.publishEvent(ev, eventpb.EventName_ISSUE_OPENED, TopicGithubIssues, metadata)
+	return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_ISSUE_OPENED, TopicGithubIssues, metadata)
 }
 
-func (s *Service) publishIssueClosed(req IssueClosedRequest, deliveryUID string) error {
+func (s *Service) publishIssueClosed(req IssueClosedRequest, provider eventpb.EventProvider, deliveryUID string) error {
 
 	closeReason := eventpb.IssueCloseReason_ISSUE_CLOSE_REASON_UNSPECIFIED
 	if v := req.Issue.StateReason; v != nil {
 		switch *v {
 		case "not_planned":
-			closeReason = eventpb.IssueCloseReason_NOT_PLANNED
+			closeReason = eventpb.IssueCloseReason_ISSUE_CLOSE_REASON_NOT_PLANNED
 		case "completed":
-			closeReason = eventpb.IssueCloseReason_COMPLETED
+			closeReason = eventpb.IssueCloseReason_ISSUE_CLOSE_REASON_COMPLETED
 		case "reopened":
-			closeReason = eventpb.IssueCloseReason_REOPENED
+			closeReason = eventpb.IssueCloseReason_ISSUE_CLOSE_REASON_REOPENED
 		}
 	}
 
@@ -69,7 +70,8 @@ func (s *Service) publishIssueClosed(req IssueClosedRequest, deliveryUID string)
 
 	ev := &eventpb.Event{
 		Id:             deliveryUID,
-		EventName:      eventpb.EventName_ISSUE_CLOSED,
+		EventName:      eventpb.EventName_EVENT_NAME_ISSUE_CLOSED,
+		Provider:       provider,
 		Time:           timestamppb.New(*req.Issue.ClosedAt),
 		RepositoryId:   req.Repository.ID,
 		RepositoryName: req.Repository.FullName,
@@ -95,5 +97,5 @@ func (s *Service) publishIssueClosed(req IssueClosedRequest, deliveryUID string)
 
 	metadata := map[string]string{}
 
-	return s.publishEvent(ev, eventpb.EventName_ISSUE_CLOSED, TopicGithubIssues, metadata)
+	return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_ISSUE_CLOSED, TopicGithubIssues, metadata)
 }
