@@ -145,7 +145,6 @@ func New(ctx context.Context, config Config, logger watermill.LoggerAdapter) (ad
 		return nil, fmt.Errorf("failed to connect to NATS at %s: %w", config.URL, err)
 	}
 
-	// Ensure connection is closed on initialization error
 	defer func() {
 		if initErr != nil && conn != nil {
 			conn.Close()
