@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -58,11 +59,15 @@ func (s *Service) publishPullRequestOpened(req PullRequestOpenedRequest, provide
 }
 
 func (s *Service) publishPullRequestClosed(req PullRequestClosedRequest, provider eventpb.EventProvider, deliveryUID string) error {
+	t := timestamppb.New(time.Time{}) // it is the "zero time" to be distinguishable
+	if req.PullRequest.ClosedAt != nil {
+		t = timestamppb.New(*req.PullRequest.ClosedAt)
+	}
 	ev := &eventpb.Event{
 		Id:             deliveryUID,
 		EventName:      eventpb.EventName_EVENT_NAME_PULL_REQUEST_CLOSED,
 		Provider:       provider,
-		Time:           timestamppb.New(*req.PullRequest.ClosedAt),
+		Time:           t,
 		RepositoryId:   req.Repository.ID,
 		RepositoryName: req.Repository.FullName,
 		Payload: &eventpb.Event_PrClosedPayload{

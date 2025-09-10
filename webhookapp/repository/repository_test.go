@@ -359,7 +359,7 @@ func (suite *WebhookRepositoryTestSuite) TestSave_DuplicateIgnored() {
 	// Save duplicate - should return error but not fail
 	err = suite.repo.Save(suite.ctx, event)
 	assert.Error(suite.T(), err)
-	assert.Contains(suite.T(), err.Error(), "no rows affected")
+	assert.Contains(suite.T(), err.Error(), "duplicate webhook event")
 
 	// Verify only one event exists
 	count, err := suite.repo.CountEvents(suite.ctx)

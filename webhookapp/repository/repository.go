@@ -12,6 +12,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+var ErrDuplicateEvent = errors.New("duplicate webhook event")
+
 type EventStats struct {
 	TotalEvents      int64            `json:"total_events"`
 	EventsByProvider map[int32]int64  `json:"events_by_provider"`
@@ -61,7 +63,7 @@ func (repo WebhookRepository) Save(ctx context.Context, event *eventpb.Event) er
 		return err
 	}
 	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("no rows affected")
+		return ErrDuplicateEvent
 	}
 	return nil
 }

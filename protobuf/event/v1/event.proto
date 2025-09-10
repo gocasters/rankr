@@ -2,7 +2,8 @@ syntax = "proto3";
 
 package event.v1;
 import "google/protobuf/timestamp.proto";
-option go_package = "protobuf/golang/eventpb";
+option go_package = "github.com/gocasters/rankr/protobuf/golang/event/v1;eventpb";
+
 
 enum EventName {
   EVENT_NAME_UNSPECIFIED = 0;
