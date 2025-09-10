@@ -29,6 +29,9 @@ var serveCmd = &cobra.Command{
 	},
 }
 
+// init registers the serve command with the root command and configures its CLI flags.
+// It adds the --migrate-up and --migrate-down boolean flags (marked mutually exclusive)
+// which control whether database migrations run before the server starts.
 func init() {
 	serveCmd.Flags().BoolVar(&migrateUp, "migrate-up", false, "Run migrations up before starting the server")
 	serveCmd.Flags().BoolVar(&migrateDown, "migrate-down", false, "Run migrations down before starting the server")
@@ -36,6 +39,18 @@ func init() {
 	RootCmd.AddCommand(serveCmd)
 }
 
+// serve starts the webhook service: it loads configuration, initializes logging,
+// optionally runs database migrations, connects to Postgres, sets up NATS
+// (optionally JetStream), creates the message publisher, constructs the webhook
+// application, and starts it.
+//
+// The function reads configuration from the YAML file specified by the
+// CONFIG_PATH environment variable (falls back to a project-local default).
+// If the package-level flags `migrateUp` or `migrateDown` are set, migrations
+// will be executed before the server starts; those flags are mutually
+// exclusive. On irrecoverable failures (config load, logger init, DB connect,
+// NATS/JetStream or publisher initialization) the function logs the error and
+// terminates the process.
 func serve() {
 	var cfg webhookapp.Config
 

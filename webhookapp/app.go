@@ -25,6 +25,13 @@ type Application struct {
 	Config     Config
 }
 
+// Setup builds and returns an Application configured with the provided config, logger,
+// database connection, and message publisher.
+//
+// It creates a webhook event repository from conn.Pool, constructs the HTTP server
+// and delivery layer wired to a service using that repository and the publisher,
+// and returns an Application with HTTPServer, EventRepo, Logger, and Config populated.
+// Note: this function panics if initializing the HTTP service (httpserver.New) fails.
 func Setup(config Config, logger *slog.Logger, conn *database.Database, pub message.Publisher) Application {
 	eventRepo := repository.NewWebhookRepository(conn.Pool)
 	httpService, err := httpserver.New(config.HTTPServer)
