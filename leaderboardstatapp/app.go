@@ -37,7 +37,7 @@ func Setup(
 	leaderboardstatSvc := leaderboardstat.NewService(leaderboardstatRepo, leaderboardstatValidator)
 	leaderboardstatHandler := http.NewHandler(leaderboardstatSvc)
 
-	leaderboardLogger, _ := logger.L()
+	leaderboardLogger := logger.L()
 	httpServer, err := httpserver.New(config.HTTPServer)
 	if err != nil {
 		leaderboardLogger.Error("failed to initialize HTTP server", err)
@@ -65,7 +65,7 @@ func (app Application) Start() {
 	startServers(app, &wg)
 	<-ctx.Done()
 
-	leaderboardLogger, _ := logger.L()
+	leaderboardLogger := logger.L()
 	leaderboardLogger.Info("Shutdown signal received...")
 
 	shutdownTimeoutCtx, cancel := context.WithTimeout(context.Background(), app.Config.TotalShutdownTimeout)
@@ -83,7 +83,7 @@ func (app Application) Start() {
 }
 
 func startServers(app Application, wg *sync.WaitGroup) {
-	leaderboardLogger, _ := logger.L()
+	leaderboardLogger := logger.L()
 
 	wg.Add(1)
 	go func() {
@@ -97,7 +97,7 @@ func startServers(app Application, wg *sync.WaitGroup) {
 }
 
 func (app Application) shutdownServers(ctx context.Context) bool {
-	leaderboardLogger, _ := logger.L()
+	leaderboardLogger := logger.L()
 	leaderboardLogger.Info("Starting server shutdown process...")
 	shutdownDone := make(chan struct{})
 
@@ -121,7 +121,7 @@ func (app Application) shutdownServers(ctx context.Context) bool {
 }
 
 func (app Application) shutdownHTTPServer(parentCtx context.Context, wg *sync.WaitGroup) {
-	leaderboardLogger, _ := logger.L()
+	leaderboardLogger := logger.L()
 	leaderboardLogger.Info(fmt.Sprintf("Starting graceful shutdown for HTTP server on port %d", app.Config.HTTPServer.Port))
 
 	defer wg.Done()

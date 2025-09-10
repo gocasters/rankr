@@ -61,16 +61,8 @@ func serve() {
 	}
 
 	// Initialize logger
-	if err := logger.Init(cfg.Logger); err != nil {
-		log.Fatalf("Failed to initialize logger: %v", err)
-	}
-	defer func() {
-		if err := logger.Close(); err != nil {
-			log.Printf("logger close error: %v", err)
-		}
-	}()
+	logger.Init(cfg.Logger)
 	leaderboardLogger := logger.L()
-	
 	// Run migrations if flags are set
 	if migrateUp || migrateDown {
 		if migrateUp && migrateDown {
