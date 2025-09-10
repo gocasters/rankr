@@ -42,34 +42,45 @@ func (h *AuthHandler) IssueToken(c echo.Context) error {
 }
 
 func (h *AuthHandler) VerifyToken(c echo.Context) error {
-    var req struct {
-        Token string `json:"token"`
-    }
-    if err := c.Bind(&req); err != nil {
-        return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request"})
-    }
 
-    // Allow Bearer token via Authorization header
-    if strings.TrimSpace(req.Token) == "" {
-        authz := c.Request().Header.Get("Authorization")
-        if len(authz) >= 7 && strings.EqualFold(authz[0:7], "Bearer ") {
-            req.Token = strings.TrimSpace(authz[7:])
+        // Prefer Bearer token via Authorization header
+        var token string
+        if authz := strings.TrimSpace(c.Request().Header.Get("Authorization")); strings.HasPrefix(strings.ToLower(authz), "bearer ") {
+            token = strings.TrimSpace(authz[len("Bearer "):])
         }
-    }
-    req.Token = strings.TrimSpace(req.Token)
-    if req.Token == "" {
-        return c.JSON(http.StatusBadRequest, map[string]string{"error": "token is required"})
-    }
+        // Fallback to JSON body only if header missing
+        if token == "" {
+            var req struct {
+                Token string `json:"token"`
+            }
+            if err := c.Bind(&req); err != nil && c.Request().ContentLength > 0 {
+                c.Response().Header().Set("WWW-Authenticate", `Bearer error="invalid_request"`)
+                c.Response().Header().Set("Cache-Control", "no-store")
+                c.Response().Header().Set("Pragma", "no-cache")
+               return c.JSON(stdhttp.StatusBadRequest, map[string]string{"error": "invalid request"})
+            }
+            token = strings.TrimSpace(req.Token)
+        }
+        if token == "" {
+            c.Response().Header().Set("WWW-Authenticate", `Bearer error="invalid_request"`)
+            c.Response().Header().Set("Cache-Control", "no-store")
+            c.Response().Header().Set("Pragma", "no-cache")
+            return c.JSON(stdhttp.StatusBadRequest, map[string]string{"error": "token is required"})
+        }
 
-    claims, err := h.authService.VerifyToken(req.Token)
+    claims, err := h.authService.VerifyToken(token)
+
 
     if err != nil {
                 // RFC 6750 guidance
                 c.Response().Header().Set("WWW-Authenticate", `Bearer error="invalid_token"`)
-               return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid token"})
+
+                c.Response().Header().Set("Cache-Control", "no-store")
+                c.Response().Header().Set("Pragma", "no-cache")
+                return c.JSON(stdhttp.StatusUnauthorized, map[string]string{"error": "invalid token"})
     }
 
 
-    return c.JSON(http.StatusOK, claims)
+    return c.JSON(stdhttp.StatusOK, claims)
 }
 
