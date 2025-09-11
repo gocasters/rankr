@@ -28,13 +28,17 @@ func GetContributorScores(contributorID int, project string) ScoresListResponse 
 }
 
 func (s *Service) GetContributorTotalStats(ctx context.Context, contributorID types.ID) (ContributorStat, error) {
-	// TODO - implement functions and calc contributions stats related to this contributor
-	scores, _ := s.repository.GetContributorTotalScore(ctx, contributorID)
+	// TODO - validation if is needed
 
+	// TODO - implement functions and calc contributions stats related to this contributor
+	totalScore, err := s.repository.GetContributorTotalScore(ctx, contributorID)
+	if err != nil {
+		return ContributorStat{}, err
+	}
 	stats := ContributorStat{
 		ContributorID: contributorID,
 		GlobalRank:    1,
-		TotalScore:    scores,
+		TotalScore:    totalScore,
 		ProjectsScore: map[string]int{},
 		ScoreHistory:  map[string]int{},
 	}

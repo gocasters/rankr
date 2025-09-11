@@ -51,7 +51,7 @@ func serve() {
 	}
 
 	options := config.Options{
-		Prefix:       "LEADERBOARDSTAT_",
+		Prefix:       "STAT_",
 		Delimiter:    ".",
 		Separator:    "_",
 		YamlFilePath: yamlPath,
@@ -60,8 +60,11 @@ func serve() {
 		log.Fatalf("Failed to load leaderboardstat config: %v", lErr)
 	}
 
-	// Initialize logger
-	logger.Init(cfg.Logger)
+	if err := logger.Init(cfg.Logger); err != nil {
+		log.Fatalf("failed to initialize logger: %v", err)
+	}
+	defer func() { _ = logger.Close() }()
+
 	leaderboardLogger := logger.L()
 	// Run migrations if flags are set
 	if migrateUp || migrateDown {
@@ -90,7 +93,8 @@ func serve() {
 	databaseConn, cnErr := database.Connect(cfg.PostgresDB)
 
 	if cnErr != nil {
-		leaderboardLogger.Error("fatal error occurred", "reason", "failed to connect to database", slog.Any("error", cnErr))
+		leaderboardLogger.Error("failed to connect to database", slog.Any("error", cnErr))
+		//os.Exit(1)
 
 		return
 	}
@@ -102,8 +106,7 @@ func serve() {
 	app, sErr := leaderboardstatapp.Setup(ctx, cfg, databaseConn)
 
 	if sErr != nil {
-		leaderboardLogger.Error("leaderboardstat setup faild", sErr)
-		fmt.Println("2...")
+		leaderboardLogger.Error("leaderboardstat setup failed", slog.Any("error", sErr))
 		return
 	}
 

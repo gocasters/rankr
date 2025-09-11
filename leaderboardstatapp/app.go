@@ -128,7 +128,6 @@ func (app Application) shutdownHTTPServer(parentCtx context.Context, wg *sync.Wa
 	httpShutdownCtx, httpCancel := context.WithTimeout(parentCtx, app.Config.HTTPServer.ShutdownTimeout)
 	defer httpCancel()
 
-	// TODO - check why app.HTTPServer.HTTPServer.stop
 	if err := app.HTTPServer.Stop(httpShutdownCtx); err != nil {
 		leaderboardLogger.Error(fmt.Sprintf("HTTP server graceful shutdown failed: %v", err))
 	}
