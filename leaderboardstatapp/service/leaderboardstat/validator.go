@@ -1,7 +1,11 @@
 package leaderboardstat
 
-type Validator struct{}
+type ValidatorLeaderboardstatRepository interface {
+}
+type Validator struct {
+	repo ValidatorLeaderboardstatRepository
+}
 
-func NewValidator() Validator {
-	return Validator{}
+func NewValidator(repo ValidatorLeaderboardstatRepository) Validator {
+	return Validator{repo: repo}
 }

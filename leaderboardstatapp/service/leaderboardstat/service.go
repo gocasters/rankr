@@ -2,24 +2,22 @@ package leaderboardstat
 
 import (
 	"context"
-	"log/slog"
+	types "github.com/gocasters/rankr/type"
 )
 
 type Repository interface {
-	//CreateNewScoreList(ctx context.Context, redisKey string, entries []LeaderboardEntry) error
+	GetContributorTotalScore(ctx context.Context, ID types.ID) (float64, error)
 }
 
 type Service struct {
 	repository Repository
 	validator  Validator
-	logger     *slog.Logger
 }
 
-func NewService(repo Repository, validator Validator, logger *slog.Logger) Service {
+func NewService(repo Repository, validator Validator) Service {
 	return Service{
 		repository: repo,
 		validator:  validator,
-		logger:     logger,
 	}
 }
 
@@ -29,14 +27,19 @@ func GetContributorScores(contributorID int, project string) ScoresListResponse 
 	return ScoresListResponse{}
 }
 
-func (s *Service) GetContributorStats(ctx context.Context, contributorID int) (ContributorStat, error) {
-	// TODO - implement functions and calc contributions stats related to this contributor
+func (s *Service) GetContributorTotalStats(ctx context.Context, contributorID types.ID) (ContributorStat, error) {
+	// TODO - validation if is needed
 
+	// TODO - implement functions and calc contributions stats related to this contributor
+	totalScore, err := s.repository.GetContributorTotalScore(ctx, contributorID)
+	if err != nil {
+		return ContributorStat{}, err
+	}
 	stats := ContributorStat{
 		ContributorID: contributorID,
-		GlobalRank:    0,
-		TotalScore:    0,
-		ProjectScore:  map[string]int{},
+		GlobalRank:    1,
+		TotalScore:    totalScore,
+		ProjectsScore: map[string]int{},
 		ScoreHistory:  map[string]int{},
 	}
 	return stats, nil
