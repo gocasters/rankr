@@ -1,0 +1,18 @@
+nats:
+  url: "nats://127.0.0.1:4222"
+  client_id: "rankr-local-dev"
+
+  durable_name: "local-dev-consumer"
+  queue_group: "rankr-local-group"
+
+  ack_wait_timeout: 30s
+  connect_timeout: 10s
+  reconnect_wait: 2s
+
+  max_inflight: 1024
+  max_reconnects: -1
+  ping_interval: 2m
+  max_pings_out: 2
+  allow_reconnect: true
+
+  use_jetstream: true

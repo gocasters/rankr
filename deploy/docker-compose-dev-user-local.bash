@@ -16,5 +16,6 @@ docker compose --env-file ./deploy/.env \
   -f ./deploy/development/pgadmin-compose.yml \
   -f ./deploy/development/traefik-compose.yml \
   -f ./deploy/development/temporal-compose.yml \
+  -f ./deploy/development/nats-compose.yml \
   -f ./deploy/contributor/development/docker-compose.no-service.yaml \
   "$@"

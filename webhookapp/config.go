@@ -1,6 +1,7 @@
 package webhookapp
 
 import (
+	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/pkg/logger"
 	"time"
 
@@ -13,6 +14,8 @@ type Config struct {
 	TotalShutdownTimeout time.Duration     `koanf:"total_shutdown_timeout"`
 	Logger               logger.Config     `koanf:"logger"`
 	NATSConfig           NATSConfig        `koanf:"nats"`
+	PostgresDB           database.Config   `koanf:"postgres_db"`
+	PathOfMigration      string            `koanf:"path_of_migration"`
 }
 
 type NATSConfig struct {
