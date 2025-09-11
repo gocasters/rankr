@@ -81,6 +81,6 @@ func (h *AuthHandler) VerifyToken(c echo.Context) error {
     }
 
 
-    return c.JSON(stdhttp.StatusOK, claims)
+    return c.JSON(http.StatusOK, claims)
 }
 
