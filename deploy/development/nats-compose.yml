@@ -1,0 +1,44 @@
+services:
+  nats-jetstream:
+    image: nats:2.11.8-alpine
+    container_name: rankr-nats-jetstream
+    restart: unless-stopped
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    volumes:
+      - ./deploy/development/nats:/data
+    command:
+      - "--jetstream"
+      - "--store_dir=/data"
+      - "--http_port=8222"
+      - "--server_name=rankr-nats"
+    environment:
+      - NATS_SERVER_NAME=rankr-nats
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8222/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - rankr-network
+
+
+  nats-box:
+    image: natsio/nats-box:latest
+    container_name: rankr-nats-box
+    depends_on:
+      - nats-jetstream
+    networks:
+      - rankr-network
+    profiles:
+      - debug
+    tty: true
+    stdin_open: true
+    entrypoint: ["sh", "-c", "echo 'NATS Box ready. Connect with: nats --server=nats://nats-jetstream:4222' && sleep infinity"]
+
+networks:
+  rankr-network:
+    driver: bridge
+    name: rankr-network

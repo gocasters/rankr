@@ -1,0 +1,40 @@
+nats:
+  url: "nats://127.0.0.1:4222"
+  client_id: "rankr-service"
+
+  durable_name: "default-consumer"
+  queue_group: "rankr-group"
+
+  ack_wait_timeout: 60s
+  connect_timeout: 30s
+  reconnect_wait: 5s
+
+  max_inflight: 2048
+  max_reconnects: 10
+  ping_interval: 30s
+  max_pings_out: 3
+  allow_reconnect: true
+
+  use_jetstream: true
+
+  stream:
+    name: "EVENTS_STREAM"
+    subjects:
+      - "github.*"
+      - "contribution.*"
+      - "leaderboard.*" 
+      - "task.*"
+      - "project.*"
+    retention: "workqueue"
+    max_age: "7d"
+    max_bytes: "1GB"
+    max_msgs: 1000000
+    replicas: 1
+
+  consumer:
+    deliver_policy: "all"
+    ack_policy: "explicit"
+    replay_policy: "instant"
+    max_deliver: 3
+    ack_wait: 60s
+    inactive_threshold: "1h"
