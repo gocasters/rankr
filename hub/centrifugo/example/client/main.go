@@ -30,7 +30,7 @@ func main() {
 		AddItem(input, 1, 0, true)
 
 	// Centrifugo connection
-	client := centrifuge.NewJsonClient("ws://localhost:5000/connection/websocket", centrifuge.Config{})
+	client := centrifuge.NewJsonClient("ws://localhost:8000/connection/websocket", centrifuge.Config{})
 
 	if err := client.Connect(); err != nil {
 		log.Fatal("Failed to connect:", err)

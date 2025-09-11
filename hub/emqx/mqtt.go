@@ -5,11 +5,11 @@ import (
 	"log"
 	"time"
 
-	mqtt "github.com/eclipse/paho.mqtt.golang"
+     "github.com/eclipse/paho.mqtt.golang"
 )
 
 type MQTTClient struct {
-	Client mqtt.Client
+	client mqtt.Client
 }
 
 func NewClient(broker, clientID string, defaultHandler mqtt.MessageHandler) *MQTTClient {
@@ -25,35 +25,33 @@ func NewClient(broker, clientID string, defaultHandler mqtt.MessageHandler) *MQT
 	}
 
 	fmt.Printf("Connected [%s] to broker %s\n", clientID, broker)
-	return &MQTTClient{Client: client}
+	return &MQTTClient{client: client}
 }
 
-func (m *MQTTClient) Subscribe(topic string, qos byte, handler mqtt.MessageHandler) {
-	token := m.Client.Subscribe(topic, qos, handler)
-	token.Wait()
-	if token.Error() != nil {
-		log.Fatal(token.Error())
+func (m *MQTTClient) Subscribe(topic string, qos byte, handler mqtt.MessageHandler) error {
+	token := m.client.Subscribe(topic, qos, handler)
+	if !token.WaitTimeout(5 * time.Second) {
+		return fmt.Errorf("subscribe timeout for topic %q", topic)
 	}
-	fmt.Println("Subscribed to:", topic)
+	if err := token.Error(); err != nil {
+		return err
+	}
+	return nil
 }
 
-func (m *MQTTClient) Publish(topic string, qos byte, retained bool, payload interface{}) {
-	token := m.Client.Publish(topic, qos, retained, payload)
-	token.Wait()
-	fmt.Println("Published:", payload)
+func (m *MQTTClient) Publish(topic string, qos byte, retained bool, payload interface{}) error {
+	token := m.client.Publish(topic, qos, retained, payload)
+	if !token.WaitTimeout(5 * time.Second) {
+		return fmt.Errorf("publish timeout for topic %q", topic)
+	}
+	if err := token.Error(); err != nil {
+		return err
+	}
+	return nil
 }
 
 
 func (m *MQTTClient) Disconnect() {
-	m.Client.Disconnect(250)
+	m.client.Disconnect(250)
 	fmt.Println("Disconnected")
-}
-
-// Example publisher loop (optional utility)
-func (m *MQTTClient) PublishLoop(topic string, count int, delay time.Duration) {
-	for i := 1; i <= count; i++ {
-		msg := fmt.Sprintf("Score update %d", i)
-		m.Publish(topic, 0, false, msg)
-		time.Sleep(delay)
-	}
 }
