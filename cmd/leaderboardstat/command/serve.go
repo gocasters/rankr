@@ -1,6 +1,7 @@
 package command
 
 import (
+	"context"
 	"fmt"
 	"github.com/gocasters/rankr/leaderboardstatapp"
 	"github.com/gocasters/rankr/pkg/config"
@@ -50,26 +51,21 @@ func serve() {
 	}
 
 	options := config.Options{
-		Prefix:       "LEADERBOARDSTAT_",
+		Prefix:       "STAT_",
 		Delimiter:    ".",
-		Separator:    "__",
+		Separator:    "_",
 		YamlFilePath: yamlPath,
 	}
 	if lErr := config.Load(options, &cfg); lErr != nil {
 		log.Fatalf("Failed to load leaderboardstat config: %v", lErr)
 	}
 
-	// Initialize logger
 	if err := logger.Init(cfg.Logger); err != nil {
-		log.Fatalf("Failed to initialize logger: %v", err)
+		log.Fatalf("failed to initialize logger: %v", err)
 	}
-	defer func() {
-		if err := logger.Close(); err != nil {
-			log.Printf("logger close error: %v", err)
-		}
-	}()
+	defer func() { _ = logger.Close() }()
+
 	leaderboardLogger := logger.L()
-	
 	// Run migrations if flags are set
 	if migrateUp || migrateDown {
 		if migrateUp && migrateDown {
@@ -97,10 +93,26 @@ func serve() {
 	databaseConn, cnErr := database.Connect(cfg.PostgresDB)
 
 	if cnErr != nil {
-		leaderboardLogger.Error("fatal error occurred", "reason", "failed to connect to database", slog.Any("error", cnErr))
+		leaderboardLogger.Error("failed to connect to database", slog.Any("error", cnErr))
+		//os.Exit(1)
+
 		return
 	}
+
 	defer databaseConn.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	app, sErr := leaderboardstatapp.Setup(ctx, cfg, databaseConn)
+
+	if sErr != nil {
+		leaderboardLogger.Error("leaderboardstat setup failed", slog.Any("error", sErr))
+		return
+	}
 
 	leaderboardLogger.Info("Leaderboard-stat service started")
+
+	// This will start the HTTP server and keep it running
+	app.Start()
+
 }

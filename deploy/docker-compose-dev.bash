@@ -12,8 +12,10 @@ docker compose \
 -f ./deploy/development/prometheus-compose.yml \
 -f ./deploy/development/pgadmin-compose.yml \
 -f ./deploy/development/traefik-compose.yml \
--f ./deploy/development/temporal-compose.yml \
+-f ./deploy/development/traefik-compose.yml \
+-f ./deploy/development/nats-compose.yml \
 -f ./deploy/argus/development/docker-compose.yaml \
 -f ./deploy/contributor/development/docker-compose.yaml \
 -f ./deploy/task/development/docker-compose.yaml \
+-f ./deploy/leaderboardstat/development/docker-compose.yml \
 "$@"
