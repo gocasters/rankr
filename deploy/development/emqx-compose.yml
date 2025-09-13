@@ -1,14 +1,27 @@
-version: "3.8"
 services:
   emqx:
-    image: emqx/emqx:latest
+    image: emqx/emqx:5.3.2  # Specify version instead of latest
     container_name: emqx
     restart: always
     environment:
-      - EMQX_ALLOW_ANONYMOUS=false          # disable anonymous
-      - EMQX_DEFAULT_USER_USERNAME=test     # set default username
-      - EMQX_DEFAULT_USER_PASSWORD=secret   # set default password
+      # Dashboard credentials (EMQX v5+ syntax)
+      - EMQX_DASHBOARD__DEFAULT_USERNAME=admin
+      - EMQX_DASHBOARD__DEFAULT_PASSWORD=admin123
+      # MQTT authentication settings
+      - EMQX_AUTH__ALLOW_ANONYMOUS=false
+      # Alternative way to set authentication
+      - EMQX_AUTH__USER__1__USERNAME=mqttuser
+      - EMQX_AUTH__USER__1__PASSWORD=mqttpass
     ports:
-      - "1883:1883"   # MQTT TCP
-      - "8083:8083"   # MQTT WebSocket
-      - "18083:18083" # Dashboard
+      - "127.0.0.1:1883:1883"   # MQTT TCP
+      - "127.0.0.1:8083:8083"   # MQTT WebSocket  
+      - "127.0.0.1:18083:18083" # Dashboard
+    volumes:
+      - emqx_data:/opt/emqx/data
+      - emqx_log:/opt/emqx/log
+
+volumes:
+  emqx_data:
+    driver: local
+  emqx_log:
+    driver: local
