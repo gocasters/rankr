@@ -6,17 +6,72 @@ services:
       POSTGRES_USER: "webhook_admin"
       POSTGRES_PASSWORD: "password123"
     restart: always
-    profiles:
-      - webhook
     volumes:
       - webhook-data:/var/lib/postgresql/data
     ports:
-        - "5436:5432"
+      - "5436:5432"
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U webhook_admin -d webhook_db" ]
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - webhook-network
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter
+    container_name: postgres-exporter
+    restart: always
+    environment:
+      DATA_SOURCE_NAME: "postgresql://webhook_admin:password123@webhook-db:5432/webhook_db?sslmode=disable"
+    ports:
+      - "9187:9187"
+    networks:
+      - webhook-network
+    depends_on:
+      - webhook-db
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    restart: unless-stopped
+    ports:
+      - "9100:9100"
+    command:
+      - '--path.rootfs=/host'
+    networks:
+      - webhook-network
+    volumes:
+      - '/:/host:ro,rslave'
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    networks:
+      - webhook-network
+    depends_on:
+      - postgres-exporter
+      - node-exporter
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    networks:
+      - webhook-network
+    depends_on:
+      - prometheus
 
   nats:
     image: nats:2.10
@@ -37,6 +92,10 @@ services:
 networks:
   nats_net:
     driver: bridge
+  webhook-network:
+    driver: bridge
 
 volumes:
   webhook-data:
+  prometheus-data:
+  grafana-data:
