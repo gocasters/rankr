@@ -19,7 +19,7 @@ services:
 
   contributer:
     build: ./contributorapp
-    container_name: contributer_service
+    container_name: contributor_service
     ports:
       - "5003:5003"
 
