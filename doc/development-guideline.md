@@ -165,7 +165,7 @@ Rankr uses a structured logging system with Go's slog package and Lumberjack for
 logger.Init(cfg.Logger)
 
 // Get logger instance and use it
-log, _ := logger.L()
+log := logger.L()
 log.Info("Service starting", "port", 8080, "environment", "development")
 log.Error("Database connection failed", "error", err, "attempt", 3)
 ```

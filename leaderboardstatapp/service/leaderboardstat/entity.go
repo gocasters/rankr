@@ -1,5 +1,7 @@
 package leaderboardstat
 
+import types "github.com/gocasters/rankr/type"
+
 type ScoreboardItem struct {
 	Rank          int `koanf:"rank"`
 	ContributorID int `koanf:"contributor_id"`
@@ -7,14 +9,14 @@ type ScoreboardItem struct {
 }
 
 type LeaderboardEntry struct {
-	ContributorID string `koanf:"contributor_id"`
-	Score         int    `koanf:"score"`
+	ContributorID string  `koanf:"contributor_id"`
+	Score         float64 `koanf:"score"`
 }
 
 type ContributorStat struct {
-	ContributorID int            `koanf:"contributor_id"`
+	ContributorID types.ID       `koanf:"contributor_id"`
 	GlobalRank    int            `koanf:"global_rank"`
-	TotalScore    int            `koanf:"total_score"`
-	ProjectScore  map[string]int `koanf:"project_score"`
+	TotalScore    float64        `koanf:"total_score"`
+	ProjectsScore map[string]int `koanf:"project_score"`
 	ScoreHistory  map[string]int `koanf:"score_history"`
 }
