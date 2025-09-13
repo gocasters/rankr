@@ -17,9 +17,9 @@ services:
   leaderboardstat-service:
     build:
       context: .
-      dockerfile: deploy/leaderboardstat/development/Dockerfile
+      dockerfile: ./deploy/leaderboardstat/development/Dockerfile
     image: rankr-leaderboardstat:development
-    command: /bin/sh -c "/bin/leaderboardstat migrate --up && /bin/leaderboardstat serve"
+    command: /bin/sh -c "go run cmd/leaderboardstat/main.go serve --migrate-up"
     depends_on:
       leaderboardstat-db:
         condition: service_healthy
