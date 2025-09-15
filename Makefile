@@ -247,6 +247,9 @@ start-contributor-debug: ## Start user in debug mode (local)
 start-contributor-debug-log: ## Start user in debug mode (local) with logs
 	./deploy/docker-compose-dev-user-local.bash up
 
+start-task-app-dev:
+	./deploy/docker-compose-dev.bash --profile task up
+
 stop-contributor-debug: ## Stop user debug mode (keep volumes)
 	docker compose \
 	--env-file ./deploy/.env \
@@ -256,9 +259,31 @@ stop-contributor-debug: ## Stop user debug mode (keep volumes)
 	-f ./deploy/user/development/docker-compose.no-service.yaml \
 	down --remove-orphans
 
-
 start-project-app-dev:
 	./deploy/docker-compose-dev.bash --profile project up -d
 
 start-project-app-dev-log:
 	./deploy/docker-compose-dev.bash --profile project up
+
+
+## ------------------------------------------------------------------------------------
+## Service Lifecycle Commands Leaderboard-Scoring App
+## ------------------------------------------------------------------------------------
+
+lbscoring-compose-up: ## Start all required background services (Postgres, Redis, NATS)
+	@./deploy/leaderboardscoring/development/service.sh up
+
+lbscoring-compose-logs: ## Follow the logs of the background services
+	@./deploy/leaderboardscoring/development/service.sh logs
+
+lbscoring-compose-stop: ## Stop the background services without deleting data
+	@./deploy/leaderboardscoring/development/service.sh stop
+
+lbscoring-compose-down: ## Stop and remove all background services and their data volumes
+	@./deploy/leaderboardscoring/development/service.sh down
+
+lbscoring-service-run: ## Start the leaderboardscoring Go service
+	@./deploy/leaderboardscoring/development/service.sh run
+
+lbscoring-help: ## Show the help message from the script
+	@./deploy/leaderboardscoring/development/service.sh help

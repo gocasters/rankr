@@ -17,10 +17,14 @@ func (v Validator) ValidateEvent(event *EventRequest) error {
 	return validation.ValidateStruct(event,
 		// Example validation rules can be added here, for instance:
 		validation.Field(&event.ID, validation.Required, is.UUID),
-		validation.Field(&event.EventName, validation.In(EventTypes)),
+		validation.Field(&event.EventName, validation.In(EventNames)),
 		validation.Field(&event.RepositoryID, validation.Required),
 		validation.Field(&event.RepositoryName, validation.Required),
-		validation.Field(&event.ContributorID, validation.Required),
 		validation.Field(&event.Timestamp, validation.Required),
 	)
+}
+
+func (v Validator) ValidateGetLeaderboard(request *GetLeaderboardRequest) error {
+	// TODO - Implement validation for GetLeaderboardRequest
+	return validation.ValidateStruct(request)
 }
