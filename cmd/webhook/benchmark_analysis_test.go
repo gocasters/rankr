@@ -14,6 +14,7 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"strconv"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -30,30 +31,75 @@ var (
 )
 
 func init() {
-	// Initialize Redis and PostgresSQL connections
-	redisClient = redis.NewClient(&redis.Options{
-		Addr:     getEnv("REDIS_ADDR", "localhost:6379"),
-		Password: getEnv("REDIS_PASSWORD", ""),
-		DB:       0,
-		PoolSize: 100, // Increase pool size for high RPS
-	})
+	if err := initializeServices(); err != nil {
+		log.Fatalf("failed to initialize services: %v", err)
+	}
+}
 
-	pgConnStr := getEnv("POSTGRES_URL", "postgres://webhook_admin:password123@localhost:5436/webhook_db")
-	pgConfig, err := pgxpool.ParseConfig(pgConnStr)
+func initializeServices() error {
+	var err error
+
+	// Init Redis
+	redisClient, err = initRedis()
 	if err != nil {
-		log.Fatalf("Unable to parse PostgreSQL config: %v", err)
+		return fmt.Errorf("redis init failed: %w", err)
 	}
 
-	pgConfig.MaxConns = 50 // Increase connection pool size
-	pgPool, err = pgxpool.NewWithConfig(context.Background(), pgConfig)
+	// Init Postgres
+	pgPool, err = initPostgres()
 	if err != nil {
-		log.Fatalf("Unable to create connection pool: %v", err)
+		return fmt.Errorf("postgres init failed: %w", err)
 	}
 
+	// Init Bulk Inserter
 	redisBulkInserter = NewRedisBulkInserter(redisClient, pgPool, 1000)
 
+	// Start worker
 	ctx := context.Background()
 	go redisBulkInserter.StartWorker(ctx)
+
+	return nil
+}
+
+func initRedis() (*redis.Client, error) {
+	addr := getEnv("REDIS_ADDR", "webhook-redis:6379")
+	password := getEnv("REDIS_PASSWORD", "")
+	db := 0
+
+	client := redis.NewClient(&redis.Options{
+		Addr:     addr,
+		Password: password,
+		DB:       db,
+		PoolSize: 100,
+	})
+
+	if err := client.Ping(context.Background()).Err(); err != nil {
+		return nil, err
+	}
+	return client, nil
+}
+
+func initPostgres() (*pgxpool.Pool, error) {
+	dsn := getEnv(
+		"POSTGRES_URL",
+		"postgres://webhook_admin:password123@webhook-db:5432/webhook_db",
+	)
+
+	cfg, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		return nil, fmt.Errorf("parse config: %w", err)
+	}
+	cfg.MaxConns = 50
+
+	pool, err := pgxpool.NewWithConfig(context.Background(), cfg)
+	if err != nil {
+		return nil, fmt.Errorf("create pool: %w", err)
+	}
+
+	if err := pool.Ping(context.Background()); err != nil {
+		return nil, fmt.Errorf("ping db: %w", err)
+	}
+	return pool, nil
 }
 
 func getEnv(key, defaultValue string) string {
@@ -63,14 +109,48 @@ func getEnv(key, defaultValue string) string {
 	return defaultValue
 }
 
+func TestMain(m *testing.M) {
+	code := m.Run()
+
+	cleanup()
+
+	os.Exit(code)
+}
+
+func cleanup() {
+	ctx := context.Background()
+
+	// Truncate Postgres table
+	_, err := pgPool.Exec(ctx, "TRUNCATE TABLE webhook_events RESTART IDENTITY CASCADE;")
+	if err != nil {
+		log.Printf("failed to truncate Postgres table: %v", err)
+	} else {
+		log.Println("✅ Postgres table truncated")
+	}
+
+	// Clear Redis queue
+	_, err = redisClient.Del(ctx, "webhook_events").Result()
+	if err != nil {
+		log.Printf("failed to clear Redis queue: %v", err)
+	} else {
+		log.Println("✅ Redis queue cleared")
+	}
+}
+
 func TestDirectInsert(t *testing.T) {
-	rate := 5000
+	rate, rErr := strconv.Atoi(getEnv("INSERT_RATE", "1000"))
+	if rErr != nil {
+		t.Fatal(rErr)
+	}
+	total, cErr := strconv.Atoi(getEnv("INSERT_COUNT", "1000"))
+	if cErr != nil {
+		t.Fatal(cErr)
+	}
 	interval := time.Second / time.Duration(rate)
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	ctx := context.Background()
-	total := 50000
 	start := time.Now()
 	startFormatted := start.Format("15:04:05")
 	t.Logf("Test started at: %s\n", startFormatted)
@@ -100,16 +180,24 @@ func TestDirectInsert(t *testing.T) {
 	t.Logf("Test ended at: %s\n", endFormatted)
 	t.Logf("Test duration: %s\n", durationFormatted)
 	t.Logf("Direct Insert: %d events inserted (%.2f RPS)\n", total, actualRPS)
+
+	cleanup()
 }
 
 func TestBulkInsert(t *testing.T) {
-	rate := 5000
+	rate, rErr := strconv.Atoi(getEnv("INSERT_RATE", "1000"))
+	if rErr != nil {
+		t.Fatal(rErr)
+	}
+	total, cErr := strconv.Atoi(getEnv("INSERT_COUNT", "1000"))
+	if cErr != nil {
+		t.Fatal(cErr)
+	}
 	interval := time.Second / time.Duration(rate)
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	ctx := context.Background()
-	total := 50000
 	start := time.Now()
 	startFormatted := start.Format("15:04:05")
 	t.Logf("Test started at: %s\n", startFormatted)
@@ -138,6 +226,8 @@ func TestBulkInsert(t *testing.T) {
 	t.Logf("Test ended at: %s\n", endFormatted)
 	t.Logf("Bulk Insert: %d events inserted in %v (%.2f RPS)\n", total, duration, actualRPS)
 	t.Logf("Total processed via bulk: %d\n", totalProcessed.Load())
+
+	cleanup()
 }
 
 func BenchmarkDirectInsert(b *testing.B) {

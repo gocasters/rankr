@@ -17,6 +17,42 @@ services:
       retries: 5
     networks:
       - webhook-network
+    mem_limit: 2g
+    cpus: 2.0
+
+  webhook-redis:
+    image: bitnami/redis:6.2
+    container_name: webhook-redis
+    restart: always
+    ports:
+      - '6389:6379'
+    networks:
+      - webhook-network
+    command: redis-server --loglevel warning --protected-mode no --save "" --appendonly no
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    volumes:
+      - webhook-redis-data:/data
+    mem_limit: 2g
+    cpus: 2.0
+
+  webhook-benchmark:
+    build:
+      context: .
+      dockerfile: ./deploy/webhook/development/benchmark.Dockerfile
+    container_name: webhook-benchmark-app
+    networks:
+      - webhook-network
+    mem_limit: 1g
+    cpus: 1.0   # ← 1 core, 1 GB RAM for benchmark app
+    depends_on:
+      - webhook-db
+      - webhook-redis
+    environment:
+      REDIS_ADDR: webhook-redis:6379
+      POSTGRES_URL: postgres://webhook_admin:password123@webhook-db:5432/webhook_db
+      INSERT_COUNT: 1000
+      INSERT_RATE: 1000
 
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter
@@ -50,7 +86,7 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./deploy/webhook/development/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
     networks:
       - webhook-network
@@ -97,5 +133,6 @@ networks:
 
 volumes:
   webhook-data:
+  webhook-redis-data:
   prometheus-data:
   grafana-data:
