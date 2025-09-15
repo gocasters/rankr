@@ -1,41 +1,41 @@
-total_shutdown_timeout: "15s"
-path_of_migration: "./leaderboardstatapp/repository/migrations"
-
-http_server:
-  port: 6011  # Changed from 5001 to 6011 to match Docker setup
-  cors:
-    allow_origins: "*"
-  shutdown_context_timeout: "10s"
-
-repository:
-  cache_prefix: "leaderboardstat"
-  cache_enabled: false  # disabled for development
-
-postgres_db:
-  driver: "postgres"
-  host: "localhost"  # For local development when DB runs in Docker
-  port: 5432
-  user: "stat_admin"
-  password: "password123"
-  db_name: "leaderboardstat_db"
-  ssl_mode: "disable"
-  max_idle_conns: 15
-  max_open_conns: 100
-  conn_max_lifetime: 5
-
-  # pgx pool configs
-  min_conns: 1
-  max_conns: 20
-  max_conn_lifetime: 300
-  max_conn_idle_time: 60
-  health_check_period: 30
-
-logger:
-  level: "debug"
-  file_path: "logs/leaderboardstat/service.log"
-  use_local_time: true
-  file_max_size_in_mb: 10
-  file_max_age_in_days: 7
-
-debug:
-  force_accept_otp: 11111
+#total_shutdown_timeout: "15s"
+#path_of_migration: "./leaderboardstatapp/repository/migrations"
+#
+#http_server:
+#  port: 6011  # Changed from 5001 to 6011 to match Docker setup
+#  cors:
+#    allow_origins: "*"
+#  shutdown_context_timeout: "10s"
+#
+#repository:
+#  cache_prefix: "leaderboardstat"
+#  cache_enabled: false  # disabled for development
+#
+#postgres_db:
+#  driver: "postgres"
+#  host: "localhost"  # For local development when DB runs in Docker
+#  port: 5432
+#  user: "stat_admin"
+#  password: "password123"
+#  db_name: "leaderboardstat_db"
+#  ssl_mode: "disable"
+#  max_idle_conns: 15
+#  max_open_conns: 100
+#  conn_max_lifetime: 5
+#
+#  # pgx pool configs
+#  min_conns: 1
+#  max_conns: 20
+#  max_conn_lifetime: 300
+#  max_conn_idle_time: 60
+#  health_check_period: 30
+#
+#logger:
+#  level: "debug"
+#  file_path: "logs/leaderboardstat/service.log"
+#  use_local_time: true
+#  file_max_size_in_mb: 10
+#  file_max_age_in_days: 7
+#
+#debug:
+#  force_accept_otp: 11111
