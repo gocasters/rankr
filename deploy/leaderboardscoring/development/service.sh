@@ -1,55 +1,96 @@
 #!/bin/bash
 
 # A unified script to manage the leaderboardscoring service lifecycle.
-# It contains all the core logic for running, stopping, and managing the service
-# and its dependencies via Docker Compose.
+# It handles different running modes for development, including running the full
+# stack with Docker or running only the dependencies for local Go development.
 
 set -e
 
-COMPOSE_FILE="deploy/leaderboardscoring/development/docker-compose.no-service.yml"
+# --- Configuration ---
+# Path to the full docker-compose file (app + dependencies)
+COMPOSE_FILE_FULL="deploy/leaderboardscoring/development/docker-compose.yml"
+# Path to the docker-compose file for running only the dependencies
+COMPOSE_FILE_DEPS_ONLY="deploy/leaderboardscoring/development/docker-compose.no-service.yml"
+# Go service configuration
 SERVICE_NAME="leaderboardscoring"
 SERVICE_PATH="./cmd/${SERVICE_NAME}/main.go"
 
 COMMAND=$1
 
+# --- Help Function ---
 show_help() {
     echo "Usage: ./service.sh <command>"
     echo ""
-    echo "This script is the single entry point for managing the leaderboardscoring service."
+    echo "This script is the single entry point for managing the ${SERVICE_NAME} service."
     echo ""
     echo "Available commands:"
-    echo "  up      Starts all required background services (Postgres, Redis, NATS) using Docker Compose."
-    echo "  run     Starts the leaderboardscoring Go service."
-    echo "  logs    Follows the logs of the background services."
-    echo "  stop    Stops the background services without deleting data."
-    echo "  down    Stops and removes all background services and their data volumes."
-    echo "  help    Shows this help message."
+    echo "  --- Full Dockerized Environment ---"
+    echo "  up      Builds and starts the full application stack (app + dependencies)."
+    echo "  stop    Stops the full application stack without deleting data."
+    echo "  down    Stops and removes the full application stack and its data volumes."
+    echo "  logs    Follows the logs for the full application stack."
+    echo ""
+    echo "  --- Local Development Helpers ---"
+    echo "  up-deps   Starts only the dependency services (Postgres, Redis, NATS)."
+    echo "  run       Starts the Go service locally (requires dependencies to be running)."
+    echo "  stop-deps Stops the standalone dependency services."
+    echo "  down-deps Stops and removes the standalone dependency services and their data."
+    echo "  logs-deps Follows the logs for the standalone dependency services."
+    echo ""
+    echo "  --- General ---"
+    echo "  help      Shows this help message."
 }
 
+# --- Command Logic ---
 case "$COMMAND" in
+    # --- Full Dockerized Environment Commands ---
     up)
-        echo "--> Starting background services from ${COMPOSE_FILE}..."
-        docker compose -f "${COMPOSE_FILE}" up -d
-        echo "--> Background services are up and running."
-        ;;
-    run)
-        echo "--> Starting the Go service: ${SERVICE_NAME}..."
-        go run "${SERVICE_PATH}" serve
-        ;;
-    logs)
-        echo "--> Following logs for services in ${COMPOSE_FILE}..."
-        docker compose -f "${COMPOSE_FILE}" logs -f
+        echo "--> Starting the full application stack from ${COMPOSE_FILE_FULL}..."
+        docker compose -f "${COMPOSE_FILE_FULL}" up --build -d
+        echo "--> Full stack is up and running."
         ;;
     stop)
-        echo "--> Stopping background services from ${COMPOSE_FILE}..."
-        docker compose -f "${COMPOSE_FILE}" stop
-        echo "--> Background services stopped."
+        echo "--> Stopping the full application stack from ${COMPOSE_FILE_FULL}..."
+        docker compose -f "${COMPOSE_FILE_FULL}" stop
+        echo "--> Full stack stopped."
         ;;
     down)
-        echo "--> Tearing down all services and data from ${COMPOSE_FILE}..."
-        docker compose -f "${COMPOSE_FILE}" down -v
-        echo "--> All services and data have been removed."
+        echo "--> Tearing down the full application stack from ${COMPOSE_FILE_FULL}..."
+        docker compose -f "${COMPOSE_FILE_FULL}" down -v
+        echo "--> Full stack and all associated data have been removed."
         ;;
+    logs)
+        echo "--> Following logs for the full application stack from ${COMPOSE_FILE_FULL}..."
+        docker compose -f "${COMPOSE_FILE_FULL}" logs -f
+        ;;
+
+    # --- Local Development Helper Commands ---
+    up-deps)
+        echo "--> Starting only the dependency services from ${COMPOSE_FILE_DEPS_ONLY}..."
+        docker compose -f "${COMPOSE_FILE_DEPS_ONLY}" up -d
+        echo "--> Dependency services are up and running."
+        ;;
+    run)
+        echo "--> Starting the Go service locally: ${SERVICE_NAME}..."
+        echo "--> Ensure dependencies are running (e.g., via './service.sh up-deps')."
+        go run "${SERVICE_PATH}" serve --migrate-up
+        ;;
+    stop-deps)
+        echo "--> Stopping the standalone dependencies from ${COMPOSE_FILE_DEPS_ONLY}..."
+        docker compose -f "${COMPOSE_FILE_DEPS_ONLY}" stop
+        echo "--> Standalone dependencies stopped."
+        ;;
+    down-deps)
+        echo "--> Tearing down the standalone dependencies from ${COMPOSE_FILE_DEPS_ONLY}..."
+        docker compose -f "${COMPOSE_FILE_DEPS_ONLY}" down -v
+        echo "--> Standalone dependencies and their data have been removed."
+        ;;
+    logs-deps)
+        echo "--> Following logs for the standalone dependencies from ${COMPOSE_FILE_DEPS_ONLY}..."
+        docker compose -f "${COMPOSE_FILE_DEPS_ONLY}" logs -f
+        ;;
+
+    # --- Help Command ---
     help|--help|-h|*)
         show_help
         exit 1

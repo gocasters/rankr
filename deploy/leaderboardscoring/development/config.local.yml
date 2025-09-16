@@ -27,6 +27,21 @@ redis:
   password: ""
   db: 0
 
+nats:
+  url: "nats://127.0.0.1:4222"
+  client_id: "leaderboard-scoring"
+  durable_name: "leaderboard-scoring-consumer"
+  queue_group: "event-group"
+
+  ack_wait_timeout: 5m
+  max_inflight: 10
+  connect_timeout: 30s
+  reconnect_wait: 5s
+  ping_interval: 30s
+  max_pings_out: 1
+
+  use_jetstream: true
+
 logger:
   level: "debug" # Can be `debug`, `info`, `warn`, `error`
   file_path: "logs/leaderboardscoringapp/service.log"
