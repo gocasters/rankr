@@ -84,7 +84,7 @@ services:
     image: prom/prometheus
     container_name: prometheus
     ports:
-      - "9090:9090"
+      - "9098:9090"
     volumes:
       - ./deploy/webhook/development/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus-data:/prometheus
@@ -98,7 +98,7 @@ services:
     image: grafana/grafana:latest
     container_name: grafana
     ports:
-      - "3000:3000"
+      - "3100:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin123
     volumes:

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/gocasters/rankr/pkg/logger"
 	"time"
 
 	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
@@ -38,7 +39,9 @@ type WebhookRepository struct {
 
 // NewWebhookRepository returns a WebhookRepository backed by the provided pgx connection pool.
 func NewWebhookRepository(db *pgxpool.Pool) WebhookRepository {
-	return WebhookRepository{db: db}
+	return WebhookRepository{
+		db: db,
+	}
 }
 
 // Save stores a webhook event
@@ -220,4 +223,115 @@ func (repo WebhookRepository) GetRecentEvents(ctx context.Context, limit int) ([
 		Limit: &limit,
 	}
 	return repo.FindEvents(ctx, filter)
+}
+
+func (repo *WebhookRepository) BulkInsertPostgresSQL(ctx context.Context, events []string) ([]*eventpb.Event, error) {
+	if len(events) == 0 {
+		logger.L().Debug("No events to process")
+		return nil, nil
+	}
+
+	tx, err := repo.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		logger.L().Error("Failed to begin transaction", "error", err.Error())
+		return nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil && err != pgx.ErrTxClosed {
+			logger.L().Warn("Rollback error", "error", err.Error())
+		}
+	}()
+
+	// Create a new batch for this operation
+	batch := &pgx.Batch{}
+	eventMap := make([]*eventpb.Event, 0, len(events))
+
+	sqlQuery := `
+		INSERT INTO webhook_events 
+		(provider, delivery_id, event_type, payload, received_at)
+		VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT (provider, delivery_id) DO NOTHING
+	`
+
+	for i, raw := range events {
+		var event eventpb.Event
+		if err := proto.Unmarshal([]byte(raw), &event); err != nil {
+			logger.L().Warn("Failed to unmarshal event, skipping",
+				"index", i, "error", err.Error())
+			continue
+		}
+
+		// Convert enum values to strings
+
+		logger.L().Debug("Adding event to batch",
+			"index", i,
+			"provider", event.Provider,
+			"delivery_id", event.Id,
+			"event_type", event.EventName)
+
+		batch.Queue(sqlQuery,
+			event.Provider,
+			event.Id,
+			event.EventName,
+			event.Payload,
+			time.Now(),
+		)
+
+		eventMap = append(eventMap, &event)
+	}
+
+	if batch.Len() == 0 {
+		logger.L().Warn("No valid events to insert after unmarshaling")
+		return nil, nil
+	}
+
+	logger.L().Debug("Sending batch to database", "batch_size", batch.Len())
+
+	// Send batch and process results
+	results := tx.SendBatch(ctx, batch)
+
+	// CRITICAL: Process all results AND close the results before committing
+	var inserted []*eventpb.Event
+	var failedCount int
+
+	for i := 0; i < batch.Len(); i++ {
+		cmdTag, err := results.Exec()
+		if err != nil {
+			failedCount++
+			logger.L().Error("Failed to execute batch insert",
+				"index", i,
+				"error", err.Error())
+			continue
+		}
+
+		rowsAffected := cmdTag.RowsAffected()
+		if rowsAffected > 0 {
+			inserted = append(inserted, eventMap[i])
+			logger.L().Debug("Event inserted successfully",
+				"index", i,
+				"rows_affected", rowsAffected)
+		} else {
+			logger.L().Debug("No rows affected - duplicate or conflict",
+				"index", i)
+		}
+	}
+
+	// MUST close results before committing
+	if err := results.Close(); err != nil {
+		logger.L().Error("Failed to close batch results", "error", err.Error())
+		return nil, fmt.Errorf("failed to close batch results: %w", err)
+	}
+
+	// Now commit the transaction
+	if err := tx.Commit(ctx); err != nil {
+		logger.L().Error("Failed to commit transaction", "error", err.Error())
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	logger.L().Info("Bulk insert completed",
+		"total_events", len(events),
+		"successful_inserts", len(inserted),
+		"failed_inserts", failedCount)
+
+	return inserted, nil
 }

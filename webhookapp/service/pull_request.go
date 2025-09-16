@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -53,9 +54,9 @@ func (s *Service) publishPullRequestOpened(req PullRequestOpenedRequest, provide
 		},
 	}
 
-	metadata := map[string]string{}
-
-	return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED, TopicGithubPullRequest, metadata)
+	ctx := context.Background()
+	return s.saveEvent(ctx, ev)
+	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED, TopicGithubPullRequest, metadata)
 }
 
 func (s *Service) publishPullRequestClosed(req PullRequestClosedRequest, provider eventpb.EventProvider, deliveryUID string) error {
@@ -94,7 +95,7 @@ func (s *Service) publishPullRequestClosed(req PullRequestClosedRequest, provide
 		},
 	}
 
-	metadata := map[string]string{}
-
-	return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PULL_REQUEST_CLOSED, TopicGithubPullRequest, metadata)
+	ctx := context.Background()
+	return s.saveEvent(ctx, ev)
+	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PULL_REQUEST_CLOSED, TopicGithubPullRequest, metadata)
 }

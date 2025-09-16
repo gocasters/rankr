@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
@@ -39,7 +40,7 @@ func (s *Service) publishIssueComment(req IssueCommentCreatedRequest, provider e
 		},
 	}
 
-	metadata := map[string]string{}
-
-	return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_ISSUE_COMMENTED, TopicGithubIssueComment, metadata)
+	ctx := context.Background()
+	return s.saveEvent(ctx, ev)
+	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_ISSUE_COMMENTED, TopicGithubIssueComment, metadata)
 }

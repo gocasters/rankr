@@ -394,18 +394,23 @@ func (r *RedisBulkInserter) bulkInsertPostgresSQL(ctx context.Context, events []
 
 	for _, payload := range events {
 		var event eventpb.Event
-		if err := proto.Unmarshal([]byte(payload), &event); err != nil {
-			continue // Skip invalid events
+		err := json.Unmarshal([]byte(payload), &event)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal event: %w", err)
 		}
 
-		batch.Queue(
-			`INSERT INTO webhook_events (provider, delivery_id, event_type, payload, received_at)
-			 VALUES ($1, $2, $3, $4, $5)
-			 ON CONFLICT (provider, delivery_id) DO NOTHING`,
+		jsonPayload, err := convertEventToJSON(&event)
+
+		batch.Queue(`
+			INSERT INTO webhook_events 
+			(provider, delivery_id, event_type, payload, received_at)
+			VALUES ($1, $2, $3, $4, $5)
+			ON CONFLICT (provider, delivery_id) DO NOTHING
+		`,
 			event.Provider,
 			event.Id,
 			event.EventName,
-			[]byte(payload),
+			jsonPayload,
 			time.Now(),
 		)
 	}
@@ -419,10 +424,7 @@ func (r *RedisBulkInserter) bulkInsertPostgresSQL(ctx context.Context, events []
 	}(results)
 
 	for i := 0; i < batch.Len(); i++ {
-		_, err := results.Exec()
-		if err != nil {
-			log.Printf("Failed to execute batch query: %v", err)
-		}
+		results.Exec()
 	}
 
 	return nil
@@ -456,19 +458,18 @@ func (r *RedisBulkInserter) StartWorker(ctx context.Context) {
 /* Event Processing Functions */
 
 func ProcessEventDirect(ctx context.Context, ev *eventpb.Event) error {
-	jsonBytes, err := json.Marshal(ev)
-	if err != nil {
-		return fmt.Errorf("failed to marshal to JSON: %w", err)
-	}
+	jsonPayload, err := convertEventToJSON(ev)
 
 	_, err = pgPool.Exec(ctx,
-		`INSERT INTO webhook_events (provider, delivery_id, event_type, payload, received_at)
-	 VALUES ($1, $2, $3, $4, $5)
-	 ON CONFLICT (provider, delivery_id) DO NOTHING`,
+		`
+			INSERT INTO webhook_events 
+			(provider, delivery_id, event_type, payload, received_at)
+			VALUES ($1, $2, $3, $4, $5)
+			ON CONFLICT (provider, delivery_id) DO NOTHING`,
 		ev.Provider,
 		ev.Id,
 		ev.EventName,
-		jsonBytes,
+		jsonPayload,
 		time.Now(),
 	)
 
@@ -585,4 +586,91 @@ func randomRepoName() string {
 func randomTitle() string {
 	words := []string{"Fix", "Add", "Update", "Remove", "Refactor", "Improve", "Document"}
 	return fmt.Sprintf("%s %s", randomChoice(words), randomAlphaNum(4))
+}
+
+func convertEventToJSON(event *eventpb.Event) (string, error) {
+	// Create a structured JSON object that includes both event metadata and payload
+	jsonData := map[string]interface{}{
+		"id":              event.Id,
+		"event_name":      event.EventName.String(),
+		"repository_id":   event.RepositoryId,
+		"repository_name": event.RepositoryName,
+		"provider":        event.Provider.String(),
+		"payload":         extractPayloadData(event),
+	}
+
+	jsonBytes, err := json.Marshal(jsonData)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal event to JSON: %w", err)
+	}
+
+	return string(jsonBytes), nil
+}
+
+func extractPayloadData(event *eventpb.Event) interface{} {
+	switch payload := event.Payload.(type) {
+	case *eventpb.Event_PrOpenedPayload:
+		return map[string]interface{}{
+			"type": "pull_request_opened",
+			"data": map[string]interface{}{
+				"pr_number": payload.PrOpenedPayload.PrNumber,
+				"pr_title":  payload.PrOpenedPayload.Title,
+			},
+		}
+
+	case *eventpb.Event_PrClosedPayload:
+		return map[string]interface{}{
+			"type": "pull_request_closed",
+			"data": map[string]interface{}{
+				"pr_number": payload.PrClosedPayload.PrNumber,
+			},
+		}
+
+	case *eventpb.Event_PrReviewPayload:
+		return map[string]interface{}{
+			"type": "pull_request_review",
+			"data": map[string]interface{}{
+				"pr_number": payload.PrReviewPayload.PrNumber,
+			},
+		}
+
+	case *eventpb.Event_IssueOpenedPayload:
+		return map[string]interface{}{
+			"type": "issue_opened",
+			"data": map[string]interface{}{
+				"issue_number": payload.IssueOpenedPayload.IssueNumber,
+			},
+		}
+
+	case *eventpb.Event_IssueClosedPayload:
+		return map[string]interface{}{
+			"type": "issue_closed",
+			"data": map[string]interface{}{
+				"issue_number": payload.IssueClosedPayload.IssueNumber,
+			},
+		}
+
+	case *eventpb.Event_IssueCommentedPayload:
+		return map[string]interface{}{
+			"type": "issue_commented",
+			"data": map[string]interface{}{
+				"issue_number": payload.IssueCommentedPayload.IssueNumber,
+			},
+		}
+
+	case *eventpb.Event_PushPayload:
+		return map[string]interface{}{
+			"type": "push",
+			"data": map[string]interface{}{
+				"branch":       payload.PushPayload.BranchName,
+				"commit_count": payload.PushPayload.CommitsCount,
+			},
+		}
+
+	default:
+		return map[string]interface{}{
+			"type": "unknown",
+			"data": nil,
+		}
+	}
 }
