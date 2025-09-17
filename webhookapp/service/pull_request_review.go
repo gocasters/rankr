@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
@@ -40,7 +41,7 @@ func (s *Service) PublishPullRequestReviewSubmitted(req PullRequestReviewSubmitt
 		},
 	}
 
-	metadata := map[string]string{}
-
-	return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PULL_REQUEST_REVIEW_SUBMITTED, TopicGithubReview, metadata)
+	ctx := context.Background()
+	return s.saveEvent(ctx, ev)
+	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PULL_REQUEST_REVIEW_SUBMITTED, TopicGithubReview, metadata)
 }
