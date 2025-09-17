@@ -1,16 +1,23 @@
 services:
   leaderboardscoring-db:
-    image: postgres:17.2-alpine
+    image: postgres:14-alpine
     container_name: leaderboardscoring-db
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: leaderboardscoring_admin
-      POSTGRES_PASSWORD: password123
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: leaderboardscoring_db
     restart: always
     volumes:
       - leaderboardscoring-data:/var/lib/postgresql/data
+    healthcheck:
+      # The healthcheck also uses the variable for consistency
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d leaderboardscoring_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   leaderboardscoring-redis:
     image: redis:6.2-alpine
@@ -33,6 +40,12 @@ services:
       - "--sd=/data"
       - "--js"
       - "--http_port=8222"
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8222/varz && nc -z localhost 4222" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
 
 volumes:
   leaderboardscoring-data:
