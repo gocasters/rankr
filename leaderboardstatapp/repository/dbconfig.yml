@@ -1,17 +1,45 @@
+total_shutdown_timeout: "15s"
+path_of_migrations: "./leaderboardstatapp/repository/migrations"
+
+http_server:
+  port: 6011
+  cors:
+    allow_origins: "*"
+  shutdown_context_timeout: "10s"
+
 postgres_db:
-  driver: postgres
-  host: leaderboardstat-db  # Make sure this matches your docker service name
-  port: 5432
-  user: stat_admin
-  password: password123
-  db_name: leaderboardstat_db
-  ssl_mode: disable
+  driver: "postgres"
+  host: "leaderboardstat-db" #"localhost"
+  port: 5432 #5438
+  user: "stat_admin"
+  password: "password123"
+  db_name: "leaderboardstat_db"
+  ssl_mode: "disable"
+  max_idle_conns: 15
+  max_open_conns: 100
+  conn_max_lifetime: 5
 
-  pool:
-    max_size: 10
-    min_size: 1
-    max_lifetime: "30m"
-    max_idle_time: "5m"
-    health_check_period: "1m"
+  # pgx pool configs
+  min_conns: 1
+  max_conns: 20
+  max_conn_lifetime: 300
+  max_conn_idle_time: 60
+  health_check_period: 30
 
-path_of_migration: ./leaderboardstatapp/repository/migrations
+logger:
+  level: "debug"
+  file_path: "logs/leaderboardstat/service.log"
+  use_local_time: true
+  file_max_size_in_mb: 10
+  file_max_age_in_days: 7
+
+#nats:
+#  url: nats://supersecret@localhost:4222
+#  connect_timeout: "30s"
+#  reconnect_wait: "1s"
+#  retry_on_failed_connect: true
+#  jet_stream_enabled: true
+#  stream:
+#    name: "EVENTS_STREAM"
+#    subjects:
+#      - "github.*"

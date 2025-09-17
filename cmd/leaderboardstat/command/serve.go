@@ -47,7 +47,7 @@ func serve() {
 
 	yamlPath := os.Getenv("CONFIG_PATH")
 	if yamlPath == "" {
-		yamlPath = filepath.Join(workingDir, "deploy", "leaderboardstat", "development", "config.local.yml")
+		yamlPath = filepath.Join(workingDir, "deploy", "leaderboardstat", "development", "config.yml")
 	}
 
 	options := config.Options{
@@ -63,13 +63,18 @@ func serve() {
 	if err := logger.Init(cfg.Logger); err != nil {
 		log.Fatalf("failed to initialize logger: %v", err)
 	}
-	defer func() { _ = logger.Close() }()
+	defer func() {
+		if err := logger.Close(); err != nil {
+			log.Fatalf("failed to close logger: %v", err)
+		}
+	}()
 
 	leaderboardLogger := logger.L()
 	// Run migrations if flags are set
 	if migrateUp || migrateDown {
 		if migrateUp && migrateDown {
 			leaderboardLogger.Error("invalid flags: --migrate-up and --migrate-down cannot be used together")
+
 			return
 		}
 
