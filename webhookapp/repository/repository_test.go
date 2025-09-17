@@ -367,16 +367,23 @@ func (suite *WebhookRepositoryTestSuite) TestSave_DuplicateIgnored() {
 	assert.Equal(suite.T(), int64(1), count)
 }
 
-// Test FindByDeliveryID method
+// Test FindByDeliveryID method - now returns WebhookEventRow
 func (suite *WebhookRepositoryTestSuite) TestFindByDeliveryID_Success() {
 	originalEvent := suite.createIssueOpenedEvent("delivery-test", 1001)
 
 	err := suite.repo.Save(suite.ctx, originalEvent)
 	require.NoError(suite.T(), err)
 
-	foundEvent, err := suite.repo.FindByDeliveryID(suite.ctx, int32(eventpb.EventProvider_EVENT_PROVIDER_GITHUB), "delivery-test")
+	foundRow, err := suite.repo.FindByDeliveryID(suite.ctx, int32(eventpb.EventProvider_EVENT_PROVIDER_GITHUB), "delivery-test")
 	assert.NoError(suite.T(), err)
-	assert.NotNil(suite.T(), foundEvent)
+	assert.NotNil(suite.T(), foundRow)
+	assert.Equal(suite.T(), int32(eventpb.EventProvider_EVENT_PROVIDER_GITHUB), foundRow.Provider)
+	assert.Equal(suite.T(), originalEvent.Id, foundRow.DeliveryID)
+	assert.Equal(suite.T(), int32(originalEvent.EventName), foundRow.EventType)
+
+	// Convert to Event and verify payload
+	foundEvent, err := foundRow.ToEvent()
+	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), originalEvent.Provider, foundEvent.Provider)
 	assert.Equal(suite.T(), originalEvent.Id, foundEvent.Id)
 
@@ -389,12 +396,12 @@ func (suite *WebhookRepositoryTestSuite) TestFindByDeliveryID_Success() {
 }
 
 func (suite *WebhookRepositoryTestSuite) TestFindByDeliveryID_NotFound() {
-	foundEvent, err := suite.repo.FindByDeliveryID(suite.ctx, int32(eventpb.EventProvider_EVENT_PROVIDER_GITHUB), "non-existent")
+	foundRow, err := suite.repo.FindByDeliveryID(suite.ctx, int32(eventpb.EventProvider_EVENT_PROVIDER_GITHUB), "non-existent")
 	assert.Error(suite.T(), err)
-	assert.Nil(suite.T(), foundEvent)
+	assert.Nil(suite.T(), foundRow)
 }
 
-// Test FindEvents with filters
+// Test FindEvents with filters - now returns []*WebhookEventRow
 func (suite *WebhookRepositoryTestSuite) TestFindEvents_WithProviderFilter() {
 	// Create events with different providers (though we only have GitHub in enum)
 	event1 := suite.createPullRequestOpenedEvent("delivery-1", 1001)
@@ -409,12 +416,12 @@ func (suite *WebhookRepositoryTestSuite) TestFindEvents_WithProviderFilter() {
 	provider := int32(eventpb.EventProvider_EVENT_PROVIDER_GITHUB)
 	filter := EventFilter{Provider: &provider}
 
-	events, err := suite.repo.FindEvents(suite.ctx, filter)
+	rows, err := suite.repo.FindEvents(suite.ctx, filter)
 	assert.NoError(suite.T(), err)
-	assert.Len(suite.T(), events, 2) // Both should be GitHub
+	assert.Len(suite.T(), rows, 2) // Both should be GitHub
 
-	for _, event := range events {
-		assert.Equal(suite.T(), eventpb.EventProvider_EVENT_PROVIDER_GITHUB, event.Provider)
+	for _, row := range rows {
+		assert.Equal(suite.T(), int32(eventpb.EventProvider_EVENT_PROVIDER_GITHUB), row.Provider)
 	}
 }
 
@@ -430,10 +437,10 @@ func (suite *WebhookRepositoryTestSuite) TestFindEvents_WithEventTypeFilter() {
 	eventType := int32(eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED)
 	filter := EventFilter{EventType: &eventType}
 
-	events, err := suite.repo.FindEvents(suite.ctx, filter)
+	rows, err := suite.repo.FindEvents(suite.ctx, filter)
 	assert.NoError(suite.T(), err)
-	assert.Len(suite.T(), events, 1)
-	assert.Equal(suite.T(), eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED, events[0].EventName)
+	assert.Len(suite.T(), rows, 1)
+	assert.Equal(suite.T(), int32(eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED), rows[0].EventType)
 }
 
 func (suite *WebhookRepositoryTestSuite) TestFindEvents_WithTimeRangeFilter() {
@@ -452,9 +459,9 @@ func (suite *WebhookRepositoryTestSuite) TestFindEvents_WithTimeRangeFilter() {
 		EndTime:   &end,
 	}
 
-	events, err := suite.repo.FindEvents(suite.ctx, filter)
+	rows, err := suite.repo.FindEvents(suite.ctx, filter)
 	assert.NoError(suite.T(), err)
-	assert.Len(suite.T(), events, 1)
+	assert.Len(suite.T(), rows, 1)
 
 	// Filter with time range that excludes the event
 	pastStart := now.Add(-2 * time.Hour)
@@ -465,12 +472,12 @@ func (suite *WebhookRepositoryTestSuite) TestFindEvents_WithTimeRangeFilter() {
 		EndTime:   &pastEnd,
 	}
 
-	events, err = suite.repo.FindEvents(suite.ctx, filter)
+	rows, err = suite.repo.FindEvents(suite.ctx, filter)
 	assert.NoError(suite.T(), err)
-	assert.Len(suite.T(), events, 0)
+	assert.Len(suite.T(), rows, 0)
 }
 
-// Test convenience methods
+// Test convenience methods - updated to expect []*WebhookEventRow
 func (suite *WebhookRepositoryTestSuite) TestGetEventsByProvider() {
 	event1 := suite.createPullRequestOpenedEvent("delivery-1", 1001)
 	event2 := suite.createIssueOpenedEvent("delivery-2", 1002)
@@ -480,12 +487,13 @@ func (suite *WebhookRepositoryTestSuite) TestGetEventsByProvider() {
 	err = suite.repo.Save(suite.ctx, event2)
 	require.NoError(suite.T(), err)
 
-	events, err := suite.repo.GetEventsByProvider(suite.ctx, int32(eventpb.EventProvider_EVENT_PROVIDER_GITHUB), 10)
+	limit := 10
+	rows, err := suite.repo.GetEventsByProvider(suite.ctx, int32(eventpb.EventProvider_EVENT_PROVIDER_GITHUB), &limit)
 	assert.NoError(suite.T(), err)
-	assert.Len(suite.T(), events, 2) // Both are GitHub events
+	assert.Len(suite.T(), rows, 2) // Both are GitHub events
 
-	for _, event := range events {
-		assert.Equal(suite.T(), eventpb.EventProvider_EVENT_PROVIDER_GITHUB, event.Provider)
+	for _, row := range rows {
+		assert.Equal(suite.T(), int32(eventpb.EventProvider_EVENT_PROVIDER_GITHUB), row.Provider)
 	}
 }
 
@@ -498,10 +506,11 @@ func (suite *WebhookRepositoryTestSuite) TestGetEventsByType() {
 	err = suite.repo.Save(suite.ctx, event2)
 	require.NoError(suite.T(), err)
 
-	events, err := suite.repo.GetEventsByType(suite.ctx, int32(eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED), 10)
+	limit := 10
+	rows, err := suite.repo.GetEventsByType(suite.ctx, int32(eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED), &limit)
 	assert.NoError(suite.T(), err)
-	assert.Len(suite.T(), events, 1)
-	assert.Equal(suite.T(), eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED, events[0].EventName)
+	assert.Len(suite.T(), rows, 1)
+	assert.Equal(suite.T(), int32(eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED), rows[0].EventType)
 }
 
 func (suite *WebhookRepositoryTestSuite) TestGetRecentEvents() {
@@ -524,13 +533,14 @@ func (suite *WebhookRepositoryTestSuite) TestGetRecentEvents() {
 		time.Sleep(10 * time.Millisecond)
 	}
 
-	events, err := suite.repo.GetRecentEvents(suite.ctx, 2)
+	limit := 2
+	rows, err := suite.repo.GetRecentEvents(suite.ctx, &limit)
 	assert.NoError(suite.T(), err)
-	assert.Len(suite.T(), events, 2)
+	assert.Len(suite.T(), rows, 2)
 
 	// Events should be ordered by received_at DESC (most recent first)
-	assert.Equal(suite.T(), "recent-2", events[0].Id)
-	assert.Equal(suite.T(), "recent-1", events[1].Id)
+	assert.Equal(suite.T(), "recent-2", rows[0].DeliveryID)
+	assert.Equal(suite.T(), "recent-1", rows[1].DeliveryID)
 }
 
 // Test utility methods
@@ -573,13 +583,17 @@ func (suite *WebhookRepositoryTestSuite) TestSave_AllEventTypes() {
 	assert.Equal(suite.T(), int64(7), count)
 
 	// Verify we can retrieve and deserialize all event types
-	savedEvents, err := suite.repo.GetRecentEvents(suite.ctx, 10)
+	limit := 10
+	savedRows, err := suite.repo.GetRecentEvents(suite.ctx, &limit)
 	assert.NoError(suite.T(), err)
-	assert.Len(suite.T(), savedEvents, 7)
+	assert.Len(suite.T(), savedRows, 7)
 
 	// Check that all payloads are properly deserialized
 	eventTypesSeen := make(map[eventpb.EventName]bool)
-	for _, savedEvent := range savedEvents {
+	for _, savedRow := range savedRows {
+		savedEvent, err := savedRow.ToEvent()
+		require.NoError(suite.T(), err)
+
 		eventTypesSeen[savedEvent.EventName] = true
 
 		switch savedEvent.EventName {
@@ -685,9 +699,13 @@ func (suite *WebhookRepositoryTestSuite) TestRepositoryInterfaceCompatibility() 
 	assert.NoError(suite.T(), err)
 
 	// Test that we can retrieve and it matches expected structure
-	savedEvent, err := suite.repo.FindByDeliveryID(suite.ctx, int32(eventpb.EventProvider_EVENT_PROVIDER_GITHUB), "interface-test")
+	savedRow, err := suite.repo.FindByDeliveryID(suite.ctx, int32(eventpb.EventProvider_EVENT_PROVIDER_GITHUB), "interface-test")
 	assert.NoError(suite.T(), err)
-	assert.NotNil(suite.T(), savedEvent)
+	assert.NotNil(suite.T(), savedRow)
+
+	// Convert to Event for detailed comparison
+	savedEvent, err := savedRow.ToEvent()
+	assert.NoError(suite.T(), err)
 
 	// Verify all fields are properly saved and retrieved
 	assert.Equal(suite.T(), event.Id, savedEvent.Id)
@@ -709,4 +727,12 @@ func (suite *WebhookRepositoryTestSuite) TestRepositoryInterfaceCompatibility() 
 	assert.Equal(suite.T(), originalPayload.TargetBranch, savedPayload.TargetBranch)
 	assert.Equal(suite.T(), originalPayload.Labels, savedPayload.Labels)
 	assert.Equal(suite.T(), originalPayload.Assignees, savedPayload.Assignees)
+
+	// Verify raw database fields
+	assert.Equal(suite.T(), "interface-test", savedRow.DeliveryID)
+	assert.Equal(suite.T(), int32(eventpb.EventProvider_EVENT_PROVIDER_GITHUB), savedRow.Provider)
+	assert.Equal(suite.T(), int32(eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED), savedRow.EventType)
+	assert.NotNil(suite.T(), savedRow.Payload)
+	assert.NotZero(suite.T(), savedRow.ID)
+	assert.NotZero(suite.T(), savedRow.ReceivedAt)
 }
