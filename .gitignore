@@ -29,6 +29,7 @@ go.work.sum
 .env
 
 # Editor/IDE
+
 .idea/
 .vscode/
 .DS_Store
@@ -41,6 +42,4 @@ go.work.sum
 /deploy/development/traefik/logs/access.log
 deploy/development/traefik/logs/traefik.log
 
-# Go modules
-go.mod
-go.sum
+

@@ -1,0 +1,12 @@
+version: "3.8"
+services:
+  centrifugo:
+    image: centrifugo/centrifugo:v6.2.4
+    container_name: centrifugo
+    restart: unless-stopped
+    volumes:
+      - ./config.json:/centrifugo/config.json:ro
+    ports:
+      - "127.0.0.1:8000:8000"   # Websocket / HTTP API
+      - "127.0.0.1:9000:9000"   # Admin console
+ 
