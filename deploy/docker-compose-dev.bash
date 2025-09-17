@@ -8,6 +8,8 @@ docker compose \
 -f ./deploy/development/rabbitmq-compose.yml \
 -f ./deploy/development/grafana-compose.yml \
 -f ./deploy/development/jaeger-compose.yml \
+-f ./deploy/development/centrifugo-compose.yml \
+-f ./deploy/development/emqx-compose.yml \
 -f ./deploy/development/otel_collector-compose.yml \
 -f ./deploy/development/prometheus-compose.yml \
 -f ./deploy/development/pgadmin-compose.yml \
