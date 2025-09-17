@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/gocasters/rankr/pkg/database"
-	"github.com/gocasters/rankr/webhookapp/repository"
+	"github.com/gocasters/rankr/webhookapp/repository/serializedevents"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -33,7 +33,7 @@ type Application struct {
 // and returns an Application with HTTPServer, EventRepo, Logger, and Config populated.
 // Note: this function panics if initializing the HTTP service (httpserver.New) fails.
 func Setup(config Config, logger *slog.Logger, conn *database.Database, pub message.Publisher) Application {
-	eventRepo := repository.NewWebhookRepository(conn.Pool)
+	eventRepo := serializedevents.NewWebhookRepository(conn.Pool)
 	httpService, err := httpserver.New(config.HTTPServer)
 	if err != nil {
 		panic(err)

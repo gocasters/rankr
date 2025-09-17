@@ -1,4 +1,4 @@
-package repository
+package serializedevents
 
 import (
 	"fmt"

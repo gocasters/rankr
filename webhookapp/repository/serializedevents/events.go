@@ -1,4 +1,4 @@
-package repository
+package serializedevents
 
 import (
 	"context"
@@ -64,7 +64,7 @@ func (repo WebhookRepository) Save(ctx context.Context, event *eventpb.Event) er
 		return err
 	}
 	if tag.RowsAffected() == 0 {
-		return ErrDuplicateEvent
+		return fmt.Errorf(ErrDuplicateEvent.Error()+"provider %d , delivery_id %s", event.Provider, event.Id)
 	}
 	return nil
 }
