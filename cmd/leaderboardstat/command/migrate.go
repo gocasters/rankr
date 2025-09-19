@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/gocasters/rankr/leaderboardstatapp"
-	cfgloader "github.com/gocasters/rankr/pkg/config"
+	"github.com/gocasters/rankr/pkg/config"
 	"github.com/gocasters/rankr/pkg/migrator"
 	"github.com/spf13/cobra"
 )
@@ -31,17 +31,12 @@ func migrate() {
 		log.Fatalf("Error getting working directory: %v", err)
 	}
 
-	yamlPath := filepath.Join(workingDir, "leaderboardstatapp", "repository", "dbconfig.yml")
-
-	// to run migrations when you want to run leaderboardstat service locally
-	if path := os.Getenv("DBCONFIG_OVERRIDE_PATH"); path != "" {
-		yamlPath = path
-		log.Printf("Using override config: %s", yamlPath)
-	} else {
-		log.Printf("Using default config: %s", yamlPath)
+	yamlPath := os.Getenv("CONFIG_PATH")
+	if yamlPath == "" {
+		yamlPath = filepath.Join(workingDir, "deploy", "leaderboardstat", "development", "config.yml")
 	}
 
-	options := cfgloader.Options{
+	options := config.Options{
 		Prefix:       "STAT_",
 		Delimiter:    ".",
 		Separator:    "__",
@@ -49,7 +44,7 @@ func migrate() {
 		Transformer:  nil,
 	}
 
-	if err := cfgloader.Load(options, &cfg); err != nil {
+	if err := config.Load(options, &cfg); err != nil {
 		log.Fatalf("Failed to load leaderboardstat config: %v", err)
 	}
 
