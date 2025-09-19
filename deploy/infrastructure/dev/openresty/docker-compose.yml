@@ -1,0 +1,28 @@
+version: "3"
+services:
+  nginx:
+    image: openresty/openresty:alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf:ro
+      - ./conf.d:/etc/openresty/conf.d:ro
+    depends_on:
+      - auth
+      - leaderboard
+      - contributor
+
+  auth:
+    build: ./authapp
+    ports:
+      - "5002:5002"
+
+  leaderboard:
+    build: ./leaderboardscoring
+    ports:
+      - "5003:5003"
+
+  contributor:
+    build: ./contributorapp
+    ports:
+      - "5004:5004"
