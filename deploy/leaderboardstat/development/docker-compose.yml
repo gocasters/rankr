@@ -21,6 +21,7 @@ services:
       context: .
       dockerfile: ./deploy/leaderboardstat/development/Dockerfile
     image: rankr-leaderboardstat:development
+    command: /bin/leaderboardstat serve --migrate-up
     #command: /bin/sh -c "go run cmd/leaderboardstat/main.go serve --migrate-up"
     depends_on:
       leaderboardstat-db:

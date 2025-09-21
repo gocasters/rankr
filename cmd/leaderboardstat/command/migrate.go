@@ -1,14 +1,9 @@
 package command
 
 import (
-	"log"
-	"os"
-	"path/filepath"
-
-	"github.com/gocasters/rankr/leaderboardstatapp"
-	"github.com/gocasters/rankr/pkg/config"
 	"github.com/gocasters/rankr/pkg/migrator"
 	"github.com/spf13/cobra"
+	"log"
 )
 
 var up bool
@@ -24,30 +19,7 @@ var migrateCmd = &cobra.Command{
 }
 
 func migrate() {
-	var cfg leaderboardstatapp.Config
-
-	workingDir, err := os.Getwd()
-	if err != nil {
-		log.Fatalf("Error getting working directory: %v", err)
-	}
-
-	yamlPath := os.Getenv("CONFIG_PATH")
-	if yamlPath == "" {
-		yamlPath = filepath.Join(workingDir, "deploy", "leaderboardstat", "development", "config.yml")
-	}
-
-	options := config.Options{
-		Prefix:       "STAT_",
-		Delimiter:    ".",
-		Separator:    "__",
-		YamlFilePath: yamlPath,
-		Transformer:  nil,
-	}
-
-	if err := config.Load(options, &cfg); err != nil {
-		log.Fatalf("Failed to load leaderboardstat config: %v", err)
-	}
-
+	cfg := loadAppConfig()
 	mgr := migrator.New(cfg.PostgresDB, cfg.PathOfMigration)
 
 	if up {
