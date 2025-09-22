@@ -1,0 +1,21 @@
+services:
+  rankr-shared-postgres:
+    image: postgres:17.2-alpine
+    environment:
+      POSTGRES_DB: rankr_db
+      POSTGRES_USER: rankr_admin
+      POSTGRES_PASSWORD: rankr_password_123
+    restart: always
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./deploy/infrastructure/postgres/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+      - rankr-shared-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rankr_admin -d rankr_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  rankr-shared-data:
