@@ -10,8 +10,8 @@ http_server:
 
 postgres_db:
   driver: "postgres"
-  host:  "leaderboardstat-db"
-  port: 5432
+  host:  "127.0.0.1" #"leaderboardstat-db"
+  port: 5432 #5438
   user: "stat_admin"
   password: "password123"
   db_name: "leaderboardstat_db"
