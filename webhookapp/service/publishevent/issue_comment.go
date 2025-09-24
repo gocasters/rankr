@@ -1,16 +1,17 @@
-package service
+package publishevent
 
 import (
 	"encoding/json"
 	"fmt"
 	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
+	"github.com/gocasters/rankr/webhookapp/service"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func (s *Service) HandleIssueCommentEvent(provider eventpb.EventProvider, action string, body []byte, deliveryUID string) error {
 	switch action {
 	case "created":
-		var req IssueCommentCreatedRequest
+		var req service.IssueCommentCreatedRequest
 		if err := json.Unmarshal(body, &req); err != nil {
 			return err
 		}
@@ -20,7 +21,7 @@ func (s *Service) HandleIssueCommentEvent(provider eventpb.EventProvider, action
 	}
 }
 
-func (s *Service) publishIssueComment(req IssueCommentCreatedRequest, provider eventpb.EventProvider, deliveryUID string) error {
+func (s *Service) publishIssueComment(req service.IssueCommentCreatedRequest, provider eventpb.EventProvider, deliveryUID string) error {
 	ev := &eventpb.Event{
 		Id:             deliveryUID,
 		EventName:      eventpb.EventName_EVENT_NAME_ISSUE_COMMENTED,
@@ -41,5 +42,5 @@ func (s *Service) publishIssueComment(req IssueCommentCreatedRequest, provider e
 
 	metadata := map[string]string{}
 
-	return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_ISSUE_COMMENTED, TopicGithubIssueComment, metadata)
+	return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_ISSUE_COMMENTED, service.TopicGithubIssueComment, metadata)
 }

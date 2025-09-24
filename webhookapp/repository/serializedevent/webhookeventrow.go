@@ -1,4 +1,4 @@
-package serializedevents
+package serializedevent
 
 import (
 	"fmt"

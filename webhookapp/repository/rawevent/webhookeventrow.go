@@ -1,4 +1,4 @@
-package rawevents
+package rawevent
 
 import (
 	"encoding/json"

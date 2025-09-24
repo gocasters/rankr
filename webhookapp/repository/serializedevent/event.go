@@ -1,4 +1,4 @@
-package serializedevents
+package serializedevent
 
 import (
 	"context"
@@ -32,17 +32,17 @@ type EventFilter struct {
 	Offset      *int
 }
 
-type WebhookRepository struct {
+type SerializedWebhookRepository struct {
 	db *pgxpool.Pool
 }
 
-// NewWebhookRepository returns a WebhookRepository backed by the provided pgx connection pool.
-func NewWebhookRepository(db *pgxpool.Pool) WebhookRepository {
-	return WebhookRepository{db: db}
+// NewWebhookRepository returns a SerializedWebhookRepository backed by the provided pgx connection pool.
+func NewWebhookRepository(db *pgxpool.Pool) *SerializedWebhookRepository {
+	return &SerializedWebhookRepository{db: db}
 }
 
 // Save stores a webhook event
-func (repo WebhookRepository) Save(ctx context.Context, event *eventpb.Event) error {
+func (repo SerializedWebhookRepository) Save(ctx context.Context, event *eventpb.Event) error {
 	payload, err := proto.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("failed to marshal event: %w", err)
@@ -70,7 +70,7 @@ func (repo WebhookRepository) Save(ctx context.Context, event *eventpb.Event) er
 }
 
 // FindByDeliveryID retrieves an event by provider and delivery_id
-func (repo WebhookRepository) FindByDeliveryID(ctx context.Context, provider int32, deliveryID string) (*WebhookEventRow, error) {
+func (repo SerializedWebhookRepository) FindByDeliveryID(ctx context.Context, provider int32, deliveryID string) (*WebhookEventRow, error) {
 	var row WebhookEventRow
 	err := repo.db.QueryRow(
 		ctx,
@@ -91,7 +91,7 @@ func (repo WebhookRepository) FindByDeliveryID(ctx context.Context, provider int
 }
 
 // FindEvents retrieves events based on filters
-func (repo WebhookRepository) FindEvents(ctx context.Context, filter EventFilter) ([]*WebhookEventRow, error) {
+func (repo SerializedWebhookRepository) FindEvents(ctx context.Context, filter EventFilter) ([]*WebhookEventRow, error) {
 	query := `SELECT id, provider, delivery_id, event_type, payload, received_at FROM webhook_events WHERE 1=1`
 	args := make([]interface{}, 0)
 	argCount := 0
@@ -156,7 +156,7 @@ func (repo WebhookRepository) FindEvents(ctx context.Context, filter EventFilter
 }
 
 // CountEvents returns total number of events
-func (repo WebhookRepository) CountEvents(ctx context.Context) (int64, error) {
+func (repo SerializedWebhookRepository) CountEvents(ctx context.Context) (int64, error) {
 	var count int64
 	err := repo.db.QueryRow(ctx, "SELECT COUNT(*) FROM webhook_events").Scan(&count)
 	if err != nil {
@@ -166,7 +166,7 @@ func (repo WebhookRepository) CountEvents(ctx context.Context) (int64, error) {
 }
 
 // EventExists checks if an event exists by provider and delivery_id
-func (repo WebhookRepository) EventExists(ctx context.Context, provider int32, deliveryID string) (bool, error) {
+func (repo SerializedWebhookRepository) EventExists(ctx context.Context, provider int32, deliveryID string) (bool, error) {
 	var exists bool
 	err := repo.db.QueryRow(
 		ctx,
@@ -180,7 +180,7 @@ func (repo WebhookRepository) EventExists(ctx context.Context, provider int32, d
 }
 
 // GetEventsByTimeRange retrieves events within a time range
-func (repo WebhookRepository) GetEventsByTimeRange(ctx context.Context, start, end time.Time, limit *int) ([]*WebhookEventRow, error) {
+func (repo SerializedWebhookRepository) GetEventsByTimeRange(ctx context.Context, start, end time.Time, limit *int) ([]*WebhookEventRow, error) {
 	filter := EventFilter{
 		StartTime: &start,
 		EndTime:   &end,
@@ -190,7 +190,7 @@ func (repo WebhookRepository) GetEventsByTimeRange(ctx context.Context, start, e
 }
 
 // GetEventsByProvider retrieves events for a specific provider
-func (repo WebhookRepository) GetEventsByProvider(ctx context.Context, provider int32, limit *int) ([]*WebhookEventRow, error) {
+func (repo SerializedWebhookRepository) GetEventsByProvider(ctx context.Context, provider int32, limit *int) ([]*WebhookEventRow, error) {
 	filter := EventFilter{
 		Provider: &provider,
 		Limit:    limit,
@@ -199,7 +199,7 @@ func (repo WebhookRepository) GetEventsByProvider(ctx context.Context, provider 
 }
 
 // GetEventsByType retrieves events of a specific type
-func (repo WebhookRepository) GetEventsByType(ctx context.Context, eventType int32, limit *int) ([]*WebhookEventRow, error) {
+func (repo SerializedWebhookRepository) GetEventsByType(ctx context.Context, eventType int32, limit *int) ([]*WebhookEventRow, error) {
 	filter := EventFilter{
 		EventType: &eventType,
 		Limit:     limit,
@@ -208,7 +208,7 @@ func (repo WebhookRepository) GetEventsByType(ctx context.Context, eventType int
 }
 
 // GetRecentEvents retrieves the most recent events
-func (repo WebhookRepository) GetRecentEvents(ctx context.Context, limit *int) ([]*WebhookEventRow, error) {
+func (repo SerializedWebhookRepository) GetRecentEvents(ctx context.Context, limit *int) ([]*WebhookEventRow, error) {
 	filter := EventFilter{
 		Limit: limit,
 	}
@@ -216,7 +216,7 @@ func (repo WebhookRepository) GetRecentEvents(ctx context.Context, limit *int) (
 }
 
 // GetEventsByProvider retrieves events for a specific provider with time range
-func (repo WebhookRepository) GetEventsByProviderWithTimeRange(ctx context.Context, provider int32, start, end time.Time, limit *int) ([]*WebhookEventRow, error) {
+func (repo SerializedWebhookRepository) GetEventsByProviderWithTimeRange(ctx context.Context, provider int32, start, end time.Time, limit *int) ([]*WebhookEventRow, error) {
 	filter := EventFilter{
 		Provider:  &provider,
 		StartTime: &start,

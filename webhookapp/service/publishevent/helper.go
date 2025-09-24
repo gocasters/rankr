@@ -1,6 +1,7 @@
-package service
+package publishevent
 
 import (
+	"github.com/gocasters/rankr/webhookapp/service"
 	"strings"
 	"time"
 
@@ -37,7 +38,7 @@ func parseTime(stringTime string) time.Time {
 	return parseTimed
 }
 
-func extractLabelsNames(labels []Label) []string {
+func extractLabelsNames(labels []service.Label) []string {
 	numberOfLabels := len(labels)
 	var labelsNames = make([]string, 0, numberOfLabels)
 
@@ -49,7 +50,7 @@ func extractLabelsNames(labels []Label) []string {
 	return labelsNames
 }
 
-func extractAssigneesIDs(assignees []*User) []uint64 {
+func extractAssigneesIDs(assignees []*service.User) []uint64 {
 	numberOfAssignees := len(assignees)
 	var assigneesIDs = make([]uint64, 0, numberOfAssignees)
 

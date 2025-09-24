@@ -1,8 +1,9 @@
-package service
+package publishevent
 
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/gocasters/rankr/webhookapp/service"
 	"time"
 
 	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
@@ -12,7 +13,7 @@ import (
 func (s *Service) HandlePullRequestEvent(provider eventpb.EventProvider, action string, body []byte, deliveryUID string) error {
 	switch action {
 	case "opened":
-		var req PullRequestOpenedRequest
+		var req service.PullRequestOpenedRequest
 		if err := json.Unmarshal(body, &req); err != nil {
 			return err
 		}
@@ -20,7 +21,7 @@ func (s *Service) HandlePullRequestEvent(provider eventpb.EventProvider, action 
 		return s.publishPullRequestOpened(req, provider, deliveryUID)
 
 	case "closed":
-		var req PullRequestClosedRequest
+		var req service.PullRequestClosedRequest
 		if err := json.Unmarshal(body, &req); err != nil {
 			return err
 		}
@@ -31,7 +32,7 @@ func (s *Service) HandlePullRequestEvent(provider eventpb.EventProvider, action 
 	}
 }
 
-func (s *Service) publishPullRequestOpened(req PullRequestOpenedRequest, provider eventpb.EventProvider, deliveryUID string) error {
+func (s *Service) publishPullRequestOpened(req service.PullRequestOpenedRequest, provider eventpb.EventProvider, deliveryUID string) error {
 	ev := &eventpb.Event{
 		Id:             deliveryUID,
 		EventName:      eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED,
@@ -55,10 +56,10 @@ func (s *Service) publishPullRequestOpened(req PullRequestOpenedRequest, provide
 
 	metadata := map[string]string{}
 
-	return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED, TopicGithubPullRequest, metadata)
+	return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED, service.TopicGithubPullRequest, metadata)
 }
 
-func (s *Service) publishPullRequestClosed(req PullRequestClosedRequest, provider eventpb.EventProvider, deliveryUID string) error {
+func (s *Service) publishPullRequestClosed(req service.PullRequestClosedRequest, provider eventpb.EventProvider, deliveryUID string) error {
 	t := timestamppb.New(time.Time{}) // it is the "zero time" to be distinguishable
 	if req.PullRequest.ClosedAt != nil {
 		t = timestamppb.New(*req.PullRequest.ClosedAt)
@@ -96,5 +97,5 @@ func (s *Service) publishPullRequestClosed(req PullRequestClosedRequest, provide
 
 	metadata := map[string]string{}
 
-	return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PULL_REQUEST_CLOSED, TopicGithubPullRequest, metadata)
+	return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PULL_REQUEST_CLOSED, service.TopicGithubPullRequest, metadata)
 }

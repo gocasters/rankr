@@ -14,6 +14,7 @@ type Repository struct {
 	Name     string `json:"name"`
 	FullName string `json:"full_name"`
 	URL      string `json:"url"`
+	Owner    User   `json:"owner"`
 }
 
 type User struct {

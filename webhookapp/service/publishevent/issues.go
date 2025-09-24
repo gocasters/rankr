@@ -1,23 +1,24 @@
-package service
+package publishevent
 
 import (
 	"encoding/json"
 	"fmt"
 	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
+	"github.com/gocasters/rankr/webhookapp/service"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func (s *Service) HandleIssuesEvent(provider eventpb.EventProvider, action string, body []byte, deliveryUID string) error {
 	switch action {
 	case "opened":
-		var req IssueOpenedRequest
+		var req service.IssueOpenedRequest
 		if err := json.Unmarshal(body, &req); err != nil {
 			return err
 		}
 		return s.publishIssueOpened(req, provider, deliveryUID)
 
 	case "closed":
-		var req IssueClosedRequest
+		var req service.IssueClosedRequest
 		if err := json.Unmarshal(body, &req); err != nil {
 			return err
 		}
@@ -28,7 +29,7 @@ func (s *Service) HandleIssuesEvent(provider eventpb.EventProvider, action strin
 	}
 }
 
-func (s *Service) publishIssueOpened(req IssueOpenedRequest, provider eventpb.EventProvider, deliveryUID string) error {
+func (s *Service) publishIssueOpened(req service.IssueOpenedRequest, provider eventpb.EventProvider, deliveryUID string) error {
 	ev := &eventpb.Event{
 		Id:             deliveryUID,
 		EventName:      eventpb.EventName_EVENT_NAME_ISSUE_OPENED,
@@ -47,10 +48,10 @@ func (s *Service) publishIssueOpened(req IssueOpenedRequest, provider eventpb.Ev
 	}
 	metadata := map[string]string{}
 
-	return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_ISSUE_OPENED, TopicGithubIssues, metadata)
+	return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_ISSUE_OPENED, service.TopicGithubIssues, metadata)
 }
 
-func (s *Service) publishIssueClosed(req IssueClosedRequest, provider eventpb.EventProvider, deliveryUID string) error {
+func (s *Service) publishIssueClosed(req service.IssueClosedRequest, provider eventpb.EventProvider, deliveryUID string) error {
 
 	closeReason := eventpb.IssueCloseReason_ISSUE_CLOSE_REASON_UNSPECIFIED
 	if v := req.Issue.StateReason; v != nil {
@@ -97,5 +98,5 @@ func (s *Service) publishIssueClosed(req IssueClosedRequest, provider eventpb.Ev
 
 	metadata := map[string]string{}
 
-	return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_ISSUE_CLOSED, TopicGithubIssues, metadata)
+	return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_ISSUE_CLOSED, service.TopicGithubIssues, metadata)
 }

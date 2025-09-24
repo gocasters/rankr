@@ -1,4 +1,4 @@
-package serializedevents
+package serializedevent
 
 import (
 	"context"
@@ -19,7 +19,7 @@ import (
 type WebhookRepositoryTestSuite struct {
 	suite.Suite
 	db   *pgxpool.Pool
-	repo WebhookRepository
+	repo SerializedWebhookRepository
 	ctx  context.Context
 }
 

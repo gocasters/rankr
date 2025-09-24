@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/gocasters/rankr/pkg/database"
-	"github.com/gocasters/rankr/webhookapp/repository/serializedevents"
+	"github.com/gocasters/rankr/webhookapp/repository/rawevent"
+	"github.com/gocasters/rankr/webhookapp/repository/serializedevent"
+	"github.com/gocasters/rankr/webhookapp/service/publishevent"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -15,12 +17,11 @@ import (
 
 	"github.com/gocasters/rankr/pkg/httpserver"
 	"github.com/gocasters/rankr/webhookapp/delivery/http"
-	"github.com/gocasters/rankr/webhookapp/service"
 )
 
 type Application struct {
 	HTTPServer http.Server
-	EventRepo  service.EventRepository
+	EventRepo  publishevent.EventRepository
 	Logger     *slog.Logger
 	Config     Config
 }
@@ -33,7 +34,8 @@ type Application struct {
 // and returns an Application with HTTPServer, EventRepo, Logger, and Config populated.
 // Note: this function panics if initializing the HTTP service (httpserver.New) fails.
 func Setup(config Config, logger *slog.Logger, conn *database.Database, pub message.Publisher) Application {
-	eventRepo := serializedevents.NewWebhookRepository(conn.Pool)
+	eventRepo := serializedevent.NewWebhookRepository(conn.Pool)
+	rawEventRepo := rawevent.NewRawWebhookRepository(conn.Pool)
 	httpService, err := httpserver.New(config.HTTPServer)
 	if err != nil {
 		panic(err)
@@ -41,7 +43,7 @@ func Setup(config Config, logger *slog.Logger, conn *database.Database, pub mess
 	appHttpServer := http.New(
 		httpService,
 		http.NewHandler(logger),
-		service.New(eventRepo, pub),
+		publishevent.New(eventRepo, rawEventRepo, pub),
 	)
 
 	return Application{

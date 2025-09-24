@@ -3,16 +3,16 @@ package http
 import (
 	"context"
 	"github.com/gocasters/rankr/pkg/httpserver"
-	"github.com/gocasters/rankr/webhookapp/service"
+	"github.com/gocasters/rankr/webhookapp/service/publishevent"
 )
 
 type Server struct {
 	HTTPServer *httpserver.Server
 	Handler    *Handler
-	Service    *service.Service
+	Service    *publishevent.Service
 }
 
-func New(server *httpserver.Server, handler *Handler, svc *service.Service) Server {
+func New(server *httpserver.Server, handler *Handler, svc *publishevent.Service) Server {
 	return Server{
 		HTTPServer: server,
 		Handler:    handler,

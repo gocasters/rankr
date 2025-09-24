@@ -1,0 +1,14 @@
+{"time":"2025-09-21T19:57:12.753946+03:30","level":"ERROR","msg":"fatal error occurred","reason":"failed to connect to database","error":"failed to ping database: failed to connect to `user=webhook_admin database=webhook_db`:\n\t[::1]:5436 (localhost): dial error: dial tcp [::1]:5436: connectex: No connection could be made because the target machine actively refused it.\n\t127.0.0.1:5436 (localhost): dial error: dial tcp 127.0.0.1:5436: connectex: No connection could be made because the target machine actively refused it."}
+{"time":"2025-09-21T20:03:18.8978929+03:30","level":"ERROR","msg":"NATS not available","error":"dial tcp 127.0.0.1:4222: connectex: No connection could be made because the target machine actively refused it."}
+{"time":"2025-09-21T20:06:23.736305+03:30","level":"ERROR","msg":"Failed to create JetStream stream: ","error":"nats: no responders available for request"}
+{"time":"2025-09-21T20:08:50.7004202+03:30","level":"INFO","msg":"publisher started on nats://supersecret@localhost:4222"}
+{"time":"2025-09-21T20:08:50.7047247+03:30","level":"INFO","msg":"✅ HTTP server started on 8090"}
+{"time":"2025-09-22T01:16:56.8794263+03:30","level":"INFO","msg":"✅ Shutdown signal received..."}
+{"time":"2025-09-22T01:16:56.8813885+03:30","level":"INFO","msg":"✅ Starting server shutdown process..."}
+{"time":"2025-09-22T01:16:56.8838447+03:30","level":"INFO","msg":"✅ Starting graceful shutdown for HTTP server on port 8090"}
+{"time":"2025-09-22T01:16:56.8874722+03:30","level":"ERROR","msg":"❌ error in HTTP server on 8090","error":"http: Server closed"}
+{"time":"2025-09-22T01:16:56.8894675+03:30","level":"INFO","msg":"✅ HTTP server stopped 8090"}
+{"time":"2025-09-22T01:16:56.8874722+03:30","level":"INFO","msg":"✅ HTTP server shut down successfully."}
+{"time":"2025-09-22T01:16:56.8984423+03:30","level":"INFO","msg":"✅ All servers have been shut down successfully."}
+{"time":"2025-09-22T01:16:56.89944+03:30","level":"INFO","msg":"✅ Servers shut down gracefully"}
+{"time":"2025-09-22T01:16:56.9004372+03:30","level":"INFO","msg":"✅ webhook-app stopped"}

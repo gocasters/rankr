@@ -1,9 +1,10 @@
-package rawevents
+package rawevent
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/gocasters/rankr/webhookapp/service"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -22,36 +23,37 @@ type RawEventFilter struct {
 	Offset      *int
 }
 
-// WebhookRepository handles raw webhook event persistence
-type WebhookRepository struct {
+// RawWebhookRepository handles raw webhook event persistence
+type RawWebhookRepository struct {
 	db *pgxpool.Pool
 }
 
 // NewRawWebhookRepository creates a new raw webhook repository
-func NewRawWebhookRepository(db *pgxpool.Pool) WebhookRepository {
-	return WebhookRepository{db: db}
+func NewRawWebhookRepository(db *pgxpool.Pool) *RawWebhookRepository {
+	return &RawWebhookRepository{db: db}
 }
 
 // Save saves a raw webhook event to the database
-func (repo WebhookRepository) Save(ctx context.Context, provider int32, deliveryID string, payloadJSON []byte) error {
+func (repo RawWebhookRepository) Save(ctx context.Context, event *service.RawEvent) error {
 	query := `
-		INSERT INTO raw_webhook_events (provider, delivery_id, payload_json) 
-		VALUES ($1, $2, $3)`
+		INSERT INTO raw_webhook_events (provider, hook_id, owner, repo, event_type, delivery_id, payload_json) 
+		VALUES ($1, $2, $3,$4, $5, $6, $7)`
 
-	result, err := repo.db.Exec(ctx, query, provider, deliveryID, payloadJSON)
+	result, err := repo.db.Exec(ctx, query, event.Provider, event.HookID, event.Owner, event.Repo,
+		event.EventType, event.DeliveryID, event.Payload)
 	if err != nil {
 		return fmt.Errorf("failed to save raw webhook event: %w", err)
 	}
 
 	if result.RowsAffected() == 0 {
-		return fmt.Errorf(ErrDuplicateEvent.Error()+"provider %d , delivery_id %s", provider, deliveryID)
+		return fmt.Errorf(ErrDuplicateEvent.Error()+"provider %d , delivery_id %s", event.Provider, event.DeliveryID)
 	}
 
 	return nil
 }
 
 // FindByDeliveryID retrieves a raw event by provider and delivery_id
-func (repo WebhookRepository) FindByDeliveryID(ctx context.Context, provider int32, deliveryID string) (*WebhookEventRow, error) {
+func (repo RawWebhookRepository) FindByDeliveryID(ctx context.Context, provider int32, deliveryID string) (*WebhookEventRow, error) {
 	var row WebhookEventRow
 	err := repo.db.QueryRow(
 		ctx,
@@ -72,7 +74,7 @@ func (repo WebhookRepository) FindByDeliveryID(ctx context.Context, provider int
 }
 
 // FindEvents retrieves raw events based on filters
-func (repo WebhookRepository) FindEvents(ctx context.Context, filter RawEventFilter) ([]*WebhookEventRow, error) {
+func (repo RawWebhookRepository) FindEvents(ctx context.Context, filter RawEventFilter) ([]*WebhookEventRow, error) {
 	query := `SELECT id, provider, delivery_id, payload_json, received_at FROM raw_webhook_events WHERE 1=1`
 	args := make([]interface{}, 0)
 	argCount := 0
@@ -132,7 +134,7 @@ func (repo WebhookRepository) FindEvents(ctx context.Context, filter RawEventFil
 }
 
 // CountEvents returns total number of raw events
-func (repo WebhookRepository) CountEvents(ctx context.Context) (int64, error) {
+func (repo RawWebhookRepository) CountEvents(ctx context.Context) (int64, error) {
 	var count int64
 	err := repo.db.QueryRow(ctx, "SELECT COUNT(*) FROM raw_webhook_events").Scan(&count)
 	if err != nil {
@@ -142,7 +144,7 @@ func (repo WebhookRepository) CountEvents(ctx context.Context) (int64, error) {
 }
 
 // EventExists checks if a raw event exists by provider and delivery_id
-func (repo WebhookRepository) EventExists(ctx context.Context, provider int32, deliveryID string) (bool, error) {
+func (repo RawWebhookRepository) EventExists(ctx context.Context, provider int32, deliveryID string) (bool, error) {
 	var exists bool
 	err := repo.db.QueryRow(
 		ctx,
@@ -156,7 +158,7 @@ func (repo WebhookRepository) EventExists(ctx context.Context, provider int32, d
 }
 
 // GetEventsByProvider retrieves raw events for a specific provider
-func (repo WebhookRepository) GetEventsByProvider(ctx context.Context, provider int32, limit *int) ([]*WebhookEventRow, error) {
+func (repo RawWebhookRepository) GetEventsByProvider(ctx context.Context, provider int32, limit *int) ([]*WebhookEventRow, error) {
 	filter := RawEventFilter{
 		Provider: &provider,
 		Limit:    limit,
@@ -165,7 +167,7 @@ func (repo WebhookRepository) GetEventsByProvider(ctx context.Context, provider 
 }
 
 // GetEventsByTimeRange retrieves raw events within a time range
-func (repo WebhookRepository) GetEventsByTimeRange(ctx context.Context, start, end time.Time, limit *int) ([]*WebhookEventRow, error) {
+func (repo RawWebhookRepository) GetEventsByTimeRange(ctx context.Context, start, end time.Time, limit *int) ([]*WebhookEventRow, error) {
 	filter := RawEventFilter{
 		StartTime: &start,
 		EndTime:   &end,
@@ -175,7 +177,7 @@ func (repo WebhookRepository) GetEventsByTimeRange(ctx context.Context, start, e
 }
 
 // GetRecentEvents retrieves the most recent raw events
-func (repo WebhookRepository) GetRecentEvents(ctx context.Context, limit *int) ([]*WebhookEventRow, error) {
+func (repo RawWebhookRepository) GetRecentEvents(ctx context.Context, limit *int) ([]*WebhookEventRow, error) {
 	filter := RawEventFilter{
 		Limit: limit,
 	}
@@ -183,7 +185,7 @@ func (repo WebhookRepository) GetRecentEvents(ctx context.Context, limit *int) (
 }
 
 // GetEventsWithProviderAndTimeRange retrieves raw events for a provider within a time range
-func (repo WebhookRepository) GetEventsWithProviderAndTimeRange(ctx context.Context, provider int32, start, end time.Time, limit *int) ([]*WebhookEventRow, error) {
+func (repo RawWebhookRepository) GetEventsWithProviderAndTimeRange(ctx context.Context, provider int32, start, end time.Time, limit *int) ([]*WebhookEventRow, error) {
 	filter := RawEventFilter{
 		Provider:  &provider,
 		StartTime: &start,
@@ -191,4 +193,35 @@ func (repo WebhookRepository) GetEventsWithProviderAndTimeRange(ctx context.Cont
 		Limit:     limit,
 	}
 	return repo.FindEvents(ctx, filter)
+}
+
+// FindExistingDeliveryIDs checks a slice of delivery IDs and returns a map
+// of the ones that already exist in the database. This is more efficient
+// than checking one by one.
+func (repo RawWebhookRepository) FindExistingDeliveryIDs(ctx context.Context, deliveryIDs []string) (map[string]bool, error) {
+	if len(deliveryIDs) == 0 {
+		return make(map[string]bool), nil
+	}
+
+	query := `SELECT delivery_id FROM raw_webhook_events WHERE delivery_id = ANY($1)`
+	rows, err := repo.db.Query(ctx, query, deliveryIDs)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query existing delivery IDs: %w", err)
+	}
+	defer rows.Close()
+
+	existingIDs := make(map[string]bool)
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("failed to scan delivery ID: %w", err)
+		}
+		existingIDs[id] = true
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error in FindExistingDeliveryIDs: %w", err)
+	}
+
+	return existingIDs, nil
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"io"
 	"net/http"
+	"strconv"
 )
 
 func (s *Server) PublishGithubActivity(c echo.Context) error {
@@ -28,6 +29,29 @@ func (s *Server) PublishGithubActivity(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "Failed to read request body",
 		})
+	}
+
+	// save raw event tow Webhook_RawEvent table
+	rawEvent, rErr := makeRawEvent(body, eventpb.EventProvider_EVENT_PROVIDER_GITHUB, hookID, deliveryUID, eventName)
+	if rErr != nil {
+		if s.Handler.Logger != nil {
+			s.Handler.Logger.Error("Failed to make Raw Event",
+				"err", rErr.Error(), "provider_id", eventpb.EventProvider_EVENT_PROVIDER_GITHUB,
+				"hook_id", hookID, "event", eventName,
+				"delivery", deliveryUID)
+		}
+		//todo ask if should return on failed to save raw event
+		rawEvent = nil
+	}
+
+	if sErr := s.Service.SaveRawEvent(rawEvent); sErr != nil {
+		if s.Handler.Logger != nil {
+			s.Handler.Logger.Error("Failed to save raw event",
+				"err", sErr.Error(), "provider_id", eventpb.EventProvider_EVENT_PROVIDER_GITHUB,
+				"hook_id", hookID, "event", eventName,
+				"delivery", deliveryUID)
+		}
+		//todo ask if should return on failed to save raw event
 	}
 
 	webhookAction, waErr := extractWebhookAction(body)
@@ -93,4 +117,31 @@ func validateGitHubHeaders(hookID, eventName, deliveryUID string) error {
 		return fmt.Errorf("missing X-GitHub-Delivery header")
 	}
 	return nil
+}
+
+func makeRawEvent(body []byte, provider eventpb.EventProvider, hookID string,
+	deliveryUID string, eventName string) (*service.RawEvent, error) {
+
+	hookIDint, hErr := strconv.Atoi(hookID)
+	if hErr != nil {
+		return nil, hErr
+	}
+
+	var repository struct {
+		Repo service.Repository `json:"repository"`
+	}
+	if err := json.Unmarshal(body, &repository); err != nil {
+		return nil, err
+	}
+
+	rawEvent := &service.RawEvent{
+		Provider:   int(provider),
+		HookID:     int64(hookIDint),
+		Owner:      repository.Repo.Owner.Login,
+		Repo:       repository.Repo.Name,
+		DeliveryID: deliveryUID,
+		EventType:  eventName,
+		Payload:    body,
+	}
+	return rawEvent, nil
 }
