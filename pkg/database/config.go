@@ -45,13 +45,6 @@ func NewConfig(opts ...ConfigOption) Config {
 	return cfg
 }
 
-// WithSchema sets the Schema field of the Config.
-func WithSchema(schema string) ConfigOption {
-	return func(c *Config) {
-		c.Schema = schema
-	}
-}
-
 // WithHost sets the Host field of the Config.
 func WithHost(host string) ConfigOption {
 	return func(c *Config) {

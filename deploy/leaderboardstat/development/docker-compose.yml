@@ -9,9 +9,12 @@ services:
       rankr-shared-postgres:
         condition: service_healthy
     volumes:
-      - ./:/home/app  # Mount project root
+      - ./:/home/app
     environment:
       - CONFIG_PATH=/home/app/deploy/leaderboardstat/development/config.yml
     ports:
       - "6011:6011"
     restart: unless-stopped
+
+volumes:
+  leaderboardstat-data:

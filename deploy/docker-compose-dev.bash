@@ -5,7 +5,7 @@ cp ./deploy/development/traefik/overrides/dynamic.contributor-middleware.yml ./d
 docker compose \
 --env-file ./deploy/.env \
 --project-directory . \
--f ./deploy/infrastructure/postgres/docker-compose.yml \
+-f ./deploy/infrastructure/postgres/development/docker-compose.yml \
 -f ./deploy/development/rabbitmq-compose.yml \
 -f ./deploy/development/grafana-compose.yml \
 -f ./deploy/development/jaeger-compose.yml \

@@ -48,7 +48,7 @@ func (db *Database) Close() {
 }
 
 func BuildDSN(config Config) string {
-	dsn := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
+	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
 		config.Username,
 		config.Password,
 		config.Host,
@@ -56,10 +56,4 @@ func BuildDSN(config Config) string {
 		config.DBName,
 		config.SSLMode,
 	)
-
-	if config.Schema != "" && config.Schema != "public" {
-		dsn += fmt.Sprintf("&search_path=%s", config.Schema)
-	}
-
-	return dsn
 }
