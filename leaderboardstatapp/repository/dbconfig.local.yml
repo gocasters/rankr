@@ -1,0 +1,33 @@
+postgres_db:
+  driver: postgres
+  host: localhost
+  port: 5432
+  user: stat_admin
+  password: password123
+  db_name: leaderboardstat_db
+  ssl_mode: disable
+  max_conns: 10
+  min_conns: 1
+  max_conn_lifetime: 3600
+  max_conn_idle_time: 600
+  health_check_period: 60
+
+  pool:
+    max_size: 10
+    min_size: 1
+    max_lifetime: "30m"
+    max_idle_time: "5m"
+    health_check_period: "1m"
+path_of_migration: ./leaderboardstatapp/repository/migrations
+
+http_server:
+  port: 6011
+  shutdown_timeout: 30
+  read_timeout: 15
+  write_timeout: 15
+
+logger:
+  level: "info"
+  format: "json"
+
+total_shutdown_timeout: 45

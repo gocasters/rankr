@@ -1,6 +1,7 @@
-package publishevent
+package service
 
 import (
+	"context"
 	"encoding/json"
 	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 	"github.com/gocasters/rankr/webhookapp/service"
@@ -10,6 +11,8 @@ import (
 
 func (s *Service) HandlePushEvent(provider eventpb.EventProvider, body []byte, deliveryUID string) error {
 	var req service.PushRequest
+//func (s *Service) HandlePushEvent(provider eventpb.EventProvider, body []byte, deliveryUID string) error {
+//	var req PushRequest
 	if err := json.Unmarshal(body, &req); err != nil {
 		return err
 	}
@@ -17,6 +20,7 @@ func (s *Service) HandlePushEvent(provider eventpb.EventProvider, body []byte, d
 }
 
 func (s *Service) publishPush(req service.PushRequest, provider eventpb.EventProvider, deliveryUID string) error {
+//func (s *Service) publishPush(req PushRequest, provider eventpb.EventProvider, deliveryUID string) error {
 	ref := req.Ref
 	branchName := strings.TrimPrefix(ref, "refs/heads/")
 
@@ -59,7 +63,10 @@ func (s *Service) publishPush(req service.PushRequest, provider eventpb.EventPro
 		},
 	}
 
-	metadata := map[string]string{}
-
-	return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PUSHED, service.TopicGithubPush, metadata)
+	ctx := context.Background()
+	return s.saveEvent(ctx, ev)
+	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PUSHED, TopicGithubPush, metadata)
+	//metadata := map[string]string{}
+	//
+	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PUSHED, service.TopicGithubPush, metadata)
 }

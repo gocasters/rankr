@@ -7,25 +7,43 @@ import (
 	"github.com/gocasters/rankr/webhookapp/repository/rawevent"
 	"github.com/gocasters/rankr/webhookapp/repository/serializedevent"
 	"github.com/gocasters/rankr/webhookapp/service/publishevent"
+	"github.com/gocasters/rankr/adapter/redis"
+	//"github.com/gocasters/rankr/webhookapp/repository"
 	"log/slog"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/ThreeDotsLabs/watermill/message"
 
 	"github.com/gocasters/rankr/pkg/httpserver"
 	"github.com/gocasters/rankr/webhookapp/delivery/http"
+	"github.com/gocasters/rankr/webhookapp/service"
+
+	"github.com/go-co-op/gocron"
 )
 
 type Application struct {
 	HTTPServer http.Server
 	EventRepo  publishevent.EventRepository
+	//EventRepo  service.EventRepository
 	Logger     *slog.Logger
 	Config     Config
+	Sch        *gocron.Scheduler
 }
 
+//// Setup builds and returns an Application configured with the provided config, logger,
+//// database connection, and message publisher.
+////
+//// It creates a webhook event repository from conn.Pool, constructs the HTTP server
+//// and delivery layer wired to a service using that repository and the publisher,
+//// and returns an Application with HTTPServer, EventRepo, Logger, and Config populated.
+//// Note: this function panics if initializing the HTTP service (httpserver.New) fails.
+//func Setup(config Config, logger *slog.Logger, conn *database.Database, pub message.Publisher) Application {
+//	eventRepo := serializedevent.NewWebhookRepository(conn.Pool)
+//	rawEventRepo := rawevent.NewRawWebhookRepository(conn.Pool)
 // Setup builds and returns an Application configured with the provided config, logger,
 // database connection, and message publisher.
 //
@@ -33,9 +51,9 @@ type Application struct {
 // and delivery layer wired to a service using that repository and the publisher,
 // and returns an Application with HTTPServer, EventRepo, Logger, and Config populated.
 // Note: this function panics if initializing the HTTP service (httpserver.New) fails.
-func Setup(config Config, logger *slog.Logger, conn *database.Database, pub message.Publisher) Application {
-	eventRepo := serializedevent.NewWebhookRepository(conn.Pool)
-	rawEventRepo := rawevent.NewRawWebhookRepository(conn.Pool)
+func Setup(config Config, logger *slog.Logger, conn *database.Database, pub message.Publisher, redisAdapter *redis.Adapter) Application {
+	eventDurableRepo := repository.NewWebhookDurableRepository(redisAdapter)
+	eventRepo := repository.NewWebhookRepository(conn.Pool)
 	httpService, err := httpserver.New(config.HTTPServer)
 	if err != nil {
 		panic(err)
@@ -43,7 +61,8 @@ func Setup(config Config, logger *slog.Logger, conn *database.Database, pub mess
 	appHttpServer := http.New(
 		httpService,
 		http.NewHandler(logger),
-		publishevent.New(eventRepo, rawEventRepo, pub),
+		service.New(&eventRepo, pub, &eventDurableRepo, config.InsertQueueName, config.InsertBatchSize),
+		//publishevent.New(eventRepo, rawEventRepo, pub),
 	)
 
 	return Application{
@@ -51,6 +70,7 @@ func Setup(config Config, logger *slog.Logger, conn *database.Database, pub mess
 		EventRepo:  eventRepo,
 		Logger:     logger,
 		Config:     config,
+		Sch:        gocron.NewScheduler(time.UTC),
 	}
 }
 
@@ -61,6 +81,7 @@ func (app Application) Start() {
 	defer stop()
 
 	startServers(app, &wg)
+	runSchedules(app, ctx, &wg)
 	<-ctx.Done()
 	app.Logger.Info("✅ Shutdown signal received...")
 
@@ -120,4 +141,56 @@ func (app Application) shutdownHTTPServer(parentCtx context.Context, wg *sync.Wa
 	}
 
 	app.Logger.Info("✅ HTTP server shut down successfully.")
+}
+
+func (app Application) BulkInsertEvents() {
+	defer func() {
+		if r := recover(); r != nil {
+			app.Logger.Error("Panic recovered in bulk insert job",
+				slog.Any("recovery", r))
+		}
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	app.Logger.Info("🔄 Starting bulk insert processing...")
+
+	err := app.HTTPServer.Service.ProcessBatch(ctx)
+	if err != nil {
+		app.Logger.Error("Bulk insert job failed",
+			slog.Any("error", err),
+			slog.String("note", "job will retry on next schedule"))
+		return
+	}
+
+	app.Logger.Info("✅ Bulk insert job completed successfully")
+}
+
+func runSchedules(app Application, ctx context.Context, wg *sync.WaitGroup) {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		app.Sch.SingletonMode()
+		app.Sch.WaitForScheduleAll()
+
+		_, err := app.Sch.Every(app.Config.BulkInsertEventsIntervalInSeconds).Second().Do(app.BulkInsertEvents)
+		if err != nil {
+			app.Logger.Error("Failed to schedule bulk insert job", slog.Any("error", err))
+			return
+		}
+
+		app.Logger.Info("🚀 Scheduler started",
+			slog.Int("interval_seconds", app.Config.BulkInsertEventsIntervalInSeconds))
+
+		app.Sch.StartAsync()
+
+		<-ctx.Done()
+		app.Logger.Info("Shutdown signal received, stopping scheduler...")
+
+		// Stop scheduler gracefully
+		app.Sch.Stop()
+		app.Logger.Info("✅ Scheduler stopped gracefully")
+	}()
 }

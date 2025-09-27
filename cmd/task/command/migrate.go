@@ -31,7 +31,10 @@ func migrate() {
 		log.Fatalf("Error getting working directory: %v", err)
 	}
 
-	yamlPath := filepath.Join(workingDir, "taskapp", "repository", "dbconfig.yml")
+	yamlPath := os.Getenv("CONFIG_PATH")
+	if yamlPath == "" {
+		yamlPath = filepath.Join(workingDir, "deploy", "task", "development", "config.yaml")
+	}
 
 	// to run migrations when you want to run task service locally
 	if path := os.Getenv("DBCONFIG_OVERRIDE_PATH"); path != "" {

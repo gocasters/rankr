@@ -1,6 +1,7 @@
 package publishevent
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
@@ -29,6 +30,7 @@ func (s *Service) HandleIssuesEvent(provider eventpb.EventProvider, action strin
 	}
 }
 
+//func (s *Service) publishIssueOpened(req IssueOpenedRequest, provider eventpb.EventProvider, deliveryUID string) error {
 func (s *Service) publishIssueOpened(req service.IssueOpenedRequest, provider eventpb.EventProvider, deliveryUID string) error {
 	ev := &eventpb.Event{
 		Id:             deliveryUID,
@@ -96,7 +98,7 @@ func (s *Service) publishIssueClosed(req service.IssueClosedRequest, provider ev
 		},
 	}
 
-	metadata := map[string]string{}
-
-	return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_ISSUE_CLOSED, service.TopicGithubIssues, metadata)
+	ctx := context.Background()
+	return s.saveEvent(ctx, ev)
+	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_ISSUE_CLOSED, TopicGithubIssues, metadata)
 }

@@ -37,3 +37,13 @@ postgres_db:
   health_check_period: 30
 
 path_of_migration: "./webhookapp/repository/migrations"
+
+redis:
+  host: "localhost"
+  port: 6389
+  password: ""
+  db: 0
+
+insert_queue_name: "webhook_insert_event"
+insert_batch_size: 30
+bulk_insert_events_interval_in_seconds: 5

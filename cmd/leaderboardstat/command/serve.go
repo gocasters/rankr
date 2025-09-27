@@ -1,17 +1,15 @@
 package command
 
 import (
+	"context"
 	"fmt"
 	"github.com/gocasters/rankr/leaderboardstatapp"
-	"github.com/gocasters/rankr/pkg/config"
 	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/gocasters/rankr/pkg/migrator"
 	"github.com/spf13/cobra"
 	"log"
 	"log/slog"
-	"os"
-	"path/filepath"
 )
 
 var migrateUp bool
@@ -36,44 +34,24 @@ func init() {
 
 func serve() {
 	fmt.Println("Starting leaderboardstat service........")
-	var cfg leaderboardstatapp.Config
 
-	// Load config
-	workingDir, err := os.Getwd()
-	if err != nil {
-		log.Fatalf("Error getting current working directory: %v", err)
-	}
+	cfg := loadAppConfig()
 
-	yamlPath := os.Getenv("CONFIG_PATH")
-	if yamlPath == "" {
-		yamlPath = filepath.Join(workingDir, "deploy", "leaderboardstat", "development", "config.local.yml")
-	}
-
-	options := config.Options{
-		Prefix:       "LEADERBOARDSTAT_",
-		Delimiter:    ".",
-		Separator:    "__",
-		YamlFilePath: yamlPath,
-	}
-	if lErr := config.Load(options, &cfg); lErr != nil {
-		log.Fatalf("Failed to load leaderboardstat config: %v", lErr)
-	}
-
-	// Initialize logger
 	if err := logger.Init(cfg.Logger); err != nil {
-		log.Fatalf("Failed to initialize logger: %v", err)
+		log.Fatalf("failed to initialize logger: %v", err)
 	}
 	defer func() {
 		if err := logger.Close(); err != nil {
-			log.Printf("logger close error: %v", err)
+			log.Fatalf("failed to close logger: %v", err)
 		}
 	}()
+
 	leaderboardLogger := logger.L()
-	
 	// Run migrations if flags are set
 	if migrateUp || migrateDown {
 		if migrateUp && migrateDown {
 			leaderboardLogger.Error("invalid flags: --migrate-up and --migrate-down cannot be used together")
+
 			return
 		}
 
@@ -97,10 +75,25 @@ func serve() {
 	databaseConn, cnErr := database.Connect(cfg.PostgresDB)
 
 	if cnErr != nil {
-		leaderboardLogger.Error("fatal error occurred", "reason", "failed to connect to database", slog.Any("error", cnErr))
+		leaderboardLogger.Error("failed to connect to database", slog.Any("error", cnErr))
+		//os.Exit(1)
+
 		return
 	}
+
 	defer databaseConn.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	app, sErr := leaderboardstatapp.Setup(ctx, cfg, databaseConn)
+	if sErr != nil {
+		leaderboardLogger.Error("leaderboardstat setup failed", slog.Any("error", sErr))
+		return
+	}
 
 	leaderboardLogger.Info("Leaderboard-stat service started")
+
+	// This will start the HTTP server and keep it running
+	app.Start()
+
 }

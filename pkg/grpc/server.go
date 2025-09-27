@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"fmt"
+	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"google.golang.org/grpc"
@@ -27,7 +28,8 @@ type RPCServer struct {
 	Listener net.Listener
 }
 
-func NewServer(cfg ServerConfig, logger *slog.Logger) (*RPCServer, error) {
+func NewServer(cfg ServerConfig) (*RPCServer, error) {
+	logger := logger.L()
 	address := fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)
 	listener, err := net.Listen(cfg.NetworkType, address)
 	if err != nil {

@@ -6,6 +6,7 @@ import (
 	"github.com/gocasters/rankr/pkg/statuscode"
 	"github.com/gocasters/rankr/pkg/validator"
 	types "github.com/gocasters/rankr/type"
+
 	"github.com/labstack/echo/v4"
 	"log/slog"
 	"net/http"

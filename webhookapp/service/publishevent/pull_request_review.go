@@ -1,6 +1,7 @@
 package publishevent
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
@@ -23,6 +24,7 @@ func (s *Service) HandlePullRequestReviewEvent(provider eventpb.EventProvider, a
 }
 
 func (s *Service) PublishPullRequestReviewSubmitted(req service.PullRequestReviewSubmittedRequest, provider eventpb.EventProvider, deliveryUID string) error {
+//func (s *Service) PublishPullRequestReviewSubmitted(req PullRequestReviewSubmittedRequest, provider eventpb.EventProvider, deliveryUID string) error {
 	ev := &eventpb.Event{
 		Id:             deliveryUID,
 		EventName:      eventpb.EventName_EVENT_NAME_PULL_REQUEST_REVIEW_SUBMITTED,
@@ -41,7 +43,10 @@ func (s *Service) PublishPullRequestReviewSubmitted(req service.PullRequestRevie
 		},
 	}
 
-	metadata := map[string]string{}
-
-	return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PULL_REQUEST_REVIEW_SUBMITTED, service.TopicGithubReview, metadata)
+	ctx := context.Background()
+	return s.saveEvent(ctx, ev)
+	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PULL_REQUEST_REVIEW_SUBMITTED, TopicGithubReview, metadata)
+	//metadata := map[string]string{}
+	//
+	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PULL_REQUEST_REVIEW_SUBMITTED, service.TopicGithubReview, metadata)
 }

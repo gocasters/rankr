@@ -1,8 +1,10 @@
 package command
 
 import (
+	"context"
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-nats/v2/pkg/nats"
+	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/pkg/config"
 	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/pkg/logger"
@@ -183,6 +185,12 @@ func serve() {
 		}
 	}()
 
-	app := webhookapp.Setup(cfg, lbLogger, databaseConn, publisher)
+	ctx := context.Background()
+	adapter, adErr := redis.New(ctx, cfg.RedisConfig)
+	if adErr != nil {
+		lbLogger.Error("Failed to start redis adapter", slog.String("error", adErr.Error()))
+	}
+
+	app := webhookapp.Setup(cfg, lbLogger, databaseConn, publisher, adapter)
 	app.Start()
 }

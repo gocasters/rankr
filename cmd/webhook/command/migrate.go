@@ -44,13 +44,12 @@ func init() {
 func migrate() {
 	var cfg webhookapp.Config
 
-	//workingDir, err := os.Getwd()
-	//if err != nil {
-	//	log.Fatalf("Error getting working directory: %v", err)
-	//}
+	workingDir, err := os.Getwd()
+	if err != nil {
+		log.Fatalf("Error getting working directory: %v", err)
+	}
 
-	//yamlPath := filepath.Join(workingDir, "webhookapp", "repository", "dbconfig.local.yml")
-	yamlPath := filepath.Join("C:\\dev\\Go\\rankr\\", "webhookapp", "repository", "dbconfig.local.yml")
+	yamlPath := filepath.Join(workingDir, "webhookapp", "repository", "dbconfig.local.yml")
 
 	// to run migrations when you want to run webhook service locally
 	if path := os.Getenv("DBCONFIG_OVERRIDE_PATH"); path != "" {
