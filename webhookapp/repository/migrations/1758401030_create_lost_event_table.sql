@@ -4,6 +4,9 @@ DROP TABLE IF EXISTS lost_webhook_events;
 CREATE TABLE lost_webhook_events (
                                     id BIGSERIAL PRIMARY KEY,
                                     provider smallint NOT NULL,
+                                    hook_id BIGINT not null,
+                                    owner TEXT not null,
+                                    repo TEXT not null,
                                     delivery_id TEXT NOT NULL,
                                     received_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 

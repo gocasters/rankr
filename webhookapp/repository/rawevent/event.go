@@ -57,11 +57,11 @@ func (repo RawWebhookRepository) FindByDeliveryID(ctx context.Context, provider 
 	var row WebhookEventRow
 	err := repo.db.QueryRow(
 		ctx,
-		`SELECT id, provider, delivery_id, payload_json, received_at 
+		`SELECT id, provider, owner, repo, hook_id, delivery_id, payload_json, received_at 
          FROM raw_webhook_events 
          WHERE provider=$1 AND delivery_id=$2`,
 		provider, deliveryID,
-	).Scan(&row.ID, &row.Provider, &row.DeliveryID, &row.PayloadJSON, &row.ReceivedAt)
+	).Scan(&row.ID, &row.Provider, &row.Owner, &row.Repo, &row.HookID, &row.DeliveryID, &row.PayloadJSON, &row.ReceivedAt)
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
@@ -75,7 +75,7 @@ func (repo RawWebhookRepository) FindByDeliveryID(ctx context.Context, provider 
 
 // FindEvents retrieves raw events based on filters
 func (repo RawWebhookRepository) FindEvents(ctx context.Context, filter RawEventFilter) ([]*WebhookEventRow, error) {
-	query := `SELECT id, provider, delivery_id, payload_json, received_at FROM raw_webhook_events WHERE 1=1`
+	query := `SELECT id, provider, owner, repo, hook_id, delivery_id, payload_json, received_at FROM raw_webhook_events WHERE 1=1`
 	args := make([]interface{}, 0)
 	argCount := 0
 
@@ -121,7 +121,7 @@ func (repo RawWebhookRepository) FindEvents(ctx context.Context, filter RawEvent
 	var events []*WebhookEventRow
 	for rows.Next() {
 		var row WebhookEventRow
-		if err := rows.Scan(&row.ID, &row.Provider, &row.DeliveryID, &row.PayloadJSON, &row.ReceivedAt); err != nil {
+		if err := rows.Scan(&row.ID, &row.Provider, &row.Owner, &row.Repo, &row.HookID, &row.DeliveryID, &row.PayloadJSON, &row.ReceivedAt); err != nil {
 			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
 		events = append(events, &row)

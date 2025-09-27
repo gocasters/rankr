@@ -11,6 +11,9 @@ import (
 type WebhookEventRow struct {
 	ID         int64
 	Provider   int32
+	Owner      string //TODO add these parameters to the repository methods and eventspb
+	Repo       string
+	HookID     int64
 	DeliveryID string
 	EventType  int32
 	Payload    []byte

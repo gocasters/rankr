@@ -1,14 +1,13 @@
 package main
 
 import (
-	"context"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/go-co-op/gocron/v2"
+	"github.com/go-co-op/gocron"
 	"github.com/gocasters/rankr/webhookapp/repository/lostevent"
 	"github.com/gocasters/rankr/webhookapp/repository/rawevent"
 	"github.com/gocasters/rankr/webhookapp/service/consistency"
@@ -55,44 +54,44 @@ func main() {
 	<-quit
 	log.Println("Shutdown signal received, stopping scheduler...")
 
-	s.Shutdown() // Gracefully stop the scheduler, waiting for running jobs to complete.
+	s.Stop() // Gracefully stop the scheduler, waiting for running jobs to complete.
 	log.Println("Scheduler stopped gracefully.")
 }
 
 // runConsistencyCheck executes the two-step consistency process.
 // This function remains unchanged from the previous version.
 func runConsistencyCheck(svc *consistency.Service) {
-	log.Println("🚀 Starting a new consistency check run...")
-	ctx := context.Background()
-
-	// --- Step 1: Find Lost Events in the last 4 hours ---
-	endTime := time.Now()
-	startTime := endTime.Add(-lookbackDuration).Add(-overlapDuration)
-	log.Printf("Checking for lost events between %v and %v", startTime.Format(time.RFC3339), endTime.Format(time.RFC3339))
-
-	err := svc.FindLostEvents(ctx, githubProviderID, targetOwner, targetRepo, targetHookID, startTime, endTime)
-	if err != nil {
-		log.Printf("❌ ERROR during FindLostEvents: %v", err)
-		// Depending on the error, you might want to stop here.
-		// For this example, we'll continue to the redelivery step.
-	} else {
-		log.Println("✅ Successfully completed search for lost events.")
-	}
-
-	// --- Step 2: Redeliver Events that were previously found to be lost ---
-	log.Println("Attempting to redeliver any stored lost events...")
-	errorCollection := svc.RedeliverLostEvents(ctx, githubProviderID, targetOwner, targetRepo, targetHookID)
-
-	if len(errorCollection) > 0 {
-		log.Println("⚠️ Encountered errors during redelivery:")
-		for deliveryID, redeliveryErr := range errorCollection {
-			log.Printf("  - Failed for Delivery ID '%s': %v", deliveryID, redeliveryErr)
-		}
-	} else {
-		log.Println("✅ Successfully processed redelivery queue.")
-	}
-
-	log.Println("Consistency check run finished.")
+	//log.Println("🚀 Starting a new consistency check run...")
+	//ctx := context.Background()
+	//
+	//// --- Step 1: Find Lost Events in the last 4 hours ---
+	//endTime := time.Now()
+	//startTime := endTime.Add(-lookbackDuration).Add(-overlapDuration)
+	//log.Printf("Checking for lost events between %v and %v", startTime.Format(time.RFC3339), endTime.Format(time.RFC3339))
+	//
+	//err := svc.FindLostEvents(ctx, githubProviderID, targetOwner, targetRepo, targetHookID, startTime, endTime)
+	//if err != nil {
+	//	log.Printf("❌ ERROR during FindLostEvents: %v", err)
+	//	// Depending on the error, you might want to stop here.
+	//	// For this example, we'll continue to the redelivery step.
+	//} else {
+	//	log.Println("✅ Successfully completed search for lost events.")
+	//}
+	//
+	//// --- Step 2: Redeliver Events that were previously found to be lost ---
+	//log.Println("Attempting to redeliver any stored lost events...")
+	//errorCollection := svc.RedeliverLostEvents(ctx, githubProviderID, targetOwner, targetRepo, targetHookID)
+	//
+	//if len(errorCollection) > 0 {
+	//	log.Println("⚠️ Encountered errors during redelivery:")
+	//	for deliveryID, redeliveryErr := range errorCollection {
+	//		log.Printf("  - Failed for Delivery ID '%s': %v", deliveryID, redeliveryErr)
+	//	}
+	//} else {
+	//	log.Println("✅ Successfully processed redelivery queue.")
+	//}
+	//
+	//log.Println("Consistency check run finished.")
 }
 
 // setupDependencies is a placeholder for your application's initialization logic.

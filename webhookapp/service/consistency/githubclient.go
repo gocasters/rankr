@@ -64,7 +64,6 @@ func (c *GitHubClient) GetRepositoryWebhookEvents(ctx context.Context, owner, re
 }
 
 func (c *GitHubClient) RedeliverLostEvent(ctx context.Context, owner, repoName string, hookID int64, deliveryID string) error {
-	///repos/{owner}/{repo}/hooks/{hook_id}/deliveries/{delivery_id}/attempts
 	url := fmt.Sprintf("%s/repos/%s/%s/hooks/%d/deliveries/%s/attempts", c.baseURL, owner, repoName, hookID, deliveryID)
 
 	req, err := http.NewRequestWithContext(ctx, "POST", url, nil)

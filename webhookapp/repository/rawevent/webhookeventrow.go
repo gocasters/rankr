@@ -10,6 +10,9 @@ import (
 type WebhookEventRow struct {
 	ID          int64           `json:"id"`
 	Provider    int32           `json:"provider"`
+	Owner       string          `json:"owner"`
+	Repo        string          `json:"repo"`
+	HookID      int64           `json:"hook_id"`
 	DeliveryID  string          `json:"delivery_id"`
 	PayloadJSON json.RawMessage `json:"payload_json"`
 	ReceivedAt  time.Time       `json:"received_at"`

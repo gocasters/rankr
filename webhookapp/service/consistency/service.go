@@ -39,22 +39,32 @@ func New(rawEventRepo *rawevent.RawWebhookRepository,
 }
 
 // FindLostEvents find the lost events and save all lost event delivery IDs.
-func (s *Service) FindLostEvents(ctx context.Context, provider int32, owner, repoName string, hookID int64, startTime, endTime time.Time) error {
-	//get events from github api
+func (s *Service) FindLostEvents(ctx context.Context, provider int32, owner string, hookID int64, startTime, endTime time.Time) error {
 	timeRange := TimeRange{Start: startTime, End: endTime}
-	allEvents, fErr := s.fetchGitHubEvents(ctx, owner, repoName, hookID, timeRange)
-	if fErr != nil {
-		return fErr
-	}
-	deliveryIDs := make([]string, 0, len(allEvents))
-	for _, gEvent := range allEvents {
-		deliveryIDs = append(deliveryIDs, gEvent.Guid)
-	}
 
 	//get stored events delivery ids
-	existingDeliveryIDs, dErr := s.rawEventRepo.FindExistingDeliveryIDs(ctx, deliveryIDs)
+	storedRawEvents, dErr := s.rawEventRepo.GetEventsWithProviderAndTimeRange(ctx, provider, timeRange.Start, timeRange.End, nil)
 	if dErr != nil {
 		return dErr
+	}
+	allRepos := getReposWithEvents(storedRawEvents)
+
+	//get events from github api
+	var allEvents = make([]service.DeliveryEvent, 0)
+	var deliveryIDs = make([]string, 0)
+	for _, repo := range allRepos {
+		fetchedEventsByRepo, fErr := s.fetchGitHubEvents(ctx, owner, repo, hookID, timeRange)
+		if fErr != nil {
+			return fErr
+		}
+		for _, event := range fetchedEventsByRepo {
+			deliveryIDs = append(deliveryIDs, event.Guid)
+		}
+	}
+
+	existingDeliveryIDs, eErr := s.rawEventRepo.FindExistingDeliveryIDs(ctx, deliveryIDs)
+	if eErr != nil {
+		return eErr
 	}
 
 	//detect lost events
@@ -164,4 +174,16 @@ func (s *Service) RedeliverLostEvents(ctx context.Context, provider int32, owner
 
 	}
 	return errorCollections
+}
+
+func getReposWithEvents(storedRawEvents []*rawevent.WebhookEventRow) []string {
+	allRepos := make([]string, 0, len(storedRawEvents))
+	if len(storedRawEvents) == 0 {
+		return allRepos
+	}
+	for _, rawEvent := range storedRawEvents {
+		allRepos = append(allRepos, rawEvent.Repo)
+	}
+
+	return allRepos
 }
