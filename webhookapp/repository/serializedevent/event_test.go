@@ -45,7 +45,7 @@ func (suite *WebhookRepositoryTestSuite) SetupSuite() {
 	err = suite.db.Ping(suite.ctx)
 	require.NoError(suite.T(), err, "Failed to ping test database")
 
-	suite.repo = NewWebhookRepository(suite.db)
+	suite.repo = *NewWebhookRepository(suite.db)
 
 	// Create table for tests
 	suite.createTable()

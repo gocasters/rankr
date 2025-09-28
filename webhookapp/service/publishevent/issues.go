@@ -30,7 +30,6 @@ func (s *Service) HandleIssuesEvent(provider eventpb.EventProvider, action strin
 	}
 }
 
-//func (s *Service) publishIssueOpened(req IssueOpenedRequest, provider eventpb.EventProvider, deliveryUID string) error {
 func (s *Service) publishIssueOpened(req service.IssueOpenedRequest, provider eventpb.EventProvider, deliveryUID string) error {
 	ev := &eventpb.Event{
 		Id:             deliveryUID,
@@ -48,9 +47,10 @@ func (s *Service) publishIssueOpened(req service.IssueOpenedRequest, provider ev
 			},
 		},
 	}
-	metadata := map[string]string{}
-
-	return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_ISSUE_OPENED, service.TopicGithubIssues, metadata)
+	//metadata := map[string]string{}
+	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_ISSUE_OPENED, service.TopicGithubIssues, metadata)
+	ctx := context.Background()
+	return s.saveEvent(ctx, ev)
 }
 
 func (s *Service) publishIssueClosed(req service.IssueClosedRequest, provider eventpb.EventProvider, deliveryUID string) error {
@@ -97,8 +97,8 @@ func (s *Service) publishIssueClosed(req service.IssueClosedRequest, provider ev
 			},
 		},
 	}
-
+	//metadata := map[string]string{}
+	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_ISSUE_CLOSED, TopicGithubIssues, metadata)
 	ctx := context.Background()
 	return s.saveEvent(ctx, ev)
-	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_ISSUE_CLOSED, TopicGithubIssues, metadata)
 }

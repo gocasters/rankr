@@ -55,19 +55,12 @@ func (s *Service) publishPullRequestOpened(req service.PullRequestOpenedRequest,
 		},
 	}
 
+	//metadata := map[string]string{}
+	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED, service.TopicGithubPullRequest, metadata)
 	ctx := context.Background()
 	return s.saveEvent(ctx, ev)
-	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED, TopicGithubPullRequest, metadata)
-	//metadata := map[string]string{}
-	//
-	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED, service.TopicGithubPullRequest, metadata)
 }
 
-//func (s *Service) publishPullRequestClosed(req PullRequestClosedRequest, provider eventpb.EventProvider, deliveryUID string) error {
-//	t := timestamppb.New(time.Time{}) // it is the "zero time" to be distinguishable
-//	if req.PullRequest.ClosedAt != nil {
-//		t = timestamppb.New(*req.PullRequest.ClosedAt)
-//	}
 func (s *Service) publishPullRequestClosed(req service.PullRequestClosedRequest, provider eventpb.EventProvider, deliveryUID string) error {
 	t := timestamppb.New(time.Time{}) // it is the "zero time" to be distinguishable
 	if req.PullRequest.ClosedAt != nil {
@@ -104,10 +97,8 @@ func (s *Service) publishPullRequestClosed(req service.PullRequestClosedRequest,
 		},
 	}
 
+	//metadata := map[string]string{}
+	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PULL_REQUEST_CLOSED, service.TopicGithubPullRequest, metadata)
 	ctx := context.Background()
 	return s.saveEvent(ctx, ev)
-	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PULL_REQUEST_CLOSED, TopicGithubPullRequest, metadata)
-	//metadata := map[string]string{}
-	//
-	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PULL_REQUEST_CLOSED, service.TopicGithubPullRequest, metadata)
 }

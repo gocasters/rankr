@@ -1,4 +1,4 @@
-package service
+package publishevent
 
 import (
 	"context"
@@ -22,7 +22,7 @@ func (s *Service) HandleIssueCommentEvent(provider eventpb.EventProvider, action
 	}
 }
 
-func (s *Service) publishIssueComment(req IssueCommentCreatedRequest, provider eventpb.EventProvider, deliveryUID string) error {
+func (s *Service) publishIssueComment(req service.IssueCommentCreatedRequest, provider eventpb.EventProvider, deliveryUID string) error {
 	ev := &eventpb.Event{
 		Id:             deliveryUID,
 		EventName:      eventpb.EventName_EVENT_NAME_ISSUE_COMMENTED,
@@ -41,10 +41,8 @@ func (s *Service) publishIssueComment(req IssueCommentCreatedRequest, provider e
 		},
 	}
 
+	//metadata := map[string]string{}
+	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_ISSUE_COMMENTED, service.TopicGithubIssueComment, metadata)
 	ctx := context.Background()
 	return s.saveEvent(ctx, ev)
-	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_ISSUE_COMMENTED, TopicGithubIssueComment, metadata)
-	//metadata := map[string]string{}
-	//
-	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_ISSUE_COMMENTED, service.TopicGithubIssueComment, metadata)
 }

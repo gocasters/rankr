@@ -1,26 +1,29 @@
 package main
 
 import (
+	"context"
 	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/go-co-op/gocron"
+	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/webhookapp/repository/lostevent"
 	"github.com/gocasters/rankr/webhookapp/repository/rawevent"
 	"github.com/gocasters/rankr/webhookapp/service/consistency"
 )
 
 // --- Configuration ---
-// In a real application, these should come from a config file or environment variables.
 const (
 	lookbackDuration = 4 * time.Hour   // How far back to check for lost events.
 	overlapDuration  = 5 * time.Minute // A small overlap to prevent missing events at the boundary.
 	githubProviderID = 1               // Example provider ID for GitHub.
 	targetOwner      = "your-github-owner"
 	targetRepo       = "your-github-repo"
+	gitHubToken      = "your-github-token"
 	targetHookID     = 123456789 // The ID of the webhook to check.
 )
 
@@ -29,7 +32,7 @@ func main() {
 
 	// 1. Setup all dependencies (database connections, GitHub client, etc.)
 	// This is a placeholder for your application's specific setup logic.
-	svc, err := setupDependencies()
+	svc, err := Setup()
 	if err != nil {
 		log.Fatalf("Failed to set up dependencies: %v", err)
 	}
@@ -61,60 +64,70 @@ func main() {
 // runConsistencyCheck executes the two-step consistency process.
 // This function remains unchanged from the previous version.
 func runConsistencyCheck(svc *consistency.Service) {
-	//log.Println("🚀 Starting a new consistency check run...")
-	//ctx := context.Background()
-	//
-	//// --- Step 1: Find Lost Events in the last 4 hours ---
-	//endTime := time.Now()
-	//startTime := endTime.Add(-lookbackDuration).Add(-overlapDuration)
-	//log.Printf("Checking for lost events between %v and %v", startTime.Format(time.RFC3339), endTime.Format(time.RFC3339))
-	//
-	//err := svc.FindLostEvents(ctx, githubProviderID, targetOwner, targetRepo, targetHookID, startTime, endTime)
-	//if err != nil {
-	//	log.Printf("❌ ERROR during FindLostEvents: %v", err)
-	//	// Depending on the error, you might want to stop here.
-	//	// For this example, we'll continue to the redelivery step.
-	//} else {
-	//	log.Println("✅ Successfully completed search for lost events.")
-	//}
-	//
-	//// --- Step 2: Redeliver Events that were previously found to be lost ---
-	//log.Println("Attempting to redeliver any stored lost events...")
-	//errorCollection := svc.RedeliverLostEvents(ctx, githubProviderID, targetOwner, targetRepo, targetHookID)
-	//
-	//if len(errorCollection) > 0 {
-	//	log.Println("⚠️ Encountered errors during redelivery:")
-	//	for deliveryID, redeliveryErr := range errorCollection {
-	//		log.Printf("  - Failed for Delivery ID '%s': %v", deliveryID, redeliveryErr)
-	//	}
-	//} else {
-	//	log.Println("✅ Successfully processed redelivery queue.")
-	//}
-	//
-	//log.Println("Consistency check run finished.")
+	log.Println("🚀 Starting a new consistency check run...")
+	ctx := context.Background()
+
+	// --- Step 1: Find Lost Events in the last 4 hours ---
+	endTime := time.Now()
+	startTime := endTime.Add(-lookbackDuration).Add(-overlapDuration)
+	log.Printf("Checking for lost events between %v and %v", startTime.Format(time.RFC3339), endTime.Format(time.RFC3339))
+
+	err := svc.FindLostEvents(ctx, githubProviderID, targetOwner, targetRepo, targetHookID, startTime, endTime)
+	if err != nil {
+		log.Printf("❌ ERROR during FindLostEvents: %v", err)
+		// Depending on the error, you might want to stop here.
+		// For this example, we'll continue to the redelivery step.
+	} else {
+		log.Println("✅ Successfully completed search for lost events.")
+	}
+
+	// --- Step 2: Redeliver Events that were previously found to be lost ---
+	log.Println("Attempting to redeliver any stored lost events...")
+	errorCollection := svc.RedeliverLostEvents(ctx, githubProviderID)
+
+	if len(errorCollection) > 0 {
+		log.Println("⚠️ Encountered errors during redelivery:")
+		for deliveryID, redeliveryErr := range errorCollection {
+			log.Printf("  - Failed for Delivery ID '%s': %v", deliveryID, redeliveryErr)
+		}
+		log.Println("✅ Successfully processed redelivery queue.")
+	}
+
+	log.Println("Consistency check run finished.")
 }
 
-// setupDependencies is a placeholder for your application's initialization logic.
+// Setup is a placeholder for your application's initialization logic.
 // This function remains unchanged from the previous version.
-func setupDependencies() (*consistency.Service, error) {
+func Setup() (*consistency.Service, error) {
 	log.Println("⚙️ Initializing dependencies (DB, GitHub Client)...")
 
-	// Example: Initialize your database connection (e.g., *sql.DB or *gorm.DB)
-	// db, err := gorm.Open(...)
-	// if err != nil { return nil, err }
+	conn, cnErr := database.Connect(database.Config{
+		Host:              "127.0.0.1",
+		Port:              5432,
+		Username:          "root",
+		Password:          "",
+		DBName:            "dbname",
+		SSLMode:           "disable",
+		MaxConns:          10,   // Default value
+		MinConns:          2,    // Default value
+		MaxConnLifetime:   3600, // Default: 1 hour in seconds
+		MaxConnIdleTime:   600,  // Default: 10 minutes in seconds
+		HealthCheckPeriod: 60,   // Default: 1 minute in seconds
+		PathOfMigrations:  "./migrations",
+	})
 
-	// Example: Initialize your repositories
-	// rawEventRepo := rawevent.New(db)
-	// lostEventRepo := lostevent.New(db)
-	var rawEventRepo *rawevent.RawWebhookRepository    // Replace with actual initialization
-	var lostEventRepo *lostevent.LostWebhookRepository // Replace with actual initialization
+	if cnErr != nil {
+		slog.Error("fatal error occurred", "reason", "failed to connect to database", slog.Any("error", cnErr))
+		panic(cnErr)
+	}
+	defer conn.Close()
 
-	// Example: Initialize your GitHub API client
-	// githubToken := os.Getenv("GITHUB_PAT")
-	// client := consistency.NewGitHubClient(githubToken)
-	var client *consistency.GitHubClient // Replace with actual initialization
+	rawEventRepo := rawevent.NewRawWebhookRepository(conn.Pool)
+	lostEventRepo := lostevent.NewLostWebhookRepository(conn.Pool)
 
-	// Create the consistency service instance
+	githubToken := os.Getenv(gitHubToken)
+	client := consistency.NewGitHubClient(githubToken)
+
 	service := consistency.New(rawEventRepo, lostEventRepo, client)
 
 	log.Println("Dependencies initialized.")

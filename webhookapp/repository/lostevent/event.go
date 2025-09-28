@@ -23,19 +23,19 @@ func (repo *LostWebhookRepository) Save(ctx context.Context, lostIDs *[]string) 
 }
 
 // SaveBatch pgx.Batch for even better performance
-func (repo *LostWebhookRepository) SaveBatch(ctx context.Context, provider int32, lostIDs []string) error {
+func (repo *LostWebhookRepository) SaveBatch(ctx context.Context, provider int32, owner, repoName string, hookID int64, lostIDs []string) error {
 	if len(lostIDs) == 0 {
 		return nil
 	}
 
 	batch := &pgx.Batch{}
 	query := `
-		INSERT INTO lost_webhook_events (provider, delivery_id) 
-		VALUES ($1, $2) 
-		ON CONFLICT (provider, delivery_id) DO NOTHING`
+		INSERT INTO lost_webhook_events (provider, owner, repo, hook_id, delivery_id) 
+		VALUES ($1, $2, $3, $4, $5) 
+		ON CONFLICT (provider, owner, repoName, hookID, delivery_id) DO NOTHING`
 
 	for _, lostID := range lostIDs {
-		batch.Queue(query, provider, lostID)
+		batch.Queue(query, provider, owner, repoName, hookID, lostID)
 	}
 
 	results := repo.db.SendBatch(ctx, batch)
@@ -52,10 +52,10 @@ func (repo *LostWebhookRepository) SaveBatch(ctx context.Context, provider int32
 	return nil
 }
 
-// GetAllDeliveryIDs retrieves all lost delivery IDs for a specific provider
-func (repo *LostWebhookRepository) GetAllDeliveryIDs(ctx context.Context, provider int32) ([]string, error) {
+// GetAllEventsByProvider retrieves all lost delivery IDs for a specific provider
+func (repo *LostWebhookRepository) GetAllEventsByProvider(ctx context.Context, provider int32) ([]*LostEventRow, error) {
 	query := `
-		SELECT delivery_id 
+		SELECT provider, owner, repo, hook_id, delivery_id 
 		FROM lost_webhook_events 
 		WHERE provider = $1`
 
@@ -65,21 +65,19 @@ func (repo *LostWebhookRepository) GetAllDeliveryIDs(ctx context.Context, provid
 	}
 	defer rows.Close()
 
-	var deliveryIDs []string
+	var events []*LostEventRow
 	for rows.Next() {
-		var deliveryID string
-		if err := rows.Scan(&deliveryID); err != nil {
-			return nil, fmt.Errorf("failed to scan delivery_id: %w", err)
+		var row LostEventRow
+		if err := rows.Scan(&row.ID, &row.Provider, &row.Owner, &row.Repo, &row.HookID, &row.DeliveryID); err != nil {
+			return nil, fmt.Errorf("failed to scan row: %w", err)
 		}
-		deliveryIDs = append(deliveryIDs, deliveryID)
+		events = append(events, &row)
 	}
-
-	// Check for errors that occurred during iteration
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error occurred during row iteration: %w", err)
+		return nil, fmt.Errorf("row iteration error: %w", err)
 	}
 
-	return deliveryIDs, nil
+	return events, nil
 }
 
 // DeleteByID delete row by ID

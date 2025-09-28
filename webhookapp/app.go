@@ -3,12 +3,12 @@ package webhookapp
 import (
 	"context"
 	"fmt"
+	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/pkg/database"
+	"github.com/gocasters/rankr/webhookapp/repository"
 	"github.com/gocasters/rankr/webhookapp/repository/rawevent"
 	"github.com/gocasters/rankr/webhookapp/repository/serializedevent"
 	"github.com/gocasters/rankr/webhookapp/service/publishevent"
-	"github.com/gocasters/rankr/adapter/redis"
-	//"github.com/gocasters/rankr/webhookapp/repository"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -20,7 +20,6 @@ import (
 
 	"github.com/gocasters/rankr/pkg/httpserver"
 	"github.com/gocasters/rankr/webhookapp/delivery/http"
-	"github.com/gocasters/rankr/webhookapp/service"
 
 	"github.com/go-co-op/gocron"
 )
@@ -29,21 +28,11 @@ type Application struct {
 	HTTPServer http.Server
 	EventRepo  publishevent.EventRepository
 	//EventRepo  service.EventRepository
-	Logger     *slog.Logger
-	Config     Config
-	Sch        *gocron.Scheduler
+	Logger *slog.Logger
+	Config Config
+	Sch    *gocron.Scheduler
 }
 
-//// Setup builds and returns an Application configured with the provided config, logger,
-//// database connection, and message publisher.
-////
-//// It creates a webhook event repository from conn.Pool, constructs the HTTP server
-//// and delivery layer wired to a service using that repository and the publisher,
-//// and returns an Application with HTTPServer, EventRepo, Logger, and Config populated.
-//// Note: this function panics if initializing the HTTP service (httpserver.New) fails.
-//func Setup(config Config, logger *slog.Logger, conn *database.Database, pub message.Publisher) Application {
-//	eventRepo := serializedevent.NewWebhookRepository(conn.Pool)
-//	rawEventRepo := rawevent.NewRawWebhookRepository(conn.Pool)
 // Setup builds and returns an Application configured with the provided config, logger,
 // database connection, and message publisher.
 //
@@ -53,7 +42,9 @@ type Application struct {
 // Note: this function panics if initializing the HTTP service (httpserver.New) fails.
 func Setup(config Config, logger *slog.Logger, conn *database.Database, pub message.Publisher, redisAdapter *redis.Adapter) Application {
 	eventDurableRepo := repository.NewWebhookDurableRepository(redisAdapter)
-	eventRepo := repository.NewWebhookRepository(conn.Pool)
+	eventRepo := serializedevent.NewWebhookRepository(conn.Pool)
+	rawEventRepo := rawevent.NewRawWebhookRepository(conn.Pool)
+
 	httpService, err := httpserver.New(config.HTTPServer)
 	if err != nil {
 		panic(err)
@@ -61,8 +52,7 @@ func Setup(config Config, logger *slog.Logger, conn *database.Database, pub mess
 	appHttpServer := http.New(
 		httpService,
 		http.NewHandler(logger),
-		service.New(&eventRepo, pub, &eventDurableRepo, config.InsertQueueName, config.InsertBatchSize),
-		//publishevent.New(eventRepo, rawEventRepo, pub),
+		publishevent.New(eventRepo, rawEventRepo, pub, &eventDurableRepo, config.InsertQueueName, config.InsertBatchSize),
 	)
 
 	return Application{

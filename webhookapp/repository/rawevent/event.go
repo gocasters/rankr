@@ -16,6 +16,9 @@ var ErrDuplicateEvent = errors.New("duplicate webhook event")
 // RawEventFilter defines filters for querying raw events
 type RawEventFilter struct {
 	Provider    *int32
+	Owner       *string
+	RepoName    *string
+	HookID      *int64
 	StartTime   *time.Time
 	EndTime     *time.Time
 	DeliveryIDs []string
@@ -185,9 +188,12 @@ func (repo RawWebhookRepository) GetRecentEvents(ctx context.Context, limit *int
 }
 
 // GetEventsWithProviderAndTimeRange retrieves raw events for a provider within a time range
-func (repo RawWebhookRepository) GetEventsWithProviderAndTimeRange(ctx context.Context, provider int32, start, end time.Time, limit *int) ([]*WebhookEventRow, error) {
+func (repo RawWebhookRepository) GetEventsByProviderOwnerRepoWithTimeRange(ctx context.Context, provider int32, owner, repoName string, hookID int64, start, end time.Time, limit *int) ([]*WebhookEventRow, error) {
 	filter := RawEventFilter{
 		Provider:  &provider,
+		Owner:     &owner,
+		RepoName:  &repoName,
+		HookID:    &hookID,
 		StartTime: &start,
 		EndTime:   &end,
 		Limit:     limit,

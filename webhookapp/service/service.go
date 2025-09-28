@@ -66,3 +66,70 @@ func (s *Service) publishEvent(ev *eventpb.Event, evName eventpb.EventName, topi
 
 	return nil
 }
+
+func (s *Service) saveEvent(ctx context.Context, event *eventpb.Event) error {
+	payload, err := proto.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("failed to marshal event: %w", err)
+	}
+
+	_, err = s.durableRepo.GetRedisClient().RPush(ctx, s.insertQueueName, payload).Result()
+	if err != nil {
+		return fmt.Errorf("failed to push to Redis: %w", err)
+	}
+
+	queueLength, err := s.durableRepo.GetRedisClient().LLen(ctx, s.insertQueueName).Result()
+	if err != nil {
+		return fmt.Errorf("failed to get queue length: %w", err)
+	}
+
+	if queueLength >= s.insertBatchSize {
+		go func() {
+			err := s.ProcessBatch(context.Background())
+			if err != nil {
+				// log error
+			}
+		}()
+	}
+
+	return nil
+}
+
+func (s *Service) ProcessBatch(ctx context.Context) error {
+	events, err := s.durableRepo.GetBatchFromRedis(ctx, s.insertQueueName, s.insertBatchSize)
+	if err != nil {
+		return fmt.Errorf("failed to get batch from Redis: %w", err)
+	}
+
+	if len(events) == 0 {
+		return nil
+	}
+
+	logger.L().Debug("row events", events)
+
+	savedEvents, err := s.repo.BulkInsertPostgresSQL(ctx, events)
+	if err != nil {
+		s.durableRepo.RequeueFailedEvents(ctx, s.insertQueueName, events)
+		return fmt.Errorf("bulk insert failed: %w", err)
+	}
+
+	logger.L().Debug("events", savedEvents)
+
+	for _, ev := range savedEvents {
+		payload, err := proto.Marshal(ev)
+		if err != nil {
+			return fmt.Errorf("failed to marshal protobuf event. eventname: %s. error: %w",
+				ev.EventName, err)
+		}
+
+		msg := message.NewMessage(watermill.NewUUID(), payload)
+
+		// todo add helper to get each event topic and replace with ev.EventName
+		if err := s.publisher.Publish(string(ev.EventName), msg); err != nil {
+			return fmt.Errorf("failed to publish event. eventname: %s, error: %w",
+				ev.EventName, err)
+		}
+	}
+
+	return nil
+}

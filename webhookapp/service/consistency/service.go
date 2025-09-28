@@ -39,32 +39,23 @@ func New(rawEventRepo *rawevent.RawWebhookRepository,
 }
 
 // FindLostEvents find the lost events and save all lost event delivery IDs.
-func (s *Service) FindLostEvents(ctx context.Context, provider int32, owner string, hookID int64, startTime, endTime time.Time) error {
+func (s *Service) FindLostEvents(ctx context.Context, provider int32, owner, repoName string, hookID int64, startTime, endTime time.Time) error {
 	timeRange := TimeRange{Start: startTime, End: endTime}
 
+	//get events from github api
+	allEvents, fErr := s.fetchGitHubEvents(ctx, owner, repoName, hookID, timeRange)
+	if fErr != nil {
+		return fErr
+	}
+	deliveryIDs := make([]string, 0, len(allEvents))
+	for _, gEvent := range allEvents {
+		deliveryIDs = append(deliveryIDs, gEvent.Guid)
+	}
+
 	//get stored events delivery ids
-	storedRawEvents, dErr := s.rawEventRepo.GetEventsWithProviderAndTimeRange(ctx, provider, timeRange.Start, timeRange.End, nil)
+	existingDeliveryIDs, dErr := s.rawEventRepo.FindExistingDeliveryIDs(ctx, deliveryIDs)
 	if dErr != nil {
 		return dErr
-	}
-	allRepos := getReposWithEvents(storedRawEvents)
-
-	//get events from github api
-	var allEvents = make([]service.DeliveryEvent, 0)
-	var deliveryIDs = make([]string, 0)
-	for _, repo := range allRepos {
-		fetchedEventsByRepo, fErr := s.fetchGitHubEvents(ctx, owner, repo, hookID, timeRange)
-		if fErr != nil {
-			return fErr
-		}
-		for _, event := range fetchedEventsByRepo {
-			deliveryIDs = append(deliveryIDs, event.Guid)
-		}
-	}
-
-	existingDeliveryIDs, eErr := s.rawEventRepo.FindExistingDeliveryIDs(ctx, deliveryIDs)
-	if eErr != nil {
-		return eErr
 	}
 
 	//detect lost events
@@ -74,9 +65,8 @@ func (s *Service) FindLostEvents(ctx context.Context, provider int32, owner stri
 			lostEventIDs = append(lostEventIDs, gEvent.Guid)
 		}
 	}
-
 	//save lost event IDs
-	err := s.lostEventRepo.SaveBatch(ctx, provider, lostEventIDs)
+	err := s.lostEventRepo.SaveBatch(ctx, provider, owner, repoName, hookID, lostEventIDs)
 	if err != nil {
 		return err
 	}
@@ -153,37 +143,25 @@ func (s *Service) filterEventsByTimeRange(events []service.DeliveryEvent, timeRa
 }
 
 // RedeliverLostEvents gets a deliveryID and redeliver it
-func (s *Service) RedeliverLostEvents(ctx context.Context, provider int32, owner, repoName string, hookID int64) map[string]error {
+func (s *Service) RedeliverLostEvents(ctx context.Context, provider int32) map[string]error {
 	errorCollections := make(map[string]error)
 
-	storedLostIDs, err := s.lostEventRepo.GetAllDeliveryIDs(ctx, provider)
+	lostEvents, err := s.lostEventRepo.GetAllEventsByProvider(ctx, provider)
 	if err != nil {
 		errorCollections["db_err"] = err
 		return errorCollections
 	}
 
-	for _, storedLostID := range storedLostIDs {
-		if rErr := s.client.RedeliverLostEvent(ctx, owner, repoName, hookID, storedLostID); rErr != nil {
-			errorCollections[storedLostID] = rErr
+	for _, ev := range lostEvents {
+		if rErr := s.client.RedeliverLostEvent(ctx, ev.Owner, ev.Repo, ev.HookID, ev.DeliveryID); rErr != nil {
+			errorCollections[ev.DeliveryID] = rErr
 		}
 		// remove from db the id
-		dErr := s.lostEventRepo.DeleteByID(ctx, provider, storedLostID)
+		dErr := s.lostEventRepo.DeleteByID(ctx, ev.Provider, ev.DeliveryID)
 		if dErr != nil {
-			errorCollections[storedLostID] = dErr
+			errorCollections[ev.DeliveryID] = dErr
 		}
 
 	}
 	return errorCollections
-}
-
-func getReposWithEvents(storedRawEvents []*rawevent.WebhookEventRow) []string {
-	allRepos := make([]string, 0, len(storedRawEvents))
-	if len(storedRawEvents) == 0 {
-		return allRepos
-	}
-	for _, rawEvent := range storedRawEvents {
-		allRepos = append(allRepos, rawEvent.Repo)
-	}
-
-	return allRepos
 }
