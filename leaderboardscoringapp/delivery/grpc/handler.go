@@ -13,10 +13,10 @@ import (
 
 type Handler struct {
 	leaderboardscoringpb.UnimplementedLeaderboardScoringServiceServer
-	leaderboardScoringSvc leaderboardscoring.Service
+	leaderboardScoringSvc *leaderboardscoring.Service
 }
 
-func NewHandler(leaderboardScoringSvc leaderboardscoring.Service) Handler {
+func NewHandler(leaderboardScoringSvc *leaderboardscoring.Service) Handler {
 	return Handler{
 		//UnimplementedLeaderboardScoringServiceServer: leaderboardscoringpb.UnimplementedLeaderboardScoringServiceServer{},
 		leaderboardScoringSvc: leaderboardScoringSvc,

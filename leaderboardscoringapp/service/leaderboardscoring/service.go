@@ -8,43 +8,55 @@ import (
 	"github.com/gocasters/rankr/pkg/timettl"
 	"log/slog"
 	"strconv"
+	"time"
 )
 
-type LeaderboardCache interface {
-	UpsertScores(ctx context.Context, score *UpsertScore) error
-	GetLeaderboard(ctx context.Context, leaderboard *LeaderboardQuery) (LeaderboardQueryResult, error)
-}
-
-// EventPersistence handles long-term storage of processed events
+// EventPersistence = database layer
 type EventPersistence interface {
 	AddProcessedScoreEvents(ctx context.Context, events []ProcessedScoreEvent) error
 	AddUserTotalScores(ctx context.Context, snapshots []UserTotalScore) error
 }
 
-// EventQueue handles temporary buffering of events
+// LeaderboardCache = redis layer
+type LeaderboardCache interface {
+	UpsertScores(ctx context.Context, score *UpsertScore) error
+	GetLeaderboard(ctx context.Context, leaderboard *LeaderboardQuery) (LeaderboardQueryResult, error)
+}
+
+// EventQueue = generic queue for processed events
 type EventQueue interface {
 	Enqueue(ctx context.Context, event ProcessedScoreEvent) error
 	Flush(ctx context.Context) error
-	Size() int
+	Stop()
+}
+
+// SnapshotQueue = generic queue for user total scores
+type SnapshotQueue interface {
+	Enqueue(ctx context.Context, snapshot UserTotalScore) error
+	Flush(ctx context.Context) error
+	Stop()
 }
 
 type Service struct {
 	eventPersistence EventPersistence
 	leaderboard      LeaderboardCache
 	eventQueue       EventQueue
+	snapshotQueue    SnapshotQueue
 	validator        Validator
 }
 
 func NewService(
 	persistence EventPersistence,
 	leaderboard LeaderboardCache,
-	queue EventQueue,
+	eventQueue EventQueue,
+	snapshotQueue SnapshotQueue,
 	validator Validator,
-) Service {
-	return Service{
+) *Service {
+	return &Service{
 		eventPersistence: persistence,
 		leaderboard:      leaderboard,
-		eventQueue:       queue,
+		eventQueue:       eventQueue,
+		snapshotQueue:    snapshotQueue,
 		validator:        validator,
 	}
 }
@@ -67,6 +79,13 @@ func (s Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) error
 		logger.Error(ErrFailedToUpdateScores.Error(), slog.String("error", err.Error()))
 		return errors.Join(ErrFailedToUpdateScores, err)
 	}
+
+	_ = s.eventQueue.Enqueue(ctx, ProcessedScoreEvent{
+		UserID:    score.UserID,
+		EventName: req.EventName,
+		Score:     score.Score,
+		Timestamp: time.Now(),
+	})
 
 	logger.Debug(MsgSuccessfullyProcessedEvent, slog.String("event_id", req.ID))
 

@@ -10,6 +10,8 @@ import (
 	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/consumer"
 	leaderboardGRPC "github.com/gocasters/rankr/leaderboardscoringapp/delivery/grpc"
 	leaderboardHTTP "github.com/gocasters/rankr/leaderboardscoringapp/delivery/http"
+	postgrerepository "github.com/gocasters/rankr/leaderboardscoringapp/repository/database"
+	"github.com/gocasters/rankr/leaderboardscoringapp/repository/queue"
 	"github.com/gocasters/rankr/leaderboardscoringapp/repository/redisrepository"
 	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/gocasters/rankr/pkg/database"
@@ -23,12 +25,13 @@ import (
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 )
 
 type Application struct {
 	HTTPServer                leaderboardHTTP.Server
 	LeaderboardGrpcServer     leaderboardGRPC.Server
-	LeaderboardSvc            leaderboardscoring.Service
+	LeaderboardSvc            *leaderboardscoring.Service
 	LeaderboardscoringHandler leaderboardHTTP.Handler
 	WMRouter                  *message.Router
 	WMLogger                  watermill.LoggerAdapter
@@ -37,6 +40,8 @@ type Application struct {
 	RedisAdapter              *redis.Adapter
 	DBConn                    *database.Database
 	NatsAdapter               *nats.Adapter
+	EventQueue                *queue.MemoryBatchQueue[leaderboardscoring.ProcessedScoreEvent]
+	SnapshotQueue             *queue.MemoryBatchQueue[leaderboardscoring.UserTotalScore]
 }
 
 func Setup(ctx context.Context, config Config) *Application {
@@ -81,9 +86,31 @@ func Setup(ctx context.Context, config Config) *Application {
 	subscriber := natsAdapter.Subscriber()
 
 	// initial leaderboard-scoring repository, validator, service
-	lbScoringRepo := redisrepository.New(redisAdapter.Client())
+	// init persistence, leaderboard, validator ...
+	persistence := postgrerepository.NewPostgreSQLRepository(databaseConn, config.RetryConfig)
+	leaderboard := redisrepository.NewRedisLeaderboardRepository(redisAdapter.Client())
 	lbScoringValidator := leaderboardscoring.NewValidator()
-	lbScoringService := leaderboardscoring.NewService(lbScoringRepo, lbScoringValidator)
+
+	// build queues
+	eventQueue := queue.NewMemoryBatchQueue[leaderboardscoring.ProcessedScoreEvent](
+		100,
+		5*time.Second,
+		persistence.AddProcessedScoreEvents,
+	)
+
+	snapshotQueue := queue.NewMemoryBatchQueue[leaderboardscoring.UserTotalScore](
+		100,
+		30*time.Second,
+		persistence.AddUserTotalScores,
+	)
+
+	lbScoringService := leaderboardscoring.NewService(
+		persistence,
+		leaderboard,
+		eventQueue,
+		snapshotQueue,
+		lbScoringValidator,
+	)
 
 	// initial http server
 	httpServer, hErr := httpserver.New(config.HTTPServer)
@@ -116,6 +143,8 @@ func Setup(ctx context.Context, config Config) *Application {
 		RedisAdapter:              redisAdapter,
 		DBConn:                    databaseConn,
 		NatsAdapter:               natsAdapter,
+		EventQueue:                eventQueue,
+		SnapshotQueue:             snapshotQueue,
 	}
 }
 
@@ -292,6 +321,12 @@ func (app *Application) shutdownResources(ctx context.Context, wg *sync.WaitGrou
 	defer wg.Done()
 
 	log := logger.L()
+
+	log.Info("Stop Event Queue...")
+	app.EventQueue.Stop()
+
+	log.Info("Stop Snapshot Queue...")
+	app.SnapshotQueue.Stop()
 
 	log.Info("Close NATS adapter...")
 	if err := app.NatsAdapter.Close(); err != nil {
