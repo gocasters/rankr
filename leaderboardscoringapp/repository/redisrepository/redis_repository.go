@@ -1,25 +1,20 @@
-package repository
+package redisrepository
 
 import (
 	"context"
 	"fmt"
 	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/gocasters/rankr/pkg/logger"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"log/slog"
 )
 
 type LeaderboardRepo struct {
 	redisClient *redis.Client
-	db          *pgxpool.Pool
 }
 
-func NewLeaderboardscoringRepo(client *redis.Client, db *pgxpool.Pool) leaderboardscoring.Repository {
-	return &LeaderboardRepo{
-		redisClient: client,
-		db:          db,
-	}
+func New(client *redis.Client) leaderboardscoring.Repository {
+	return &LeaderboardRepo{redisClient: client}
 }
 
 func (l *LeaderboardRepo) UpsertScores(ctx context.Context, score *leaderboardscoring.UpsertScore) error {

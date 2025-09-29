@@ -10,7 +10,7 @@ import (
 	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/consumer"
 	leaderboardGRPC "github.com/gocasters/rankr/leaderboardscoringapp/delivery/grpc"
 	leaderboardHTTP "github.com/gocasters/rankr/leaderboardscoringapp/delivery/http"
-	"github.com/gocasters/rankr/leaderboardscoringapp/repository"
+	"github.com/gocasters/rankr/leaderboardscoringapp/repository/redisrepository"
 	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/pkg/grpc"
@@ -81,7 +81,7 @@ func Setup(ctx context.Context, config Config) *Application {
 	subscriber := natsAdapter.Subscriber()
 
 	// initial leaderboard-scoring repository, validator, service
-	lbScoringRepo := repository.NewLeaderboardscoringRepo(redisAdapter.Client(), databaseConn.Pool)
+	lbScoringRepo := redisrepository.New(redisAdapter.Client())
 	lbScoringValidator := leaderboardscoring.NewValidator()
 	lbScoringService := leaderboardscoring.NewService(lbScoringRepo, lbScoringValidator)
 
@@ -277,6 +277,7 @@ func (app *Application) shutdownWatermillRouter(ctx context.Context, wg *sync.Wa
 		log.Info("Watermill router shutdown successfully.")
 	}
 }
+
 func (app *Application) shutdownGRPCServer(parentCtx context.Context, wg *sync.WaitGroup) {
 	logger := logger.L()
 	defer wg.Done()
