@@ -10,29 +10,42 @@ import (
 	"strconv"
 )
 
-type ScoreRepository interface {
+type LeaderboardCache interface {
 	UpsertScores(ctx context.Context, score *UpsertScore) error
 	GetLeaderboard(ctx context.Context, leaderboard *LeaderboardQuery) (LeaderboardQueryResult, error)
 }
 
-type DatabaseRepository interface {
+// EventPersistence handles long-term storage of processed events
+type EventPersistence interface {
 	AddProcessedScoreEvents(ctx context.Context, events []ProcessedScoreEvent) error
 	AddUserTotalScores(ctx context.Context, snapshots []UserTotalScore) error
 }
-type Repository interface {
-	ScoreRepository
-	DatabaseRepository
+
+// EventQueue handles temporary buffering of events
+type EventQueue interface {
+	Enqueue(ctx context.Context, event ProcessedScoreEvent) error
+	Flush(ctx context.Context) error
+	Size() int
 }
 
 type Service struct {
-	repo      Repository
-	validator Validator
+	eventPersistence EventPersistence
+	leaderboard      LeaderboardCache
+	eventQueue       EventQueue
+	validator        Validator
 }
 
-func NewService(repo Repository, validator Validator) Service {
+func NewService(
+	persistence EventPersistence,
+	leaderboard LeaderboardCache,
+	queue EventQueue,
+	validator Validator,
+) Service {
 	return Service{
-		repo:      repo,
-		validator: validator,
+		eventPersistence: persistence,
+		leaderboard:      leaderboard,
+		eventQueue:       queue,
+		validator:        validator,
 	}
 }
 
@@ -50,7 +63,7 @@ func (s Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) error
 		return nil
 	}
 
-	if err := s.repo.UpsertScores(ctx, score); err != nil {
+	if err := s.leaderboard.UpsertScores(ctx, score); err != nil {
 		logger.Error(ErrFailedToUpdateScores.Error(), slog.String("error", err.Error()))
 		return errors.Join(ErrFailedToUpdateScores, err)
 	}
@@ -90,7 +103,7 @@ func (s Service) GetLeaderboard(ctx context.Context, req *GetLeaderboardRequest)
 		Stop:  stop,
 	}
 
-	leaderboardScoring, err := s.repo.GetLeaderboard(ctx, lbQuery)
+	leaderboardScoring, err := s.leaderboard.GetLeaderboard(ctx, lbQuery)
 	if err != nil {
 		log.Error("Failed to get leaderboard from repository", slog.String("error", err.Error()))
 		return GetLeaderboardResponse{}, err

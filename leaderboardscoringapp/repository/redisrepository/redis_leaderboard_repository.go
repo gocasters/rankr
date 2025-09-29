@@ -9,15 +9,16 @@ import (
 	"log/slog"
 )
 
-type LeaderboardRepo struct {
-	redisClient *redis.Client
+// RedisLeaderboardRepository manages leaderboard using Redis Sorted Sets (ZSET)
+type RedisLeaderboardRepository struct {
+	client *redis.Client
 }
 
-func New(client *redis.Client) leaderboardscoring.Repository {
-	return &LeaderboardRepo{redisClient: client}
+func NewRedisLeaderboardRepository(client *redis.Client) leaderboardscoring.LeaderboardCache {
+	return &RedisLeaderboardRepository{client: client}
 }
 
-func (l *LeaderboardRepo) UpsertScores(ctx context.Context, score *leaderboardscoring.UpsertScore) error {
+func (l *RedisLeaderboardRepository) UpsertScores(ctx context.Context, score *leaderboardscoring.UpsertScore) error {
 	logger := logger.L()
 
 	if score == nil {
@@ -31,7 +32,7 @@ func (l *LeaderboardRepo) UpsertScores(ctx context.Context, score *leaderboardsc
 		return nil
 	}
 
-	pipeLine := l.redisClient.Pipeline()
+	pipeLine := l.client.Pipeline()
 
 	for _, key := range score.Keys {
 		pipeLine.ZIncrBy(ctx, key, float64(score.Score), score.UserID)
@@ -52,8 +53,8 @@ func (l *LeaderboardRepo) UpsertScores(ctx context.Context, score *leaderboardsc
 	return nil
 }
 
-func (l *LeaderboardRepo) GetLeaderboard(ctx context.Context, leaderboard *leaderboardscoring.LeaderboardQuery) (leaderboardscoring.LeaderboardQueryResult, error) {
-	data, err := l.redisClient.ZRevRangeWithScores(ctx, leaderboard.Key, leaderboard.Start, leaderboard.Stop).Result()
+func (l *RedisLeaderboardRepository) GetLeaderboard(ctx context.Context, leaderboard *leaderboardscoring.LeaderboardQuery) (leaderboardscoring.LeaderboardQueryResult, error) {
+	data, err := l.client.ZRevRangeWithScores(ctx, leaderboard.Key, leaderboard.Start, leaderboard.Stop).Result()
 	if err != nil {
 		return leaderboardscoring.LeaderboardQueryResult{}, err
 	}

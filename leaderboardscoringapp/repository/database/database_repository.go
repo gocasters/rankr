@@ -28,19 +28,20 @@ type RetryConfig struct {
 	RetryDelay time.Duration `koanf:"retry_delay"`
 }
 
-type Repository struct {
+// PostgreSQLRepository handles persistence of processed events and snapshots
+type PostgreSQLRepository struct {
 	postgreSQL  *database.Database
 	retryConfig RetryConfig
 }
 
-func New(db *database.Database, config RetryConfig) leaderboardscoring.DatabaseRepository {
-	return &Repository{
+func NewPostgreSQLRepository(db *database.Database, config RetryConfig) leaderboardscoring.EventPersistence {
+	return &PostgreSQLRepository{
 		postgreSQL:  db,
 		retryConfig: config,
 	}
 }
 
-func (db Repository) AddProcessedScoreEvents(ctx context.Context, events []leaderboardscoring.ProcessedScoreEvent) error {
+func (db PostgreSQLRepository) AddProcessedScoreEvents(ctx context.Context, events []leaderboardscoring.ProcessedScoreEvent) error {
 	if len(events) == 0 {
 		return nil
 	}
@@ -50,7 +51,7 @@ func (db Repository) AddProcessedScoreEvents(ctx context.Context, events []leade
 	})
 }
 
-func (db Repository) AddUserTotalScores(ctx context.Context, snapshots []leaderboardscoring.UserTotalScore) error {
+func (db PostgreSQLRepository) AddUserTotalScores(ctx context.Context, snapshots []leaderboardscoring.UserTotalScore) error {
 	if len(snapshots) == 0 {
 		return nil
 	}
@@ -61,7 +62,7 @@ func (db Repository) AddUserTotalScores(ctx context.Context, snapshots []leaderb
 }
 
 // retryOperation - Generic retry logic
-func (db Repository) retryOperation(ctx context.Context, operation func() error) error {
+func (db PostgreSQLRepository) retryOperation(ctx context.Context, operation func() error) error {
 	var lastErr error
 
 	for attempt := 0; attempt < db.retryConfig.MaxRetries; attempt++ {
@@ -90,7 +91,7 @@ func (db Repository) retryOperation(ctx context.Context, operation func() error)
 	return fmt.Errorf("failed after %d attempts: %w", db.retryConfig.MaxRetries, lastErr)
 }
 
-func (db Repository) insertBatchProcessedScoreEvent(ctx context.Context, events []leaderboardscoring.ProcessedScoreEvent) error {
+func (db PostgreSQLRepository) insertBatchProcessedScoreEvent(ctx context.Context, events []leaderboardscoring.ProcessedScoreEvent) error {
 	tx, err := db.postgreSQL.Pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
@@ -126,7 +127,7 @@ func (db Repository) insertBatchProcessedScoreEvent(ctx context.Context, events 
 	return nil
 }
 
-func (db Repository) insertBatchUserTotalScores(ctx context.Context, snapshots []leaderboardscoring.UserTotalScore) error {
+func (db PostgreSQLRepository) insertBatchUserTotalScores(ctx context.Context, snapshots []leaderboardscoring.UserTotalScore) error {
 	tx, err := db.postgreSQL.Pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)

@@ -27,7 +27,6 @@ require (
 	github.com/labstack/gommon v0.4.2
 	github.com/lib/pq v1.10.9
 	github.com/nats-io/nats.go v1.46.0
-	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/redis/go-redis/v9 v9.14.0
 	github.com/rivo/tview v0.42.0
 	github.com/rubenv/sql-migrate v1.8.0
