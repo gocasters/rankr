@@ -10,16 +10,15 @@ import (
 	"strconv"
 )
 
-// ScoreRepository handles the hot path: real-time score updates in Redis.
 type ScoreRepository interface {
 	UpsertScores(ctx context.Context, score *UpsertScore) error
 	GetLeaderboard(ctx context.Context, leaderboard *LeaderboardQuery) (LeaderboardQueryResult, error)
 }
 
-// DatabaseRepository handles the cold path: persisting events to the database.
 type DatabaseRepository interface {
+	AddProcessedScoreEvents(ctx context.Context, events []ProcessedScoreEvent) error
+	AddUserTotalScores(ctx context.Context, snapshots []UserTotalScore) error
 }
-
 type Repository interface {
 	ScoreRepository
 	DatabaseRepository

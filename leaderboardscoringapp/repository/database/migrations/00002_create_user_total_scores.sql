@@ -2,9 +2,9 @@
 CREATE TABLE user_total_scores
 (
     id                 BIGSERIAL PRIMARY KEY,
-    user_id            BIGINT NOT NULL,
-    total_score        INT    NOT NULL,
-    snapshot_timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    user_id            VARCHAR(100) NOT NULL,
+    total_score        INT          NOT NULL,
+    snapshot_timestamp TIMESTAMP DEFAULT NOW(),
     -- So that only one snapshot is recorded for each user_id at any given time.
     UNIQUE (user_id, snapshot_timestamp)
 );

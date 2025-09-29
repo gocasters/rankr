@@ -11,8 +11,8 @@
 CREATE TABLE processed_score_events
 (
     id              BIGSERIAL PRIMARY KEY,
-    user_id         BIGINT                   NOT NULL,
-    event_type      VARCHAR(50)              NOT NULL CHECK (
+    user_id         VARCHAR(100) NOT NULL,
+    event_type      VARCHAR(50)  NOT NULL CHECK (
         event_type IN (
                        'pull_request_opened',
                        'pull_request_closed',
@@ -23,10 +23,10 @@ CREATE TABLE processed_score_events
                        'commit_push'
             )
         ),
-    event_timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
-    score_delta     INT                      NOT NULL,
+    event_timestamp TIMESTAMP    NOT NULL,
+    score_delta     INT          NOT NULL,
     metadata        JSONB,
-    processed_at    TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    processed_at    TIMESTAMP DEFAULT NOW()
 );
 
 CREATE INDEX idx_score_events_user_id ON processed_score_events (user_id);

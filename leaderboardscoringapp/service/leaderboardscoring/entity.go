@@ -91,3 +91,18 @@ type LeaderboardEntry struct {
 type LeaderboardQueryResult struct {
 	LeaderboardRows []LeaderboardEntry
 }
+
+type ProcessedScoreEvent struct {
+	ID        uint64
+	UserID    string
+	EventName EventName
+	Score     uint64
+	Timestamp time.Time
+}
+
+type UserTotalScore struct {
+	ID                uint64
+	UserID            string
+	TotalScore        uint64
+	SnapshotTimestamp time.Time
+}
