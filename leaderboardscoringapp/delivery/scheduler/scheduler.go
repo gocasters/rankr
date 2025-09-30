@@ -7,6 +7,9 @@ package scheduler
 import (
 	"context"
 	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
+	"github.com/gocasters/rankr/pkg/logger"
+	"log/slog"
+	"sync"
 	"time"
 )
 
@@ -21,6 +24,7 @@ type JobScheduler struct {
 	cfg          Config
 	maxQueueSize int
 	stopCh       chan struct{}
+	wg           sync.WaitGroup
 }
 
 func NewJobScheduler(
@@ -40,14 +44,23 @@ func NewJobScheduler(
 
 func (j *JobScheduler) Start(ctx context.Context) {
 	ticker := time.NewTicker(j.cfg.TickerInterval)
+	sizeTicker := time.NewTicker(1 * time.Second)
+	log := logger.L()
+
+	j.wg.Add(2)
 
 	go func() {
+		defer j.wg.Done()
+		defer ticker.Stop()
+
 		for {
 			select {
 			case <-ticker.C:
-				_ = j.service.ProcessEventQueue(ctx)
+				if err := j.service.ProcessEventQueue(ctx); err != nil {
+					log.Error("Ticker-based queue processing failed", slog.String("error", err.Error()))
+				}
+
 			case <-j.stopCh:
-				ticker.Stop()
 				return
 			}
 		}
@@ -55,12 +68,18 @@ func (j *JobScheduler) Start(ctx context.Context) {
 
 	// monitor queue size asynchronously
 	go func() {
+		defer j.wg.Done()
+		defer sizeTicker.Stop()
+
 		for {
 			select {
-			case <-time.After(1 * time.Second):
+			case <-sizeTicker.C:
 				if j.queue.Size() >= j.maxQueueSize {
-					_ = j.service.ProcessEventQueue(ctx)
+					if err := j.service.ProcessEventQueue(ctx); err != nil {
+						log.Error("Size-based queue processing failed", slog.String("error", err.Error()))
+					}
 				}
+
 			case <-j.stopCh:
 				return
 			}
@@ -70,5 +89,8 @@ func (j *JobScheduler) Start(ctx context.Context) {
 
 // Stop stops the scheduler
 func (j *JobScheduler) Stop() {
+	logger.L().Info("Stop Scheduler...")
+
 	close(j.stopCh)
+	j.wg.Wait()
 }

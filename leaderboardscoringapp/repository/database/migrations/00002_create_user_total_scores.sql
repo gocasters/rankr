@@ -3,10 +3,10 @@ CREATE TABLE user_total_scores
 (
     id                 BIGSERIAL PRIMARY KEY,
     user_id            VARCHAR(100) NOT NULL,
-    total_score        INT          NOT NULL,
-    snapshot_timestamp TIMESTAMP DEFAULT NOW(),
+    total_score        BIGINT       NOT NULL CHECK ( total_score >= 0 ),
+    snapshot_timestamp TIMESTAMP    NOT NULL DEFAULT NOW(),
     -- So that only one snapshot is recorded for each user_id at any given time.
-    UNIQUE (user_id, snapshot_timestamp)
+    CONSTRAINT uniq_user_total_scores_user_ts UNIQUE (user_id, snapshot_timestamp)
 );
 
 -- To quickly find a user's latest snapshot

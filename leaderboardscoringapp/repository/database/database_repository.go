@@ -64,14 +64,29 @@ func (db PostgreSQLRepository) AddUserTotalScores(ctx context.Context, snapshots
 // retryOperation - Generic retry logic
 func (db PostgreSQLRepository) retryOperation(ctx context.Context, operation func() error) error {
 	var lastErr error
+	var defaultDelay = 100 * time.Millisecond
 
-	for attempt := 0; attempt < db.retryConfig.MaxRetries; attempt++ {
-		if attempt > 0 {
-			// Exponential backoff: 100ms, 200ms, 300ms
+	// Ensure at least one attempt
+	maxRetries := db.retryConfig.MaxRetries
+	if maxRetries < 1 {
+		maxRetries = 1
+	}
+
+	// Use configured delay or default to 100ms if unset
+	base := db.retryConfig.RetryDelay
+	if base <= 0 {
+		base = defaultDelay
+	}
+
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		if attempt > 1 {
+			// Exponential backoff: base, 2×base, 4×base, ...
+			delay := base << (attempt - 2)
+
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case <-time.After(db.retryConfig.RetryDelay * time.Duration(attempt)):
+			case <-time.After(delay):
 			}
 		}
 
@@ -82,13 +97,13 @@ func (db PostgreSQLRepository) retryOperation(ctx context.Context, operation fun
 
 		lastErr = err
 
-		// Check if error is retryable
+		//Stop retrying on non-retryable errors
 		if !isRetryableError(err) {
 			return fmt.Errorf("non-retryable error: %w", err)
 		}
 	}
 
-	return fmt.Errorf("failed after %d attempts: %w", db.retryConfig.MaxRetries, lastErr)
+	return fmt.Errorf("failed after %d attempts: %w", maxRetries, lastErr)
 }
 
 func (db PostgreSQLRepository) insertBatchProcessedScoreEvent(ctx context.Context, events []leaderboardscoring.ProcessedScoreEvent) error {
@@ -106,7 +121,7 @@ func (db PostgreSQLRepository) insertBatchProcessedScoreEvent(ctx context.Contex
 			event.UserID,
 			string(event.EventName),
 			event.Timestamp,
-			int(event.Score),
+			int64(event.Score),
 		}
 	}
 
@@ -127,32 +142,104 @@ func (db PostgreSQLRepository) insertBatchProcessedScoreEvent(ctx context.Contex
 	return nil
 }
 
+// insertBatchUserTotalScores inserts multiple user score snapshots using a three-step process
+// to ensure idempotency and optimal performance.
+//
+// This method is designed for hourly snapshot operations where duplicate snapshots
+// (same user_id + snapshot_timestamp) should be silently ignored rather than causing errors.
+//
+// Example usage:
+//
+//	snapshots := []UserTotalScore{
+//	    {UserID: "user123", TotalScore: 1500, SnapshotTimestamp: time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)},
+//	    {UserID: "user456", TotalScore: 2300, SnapshotTimestamp: time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)},
+//	}
+//	err := repo.insertBatchUserTotalScores(ctx, snapshots)
+//
+// Process:
+//  1. Creates a temporary table to stage the incoming snapshots
+//  2. Uses PostgreSQL's COPY protocol for fast bulk insertion into temp table
+//  3. Inserts from temp table to final table with ON CONFLICT DO NOTHING
+//     - This ensures duplicates are ignored without causing transaction rollback
+//     - Preserves historical snapshots as separate rows (no updates)
+//
+// Idempotency guarantee:
+//   - First call:  INSERT snapshot (user1, score=100, timestamp=12:00) ✓ Success
+//   - Second call: INSERT snapshot (user1, score=100, timestamp=12:00) ✓ Ignored (DO NOTHING)
+//   - Third call:  INSERT snapshot (user1, score=150, timestamp=13:00) ✓ Success (new timestamp)
+//
+// Performance characteristics:
+//   - Leverages PostgreSQL's COPY protocol (10-100x faster than individual INSERTs)
+//   - Temp table approach avoids multiple round-trips to database
+//   - Suitable for batches of thousands of snapshots
+//
+// Thread safety:
+//   - Safe for concurrent calls due to transaction isolation
+//   - Each transaction gets its own temporary table (ON COMMIT DROP)
+//
+// Returns:
+//   - nil on success (including when all snapshots were duplicates)
+//   - error if database operation fails (connection, syntax, constraint violations other than duplicates)
 func (db PostgreSQLRepository) insertBatchUserTotalScores(ctx context.Context, snapshots []leaderboardscoring.UserTotalScore) error {
+	if len(snapshots) == 0 {
+		return nil
+	}
+
 	tx, err := db.postgreSQL.Pool.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
+	// Step 1: Create temp table
+	// The temp table is automatically dropped at transaction end (ON COMMIT DROP)
+	// This ensures no leftover data and allows concurrent executions
+	_, err = tx.Exec(ctx, `
+        CREATE TEMP TABLE temp_user_snapshots (
+            user_id VARCHAR(100) NOT NULL,
+            total_score BIGINT NOT NULL,
+            snapshot_timestamp TIMESTAMP NOT NULL
+        ) ON COMMIT DROP
+    `)
+	if err != nil {
+		return fmt.Errorf("create temp table: %w", err)
+	}
+
+	// Step 2: Bulk insert to temp table using CopyFrom
+	// CopyFrom uses PostgreSQL's COPY protocol which is significantly faster
+	// than executing multiple INSERT statements
 	columns := []string{"user_id", "total_score", "snapshot_timestamp"}
-
 	rows := make([][]interface{}, len(snapshots))
 	for i, ss := range snapshots {
 		rows[i] = []interface{}{
 			ss.UserID,
-			int(ss.TotalScore),
+			int64(ss.TotalScore),
 			ss.SnapshotTimestamp,
 		}
 	}
 
 	_, err = tx.CopyFrom(
 		ctx,
-		pgx.Identifier{"user_total_scores"},
+		pgx.Identifier{"temp_user_snapshots"},
 		columns,
 		pgx.CopyFromRows(rows),
 	)
 	if err != nil {
-		return fmt.Errorf("copy from: %w", err)
+		return fmt.Errorf("copy to temp table: %w", err)
+	}
+
+	// Step 3: Insert only new snapshots (ignore duplicates)
+	// ON CONFLICT DO NOTHING ensures that if a snapshot with the same
+	// (user_id, snapshot_timestamp) already exists, it will be silently skipped
+	// This maintains idempotency - retrying the same operation won't cause errors
+	_, err = tx.Exec(ctx, `
+        INSERT INTO user_total_scores (user_id, total_score, snapshot_timestamp)
+        SELECT user_id, total_score, snapshot_timestamp
+        FROM temp_user_snapshots
+        ON CONFLICT (user_id, snapshot_timestamp) DO NOTHING
+    `)
+	if err != nil {
+		return fmt.Errorf("insert snapshots: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {

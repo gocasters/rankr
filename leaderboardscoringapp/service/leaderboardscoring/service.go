@@ -72,12 +72,15 @@ func (s *Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) erro
 		return errors.Join(ErrFailedToUpdateScores, err)
 	}
 
-	_ = s.eventQueue.Enqueue(ctx, ProcessedScoreEvent{
+	if err := s.eventQueue.Enqueue(ctx, ProcessedScoreEvent{
 		UserID:    score.UserID,
 		EventName: req.EventName,
 		Score:     score.Score,
 		Timestamp: time.Now(),
-	})
+	}); err != nil {
+		logger.Error("failed to enqueue processed score event", slog.String("error", err.Error()))
+		return err
+	}
 
 	logger.Debug(MsgSuccessfullyProcessedEvent, slog.String("event_id", req.ID))
 

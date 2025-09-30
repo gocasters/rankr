@@ -24,7 +24,7 @@ CREATE TABLE processed_score_events
             )
         ),
     event_timestamp TIMESTAMP    NOT NULL,
-    score_delta     INT          NOT NULL,
+    score_delta     BIGINT          NOT NULL,
     metadata        JSONB,
     processed_at    TIMESTAMP DEFAULT NOW()
 );
