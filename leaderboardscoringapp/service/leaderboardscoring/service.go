@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/gocasters/rankr/leaderboardscoringapp/repository/queue"
 	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/gocasters/rankr/pkg/timettl"
 	"log/slog"
@@ -26,43 +27,34 @@ type LeaderboardCache interface {
 // EventQueue = generic queue for processed events
 type EventQueue interface {
 	Enqueue(ctx context.Context, event ProcessedScoreEvent) error
-	Flush(ctx context.Context) error
-	Stop()
-}
-
-// SnapshotQueue = generic queue for user total scores
-type SnapshotQueue interface {
-	Enqueue(ctx context.Context, snapshot UserTotalScore) error
-	Flush(ctx context.Context) error
-	Stop()
+	GetAll() []ProcessedScoreEvent
+	Clear()
+	Size() int
 }
 
 type Service struct {
 	eventPersistence EventPersistence
 	leaderboard      LeaderboardCache
-	eventQueue       EventQueue
-	snapshotQueue    SnapshotQueue
+	eventQueue       *queue.MemoryQueue[ProcessedScoreEvent]
 	validator        Validator
 }
 
 func NewService(
 	persistence EventPersistence,
 	leaderboard LeaderboardCache,
-	eventQueue EventQueue,
-	snapshotQueue SnapshotQueue,
+	eventQueue *queue.MemoryQueue[ProcessedScoreEvent],
 	validator Validator,
 ) *Service {
 	return &Service{
 		eventPersistence: persistence,
 		leaderboard:      leaderboard,
 		eventQueue:       eventQueue,
-		snapshotQueue:    snapshotQueue,
 		validator:        validator,
 	}
 }
 
 // ProcessScoreEvent handles only the critical, real-time login.
-func (s Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) error {
+func (s *Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) error {
 	logger := logger.L()
 
 	if err := s.validator.ValidateEvent(req); err != nil {
@@ -92,7 +84,23 @@ func (s Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) error
 	return nil
 }
 
-func (s Service) GetLeaderboard(ctx context.Context, req *GetLeaderboardRequest) (GetLeaderboardResponse, error) {
+func (s *Service) ProcessEventQueue(ctx context.Context) error {
+	items := s.eventQueue.GetAll()
+	if len(items) == 0 {
+		return nil
+	}
+
+	err := s.eventPersistence.AddProcessedScoreEvents(ctx, items)
+	if err != nil {
+		return err // queue remains intact
+	}
+
+	// successful persistence -> clear the queue
+	s.eventQueue.Clear()
+	return nil
+}
+
+func (s *Service) GetLeaderboard(ctx context.Context, req *GetLeaderboardRequest) (GetLeaderboardResponse, error) {
 	log := logger.L()
 	log.Debug(
 		"GetLeaderboard request received in service layer",
@@ -141,35 +149,15 @@ func (s Service) GetLeaderboard(ctx context.Context, req *GetLeaderboardRequest)
 	return leaderboardRes, nil
 }
 
-func mapLeaderboardScoringToParam(scoring LeaderboardQueryResult) GetLeaderboardResponse {
-	leaderboardRes := GetLeaderboardResponse{
-		Timeframe:       0,
-		ProjectID:       nil,
-		LeaderboardRows: make([]LeaderboardRow, 0, len(scoring.LeaderboardRows)),
-	}
-
-	for _, r := range scoring.LeaderboardRows {
-		row := LeaderboardRow{
-			Rank:   r.Rank,
-			UserID: r.UserID,
-			Score:  r.Score,
-		}
-
-		leaderboardRes.LeaderboardRows = append(leaderboardRes.LeaderboardRows, row)
-	}
-
-	return leaderboardRes
-}
-
 // CreateLeaderboardSnapshot TODO - reads the current state of the all-time leaderboards from Redis
 // and persists them to the database. This should be run periodically by a scheduler.
-func (s Service) CreateLeaderboardSnapshot(ctx context.Context) error {
+func (s *Service) CreateLeaderboardSnapshot(ctx context.Context) error {
 	return nil
 }
 
 // RestoreLeaderboardFromSnapshot TODO - rebuilds the Redis leaderboards from the latest
 // snapshot stored in the database. This is typically called on service startup if Redis is empty.
-func (s Service) RestoreLeaderboardFromSnapshot(ctx context.Context) error {
+func (s *Service) RestoreLeaderboardFromSnapshot(ctx context.Context) error {
 	return nil
 }
 
@@ -186,7 +174,7 @@ func (s Service) RestoreLeaderboardFromSnapshot(ctx context.Context) error {
 // leaderboard:{project_id}:yearly:{year}
 // leaderboard:{project_id}:monthly:{year}-{month}
 // leaderboard:{project_id}:weekly:{year}-W{week_number}
-func (s Service) keys(projectID string) []string {
+func (s *Service) keys(projectID string) []string {
 	globalKeys := make([]string, 0, 4)
 	perProjectKeys := make([]string, 0, 4)
 
@@ -228,7 +216,7 @@ func (s Service) keys(projectID string) []string {
 	return keys
 }
 
-func (s Service) calculateScore(req *EventRequest) *UpsertScore {
+func (s *Service) calculateScore(req *EventRequest) *UpsertScore {
 	var keys = s.keys(strconv.FormatUint(req.RepositoryID, 10))
 
 	switch payload := req.Payload.(type) {
@@ -300,4 +288,24 @@ func getPerProjectLeaderboardKey(project string, timeframe Timeframe, period str
 	}
 
 	return fmt.Sprintf("leaderboard:%s:%s:%s", project, timeframe.String(), period)
+}
+
+func mapLeaderboardScoringToParam(scoring LeaderboardQueryResult) GetLeaderboardResponse {
+	leaderboardRes := GetLeaderboardResponse{
+		Timeframe:       0,
+		ProjectID:       nil,
+		LeaderboardRows: make([]LeaderboardRow, 0, len(scoring.LeaderboardRows)),
+	}
+
+	for _, r := range scoring.LeaderboardRows {
+		row := LeaderboardRow{
+			Rank:   r.Rank,
+			UserID: r.UserID,
+			Score:  r.Score,
+		}
+
+		leaderboardRes.LeaderboardRows = append(leaderboardRes.LeaderboardRows, row)
+	}
+
+	return leaderboardRes
 }

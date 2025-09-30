@@ -25,7 +25,6 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"time"
 )
 
 type Application struct {
@@ -40,8 +39,6 @@ type Application struct {
 	RedisAdapter              *redis.Adapter
 	DBConn                    *database.Database
 	NatsAdapter               *nats.Adapter
-	EventQueue                *queue.MemoryBatchQueue[leaderboardscoring.ProcessedScoreEvent]
-	SnapshotQueue             *queue.MemoryBatchQueue[leaderboardscoring.UserTotalScore]
 }
 
 func Setup(ctx context.Context, config Config) *Application {
@@ -86,29 +83,15 @@ func Setup(ctx context.Context, config Config) *Application {
 	subscriber := natsAdapter.Subscriber()
 
 	// initial leaderboard-scoring repository, validator, service
-	// init persistence, leaderboard, validator ...
+	// init persistence, leaderboard, validator, queue
 	persistence := postgrerepository.NewPostgreSQLRepository(databaseConn, config.RetryConfig)
 	leaderboard := redisrepository.NewRedisLeaderboardRepository(redisAdapter.Client())
 	lbScoringValidator := leaderboardscoring.NewValidator()
-
-	// build queues
-	eventQueue := queue.NewMemoryBatchQueue[leaderboardscoring.ProcessedScoreEvent](
-		100,
-		5*time.Second,
-		persistence.AddProcessedScoreEvents,
-	)
-
-	snapshotQueue := queue.NewMemoryBatchQueue[leaderboardscoring.UserTotalScore](
-		100,
-		30*time.Second,
-		persistence.AddUserTotalScores,
-	)
-
+	eventQueue := queue.NewMemoryQueue[leaderboardscoring.ProcessedScoreEvent]()
 	lbScoringService := leaderboardscoring.NewService(
 		persistence,
 		leaderboard,
 		eventQueue,
-		snapshotQueue,
 		lbScoringValidator,
 	)
 
@@ -143,8 +126,6 @@ func Setup(ctx context.Context, config Config) *Application {
 		RedisAdapter:              redisAdapter,
 		DBConn:                    databaseConn,
 		NatsAdapter:               natsAdapter,
-		EventQueue:                eventQueue,
-		SnapshotQueue:             snapshotQueue,
 	}
 }
 
@@ -321,12 +302,6 @@ func (app *Application) shutdownResources(ctx context.Context, wg *sync.WaitGrou
 	defer wg.Done()
 
 	log := logger.L()
-
-	log.Info("Stop Event Queue...")
-	app.EventQueue.Stop()
-
-	log.Info("Stop Snapshot Queue...")
-	app.SnapshotQueue.Stop()
 
 	log.Info("Close NATS adapter...")
 	if err := app.NatsAdapter.Close(); err != nil {
