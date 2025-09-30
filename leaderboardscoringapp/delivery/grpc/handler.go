@@ -70,7 +70,7 @@ func leaderboardResToProtobuf(leaderboardRes leaderboardscoring.GetLeaderboardRe
 		leaderboardRow := &leaderboardscoringpb.LeaderboardRow{
 			Rank:   r.Rank,
 			UserId: r.UserID,
-			Score:  r.Score,
+			Score:  uint64(r.Score),
 		}
 
 		rows = append(rows, leaderboardRow)

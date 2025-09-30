@@ -34,7 +34,7 @@ type Event struct {
 	RepositoryID   uint64
 	RepositoryName string
 	ContributorID  int
-	Score          int
+	Score          int64
 	Timestamp      time.Time // UTC
 }
 
@@ -72,7 +72,7 @@ func (tf Timeframe) String() string {
 
 type UpsertScore struct {
 	Keys   []string
-	Score  uint64
+	Score  int64
 	UserID string
 }
 
@@ -85,7 +85,7 @@ type LeaderboardQuery struct {
 type LeaderboardEntry struct {
 	Rank   uint64
 	UserID string
-	Score  uint64
+	Score  int64
 }
 
 type LeaderboardQueryResult struct {
@@ -96,13 +96,13 @@ type ProcessedScoreEvent struct {
 	ID        uint64
 	UserID    string
 	EventName EventName
-	Score     uint64
+	Score     int64
 	Timestamp time.Time
 }
 
 type UserTotalScore struct {
 	ID                uint64
 	UserID            string
-	TotalScore        uint64
+	TotalScore        int64
 	SnapshotTimestamp time.Time
 }

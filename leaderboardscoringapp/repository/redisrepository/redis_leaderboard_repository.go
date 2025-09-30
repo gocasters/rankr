@@ -64,7 +64,7 @@ func (l *RedisLeaderboardRepository) GetLeaderboard(ctx context.Context, leaderb
 		var row = leaderboardscoring.LeaderboardEntry{
 			Rank:   uint64(leaderboard.Start + int64(i) + 1),
 			UserID: fmt.Sprintf("%v", entry.Member),
-			Score:  uint64(entry.Score),
+			Score:  int64(entry.Score),
 		}
 
 		rows = append(rows, row)

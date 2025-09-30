@@ -85,6 +85,8 @@ func (j *JobScheduler) Start(ctx context.Context) {
 			}
 		}
 	}()
+
+	log.Info("JobScheduler is started...")
 }
 
 // Stop stops the scheduler

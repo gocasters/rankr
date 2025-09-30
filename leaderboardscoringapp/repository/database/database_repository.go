@@ -121,7 +121,7 @@ func (db PostgreSQLRepository) insertBatchProcessedScoreEvent(ctx context.Contex
 			event.UserID,
 			string(event.EventName),
 			event.Timestamp,
-			int64(event.Score),
+			event.Score,
 		}
 	}
 
@@ -213,7 +213,7 @@ func (db PostgreSQLRepository) insertBatchUserTotalScores(ctx context.Context, s
 	for i, ss := range snapshots {
 		rows[i] = []interface{}{
 			ss.UserID,
-			int64(ss.TotalScore),
+			ss.TotalScore,
 			ss.SnapshotTimestamp,
 		}
 	}
