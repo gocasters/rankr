@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
+	"github.com/gocasters/rankr/adapter/nats"
 	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/consumer"
 	leaderboardGRPC "github.com/gocasters/rankr/leaderboardscoringapp/delivery/grpc"
@@ -34,42 +35,57 @@ type Application struct {
 	Config                    Config
 	Subscriber                message.Subscriber
 	RedisAdapter              *redis.Adapter
+	DBConn                    *database.Database
+	NatsAdapter               *nats.Adapter
 }
 
-func Setup(ctx context.Context, config Config, subscriber message.Subscriber,
-	postgresConn *database.Database, wmLogger watermill.LoggerAdapter) *Application {
+func Setup(ctx context.Context, config Config) *Application {
 	logger := logger.L()
-
-	if subscriber == nil {
-		logger.Error("subscriber is nil; provide a valid message.Subscriber")
-		panic("invalid config: subscriber is nil")
-	}
-
-	if wmLogger == nil {
-		logger.Error("watermill logger is nil; provide a valid LoggerAdapter")
-		panic("invalid config: watermill logger is nil")
-	}
 
 	if strings.TrimSpace(config.SubscriberTopic) == "" {
 		logger.Error("SubscriberTopic is empty; set config.subscriber_topic")
 		panic("invalid config: subscriber_topic")
 	}
 
+	// create database connection
+	databaseConn, cnErr := database.Connect(config.PostgresDB)
+	if cnErr != nil {
+		logger.Error("fatal error occurred", "reason", "failed to connect to database", slog.Any("error", cnErr))
+		return nil
+	}
+
+	// initial redis adapter
 	redisAdapter, err := redis.New(ctx, config.Redis)
 	if err != nil {
+		databaseConn.Close()
+
 		logger.Error("Failed to initialize Redis adapter", slog.String("error", err.Error()))
 		panic(err)
 	}
 
-	if postgresConn == nil || postgresConn.Pool == nil {
-		logger.Error("Postgres connection pool is not initialized")
-		panic("postgres connection pool is nil")
+	// initial nats jetstream adapter
+	wmLogger := watermill.NewStdLogger(true, true)
+	natsAdapter, nErr := nats.New(ctx, config.Nats, wmLogger)
+	if nErr != nil {
+		databaseConn.Close()
+
+		if cErr := redisAdapter.Close(); cErr != nil {
+			logger.Error("Failed to Close redisAdapter.", slog.String("error", cErr.Error()))
+		}
+
+		logger.Error("Failed to create NATS adapter.", slog.String("error", nErr.Error()))
+		panic(nErr)
 	}
 
-	lbScoringRepo := repository.NewLeaderboardscoringRepo(redisAdapter.Client(), postgresConn.Pool)
+	// create subscriber
+	subscriber := natsAdapter.Subscriber()
+
+	// initial leaderboard-scoring repository, validator, service
+	lbScoringRepo := repository.NewLeaderboardscoringRepo(redisAdapter.Client(), databaseConn.Pool)
 	lbScoringValidator := leaderboardscoring.NewValidator()
 	lbScoringService := leaderboardscoring.NewService(lbScoringRepo, lbScoringValidator)
 
+	// initial http server
 	httpServer, hErr := httpserver.New(config.HTTPServer)
 	if hErr != nil {
 		logger.Error("Failed to initialize HTTP server", slog.String("error", hErr.Error()))
@@ -78,6 +94,7 @@ func Setup(ctx context.Context, config Config, subscriber message.Subscriber,
 	lbScoringHandler := leaderboardHTTP.NewHandler()
 	leaderboardHttpServer := leaderboardHTTP.New(httpServer, lbScoringHandler, lbScoringService)
 
+	// initial rpc server
 	rpcServer, gErr := grpc.NewServer(config.RPCServer)
 	if gErr != nil {
 		logger.Error("Failed to initialize gRPC server", slog.String("error", gErr.Error()))
@@ -86,6 +103,7 @@ func Setup(ctx context.Context, config Config, subscriber message.Subscriber,
 	leaderboardGrpcHandler := leaderboardGRPC.NewHandler(lbScoringService)
 	leaderboardGrpcServer := leaderboardGRPC.New(rpcServer, leaderboardGrpcHandler)
 
+	// create one instance of Application
 	return &Application{
 		HTTPServer:                leaderboardHttpServer,
 		LeaderboardGrpcServer:     leaderboardGrpcServer,
@@ -96,6 +114,8 @@ func Setup(ctx context.Context, config Config, subscriber message.Subscriber,
 		Config:                    config,
 		Subscriber:                subscriber,
 		RedisAdapter:              redisAdapter,
+		DBConn:                    databaseConn,
+		NatsAdapter:               natsAdapter,
 	}
 }
 
@@ -207,29 +227,26 @@ func (app *Application) shutdownServers(ctx context.Context) bool {
 	logger := logger.L()
 	logger.Info("Starting server shutdown process...")
 
-	shutdownDone := make(chan struct{})
+	var shutdownWg sync.WaitGroup
+	shutdownWg.Add(4)
 
+	go app.shutdownHTTPServer(ctx, &shutdownWg)
+	go app.shutdownWatermillRouter(ctx, &shutdownWg)
+	go app.shutdownGRPCServer(ctx, &shutdownWg)
+	go app.shutdownResources(ctx, &shutdownWg)
+
+	done := make(chan struct{})
 	go func() {
-		var shutdownWg sync.WaitGroup
-
-		shutdownWg.Add(1)
-		go app.shutdownHTTPServer(ctx, &shutdownWg)
-
-		shutdownWg.Add(1)
-		go app.shutdownWatermillAndSubscriber(ctx, &shutdownWg)
-
-		shutdownWg.Add(1)
-		go app.shutdownGRPCServer(ctx, &shutdownWg)
-
 		shutdownWg.Wait()
-		close(shutdownDone)
-		logger.Info("All servers have been shutdown successfully.")
+		close(done)
 	}()
 
 	select {
-	case <-shutdownDone:
+	case <-done:
+		logger.Info("All servers have been shutdown successfully.")
 		return true
 	case <-ctx.Done():
+		logger.Warn("Shutdown timed out, exiting application.")
 		return false
 	}
 }
@@ -249,41 +266,17 @@ func (app *Application) shutdownHTTPServer(parentCtx context.Context, wg *sync.W
 	}
 }
 
-func (app *Application) shutdownWatermillAndSubscriber(parentCtx context.Context, wg *sync.WaitGroup) {
-	logger := logger.L()
+func (app *Application) shutdownWatermillRouter(ctx context.Context, wg *sync.WaitGroup) {
+	log := logger.L()
 	defer wg.Done()
 
-	logger.Info("Starting graceful shutdown for Watermill router and subscriber...")
-
-	done := make(chan struct{})
-	go func() {
-		// first shutdown gracefully watermill router
-		logger.Info("Closing Watermill router...")
-		if err := app.WMRouter.Close(); err != nil {
-			logger.Error("Watermill router graceful shutdown failed", "error", err)
-		} else {
-			logger.Info("Watermill router shutdown successfully.")
-		}
-
-		// second close subscriber
-		logger.Info("Closing subscriber...")
-		if err := app.Subscriber.Close(); err != nil {
-			logger.Error("Subscriber close failed", "error", err)
-		} else {
-			logger.Info("Subscriber closed successfully.")
-		}
-
-		close(done)
-	}()
-
-	select {
-	case <-done:
-		logger.Info("Watermill and subscriber shutdown completed.")
-	case <-parentCtx.Done():
-		logger.Warn("Watermill and subscriber shutdown timed out.")
+	log.Info("Closing Watermill router...")
+	if err := app.WMRouter.Close(); err != nil {
+		log.Error("Watermill router graceful shutdown failed", "error", err)
+	} else {
+		log.Info("Watermill router shutdown successfully.")
 	}
 }
-
 func (app *Application) shutdownGRPCServer(parentCtx context.Context, wg *sync.WaitGroup) {
 	logger := logger.L()
 	defer wg.Done()
@@ -292,4 +285,23 @@ func (app *Application) shutdownGRPCServer(parentCtx context.Context, wg *sync.W
 	app.LeaderboardGrpcServer.Stop()
 
 	logger.Info("leaderboard-scoring gRPC server shutdown successfully.")
+}
+
+func (app *Application) shutdownResources(ctx context.Context, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	log := logger.L()
+
+	log.Info("Close NATS adapter...")
+	if err := app.NatsAdapter.Close(); err != nil {
+		log.Error("Failed to close NATS adapter.", slog.String("error", err.Error()))
+	}
+
+	log.Info("Close Database Connection...")
+	app.DBConn.Close()
+
+	log.Info("Close Redis adapter...")
+	if err := app.RedisAdapter.Close(); err != nil {
+		log.Error("Failed to close Redis adapter.", slog.String("error", err.Error()))
+	}
 }

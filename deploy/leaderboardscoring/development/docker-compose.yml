@@ -1,1 +1,78 @@
-# TODO implement compose file for leaderboardscoring service
+services:
+  # The main application service
+  lbapp:
+    build:
+      context: ../../.. # Build from the project root
+      dockerfile: ./deploy/leaderboardscoring/development/Dockerfile
+    ports:
+      - "8080:8080" # HTTP port
+      - "8090:8090" # gRPC port
+    volumes:
+      - ./config.yml:/app/config.yml # Mount the config file
+    environment:
+      - CONFIG_PATH=/app/config.yml
+      - LEADERBOARDSCORING_POSTGRES_DB_HOST=leaderboardscoring-db
+      - LEADERBOARDSCORING_REDIS_HOST=leaderboardscoring-redis
+      - LEADERBOARDSCORING_NATS_URL=nats://leaderboardscoring-nats:4222
+    depends_on:
+      leaderboardscoring-db:
+        condition: service_healthy
+      leaderboardscoring-nats:
+        condition: service_healthy
+#      nats-init:
+#        condition: service_completed_successfully
+    command: [ "/app/main", "serve", "--migrate-up" ]
+
+  # PostgreSQL Database Service
+  leaderboardscoring-db:
+    image: postgres:14-alpine
+    container_name: leaderboardscoring-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: leaderboardscoring_admin
+      POSTGRES_PASSWORD: password123
+      POSTGRES_DB: leaderboardscoring_db
+    restart: always
+    volumes:
+      - leaderboardscoring-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U leaderboardscoring_admin -d leaderboardscoring_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # Redis Service
+  leaderboardscoring-redis:
+    image: redis:6.2-alpine
+    container_name: leaderboardscoring-redis
+    ports:
+      - "6379:6379"
+    restart: always
+
+  # NATS JetStream Service
+  leaderboardscoring-nats:
+    image: nats:2.10-alpine
+    container_name: nats_jetstream
+    restart: unless-stopped
+    ports:
+      - "4222:4222" # Client port
+      - "8222:8222" # Monitoring port
+    volumes:
+      - nats_data:/data
+    command:
+      - "--name=nats1"
+      - "--sd=/data"
+      - "--js"
+      - "--http_port=8222"
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8222/varz && nc -z localhost 4222" ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  leaderboardscoring-data:
+  nats_data:

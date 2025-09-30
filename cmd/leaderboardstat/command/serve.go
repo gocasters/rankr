@@ -4,15 +4,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/gocasters/rankr/leaderboardstatapp"
-	"github.com/gocasters/rankr/pkg/config"
 	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/gocasters/rankr/pkg/migrator"
 	"github.com/spf13/cobra"
 	"log"
 	"log/slog"
-	"os"
-	"path/filepath"
 )
 
 var migrateUp bool
@@ -37,39 +34,24 @@ func init() {
 
 func serve() {
 	fmt.Println("Starting leaderboardstat service........")
-	var cfg leaderboardstatapp.Config
 
-	// Load config
-	workingDir, err := os.Getwd()
-	if err != nil {
-		log.Fatalf("Error getting current working directory: %v", err)
-	}
-
-	yamlPath := os.Getenv("CONFIG_PATH")
-	if yamlPath == "" {
-		yamlPath = filepath.Join(workingDir, "deploy", "leaderboardstat", "development", "config.local.yml")
-	}
-
-	options := config.Options{
-		Prefix:       "STAT_",
-		Delimiter:    ".",
-		Separator:    "_",
-		YamlFilePath: yamlPath,
-	}
-	if lErr := config.Load(options, &cfg); lErr != nil {
-		log.Fatalf("Failed to load leaderboardstat config: %v", lErr)
-	}
+	cfg := loadAppConfig()
 
 	if err := logger.Init(cfg.Logger); err != nil {
 		log.Fatalf("failed to initialize logger: %v", err)
 	}
-	defer func() { _ = logger.Close() }()
+	defer func() {
+		if err := logger.Close(); err != nil {
+			log.Fatalf("failed to close logger: %v", err)
+		}
+	}()
 
 	leaderboardLogger := logger.L()
 	// Run migrations if flags are set
 	if migrateUp || migrateDown {
 		if migrateUp && migrateDown {
 			leaderboardLogger.Error("invalid flags: --migrate-up and --migrate-down cannot be used together")
+
 			return
 		}
 
@@ -104,7 +86,6 @@ func serve() {
 	defer cancel()
 
 	app, sErr := leaderboardstatapp.Setup(ctx, cfg, databaseConn)
-
 	if sErr != nil {
 		leaderboardLogger.Error("leaderboardstat setup failed", slog.Any("error", sErr))
 		return

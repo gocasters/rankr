@@ -1,6 +1,7 @@
 package leaderboardscoringapp
 
 import (
+	"github.com/gocasters/rankr/adapter/nats"
 	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/consumer"
 	"github.com/gocasters/rankr/pkg/database"
@@ -15,6 +16,7 @@ type Config struct {
 	RPCServer            grpc.ServerConfig `koanf:"rpc_server"`
 	PostgresDB           database.Config   `koanf:"postgres_db"`
 	Redis                redis.Config      `koanf:"redis"`
+	Nats                 nats.Config       `koanf:"nats"`
 	Logger               logger.Config     `koanf:"logger"`
 	Consumer             consumer.Config   `koanf:"consumer"`
 	TotalShutdownTimeout time.Duration     `koanf:"total_shutdown_timeout"`

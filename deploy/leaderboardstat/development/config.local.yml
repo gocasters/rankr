@@ -2,19 +2,16 @@ total_shutdown_timeout: "15s"
 path_of_migration: "./leaderboardstatapp/repository/migrations"
 
 http_server:
-  port: 6011  # Changed from 5001 to 6011 to match Docker setup
+  host: ""
+  port: 6011
   cors:
     allow_origins: "*"
   shutdown_context_timeout: "10s"
 
-repository:
-  cache_prefix: "leaderboardstat"
-  cache_enabled: false  # disabled for development
-
 postgres_db:
   driver: "postgres"
-  host: "localhost"  # For local development when DB runs in Docker
-  port: 5432
+  host:  "127.0.0.1" #"leaderboardstat-db"
+  port: 5432 #5438
   user: "stat_admin"
   password: "password123"
   db_name: "leaderboardstat_db"
@@ -37,5 +34,13 @@ logger:
   file_max_size_in_mb: 10
   file_max_age_in_days: 7
 
-debug:
-  force_accept_otp: 11111
+#nats:
+#  url: nats://supersecret@localhost:4222
+#  connect_timeout: "30s"
+#  reconnect_wait: "1s"
+#  retry_on_failed_connect: true
+#  jet_stream_enabled: true
+#  stream:
+#    name: "EVENTS_STREAM"
+#    subjects:
+#      - "github.*"
