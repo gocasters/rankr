@@ -4,6 +4,7 @@ import (
 	"github.com/gocasters/rankr/adapter/nats"
 	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/consumer"
+	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/scheduler"
 	postgrerepository "github.com/gocasters/rankr/leaderboardscoringapp/repository/database"
 	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/pkg/grpc"
@@ -24,4 +25,5 @@ type Config struct {
 	PathOfMigration      string                        `koanf:"path_of_migration"`
 	SubscriberTopic      string                        `koanf:"subscriber_topic"`
 	RetryConfig          postgrerepository.RetryConfig `koanf:"postgre_repository_retry"`
+	Scheduler            scheduler.Config              `koanf:"scheduler"`
 }

@@ -84,6 +84,11 @@ func (s *Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) erro
 	return nil
 }
 
+// ProcessEventQueue is a job method triggered by the scheduler.
+// Its responsibility is to take all objects from the Event queue
+// and send them to the repository layer for persistence.
+// If the repository operation succeeds, the queue is cleared.
+// If an error occurs, the queue remains intact for retry.
 func (s *Service) ProcessEventQueue(ctx context.Context) error {
 	items := s.eventQueue.GetAll()
 	if len(items) == 0 {

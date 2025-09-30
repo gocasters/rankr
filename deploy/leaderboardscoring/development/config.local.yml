@@ -64,3 +64,6 @@ subscriber_topic: "CONTRIBUTION_REGISTERED"
 postgre_repository_retry:
   max_retries: 3
   retry_delay: 100ms
+
+scheduler:
+  ticker_interval: 5m
