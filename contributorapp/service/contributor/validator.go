@@ -46,7 +46,7 @@ func (v Validator) ValidateUpdateProfileRequest(ctx context.Context, req UpdateP
 	return validation.ValidateStruct(&req,
 		validation.Field(&req.ID, validation.Required.Error(ErrValidationRequired), validation.By(checkID)),
 		validation.Field(&req.GitHubID, validation.Required.Error(ErrValidationRequired), validation.Min(int64(1)).Error(ErrValidationPositive)),
-		validation.Field(&req.GitHubUserName, validation.Required.Error(ErrValidationRequired), validation.Length(3, 100).Error(ErrValidationLength3To100)),
+		validation.Field(&req.GitHubUsername, validation.Required.Error(ErrValidationRequired), validation.Length(3, 100).Error(ErrValidationLength3To100)),
 		validation.Field(&req.DisplayName, validation.Length(0, 100).Error(ErrValidationLength3To100)),
 		validation.Field(&req.ProfileImage, validation.Length(0, 255)),
 		validation.Field(&req.Bio, validation.Length(0, 500)),

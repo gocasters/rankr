@@ -89,6 +89,7 @@ func (repo *ContributorRepo) CreateContributor(ctx context.Context, contributor 
 
 func (repo *ContributorRepo) UpdateProfileContributor(ctx context.Context, contributor contributor.Contributor) (*contributor.Contributor, error) {
 	updates := make(map[string]any)
+	var updateContributor contributor.Contributor
 
 	if contributor.GitHubID != 0 {
 		updates["github_id"] = contributor.GitHubID
@@ -118,8 +119,8 @@ func (repo *ContributorRepo) UpdateProfileContributor(ctx context.Context, contr
 		return &contributor, nil
 	}
 
-	var sets []string
-	var args []interface{}
+	sets := make([]string, 0, len(updates))
+	args := make([]interface{}, 0, len(updates))
 	i := 1
 	for key, value := range updates {
 		sets = append(sets, fmt.Sprintf("%s=$%d", key, i))
@@ -127,12 +128,22 @@ func (repo *ContributorRepo) UpdateProfileContributor(ctx context.Context, contr
 		i++
 	}
 
-	query := fmt.Sprintf("UPDATE contributors SET %s WHERE id = $%d RETURNING id", strings.Join(sets, ","), i)
+	query := fmt.Sprintf(
+		"UPDATE contributors SET %s WHERE id = $%d RETURNING id, github_id, github_username, display_name, profile_image, bio, privacy_mode;",
+		strings.Join(sets, ", "), i)
 	args = append(args, contributor.ID)
 
-	if err := repo.PostgreSQL.Pool.QueryRow(ctx, query, args...).Scan(&contributor.ID); err != nil {
+	if err := repo.PostgreSQL.Pool.QueryRow(ctx, query, args...).Scan(
+		&updateContributor.ID,
+		&updateContributor.GitHubID,
+		&updateContributor.GitHubUsername,
+		&updateContributor.DisplayName,
+		&updateContributor.ProfileImage,
+		&updateContributor.Bio,
+		&updateContributor.PrivacyMode,
+	); err != nil {
 		return nil, fmt.Errorf("failed update profile's contributor: %v", err)
 	}
 
-	return &contributor, nil
+	return &updateContributor, nil
 }

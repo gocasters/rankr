@@ -97,7 +97,7 @@ func (s Service) UpdateProfile(ctx context.Context, req UpdateProfileRequest) (U
 	contributor := Contributor{
 		ID:             int64(req.ID),
 		GitHubID:       req.GitHubID,
-		GitHubUsername: req.GitHubUserName,
+		GitHubUsername: req.GitHubUsername,
 		DisplayName:    req.DisplayName,
 		ProfileImage:   req.ProfileImage,
 		Bio:            req.Bio,

@@ -36,7 +36,7 @@ type CreateContributorResponse struct {
 type UpdateProfileRequest struct {
 	ID             types.ID    `json:"id"`
 	GitHubID       int64       `json:"github_id"`
-	GitHubUserName string      `json:"github_username,omitempty"`
+	GitHubUsername string      `json:"github_username,omitempty"`
 	DisplayName    *string     `json:"display_name,omitempty"`
 	ProfileImage   *string     `json:"profile_image,omitempty"`
 	Bio            *string     `json:"bio,omitempty"`
