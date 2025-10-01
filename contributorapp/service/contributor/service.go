@@ -4,8 +4,8 @@ import (
 	"context"
 	"github.com/gocasters/rankr/cachemanager"
 	errmsg "github.com/gocasters/rankr/pkg/err_msg"
+	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/gocasters/rankr/type"
-	"log/slog"
 )
 
 type Repository interface {
@@ -17,7 +17,6 @@ type Repository interface {
 type Service struct {
 	repository     Repository
 	validator      Validator
-	logger         *slog.Logger
 	CacheManager   cachemanager.CacheManager
 	forceAcceptOtp int
 }
@@ -26,12 +25,10 @@ func NewService(
 	repo Repository,
 	cm cachemanager.CacheManager,
 	validator Validator,
-	logger *slog.Logger,
 ) Service {
 	return Service{
 		repository:   repo,
 		validator:    validator,
-		logger:       logger,
 		CacheManager: cm,
 	}
 }
@@ -39,7 +36,7 @@ func NewService(
 func (s Service) GetProfile(ctx context.Context, req GetProfileRequest) (GetProfileResponse, error) {
 	contributor, err := s.repository.GetContributorByID(ctx, req.ID)
 	if err != nil {
-		s.logger.Error("contributor_get_profile", "error", err)
+		logger.L().Error("contributor_get_profile", "error", err)
 		return GetProfileResponse{}, errmsg.ErrorResponse{
 			Message: err.Error(),
 			Errors: map[string]interface{}{
@@ -91,6 +88,7 @@ func (s Service) UpdateProfile(ctx context.Context, req UpdateProfileRequest) (U
 	}
 
 	if _, err := s.repository.GetContributorByID(ctx, req.ID); err != nil {
+		logger.L().Error("contributor_update_profile", "error", err)
 		return UpdateProfileResponse{}, err
 	}
 
@@ -106,6 +104,7 @@ func (s Service) UpdateProfile(ctx context.Context, req UpdateProfileRequest) (U
 
 	resContributor, err := s.repository.UpdateProfileContributor(ctx, contributor)
 	if err != nil {
+		logger.L().Error("contributor_update_profile", "error", err)
 		return UpdateProfileResponse{}, err
 	}
 
