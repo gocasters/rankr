@@ -89,7 +89,7 @@ func (repo *ContributorRepo) CreateContributor(ctx context.Context, contributor 
 
 func (repo *ContributorRepo) UpdateProfileContributor(ctx context.Context, contri contributor.Contributor) (*contributor.Contributor, error) {
 	var updateContributor contributor.Contributor
-	var updates map[string]interface{}
+	updates := make(map[string]interface{})
 
 	if contri.GitHubID != 0 {
 		updates["github_id"] = contri.GitHubID
