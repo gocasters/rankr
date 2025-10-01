@@ -87,36 +87,36 @@ func (repo *ContributorRepo) CreateContributor(ctx context.Context, contributor 
 	return &contributor, nil
 }
 
-func (repo *ContributorRepo) UpdateProfileContributor(ctx context.Context, contributor contributor.Contributor) (*contributor.Contributor, error) {
-	updates := make(map[string]any)
+func (repo *ContributorRepo) UpdateProfileContributor(ctx context.Context, contri contributor.Contributor) (*contributor.Contributor, error) {
 	var updateContributor contributor.Contributor
+	var updates map[string]interface{}
 
-	if contributor.GitHubID != 0 {
-		updates["github_id"] = contributor.GitHubID
+	if contri.GitHubID != 0 {
+		updates["github_id"] = contri.GitHubID
 	}
 
-	if contributor.GitHubUsername != "" {
-		updates["github_username"] = contributor.GitHubUsername
+	if contri.GitHubUsername != "" {
+		updates["github_username"] = contri.GitHubUsername
 	}
 
-	if contributor.DisplayName != nil {
-		updates["display_name"] = contributor.DisplayName
+	if contri.DisplayName != nil {
+		updates["display_name"] = contri.DisplayName
 	}
 
-	if contributor.ProfileImage != nil {
-		updates["profile_image"] = contributor.ProfileImage
+	if contri.ProfileImage != nil {
+		updates["profile_image"] = contri.ProfileImage
 	}
 
-	if contributor.Bio != nil {
-		updates["bio"] = contributor.Bio
+	if contri.Bio != nil {
+		updates["bio"] = contri.Bio
 	}
 
-	if contributor.PrivacyMode != "" {
-		updates["privacy_mode"] = contributor.PrivacyMode
+	if contri.PrivacyMode != "" {
+		updates["privacy_mode"] = contri.PrivacyMode
 	}
 
 	if len(updates) == 0 {
-		return &contributor, nil
+		return &contri, nil
 	}
 
 	sets := make([]string, 0, len(updates))
@@ -129,9 +129,10 @@ func (repo *ContributorRepo) UpdateProfileContributor(ctx context.Context, contr
 	}
 
 	query := fmt.Sprintf(
-		"UPDATE contributors SET %s WHERE id = $%d RETURNING id, github_id, github_username, display_name, profile_image, bio, privacy_mode;",
+		"UPDATE contributors SET %s WHERE id = $%d RETURNING id, github_id, github_username, display_name, profile_image, bio, privacy_mode, email, is_verified, two_factor_enabled, created_at, updated_at;",
 		strings.Join(sets, ", "), i)
-	args = append(args, contributor.ID)
+
+	args = append(args, contri.ID)
 
 	if err := repo.PostgreSQL.Pool.QueryRow(ctx, query, args...).Scan(
 		&updateContributor.ID,
@@ -141,8 +142,13 @@ func (repo *ContributorRepo) UpdateProfileContributor(ctx context.Context, contr
 		&updateContributor.ProfileImage,
 		&updateContributor.Bio,
 		&updateContributor.PrivacyMode,
+		&updateContributor.Email,
+		&updateContributor.IsVerified,
+		&updateContributor.TwoFactor,
+		&updateContributor.CreatedAt,
+		&updateContributor.UpdatedAt,
 	); err != nil {
-		return nil, fmt.Errorf("failed update profile's contributor: %v", err)
+		return nil, fmt.Errorf("failed update profile: %v", err)
 	}
 
 	return &updateContributor, nil
