@@ -11,6 +11,7 @@ import (
 type Repository interface {
 	GetContributorByID(ctx context.Context, ID types.ID) (*Contributor, error)
 	CreateContributor(ctx context.Context, contributor Contributor) (*Contributor, error)
+	UpdateProfileContributor(ctx context.Context, contributor Contributor) (*Contributor, error)
 }
 
 type Service struct {
@@ -81,5 +82,36 @@ func (s Service) CreateContributor(ctx context.Context, req CreateContributorReq
 
 	return CreateContributorResponse{
 		ID: types.ID(createdContributor.ID),
+	}, nil
+}
+
+func (s Service) UpdateProfile(ctx context.Context, req UpdateProfileRequest) (UpdateProfileResponse, error) {
+	if err := s.validator.ValidateUpdateProfileRequest(ctx, req); err != nil {
+		return UpdateProfileResponse{}, err
+	}
+
+	contributor := Contributor{
+		ID:             int64(req.ID),
+		GitHubID:       req.GitHubID,
+		GitHubUsername: req.GitHubUserName,
+		DisplayName:    req.DisplayName,
+		ProfileImage:   req.ProfileImage,
+		Bio:            req.Bio,
+		PrivacyMode:    req.PrivacyMode,
+	}
+
+	resContributor, err := s.repository.UpdateProfileContributor(ctx, contributor)
+	if err != nil {
+		return UpdateProfileResponse{}, err
+	}
+
+	return UpdateProfileResponse{
+		ID:             resContributor.ID,
+		GitHubID:       resContributor.GitHubID,
+		GitHubUsername: resContributor.GitHubUsername,
+		DisplayName:    resContributor.DisplayName,
+		ProfileImage:   resContributor.ProfileImage,
+		Bio:            resContributor.Bio,
+		PrivacyMode:    resContributor.PrivacyMode,
 	}, nil
 }

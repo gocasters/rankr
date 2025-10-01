@@ -43,7 +43,7 @@ type UpdateProfileRequest struct {
 	PrivacyMode    PrivacyMode `json:"privacy_mode,omitempty"`
 }
 
-type ProfileUpdateResponse struct {
+type UpdateProfileResponse struct {
 	ID             int64       `json:"id"`
 	GitHubID       int64       `json:"github_id"`
 	GitHubUsername string      `json:"github_username"`
