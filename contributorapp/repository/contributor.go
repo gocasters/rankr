@@ -8,7 +8,6 @@ import (
 	"github.com/gocasters/rankr/contributorapp/service/contributor"
 	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/type"
-	"log/slog"
 )
 
 type Config struct {
@@ -18,15 +17,13 @@ type Config struct {
 
 type ContributorRepo struct {
 	Config     Config
-	Logger     *slog.Logger
 	PostgreSQL *database.Database
 	Cache      *redis.Adapter
 }
 
-func NewContributorRepo(config Config, db *database.Database, logger *slog.Logger) contributor.Repository {
+func NewContributorRepo(config Config, db *database.Database) contributor.Repository {
 	return &ContributorRepo{
 		Config:     config,
-		Logger:     logger,
 		PostgreSQL: db,
 	}
 }
