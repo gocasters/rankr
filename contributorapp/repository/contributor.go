@@ -9,6 +9,7 @@ import (
 	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/type"
 	"log/slog"
+	"strings"
 )
 
 type Config struct {
@@ -31,7 +32,7 @@ func NewContributorRepo(config Config, db *database.Database, logger *slog.Logge
 	}
 }
 
-func (repo ContributorRepo) GetContributorByID(ctx context.Context, ID types.ID) (*contributor.Contributor, error) {
+func (repo *ContributorRepo) GetContributorByID(ctx context.Context, ID types.ID) (*contributor.Contributor, error) {
 	query := "SELECT id, github_id, github_username, email, is_verified, two_factor_enabled, privacy_mode, display_name, profile_image, bio, created_at FROM contributors WHERE id=$1"
 	row := repo.PostgreSQL.Pool.QueryRow(ctx, query, ID)
 
@@ -83,5 +84,55 @@ func (repo *ContributorRepo) CreateContributor(ctx context.Context, contributor 
 	}
 
 	contributor.ID = id
+	return &contributor, nil
+}
+
+func (repo *ContributorRepo) UpdateProfileContributor(ctx context.Context, contributor contributor.Contributor) (*contributor.Contributor, error) {
+	updates := make(map[string]any)
+
+	if contributor.GitHubID != 0 {
+		updates["github_id"] = contributor.GitHubID
+	}
+
+	if contributor.GitHubUsername != "" {
+		updates["github_username"] = contributor.GitHubUsername
+	}
+
+	if contributor.DisplayName != nil {
+		updates["display_name"] = contributor.DisplayName
+	}
+
+	if contributor.ProfileImage != nil {
+		updates["profile_image"] = contributor.ProfileImage
+	}
+
+	if contributor.Bio != nil {
+		updates["bio"] = contributor.Bio
+	}
+
+	if contributor.PrivacyMode != "" {
+		updates["privacy_mode"] = contributor.PrivacyMode
+	}
+
+	if len(updates) == 0 {
+		return &contributor, nil
+	}
+
+	var sets []string
+	var args []interface{}
+	i := 1
+	for key, value := range updates {
+		sets = append(sets, fmt.Sprintf("%s=$%d", key, i))
+		args = append(args, value)
+		i++
+	}
+
+	query := fmt.Sprintf("UPDATE contributors SET %s WHERE id = $%d RETURNING id", strings.Join(sets, ","), i)
+	args = append(args, contributor.ID)
+
+	if err := repo.PostgreSQL.Pool.QueryRow(ctx, query, args...).Scan(&contributor.ID); err != nil {
+		return nil, fmt.Errorf("failed update profile's contributor: %v", err)
+	}
+
 	return &contributor, nil
 }

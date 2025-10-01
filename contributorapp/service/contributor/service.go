@@ -90,6 +90,10 @@ func (s Service) UpdateProfile(ctx context.Context, req UpdateProfileRequest) (U
 		return UpdateProfileResponse{}, err
 	}
 
+	if _, err := s.repository.GetContributorByID(ctx, req.ID); err != nil {
+		return UpdateProfileResponse{}, err
+	}
+
 	contributor := Contributor{
 		ID:             int64(req.ID),
 		GitHubID:       req.GitHubID,
