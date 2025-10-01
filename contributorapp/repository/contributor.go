@@ -100,15 +100,15 @@ func (repo *ContributorRepo) UpdateProfileContributor(ctx context.Context, contr
 	}
 
 	if contri.DisplayName != nil {
-		updates["display_name"] = contri.DisplayName
+		updates["display_name"] = *contri.DisplayName
 	}
 
 	if contri.ProfileImage != nil {
-		updates["profile_image"] = contri.ProfileImage
+		updates["profile_image"] = *contri.ProfileImage
 	}
 
 	if contri.Bio != nil {
-		updates["bio"] = contri.Bio
+		updates["bio"] = *contri.Bio
 	}
 
 	if contri.PrivacyMode != "" {
