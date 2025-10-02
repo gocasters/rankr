@@ -5,12 +5,13 @@ package logger
 
 import (
 	"fmt"
-	"gopkg.in/natefinch/lumberjack.v2"
 	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
+
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 var (
@@ -33,12 +34,32 @@ func Init(cfg Config) error {
 	var logPath string
 	once.Do(func() {
 		if cfg.FilePath != "" {
+
+			if filepath.IsAbs(cfg.FilePath) {
+				initError = fmt.Errorf("absolute paths are not allowed for log file path")
+				return
+			}
+
+			cleanPath := filepath.Clean(cfg.FilePath)
+
 			workingDir, err := os.Getwd()
 			if err != nil {
 				initError = fmt.Errorf("error getting current working directory: %w", err)
 				return
 			}
-			logPath = filepath.Join(workingDir, cfg.FilePath)
+
+			logPath = filepath.Join(workingDir, cleanPath)
+
+			relPath, err := filepath.Rel(workingDir, logPath)
+			if err != nil {
+				initError = fmt.Errorf("invalid log file path: %w", err)
+				return
+			}
+
+			if len(relPath) >= 2 && relPath[0] == '.' && relPath[1] == '.' {
+				initError = fmt.Errorf("log file path cannot traverse outside working directory")
+				return
+			}
 		} else {
 			exePath, err := os.Executable()
 			if err != nil {
@@ -92,11 +113,31 @@ func Close() error {
 func New(cfg Config) (*slog.Logger, io.Closer, error) {
 	var logPath string
 	if cfg.FilePath != "" {
+		// Reject absolute paths
+		if filepath.IsAbs(cfg.FilePath) {
+			return nil, nil, fmt.Errorf("absolute paths are not allowed for log file path")
+		}
+
+		// Clean the path
+		cleanPath := filepath.Clean(cfg.FilePath)
+
 		workingDir, err := os.Getwd()
 		if err != nil {
 			return nil, nil, fmt.Errorf("error getting current working directory: %w", err)
 		}
-		logPath = filepath.Join(workingDir, cfg.FilePath)
+
+		// Join working directory with cleaned path
+		logPath = filepath.Join(workingDir, cleanPath)
+
+		// Verify the result does not escape the working directory
+		relPath, err := filepath.Rel(workingDir, logPath)
+		if err != nil {
+			return nil, nil, fmt.Errorf("invalid log file path: %w", err)
+		}
+		// Check for parent directory traversal
+		if len(relPath) >= 2 && relPath[0] == '.' && relPath[1] == '.' {
+			return nil, nil, fmt.Errorf("log file path cannot traverse outside working directory")
+		}
 	} else {
 		exePath, err := os.Executable()
 		if err != nil {
