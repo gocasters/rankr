@@ -1,0 +1,22 @@
+services:
+  realtime-redis:
+    image: redis:8.0-M03-alpine3.21
+    container_name: realtime-redis
+    ports:
+      - "6389:6379"
+    restart: always
+    command: redis-server --loglevel warning --protected-mode no --save "" --appendonly no
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+
+  nats:
+    image: nats:2.10-alpine
+    container_name: realtime-nats
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    restart: always
+    command: ["-js", "-m", "8222"]
+
+volumes:
+  realtime-data:

@@ -38,6 +38,7 @@ go.work.sum
 
 # logs
 /logs/*
+/log/*
 /cmd/*/temp/*
 /deploy/development/traefik/logs/access.log
 deploy/development/traefik/logs/traefik.log
