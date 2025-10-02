@@ -58,7 +58,11 @@ func (cs *ConnectionStore) GetClientsByTopic(topic string) []*realtime.Client {
 
 	clients := make([]*realtime.Client, 0)
 	for _, client := range cs.Clients {
-		if client.Subscriptions[topic] {
+		client.SubsMu.RLock()
+		isSubscribed := client.Subscriptions[topic]
+		client.SubsMu.RUnlock()
+
+		if isSubscribed {
 			clients = append(clients, client)
 		}
 	}

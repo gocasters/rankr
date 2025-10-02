@@ -1,6 +1,7 @@
 package realtime
 
 import (
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -11,6 +12,7 @@ type Client struct {
 	Conn          *websocket.Conn
 	Send          chan []byte
 	Subscriptions map[string]bool
+	SubsMu        sync.RWMutex
 	ConnectedAt   time.Time
 	LastActiveAt  time.Time
 }

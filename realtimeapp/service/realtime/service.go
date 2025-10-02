@@ -55,6 +55,9 @@ func (s Service) SubscribeTopics(ctx context.Context, clientID string, req Subsc
 		}, nil
 	}
 
+	client.SubsMu.Lock()
+	defer client.SubsMu.Unlock()
+
 	for _, topic := range req.Topics {
 		client.Subscriptions[topic] = true
 	}
@@ -76,6 +79,9 @@ func (s Service) UnsubscribeTopics(ctx context.Context, clientID string, req Uns
 			Message: "client not found",
 		}, nil
 	}
+
+	client.SubsMu.Lock()
+	defer client.SubsMu.Unlock()
 
 	for _, topic := range req.Topics {
 		delete(client.Subscriptions, topic)
