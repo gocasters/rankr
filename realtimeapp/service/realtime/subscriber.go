@@ -4,20 +4,27 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"sync"
 
 	"github.com/ThreeDotsLabs/watermill/message"
 )
 
+// ServiceInterface defines the methods required by the Subscriber
+type ServiceInterface interface {
+	BroadcastEvent(ctx context.Context, req BroadcastEventRequest) error
+}
+
 type Subscriber struct {
 	Subscriber message.Subscriber
-	Service    Service
+	Service    ServiceInterface
 	Logger     *slog.Logger
 	Topics     []string
+	wg         sync.WaitGroup
 }
 
 func NewSubscriber(
 	subscriber message.Subscriber,
-	service Service,
+	service ServiceInterface,
 	topics []string,
 	logger *slog.Logger,
 ) *Subscriber {
@@ -26,6 +33,7 @@ func NewSubscriber(
 		Service:    service,
 		Topics:     topics,
 		Logger:     logger,
+		wg:         sync.WaitGroup{},
 	}
 }
 
@@ -37,7 +45,13 @@ func (s *Subscriber) Start(ctx context.Context) error {
 			return err
 		}
 
-		go s.processMessages(ctx, topic, messages)
+		s.wg.Add(1)
+
+		go func(t string, msgs <-chan *message.Message) {
+			defer s.wg.Done()
+			s.processMessages(ctx, t, msgs)
+		}(topic, messages)
+
 		s.Logger.Info("subscribed to topic", "topic", topic)
 	}
 
@@ -56,19 +70,25 @@ func (s *Subscriber) processMessages(ctx context.Context, topic string, messages
 				return
 			}
 
-			s.handleMessage(ctx, topic, msg)
-			msg.Ack()
+			if err := s.handleMessage(ctx, topic, msg); err != nil {
+				s.Logger.Error("failed to handle message", "topic", topic, "error", err)
+				msg.Nack()
+				continue
+			} else {
+				msg.Ack()
+
+			}
 		}
 	}
 }
 
-func (s *Subscriber) handleMessage(ctx context.Context, topic string, msg *message.Message) {
+func (s *Subscriber) handleMessage(ctx context.Context, topic string, msg *message.Message) error {
 	s.Logger.Info("received message from NATS", "topic", topic, "message_id", msg.UUID)
 
 	var payload map[string]interface{}
 	if err := json.Unmarshal(msg.Payload, &payload); err != nil {
 		s.Logger.Error("failed to unmarshal message payload", "error", err)
-		return
+		return err
 	}
 
 	req := BroadcastEventRequest{
@@ -78,10 +98,14 @@ func (s *Subscriber) handleMessage(ctx context.Context, topic string, msg *messa
 
 	if err := s.Service.BroadcastEvent(ctx, req); err != nil {
 		s.Logger.Error("failed to broadcast event", "topic", topic, "error", err)
+		return err
 	}
+	return nil
 }
 
 func (s *Subscriber) Stop() error {
 	s.Logger.Info("stopping NATS subscriber")
-	return s.Subscriber.Close()
+	err := s.Subscriber.Close()
+	s.wg.Wait()
+	return err
 }

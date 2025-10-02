@@ -119,10 +119,7 @@ func setupTestSubscriber() (*Subscriber, *MockMessageSubscriber, *MockRealtimeSe
 		constant.TopicContributorCreated,
 	}
 
-	mockConnectionStore := NewMockConnectionStore()
-	service := NewService(mockConnectionStore, logger)
-
-	subscriber := NewSubscriber(mockSubscriber, service, topics, logger)
+	subscriber := NewSubscriber(mockSubscriber, mockService, topics, logger)
 	return subscriber, mockSubscriber, mockService
 }
 
