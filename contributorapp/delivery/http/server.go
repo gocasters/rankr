@@ -38,4 +38,5 @@ func (s Server) RegisterRoutes() {
 	v1.GET("/health-check", s.healthCheck)
 	v1.GET("/profile", s.Handler.getProfile)
 	v1.POST("/create", s.Handler.createContributor)
+	v1.PUT("/update", s.Handler.updateProfile)
 }

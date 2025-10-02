@@ -3,13 +3,14 @@ package contributorapp
 import (
 	"context"
 	"fmt"
-	"github.com/gocasters/rankr/cachemanager"
-	"github.com/gocasters/rankr/contributorapp/service/contributor"
 	"log/slog"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
+
+	"github.com/gocasters/rankr/cachemanager"
+	"github.com/gocasters/rankr/contributorapp/service/contributor"
 
 	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/contributorapp/delivery/http"
@@ -45,7 +46,7 @@ func Setup(
 
 	contributorRepo := repository.NewContributorRepo(config.Repository, postgresConn, logger)
 	contributorValidator := contributor.NewValidator(contributorRepo)
-	contributorSvc := contributor.NewService(contributorRepo, *cache, contributorValidator, logger)
+	contributorSvc := contributor.NewService(contributorRepo, *cache, contributorValidator)
 
 	contributorHandler := http.NewHandler(contributorSvc, logger)
 
