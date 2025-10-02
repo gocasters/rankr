@@ -30,16 +30,26 @@ type Config struct {
 // Init initializes the global logger instance.
 func Init(cfg Config) error {
 	var initError error
-	var workingDir string
+	var logPath string
 	once.Do(func() {
-		workingDir, initError = os.Getwd()
-		if initError != nil {
-			initError = fmt.Errorf("error getting current working directory: %w", initError)
-			return
+		if cfg.FilePath != "" {
+			workingDir, err := os.Getwd()
+			if err != nil {
+				initError = fmt.Errorf("error getting current working directory: %w", err)
+				return
+			}
+			logPath = filepath.Join(workingDir, cfg.FilePath)
+		} else {
+			exePath, err := os.Executable()
+			if err != nil {
+				initError = fmt.Errorf("error getting executable path: %w", err)
+				return
+			}
+			logPath = filepath.Join(filepath.Dir(exePath), "logs", "app.log")
 		}
 
 		fileWriter := &lumberjack.Logger{
-			Filename:  filepath.Join(workingDir, cfg.FilePath),
+			Filename:  logPath,
 			LocalTime: cfg.UseLocalTime,
 			MaxSize:   cfg.FileMaxSizeInMB,
 			MaxAge:    cfg.FileMaxAgeInDays,
@@ -80,14 +90,23 @@ func Close() error {
 
 // New creates a new independent logger (not singleton).
 func New(cfg Config) (*slog.Logger, io.Closer, error) {
-	workingDir, err := os.Getwd()
-	if err != nil {
-		return nil, nil, fmt.Errorf("error getting current working directory: %w", err)
-
+	var logPath string
+	if cfg.FilePath != "" {
+		workingDir, err := os.Getwd()
+		if err != nil {
+			return nil, nil, fmt.Errorf("error getting current working directory: %w", err)
+		}
+		logPath = filepath.Join(workingDir, cfg.FilePath)
+	} else {
+		exePath, err := os.Executable()
+		if err != nil {
+			return nil, nil, fmt.Errorf("error getting executable path: %w", err)
+		}
+		logPath = filepath.Join(filepath.Dir(exePath), "logs", "app.log")
 	}
 
 	fileWriter := &lumberjack.Logger{
-		Filename:  filepath.Join(workingDir, cfg.FilePath),
+		Filename:  logPath,
 		LocalTime: cfg.UseLocalTime,
 		MaxSize:   cfg.FileMaxSizeInMB,
 		MaxAge:    cfg.FileMaxAgeInDays,
