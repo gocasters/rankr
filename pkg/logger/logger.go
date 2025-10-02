@@ -28,45 +28,58 @@ type Config struct {
 	FileMaxAgeInDays int    `koanf:"file_max_age_in_days"`
 }
 
+// resolveLogPath validates and resolves the log file path based on the configuration.
+func resolveLogPath(cfg Config) (string, error) {
+	var logPath string
+
+	if cfg.FilePath != "" {
+		if filepath.IsAbs(cfg.FilePath) {
+			return "", fmt.Errorf("absolute paths are not allowed for log file path")
+		}
+
+		cleanPath := filepath.Clean(cfg.FilePath)
+
+		workingDir, err := os.Getwd()
+		if err != nil {
+			return "", fmt.Errorf("error getting current working directory: %w", err)
+		}
+
+		logPath = filepath.Join(workingDir, cleanPath)
+
+		relPath, err := filepath.Rel(workingDir, logPath)
+		if err != nil {
+			return "", fmt.Errorf("invalid log file path: %w", err)
+		}
+
+		if len(relPath) >= 2 && relPath[0] == '.' && relPath[1] == '.' {
+			return "", fmt.Errorf("log file path cannot traverse outside working directory")
+		}
+	} else {
+		exePath, err := os.Executable()
+		if err != nil {
+			return "", fmt.Errorf("error getting executable path: %w", err)
+		}
+		logPath = filepath.Join(filepath.Dir(exePath), "logs", "app.log")
+	}
+
+	return logPath, nil
+}
+
 // Init initializes the global logger instance.
 func Init(cfg Config) error {
 	var initError error
 	var logPath string
 	once.Do(func() {
-		if cfg.FilePath != "" {
+		logPath, initError = resolveLogPath(cfg)
+		if initError != nil {
+			return
+		}
 
-			if filepath.IsAbs(cfg.FilePath) {
-				initError = fmt.Errorf("absolute paths are not allowed for log file path")
-				return
-			}
-
-			cleanPath := filepath.Clean(cfg.FilePath)
-
-			workingDir, err := os.Getwd()
-			if err != nil {
-				initError = fmt.Errorf("error getting current working directory: %w", err)
-				return
-			}
-
-			logPath = filepath.Join(workingDir, cleanPath)
-
-			relPath, err := filepath.Rel(workingDir, logPath)
-			if err != nil {
-				initError = fmt.Errorf("invalid log file path: %w", err)
-				return
-			}
-
-			if len(relPath) >= 2 && relPath[0] == '.' && relPath[1] == '.' {
-				initError = fmt.Errorf("log file path cannot traverse outside working directory")
-				return
-			}
-		} else {
-			exePath, err := os.Executable()
-			if err != nil {
-				initError = fmt.Errorf("error getting executable path: %w", err)
-				return
-			}
-			logPath = filepath.Join(filepath.Dir(exePath), "logs", "app.log")
+		// Ensure parent directory exists
+		logDir := filepath.Dir(logPath)
+		if err := os.MkdirAll(logDir, 0755); err != nil {
+			initError = fmt.Errorf("failed to create log directory: %w", err)
+			return
 		}
 
 		fileWriter := &lumberjack.Logger{
@@ -111,39 +124,15 @@ func Close() error {
 
 // New creates a new independent logger (not singleton).
 func New(cfg Config) (*slog.Logger, io.Closer, error) {
-	var logPath string
-	if cfg.FilePath != "" {
-		// Reject absolute paths
-		if filepath.IsAbs(cfg.FilePath) {
-			return nil, nil, fmt.Errorf("absolute paths are not allowed for log file path")
-		}
+	logPath, err := resolveLogPath(cfg)
+	if err != nil {
+		return nil, nil, err
+	}
 
-		// Clean the path
-		cleanPath := filepath.Clean(cfg.FilePath)
-
-		workingDir, err := os.Getwd()
-		if err != nil {
-			return nil, nil, fmt.Errorf("error getting current working directory: %w", err)
-		}
-
-		// Join working directory with cleaned path
-		logPath = filepath.Join(workingDir, cleanPath)
-
-		// Verify the result does not escape the working directory
-		relPath, err := filepath.Rel(workingDir, logPath)
-		if err != nil {
-			return nil, nil, fmt.Errorf("invalid log file path: %w", err)
-		}
-		// Check for parent directory traversal
-		if len(relPath) >= 2 && relPath[0] == '.' && relPath[1] == '.' {
-			return nil, nil, fmt.Errorf("log file path cannot traverse outside working directory")
-		}
-	} else {
-		exePath, err := os.Executable()
-		if err != nil {
-			return nil, nil, fmt.Errorf("error getting executable path: %w", err)
-		}
-		logPath = filepath.Join(filepath.Dir(exePath), "logs", "app.log")
+	// Ensure parent directory exists
+	logDir := filepath.Dir(logPath)
+	if err := os.MkdirAll(logDir, 0755); err != nil {
+		return nil, nil, fmt.Errorf("failed to create log directory: %w", err)
 	}
 
 	fileWriter := &lumberjack.Logger{
