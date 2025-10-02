@@ -8,7 +8,7 @@ http_server:
 
 redis:
   host: localhost
-  Port: 6379
+  port: 6379
 
 logger:
   level: "info"

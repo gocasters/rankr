@@ -8,7 +8,7 @@ http_server:
 
 redis:
   host: localhost
-  Port: 6389
+  port: 6389
 
 logger:
   level: "debug"
