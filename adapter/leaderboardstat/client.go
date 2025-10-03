@@ -37,7 +37,6 @@ func (c *Client) GetContributorTotalStats(ctx context.Context, getTotalStatsReq 
 		ContributorId: int64(getTotalStatsReq.ContributorID),
 	}
 
-	fmt.Println(statPBReq)
 	statPRRes, err := c.leaderboardStatClient.GetContributorTotalStats(ctx, statPBReq)
 	if err != nil {
 		return nil, err

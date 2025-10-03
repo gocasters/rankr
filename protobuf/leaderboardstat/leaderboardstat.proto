@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package leaderboardstat.v1;
+package leaderboardstat;
 
 option go_package = "protobuf/golang/leaderboardstat";
 

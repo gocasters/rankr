@@ -35,7 +35,7 @@ func NewLeaderboardStatServiceClient(cc grpc.ClientConnInterface) LeaderboardSta
 
 func (c *leaderboardStatServiceClient) GetContributorTotalStats(ctx context.Context, in *ContributorStatRequest, opts ...grpc.CallOption) (*ContributorStatResponse, error) {
 	out := new(ContributorStatResponse)
-	err := c.cc.Invoke(ctx, "/leaderboardstat.v1.LeaderboardStatService/GetContributorTotalStats", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/leaderboardstat.LeaderboardStatService/GetContributorTotalStats", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func _LeaderboardStatService_GetContributorTotalStats_Handler(srv interface{}, c
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/leaderboardstat.v1.LeaderboardStatService/GetContributorTotalStats",
+		FullMethod: "/leaderboardstat.LeaderboardStatService/GetContributorTotalStats",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(LeaderboardStatServiceServer).GetContributorTotalStats(ctx, req.(*ContributorStatRequest))
@@ -93,7 +93,7 @@ func _LeaderboardStatService_GetContributorTotalStats_Handler(srv interface{}, c
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var LeaderboardStatService_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "leaderboardstat.v1.LeaderboardStatService",
+	ServiceName: "leaderboardstat.LeaderboardStatService",
 	HandlerType: (*LeaderboardStatServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{

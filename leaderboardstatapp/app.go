@@ -42,7 +42,7 @@ func Setup(
 
 	httpServer, err := httpserver.New(config.HTTPServer)
 	if err != nil {
-		statLogger.Error("failed to initialize HTTP server", err)
+		statLogger.Error("failed to initialize HTTP server", slog.Any("error", err))
 		return Application{}, err
 	}
 
@@ -50,7 +50,7 @@ func Setup(
 	rpcServer, gErr := grpc.NewServer(config.RPCServer)
 	if gErr != nil {
 		statLogger.Error("Failed to initialize gRPC server", slog.String("error", gErr.Error()))
-		return Application{}, err
+		return Application{}, gErr
 	}
 	statGrpcHandler := statGRPC.NewHandler(statSvc)
 	statGrpcServer := statGRPC.New(rpcServer, statGrpcHandler)
