@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-type Contributor struct {
+type ContributorInfo struct {
 	ID             int64     `json:"id"`
 	GitHubID       int64     `json:"github_id"`
 	GitHubUsername string    `json:"github_username"`
@@ -32,7 +32,7 @@ type ContributorStat struct {
 }
 
 type Profile struct {
-	Contributor     Contributor     `json:"contributor"`
-	Task            []Task          `json:"task"`
+	ContributorInfo ContributorInfo `json:"contributor"`
+	Tasks           []Task          `json:"task"`
 	ContributorStat ContributorStat `json:"contributor_stat"`
 }
