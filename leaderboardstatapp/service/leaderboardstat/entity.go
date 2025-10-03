@@ -13,10 +13,9 @@ type LeaderboardEntry struct {
 	Score         float64 `koanf:"score"`
 }
 
-type ContributorStat struct {
-	ContributorID types.ID       `koanf:"contributor_id"`
-	GlobalRank    int            `koanf:"global_rank"`
-	TotalScore    float64        `koanf:"total_score"`
-	ProjectsScore map[string]int `koanf:"project_score"`
-	ScoreHistory  map[string]int `koanf:"score_history"`
+type ContributorStats struct {
+	ContributorID types.ID           `koanf:"contributor_id"`
+	GlobalRank    int                `koanf:"global_rank"`
+	TotalScore    float64            `koanf:"total_score"`
+	ProjectsScore map[string]float64 `koanf:"project_score"`
 }

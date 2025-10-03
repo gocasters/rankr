@@ -21,26 +21,24 @@ func NewService(repo Repository, validator Validator) Service {
 	}
 }
 
-// GetContributorScores for user profile
 func GetContributorScores(contributorID int, project string) ScoresListResponse {
 
 	return ScoresListResponse{}
 }
 
-func (s *Service) GetContributorTotalStats(ctx context.Context, contributorID types.ID) (ContributorStat, error) {
+func (s *Service) GetContributorTotalStats(ctx context.Context, contributorID types.ID) (ContributorStats, error) {
 	// TODO - validation if is needed
 
 	// TODO - implement functions and calc contributions stats related to this contributor
 	totalScore, err := s.repository.GetContributorTotalScore(ctx, contributorID)
 	if err != nil {
-		return ContributorStat{}, err
+		return ContributorStats{}, err
 	}
-	stats := ContributorStat{
+	stats := ContributorStats{
 		ContributorID: contributorID,
 		GlobalRank:    1,
 		TotalScore:    totalScore,
-		ProjectsScore: map[string]int{},
-		ScoreHistory:  map[string]int{},
+		ProjectsScore: map[string]float64{},
 	}
 	return stats, nil
 }
