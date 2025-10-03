@@ -10,7 +10,10 @@ import (
 	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/consumer"
 	leaderboardGRPC "github.com/gocasters/rankr/leaderboardscoringapp/delivery/grpc"
 	leaderboardHTTP "github.com/gocasters/rankr/leaderboardscoringapp/delivery/http"
-	"github.com/gocasters/rankr/leaderboardscoringapp/repository"
+	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/scheduler"
+	postgrerepository "github.com/gocasters/rankr/leaderboardscoringapp/repository/database"
+	"github.com/gocasters/rankr/leaderboardscoringapp/repository/queue"
+	"github.com/gocasters/rankr/leaderboardscoringapp/repository/redisrepository"
 	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/pkg/grpc"
@@ -28,8 +31,9 @@ import (
 type Application struct {
 	HTTPServer                leaderboardHTTP.Server
 	LeaderboardGrpcServer     leaderboardGRPC.Server
-	LeaderboardSvc            leaderboardscoring.Service
+	LeaderboardSvc            *leaderboardscoring.Service
 	LeaderboardscoringHandler leaderboardHTTP.Handler
+	Scheduler                 *scheduler.JobScheduler
 	WMRouter                  *message.Router
 	WMLogger                  watermill.LoggerAdapter
 	Config                    Config
@@ -81,9 +85,17 @@ func Setup(ctx context.Context, config Config) *Application {
 	subscriber := natsAdapter.Subscriber()
 
 	// initial leaderboard-scoring repository, validator, service
-	lbScoringRepo := repository.NewLeaderboardscoringRepo(redisAdapter.Client(), databaseConn.Pool)
+	// init persistence, leaderboard, validator, queue
+	persistence := postgrerepository.NewPostgreSQLRepository(databaseConn, config.RetryConfig)
+	leaderboard := redisrepository.NewRedisLeaderboardRepository(redisAdapter.Client())
 	lbScoringValidator := leaderboardscoring.NewValidator()
-	lbScoringService := leaderboardscoring.NewService(lbScoringRepo, lbScoringValidator)
+	eventQueue := queue.NewMemoryQueue[leaderboardscoring.ProcessedScoreEvent]()
+	lbScoringService := leaderboardscoring.NewService(
+		persistence,
+		leaderboard,
+		eventQueue,
+		lbScoringValidator,
+	)
 
 	// initial http server
 	httpServer, hErr := httpserver.New(config.HTTPServer)
@@ -103,12 +115,15 @@ func Setup(ctx context.Context, config Config) *Application {
 	leaderboardGrpcHandler := leaderboardGRPC.NewHandler(lbScoringService)
 	leaderboardGrpcServer := leaderboardGRPC.New(rpcServer, leaderboardGrpcHandler)
 
+	sch := scheduler.NewJobScheduler(lbScoringService, eventQueue, config.Scheduler, 200)
+
 	// create one instance of Application
 	return &Application{
 		HTTPServer:                leaderboardHttpServer,
 		LeaderboardGrpcServer:     leaderboardGrpcServer,
 		LeaderboardSvc:            lbScoringService,
 		LeaderboardscoringHandler: lbScoringHandler,
+		Scheduler:                 sch,
 		WMRouter:                  nil,
 		WMLogger:                  wmLogger,
 		Config:                    config,
@@ -129,6 +144,7 @@ func (app *Application) Start() {
 	app.startHTTPServer(&wg)
 	app.startWaterMill(ctx, &wg)
 	app.startGRPCServer(&wg)
+	app.startScheduler(ctx)
 
 	logger.Info("Leaderboard Scoring application started.")
 
@@ -138,7 +154,7 @@ func (app *Application) Start() {
 	shutdownTimeoutCtx, cancel := context.WithTimeout(context.Background(), app.Config.TotalShutdownTimeout)
 	defer cancel()
 
-	if app.shutdownServers(shutdownTimeoutCtx) {
+	if app.shutdown(shutdownTimeoutCtx) {
 		logger.Info("Servers shutdown gracefully")
 	} else {
 		logger.Warn("Shutdown timed out, exiting application")
@@ -223,7 +239,12 @@ func (app *Application) startGRPCServer(wg *sync.WaitGroup) {
 	}()
 }
 
-func (app *Application) shutdownServers(ctx context.Context) bool {
+func (app *Application) startScheduler(ctx context.Context) {
+	logger.L().Info("Starting Scheduler...")
+	app.Scheduler.Start(ctx)
+}
+
+func (app *Application) shutdown(ctx context.Context) bool {
 	logger := logger.L()
 	logger.Info("Starting server shutdown process...")
 
@@ -234,6 +255,7 @@ func (app *Application) shutdownServers(ctx context.Context) bool {
 	go app.shutdownWatermillRouter(ctx, &shutdownWg)
 	go app.shutdownGRPCServer(ctx, &shutdownWg)
 	go app.shutdownResources(ctx, &shutdownWg)
+	go app.Scheduler.Stop()
 
 	done := make(chan struct{})
 	go func() {
@@ -277,6 +299,7 @@ func (app *Application) shutdownWatermillRouter(ctx context.Context, wg *sync.Wa
 		log.Info("Watermill router shutdown successfully.")
 	}
 }
+
 func (app *Application) shutdownGRPCServer(parentCtx context.Context, wg *sync.WaitGroup) {
 	logger := logger.L()
 	defer wg.Done()

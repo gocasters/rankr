@@ -7,4 +7,4 @@ postgres_db:
   db_name: leaderboardscoring_db
   ssl_mode: disable
 
-path_of_migration: ./leaderboardscoring/repository/migrations
+path_of_migration: ./leaderboardscoring/repository/database/migrations

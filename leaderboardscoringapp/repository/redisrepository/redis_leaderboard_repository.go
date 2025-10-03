@@ -1,28 +1,24 @@
-package repository
+package redisrepository
 
 import (
 	"context"
 	"fmt"
 	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/gocasters/rankr/pkg/logger"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"log/slog"
 )
 
-type LeaderboardRepo struct {
-	redisClient *redis.Client
-	db          *pgxpool.Pool
+// RedisLeaderboardRepository manages leaderboard using Redis Sorted Sets (ZSET)
+type RedisLeaderboardRepository struct {
+	client *redis.Client
 }
 
-func NewLeaderboardscoringRepo(client *redis.Client, db *pgxpool.Pool) leaderboardscoring.Repository {
-	return &LeaderboardRepo{
-		redisClient: client,
-		db:          db,
-	}
+func NewRedisLeaderboardRepository(client *redis.Client) leaderboardscoring.LeaderboardCache {
+	return &RedisLeaderboardRepository{client: client}
 }
 
-func (l *LeaderboardRepo) UpsertScores(ctx context.Context, score *leaderboardscoring.UpsertScore) error {
+func (l *RedisLeaderboardRepository) UpsertScores(ctx context.Context, score *leaderboardscoring.UpsertScore) error {
 	logger := logger.L()
 
 	if score == nil {
@@ -36,7 +32,7 @@ func (l *LeaderboardRepo) UpsertScores(ctx context.Context, score *leaderboardsc
 		return nil
 	}
 
-	pipeLine := l.redisClient.Pipeline()
+	pipeLine := l.client.Pipeline()
 
 	for _, key := range score.Keys {
 		pipeLine.ZIncrBy(ctx, key, float64(score.Score), score.UserID)
@@ -57,8 +53,8 @@ func (l *LeaderboardRepo) UpsertScores(ctx context.Context, score *leaderboardsc
 	return nil
 }
 
-func (l *LeaderboardRepo) GetLeaderboard(ctx context.Context, leaderboard *leaderboardscoring.LeaderboardQuery) (leaderboardscoring.LeaderboardQueryResult, error) {
-	data, err := l.redisClient.ZRevRangeWithScores(ctx, leaderboard.Key, leaderboard.Start, leaderboard.Stop).Result()
+func (l *RedisLeaderboardRepository) GetLeaderboard(ctx context.Context, leaderboard *leaderboardscoring.LeaderboardQuery) (leaderboardscoring.LeaderboardQueryResult, error) {
+	data, err := l.client.ZRevRangeWithScores(ctx, leaderboard.Key, leaderboard.Start, leaderboard.Stop).Result()
 	if err != nil {
 		return leaderboardscoring.LeaderboardQueryResult{}, err
 	}
@@ -68,7 +64,7 @@ func (l *LeaderboardRepo) GetLeaderboard(ctx context.Context, leaderboard *leade
 		var row = leaderboardscoring.LeaderboardEntry{
 			Rank:   uint64(leaderboard.Start + int64(i) + 1),
 			UserID: fmt.Sprintf("%v", entry.Member),
-			Score:  uint64(entry.Score),
+			Score:  int64(entry.Score),
 		}
 
 		rows = append(rows, row)

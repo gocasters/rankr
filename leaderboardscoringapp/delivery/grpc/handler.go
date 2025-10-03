@@ -13,10 +13,10 @@ import (
 
 type Handler struct {
 	leaderboardscoringpb.UnimplementedLeaderboardScoringServiceServer
-	leaderboardScoringSvc leaderboardscoring.Service
+	leaderboardScoringSvc *leaderboardscoring.Service
 }
 
-func NewHandler(leaderboardScoringSvc leaderboardscoring.Service) Handler {
+func NewHandler(leaderboardScoringSvc *leaderboardscoring.Service) Handler {
 	return Handler{
 		//UnimplementedLeaderboardScoringServiceServer: leaderboardscoringpb.UnimplementedLeaderboardScoringServiceServer{},
 		leaderboardScoringSvc: leaderboardScoringSvc,
@@ -70,7 +70,7 @@ func leaderboardResToProtobuf(leaderboardRes leaderboardscoring.GetLeaderboardRe
 		leaderboardRow := &leaderboardscoringpb.LeaderboardRow{
 			Rank:   r.Rank,
 			UserId: r.UserID,
-			Score:  r.Score,
+			Score:  uint64(r.Score),
 		}
 
 		rows = append(rows, leaderboardRow)

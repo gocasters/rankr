@@ -57,6 +57,13 @@ consumer:
 
 total_shutdown_timeout: 30s
 
-path_of_migration: "./leaderboardscoringapp/repository/migrations"
+path_of_migration: "./leaderboardscoringapp/repository/database/migrations"
 
 subscriber_topic: "CONTRIBUTION_REGISTERED"
+
+postgre_repository_retry:
+  max_retries: 3
+  retry_delay: 100ms
+
+scheduler:
+  ticker_interval: 5m

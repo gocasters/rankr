@@ -17,7 +17,7 @@ WORKDIR /app
 
 COPY --from=builder /app/main .
 
-COPY --from=builder /app/leaderboardscoringapp/repository/migrations ./leaderboardscoringapp/repository/migrations
+COPY --from=builder /app/leaderboardscoringapp/repository/database/migrations ./leaderboardscoringapp/repository/database/migrations
 
 EXPOSE 8080
 
