@@ -8,19 +8,16 @@ import (
 	types "github.com/gocasters/rankr/type"
 
 	"github.com/labstack/echo/v4"
-	"log/slog"
 	"net/http"
 )
 
 type Handler struct {
 	ContributorService contributor.Service
-	Logger             *slog.Logger
 }
 
-func NewHandler(contributorSrv contributor.Service, logger *slog.Logger) Handler {
+func NewHandler(contributorSrv contributor.Service) Handler {
 	return Handler{
 		ContributorService: contributorSrv,
-		Logger:             logger,
 	}
 }
 

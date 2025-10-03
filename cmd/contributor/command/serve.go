@@ -92,7 +92,7 @@ func serve() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	app, _ := contributorapp.Setup(ctx, cfg, conn, contributorLogger)
+	app, _ := contributorapp.Setup(ctx, cfg, conn)
 	app.Start()
 }
 

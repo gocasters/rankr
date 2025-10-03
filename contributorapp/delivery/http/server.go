@@ -12,11 +12,10 @@ type Server struct {
 	logger     *slog.Logger
 }
 
-func New(server httpserver.Server, handler Handler, logger *slog.Logger) Server {
+func New(server httpserver.Server, handler Handler) Server {
 	return Server{
 		HTTPServer: server,
 		Handler:    handler,
-		logger:     logger,
 	}
 }
 
