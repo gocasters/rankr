@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package leaderboardstat.v1;
+
+option go_package = "protobuf/golang/leaderboardstat";
+
+message ContributorStatResponse {
+  int64 contributor_id = 1;
+  int64 global_rank = 2;
+  double total_score = 3;
+  map<string, double> projects_score = 4;
+}
+
+message ContributorStatRequest{
+  int64 contributor_id = 1;
+}
+
+service LeaderboardStatService{
+  rpc GetContributorTotalStats(ContributorStatRequest) returns (ContributorStatResponse);
+}
