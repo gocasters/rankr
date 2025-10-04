@@ -1,0 +1,26 @@
+services:
+  userprofileapp:
+    build:
+      context: .
+      dockerfile: ./deploy/userprofile/development/Dockerfile
+      args:
+        GO_IMAGE_NAME: ${GO_IMAGE_NAME}
+        GO_IMAGE_VERSION: ${GO_IMAGE_VERSION}
+    container_name: userprofileapp
+    ports:
+      - "5005:5004"
+    environment:
+      # gRPC clients
+      CONTRIBUTOR_SERVICE_HOST: "contributorapp"
+      CONTRIBUTOR_SERVICE_PORT: 6001
+      TASK_SERVICE_HOST: "taskapp"
+      TASK_SERVICE_PORT: 6002
+      LEADERBOARD_SERVICE_HOST: "leaderboardstatapp"
+      LEADERBOARD_SERVICE_PORT: 6011
+
+#    depends_on:
+#      - contributorapp
+#      - taskapp
+#     - leaderboardapp
+    volumes:
+      - ./logs/userprofile:/home/app/logs/userprofile
