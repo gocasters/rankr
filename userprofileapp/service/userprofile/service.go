@@ -20,7 +20,7 @@ type TaskRPC interface {
 }
 
 type LeaderboardStatRPC interface {
-	GetUserStat(ctx context.Context, userID int64) (ContributorStat, error)
+	GetContributorStat(ctx context.Context, userID int64) (ContributorStat, error)
 }
 
 type Service struct {
@@ -49,7 +49,7 @@ func (s Service) GetUserProfile(ctx context.Context, contributorID int64) (*Prof
 		return nil, err
 	}
 
-	contributorStat, err := s.rpcRepo.GetUserStat(ctx, contributorID)
+	contributorStat, err := s.rpcRepo.GetContributorStat(ctx, contributorID)
 	if err != nil {
 		logger.L().Error("userprofile-get-user-profile", "error: ", err)
 		return nil, err
