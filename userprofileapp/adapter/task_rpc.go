@@ -2,7 +2,6 @@ package adapter
 
 import (
 	"context"
-	"fmt"
 	"github.com/gocasters/rankr/userprofileapp/service/userprofile"
 )
 
@@ -12,8 +11,10 @@ func newTasksRPC() tasksRPC {
 	return tasksRPC{}
 }
 
+// GetTasks fetches contributor's tasks
+// TODO: Implement actual RPC call to taskapp
 func (a tasksRPC) GetTasks(ctx context.Context, userID int64) ([]userprofile.Task, error) {
 	// TODO: Implement me
 
-	return nil, fmt.Errorf("implement me. userprofileapp/adapter/task_rpc.go GetTasks")
+	return []userprofile.Task{}, nil
 }
