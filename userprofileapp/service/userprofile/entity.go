@@ -32,7 +32,7 @@ type ContributorStat struct {
 }
 
 type Profile struct {
-	ContributorInfo ContributorInfo `json:"contributor"`
+	ContributorInfo ContributorInfo `json:"contributor_info"`
 	Tasks           []Task          `json:"task"`
 	ContributorStat ContributorStat `json:"contributor_stat"`
 }

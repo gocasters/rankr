@@ -20,14 +20,14 @@ type Application struct {
 	Validator  userprofile.Validator
 	RPCAdapter adapter.RPCAdapter
 	Service    userprofile.Service
-	Handler    http.Handler
+	Handler    *http.Handler
 	HTTPServer http.Server
 	Config     Config
 }
 
 func Setup(cfg Config) (Application, error) {
 	rpcAdapter := adapter.NewRPCAdapter()
-	validator := userprofile.New(rpcAdapter)
+	validator := userprofile.NewValidator(rpcAdapter)
 	service := userprofile.NewService(rpcAdapter, validator)
 	handler := http.NewHandler(service)
 

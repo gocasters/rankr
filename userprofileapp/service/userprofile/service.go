@@ -35,7 +35,7 @@ func NewService(rpcRepo RPCRepository, validator Validator) Service {
 	}
 }
 
-func (s Service) GetUserProfile(ctx context.Context, contributorID int64) (*ProfileResponse, error) {
+func (s Service) ContributorProfile(ctx context.Context, contributorID int64) (*ProfileResponse, error) {
 
 	contributorInfo, err := s.rpcRepo.GetProfileInfo(ctx, contributorID)
 	if err != nil {

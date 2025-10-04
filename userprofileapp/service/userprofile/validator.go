@@ -4,6 +4,6 @@ type ValidatorUserProfileRepository interface{}
 
 type Validator struct{}
 
-func New(repo ValidatorUserProfileRepository) Validator {
+func NewValidator(repo ValidatorUserProfileRepository) Validator {
 	return Validator{}
 }

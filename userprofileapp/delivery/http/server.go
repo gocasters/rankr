@@ -7,10 +7,10 @@ import (
 
 type Server struct {
 	HTTPServer *httpserver.Server
-	Handler    Handler
+	Handler    *Handler
 }
 
-func New(httpServer *httpserver.Server, handler Handler) Server {
+func New(httpServer *httpserver.Server, handler *Handler) Server {
 	return Server{HTTPServer: httpServer, Handler: handler}
 }
 
@@ -32,5 +32,5 @@ func (s Server) registerRoutes() {
 
 	v1.GET("/health_check", s.healthCheck)
 
-	v1.GET("/profile", s.profile)
+	v1.GET("/profile/:id", s.profile)
 }

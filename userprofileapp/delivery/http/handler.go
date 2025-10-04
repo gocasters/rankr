@@ -14,8 +14,8 @@ type Handler struct {
 	service userprofile.Service
 }
 
-func NewHandler(srv userprofile.Service) Handler {
-	return Handler{service: srv}
+func NewHandler(srv userprofile.Service) *Handler {
+	return &Handler{service: srv}
 }
 
 func (s Server) profile(c echo.Context) error {
@@ -33,7 +33,7 @@ func (s Server) profile(c echo.Context) error {
 		})
 	}
 
-	profileResponse, err := s.Handler.service.GetUserProfile(c.Request().Context(), int64(userID))
+	profileResponse, err := s.Handler.service.ContributorProfile(c.Request().Context(), int64(userID))
 	if err != nil {
 		if vErr, ok := err.(validator.Error); ok {
 			return c.JSON(vErr.StatusCode(), vErr)
