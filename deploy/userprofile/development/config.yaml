@@ -3,7 +3,7 @@ total_shutdown_timeout: "15s"
 
 # ===== HTTP Server =====
 http_server:
-  port: 80
+  port: 5004
   cors:
     allow_origins: "*"
   shutdown_context_timeout: "10s"

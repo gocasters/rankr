@@ -81,7 +81,7 @@ func startServers(app Application, wg *sync.WaitGroup) {
 		userProfileLogger.Info(fmt.Sprintf("HTTP server starting on port %d", app.Config.HTTPServer.Port))
 		if err := app.HTTPServer.Serve(); err != nil {
 			userProfileLogger.Error(fmt.Sprintf("error listen and serve http server on port %d",
-				&app.Config.HTTPServer.Port), "error", err)
+				app.Config.HTTPServer.Port), "error", err)
 		}
 
 		userProfileLogger.Info(fmt.Sprintf("Http server stopped on port %d", app.Config.HTTPServer.Port))

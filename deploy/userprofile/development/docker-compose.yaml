@@ -8,7 +8,7 @@ services:
         GO_IMAGE_VERSION: ${GO_IMAGE_VERSION}
     container_name: userprofileapp
     ports:
-      - "5005:80"
+      - "5005:5004"
     environment:
       # gRPC clients
       CONTRIBUTOR_SERVICE_HOST: "contributorapp"
