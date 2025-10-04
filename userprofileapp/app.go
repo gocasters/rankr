@@ -25,7 +25,7 @@ type Application struct {
 	Config     Config
 }
 
-func Setup(cfg Config) (Application, error) {
+func Setup(ctx context.Context, cfg Config) (Application, error) {
 	rpcAdapter := adapter.NewRPCAdapter()
 	validator := userprofile.NewValidator(rpcAdapter)
 	service := userprofile.NewService(rpcAdapter, validator)
