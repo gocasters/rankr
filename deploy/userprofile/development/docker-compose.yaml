@@ -18,9 +18,9 @@ services:
       LEADERBOARD_SERVICE_HOST: "leaderboardstatapp"
       LEADERBOARD_SERVICE_PORT: 6011
 
-    depends_on:
-      - contributorapp
-      - taskapp
-      - leaderboardapp
+#    depends_on:
+#      - contributorapp
+#      - taskapp
+#     - leaderboardapp
     volumes:
       - ./logs/userprofile:/home/app/logs/userprofile
