@@ -5,6 +5,12 @@ import (
 	"github.com/gocasters/rankr/pkg/logger"
 )
 
+type RPCRepository interface {
+	ContributorRPC
+	TaskRPC
+	LeaderboardStatRPC
+}
+
 type ContributorRPC interface {
 	GetProfileInfo(ctx context.Context, userID int64) (ContributorInfo, error)
 }
@@ -18,36 +24,32 @@ type LeaderboardStatRPC interface {
 }
 
 type Service struct {
-	contributorRPC ContributorRPC
-	taskPRC        TaskRPC
-	leaderboardRPC LeaderboardStatRPC
-	validator      Validator
+	rpcRepo   RPCRepository
+	validator Validator
 }
 
-func NewService(contributorRPC ContributorRPC, taskRPC TaskRPC, leaderboardRPC LeaderboardStatRPC, validator Validator) Service {
+func NewService(rpcRepo RPCRepository, validator Validator) Service {
 	return Service{
-		contributorRPC: contributorRPC,
-		taskPRC:        taskRPC,
-		leaderboardRPC: leaderboardRPC,
-		validator:      validator,
+		rpcRepo:   rpcRepo,
+		validator: validator,
 	}
 }
 
 func (s Service) GetUserProfile(ctx context.Context, contributorID int64) (*ProfileResponse, error) {
 
-	contributorInfo, err := s.contributorRPC.GetProfileInfo(ctx, contributorID)
+	contributorInfo, err := s.rpcRepo.GetProfileInfo(ctx, contributorID)
 	if err != nil {
 		logger.L().Error("userprofile-get-user-profile", "error: ", err)
 		return nil, err
 	}
 
-	tasks, err := s.taskPRC.GetTasks(ctx, contributorID)
+	tasks, err := s.rpcRepo.GetTasks(ctx, contributorID)
 	if err != nil {
 		logger.L().Error("userprofile-get-user-profile", "error: ", err)
 		return nil, err
 	}
 
-	contributorStat, err := s.leaderboardRPC.GetUserStat(ctx, contributorID)
+	contributorStat, err := s.rpcRepo.GetUserStat(ctx, contributorID)
 	if err != nil {
 		logger.L().Error("userprofile-get-user-profile", "error: ", err)
 		return nil, err
