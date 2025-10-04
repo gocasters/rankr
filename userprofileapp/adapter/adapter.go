@@ -20,13 +20,13 @@ func NewRPCAdapter() RPCAdapter {
 }
 
 func (a RPCAdapter) GetTasks(ctx context.Context, userID int64) ([]userprofile.Task, error) {
-	return a.tasksRPC.GetTasks(ctx, userID)
+	return a.tasksRPC.getTasks(ctx, userID)
 }
 
 func (a RPCAdapter) GetProfileInfo(ctx context.Context, userID int64) (userprofile.ContributorInfo, error) {
-	return a.contributorInfoRPC.GetProfileInfo(ctx, userID)
+	return a.contributorInfoRPC.getProfileInfo(ctx, userID)
 }
 
 func (a RPCAdapter) GetContributorStat(ctx context.Context, userID int64) (userprofile.ContributorStat, error) {
-	return a.contributorStatRPC.GetContributorStat(ctx, userID)
+	return a.contributorStatRPC.getContributorStat(ctx, userID)
 }

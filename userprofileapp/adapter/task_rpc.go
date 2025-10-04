@@ -11,10 +11,10 @@ func newTasksRPC() tasksRPC {
 	return tasksRPC{}
 }
 
-// GetTasks fetches contributor's tasks
+// getTasks fetches contributor's tasks
 // TODO: Implement actual RPC call to taskapp
-func (a tasksRPC) GetTasks(ctx context.Context, userID int64) ([]userprofile.Task, error) {
-	// TODO: Implement me
+func (a tasksRPC) getTasks(ctx context.Context, userID int64) ([]userprofile.Task, error) {
+	// Placeholder implementation
 
 	return []userprofile.Task{}, nil
 }
