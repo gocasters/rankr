@@ -4,6 +4,5 @@ FROM postgres:17.2-alpine
 COPY init-db.sql /docker-entrypoint-initdb.d/
 
 # Set environment variables
-ENV POSTGRES_DB=rankr_db
 ENV POSTGRES_USER=rankr_admin
 ENV POSTGRES_PASSWORD=rankr_password_123

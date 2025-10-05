@@ -1,3 +1,8 @@
+networks:
+  rankr-net:
+    name: rankr-development-network
+    external: true
+
 services:
   rankr-shared-postgres:
     image: postgres:17.2-alpine
@@ -9,8 +14,10 @@ services:
     ports:
       - "5438:5432"
     volumes:
-      - ./deploy/infrastructure/postgres/development/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+      - ${PWD}/deploy/infrastructure/postgres/development/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
       - rankr-shared-data:/var/lib/postgresql/data
+    networks:
+      - rankr-net
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U rankr_admin -d postgres"]
       interval: 10s

@@ -5,6 +5,8 @@ services:
       dockerfile: ./deploy/leaderboardstat/development/Dockerfile
     image: rankr-leaderboardstat:development
     command: /bin/leaderboardstat serve --migrate-up
+    networks:
+      - rankr-net
     depends_on:
       rankr-shared-postgres:
         condition: service_healthy
@@ -15,6 +17,11 @@ services:
     ports:
       - "6011:6011"
     restart: unless-stopped
+
+networks:
+  rankr-net:
+    name: rankr-development-network
+    external: true
 
 volumes:
   leaderboardstat-data:

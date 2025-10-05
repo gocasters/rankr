@@ -1,7 +1,10 @@
 #! /bin/bash
 
+./deploy/setup-network.bash
+
 cp ./deploy/development/traefik/overrides/dynamic.contributor-middleware.yml ./deploy/development/traefik/dynamic/dynamic.yml
 
+# Start infrastructure services first
 docker compose \
 --env-file ./deploy/.env \
 --project-directory . \
@@ -15,6 +18,25 @@ docker compose \
 -f ./deploy/development/prometheus-compose.yml \
 -f ./deploy/development/pgadmin-compose.yml \
 -f ./deploy/development/traefik-compose.yml \
+-f ./deploy/development/nats-compose.yml \
+"$@" up -d
+
+# Wait for infrastructure to be healthy
+sleep 15
+
+# Start application services
+docker compose \
+--env-file ./deploy/.env \
+--project-directory . \
+-f ./deploy/infrastructure/postgres/development/docker-compose.yml \
+-f ./deploy/development/rabbitmq-compose.yml \
+-f ./deploy/development/grafana-compose.yml \
+-f ./deploy/development/jaeger-compose.yml \
+-f ./deploy/development/centrifugo-compose.yml \
+-f ./deploy/development/emqx-compose.yml \
+-f ./deploy/development/otel_collector-compose.yml \
+-f ./deploy/development/prometheus-compose.yml \
+-f ./deploy/development/pgadmin-compose.yml \
 -f ./deploy/development/traefik-compose.yml \
 -f ./deploy/development/nats-compose.yml \
 -f ./deploy/argus/development/docker-compose.yaml \
