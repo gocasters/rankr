@@ -16,6 +16,9 @@ chmod +x ./deploy/setup-network.bash
 
 # Show containers logs
 ./deploy/docker-compose-dev.bash logs
+
+# Show an specific container logs
+./deploy/docker-compose-dev.bash logs leaderboardstat-service
 ```
 
 
