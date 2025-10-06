@@ -4,8 +4,11 @@ import (
 	"context"
 	"fmt"
 	"github.com/gocasters/rankr/adapter/redis"
+	"github.com/gocasters/rankr/adapter/webhook/github"
 	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/webhookapp/repository"
+	"github.com/gocasters/rankr/webhookapp/schedule/recovery"
+	"github.com/gocasters/rankr/webhookapp/service/delivery"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -15,19 +18,18 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill/message"
 
+	"github.com/go-co-op/gocron"
 	"github.com/gocasters/rankr/pkg/httpserver"
 	"github.com/gocasters/rankr/webhookapp/delivery/http"
-	"github.com/gocasters/rankr/webhookapp/service"
-
-	"github.com/go-co-op/gocron"
 )
 
 type Application struct {
-	HTTPServer http.Server
-	EventRepo  service.EventRepository
-	Logger     *slog.Logger
-	Config     Config
-	Sch        *gocron.Scheduler
+	HTTPServer        http.Server
+	EventRepo         delivery.EventRepository
+	Logger            *slog.Logger
+	Config            Config
+	Sch               *gocron.Scheduler
+	RecoveryScheduler *recovery.LostDeliveriesScheduler
 }
 
 // Setup builds and returns an Application configured with the provided config, logger,
@@ -44,18 +46,26 @@ func Setup(config Config, logger *slog.Logger, conn *database.Database, pub mess
 	if err != nil {
 		panic(err)
 	}
+	deliveryService := delivery.New(&eventRepo, pub, &eventDurableRepo, config.InsertQueueName, config.InsertBatchSize)
 	appHttpServer := http.New(
 		httpService,
 		http.NewHandler(logger),
-		service.New(&eventRepo, pub, &eventDurableRepo, config.InsertQueueName, config.InsertBatchSize),
+		deliveryService,
+	)
+
+	recoveryScheduler := recovery.NewSchedulerService(
+		config.RecoveryConfig,
+		*deliveryService,
+		github.NewGitHubClient(),
 	)
 
 	return Application{
-		HTTPServer: appHttpServer,
-		EventRepo:  &eventRepo,
-		Logger:     logger,
-		Config:     config,
-		Sch:        gocron.NewScheduler(time.UTC),
+		HTTPServer:        appHttpServer,
+		EventRepo:         &eventRepo,
+		Logger:            logger,
+		Config:            config,
+		Sch:               gocron.NewScheduler(time.UTC),
+		RecoveryScheduler: recoveryScheduler,
 	}
 }
 
@@ -65,10 +75,15 @@ func (app Application) Start() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	done := make(chan bool)
+
 	startServers(app, &wg)
 	runSchedules(app, ctx, &wg)
+	startRecoveryScheduler(app, done, &wg)
 	<-ctx.Done()
 	app.Logger.Info("✅ Shutdown signal received...")
+
+	close(done)
 
 	shutdownTimeoutCtx, cancel := context.WithTimeout(context.Background(), app.Config.TotalShutdownTimeout)
 	defer cancel()
@@ -79,6 +94,8 @@ func (app Application) Start() {
 		app.Logger.Warn("❌ Shutdown timed out, exiting application")
 		os.Exit(1)
 	}
+
+	wg.Wait()
 	app.Logger.Info("✅ webhook-app stopped")
 
 }
@@ -179,4 +196,13 @@ func runSchedules(app Application, ctx context.Context, wg *sync.WaitGroup) {
 		app.Sch.Stop()
 		app.Logger.Info("✅ Scheduler stopped gracefully")
 	}()
+}
+
+func startRecoveryScheduler(app Application, done <-chan bool, wg *sync.WaitGroup) {
+	wg.Add(1)
+	app.Logger.Info("🚀 Starting recovery scheduler",
+		slog.Int("interval_seconds", app.Config.RecoveryConfig.RecoveryLostDeliveriesIntervalInSeconds),
+		slog.Int("webhooks_count", len(app.Config.RecoveryConfig.Webhooks)))
+
+	go app.RecoveryScheduler.Start(done, wg)
 }

@@ -4,6 +4,7 @@ import (
 	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/pkg/logger"
+	"github.com/gocasters/rankr/webhookapp/schedule/recovery"
 	"time"
 
 	"github.com/gocasters/rankr/pkg/httpserver"
@@ -21,6 +22,7 @@ type Config struct {
 	InsertQueueName                   string            `koanf:"insert_queue_name"`
 	InsertBatchSize                   int64             `koanf:"insert_batch_size"`
 	BulkInsertEventsIntervalInSeconds int               `koanf:"bulk_insert_events_interval_in_seconds"`
+	RecoveryConfig                    recovery.Config   `koanf:"recovery_config"`
 }
 
 type NATSConfig struct {

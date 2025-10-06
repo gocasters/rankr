@@ -1,4 +1,4 @@
-package service
+package delivery
 
 import (
 	"context"
@@ -14,6 +14,7 @@ import (
 type EventRepository interface {
 	Save(ctx context.Context, event *eventpb.Event) error
 	BulkInsertPostgresSQL(ctx context.Context, events []string) ([]*eventpb.Event, error)
+	GetLostDeliveries(ctx context.Context, provider eventpb.EventProvider, deliveries []string) ([]string, error)
 }
 type EventDurableRepository interface {
 	GetRedisClient() *redis.Client
@@ -132,4 +133,8 @@ func (s *Service) ProcessBatch(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (s *Service) GetLostDeliveries(ctx context.Context, provider eventpb.EventProvider, deliveries []string) ([]string, error) {
+	return s.repo.GetLostDeliveries(ctx, provider, deliveries)
 }

@@ -44,6 +44,24 @@ redis:
   password: ""
   db: 0
 
+recovery_config:
+  recovery_lost_deliveries_interval_in_seconds: 300
+  batch_size: 50
+  delivery_per_page: 100
+  webhooks:
+    - repo: "my-repo-1"
+      owner: "user1"
+      hook_id: "hook123"
+      token: "token123"
+    - repo: "my-repo-2"
+      owner: "user2"
+      hook_id: "hook456"
+      token: "token456"
+    - repo: "my-repo-3"
+      owner: "org1"
+      hook_id: "hook789"
+      token: "token789"
+
 insert_queue_name: "webhook_insert_event"
 insert_batch_size: 30
 bulk_insert_events_interval_in_seconds: 5
