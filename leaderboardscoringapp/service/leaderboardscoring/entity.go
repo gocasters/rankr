@@ -93,11 +93,11 @@ type LeaderboardQueryResult struct {
 }
 
 type ProcessedScoreEvent struct {
-	ID        uint64
-	UserID    string
-	EventName EventName
-	Score     int64
-	Timestamp time.Time
+	ID        uint64    `json:"id"`
+	UserID    string    `json:"user_id"`
+	EventName EventName `json:"event_name"`
+	Score     int64     `json:"score"`
+	Timestamp time.Time `json:"timestamp"`
 }
 
 type UserTotalScore struct {

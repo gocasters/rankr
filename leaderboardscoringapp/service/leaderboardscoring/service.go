@@ -2,9 +2,9 @@ package leaderboardscoring
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/gocasters/rankr/leaderboardscoringapp/repository/queue"
 	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/gocasters/rankr/pkg/timettl"
 	"log/slog"
@@ -24,38 +24,38 @@ type LeaderboardCache interface {
 	GetLeaderboard(ctx context.Context, leaderboard *LeaderboardQuery) (LeaderboardQueryResult, error)
 }
 
-// EventQueue = generic queue for processed events
-type EventQueue interface {
-	Enqueue(ctx context.Context, event ProcessedScoreEvent) error
-	GetAll() []ProcessedScoreEvent
-	Clear()
-	Size() int
+// Publisher interface for publishing processed events
+type Publisher interface {
+	Publish(ctx context.Context, subject string, data []byte) error
 }
 
 type Service struct {
 	eventPersistence EventPersistence
 	leaderboard      LeaderboardCache
-	eventQueue       *queue.MemoryQueue[ProcessedScoreEvent]
+	publisher        Publisher
+	topic            string
 	validator        Validator
 }
 
 func NewService(
 	persistence EventPersistence,
 	leaderboard LeaderboardCache,
-	eventQueue *queue.MemoryQueue[ProcessedScoreEvent],
+	publisher Publisher,
+	topic string,
 	validator Validator,
 ) *Service {
 	return &Service{
 		eventPersistence: persistence,
 		leaderboard:      leaderboard,
-		eventQueue:       eventQueue,
+		publisher:        publisher,
+		topic:            topic,
 		validator:        validator,
 	}
 }
 
 // ProcessScoreEvent handles only the critical, real-time login.
 func (s *Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) error {
-	logger := logger.L()
+	log := logger.L()
 
 	if err := s.validator.ValidateEvent(req); err != nil {
 		return errors.Join(ErrInvalidEventRequest, err)
@@ -63,48 +63,31 @@ func (s *Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) erro
 
 	score := s.calculateScore(req)
 	if score == nil {
-		logger.Debug("unsupported event payload; skipping", slog.String("event_id", req.ID))
+		log.Debug("unsupported event payload; skipping", slog.String("event_id", req.ID))
 		return nil
 	}
 
+	// Update Redis leaderboard (real-time)
 	if err := s.leaderboard.UpsertScores(ctx, score); err != nil {
-		logger.Error(ErrFailedToUpdateScores.Error(), slog.String("error", err.Error()))
+		log.Error(ErrFailedToUpdateScores.Error(), slog.String("error", err.Error()))
 		return errors.Join(ErrFailedToUpdateScores, err)
 	}
 
-	if err := s.eventQueue.Enqueue(ctx, ProcessedScoreEvent{
+	// Publish to NATS JetStream for batch persistence
+	pse := ProcessedScoreEvent{
 		UserID:    score.UserID,
 		EventName: req.EventName,
 		Score:     score.Score,
 		Timestamp: time.Now(),
-	}); err != nil {
-		logger.Error("failed to enqueue processed score event", slog.String("error", err.Error()))
-		return err
 	}
 
-	logger.Debug(MsgSuccessfullyProcessedEvent, slog.String("event_id", req.ID))
-
-	return nil
-}
-
-// ProcessEventQueue is a job method triggered by the scheduler.
-// Its responsibility is to take all objects from the Event queue
-// and send them to the repository layer for persistence.
-// If the repository operation succeeds, the queue is cleared.
-// If an error occurs, the queue remains intact for retry.
-func (s *Service) ProcessEventQueue(ctx context.Context) error {
-	items := s.eventQueue.GetAll()
-	if len(items) == 0 {
-		return nil
+	dataMsg, _ := json.Marshal(pse)
+	if err := s.publisher.Publish(ctx, s.topic, dataMsg); err != nil {
+		log.Error("failed to publish processed score event", slog.String("error", err.Error()))
+		return fmt.Errorf("publish event: %w", err)
 	}
 
-	err := s.eventPersistence.AddProcessedScoreEvents(ctx, items)
-	if err != nil {
-		return err // queue remains intact
-	}
-
-	// successful persistence -> clear the queue
-	s.eventQueue.Clear()
+	log.Debug(MsgSuccessfullyProcessedEvent, slog.String("event_id", req.ID))
 	return nil
 }
 
