@@ -157,7 +157,7 @@ func startRecoveryScheduler(app Application, done <-chan bool, wg *sync.WaitGrou
 
 func startBulkInsertScheduler(app Application, done <-chan bool, wg *sync.WaitGroup) {
 	wg.Add(1)
-	logger.L().Info("🚀 Starting recovery scheduler",
+	logger.L().Info("🚀 Starting bulk insert scheduler",
 		slog.Int("interval_seconds", app.Config.BulkInsertConfig.BulkInsertIntervalInSeconds),
 	)
 

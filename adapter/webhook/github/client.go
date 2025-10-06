@@ -42,7 +42,9 @@ func (c *GitHubClient) GetDeliveries(webhookConfig recovery.WebhookConfig, page 
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch deliveries: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -66,7 +68,9 @@ func (c *GitHubClient) ReattemptDelivery(webhookConfig recovery.WebhookConfig, d
 	if err != nil {
 		return fmt.Errorf("failed to reattempt delivery: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		_ = Body.Close()
+	}(resp.Body)
 
 	if resp.StatusCode != http.StatusAccepted && resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
