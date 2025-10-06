@@ -62,6 +62,8 @@ recovery_config:
       hook_id: "hook789"
       token: "token789"
 
+bulk_insert_config:
+  bulk_insert_interval_in_seconds: 5
+
 insert_queue_name: "webhook_insert_event"
 insert_batch_size: 30
-bulk_insert_events_interval_in_seconds: 5
