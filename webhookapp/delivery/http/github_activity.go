@@ -3,6 +3,7 @@ package http
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/gocasters/rankr/pkg/logger"
 	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 	"github.com/gocasters/rankr/webhookapp/service/delivery"
 	"github.com/labstack/echo/v4"
@@ -57,11 +58,9 @@ func (s *Server) PublishGithubActivity(c echo.Context) error {
 	}
 
 	if eventError != nil {
-		if s.Handler.Logger != nil {
-			s.Handler.Logger.Error("Failed to handle event",
-				"err", eventError, "event", eventName,
-				"delivery", deliveryUID, "action", webhookAction)
-		}
+		logger.L().Error("Failed to handle event",
+			"err", eventError, "event", eventName,
+			"delivery", deliveryUID, "action", webhookAction)
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": fmt.Sprintf("Failed to handle event. Event Type: %s", eventName),
 		})

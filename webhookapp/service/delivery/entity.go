@@ -1,7 +1,6 @@
 package delivery
 
 import (
-	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 	"time"
 )
 
@@ -255,24 +254,3 @@ const (
 	TopicGithubReview       Topic = "github.reviews"
 	TopicGithubPush         Topic = "github.pushes"
 )
-
-// //////////////////////////////////
-type GitHubDelivery struct {
-	ID             int64     `json:"id"`
-	GUID           string    `json:"guid"`
-	DeliveredAt    time.Time `json:"delivered_at"`
-	Redelivery     bool      `json:"redelivery"`
-	Duration       float64   `json:"duration"`
-	Status         string    `json:"status"`
-	StatusCode     int       `json:"status_code"`
-	Event          string    `json:"event"`
-	Action         string    `json:"action,omitempty"`
-	InstallationID *int64    `json:"installation_id,omitempty"`
-	RepositoryID   *int64    `json:"repository_id,omitempty"`
-}
-
-type DeliveryComparison struct {
-	MissingDeliveries []GitHubDelivery
-	FailedDeliveries  []GitHubDelivery
-	ExtraEvents       []*eventpb.Event
-}

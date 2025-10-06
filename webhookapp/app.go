@@ -6,7 +6,9 @@ import (
 	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/adapter/webhook/github"
 	"github.com/gocasters/rankr/pkg/database"
+	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/gocasters/rankr/webhookapp/repository"
+	"github.com/gocasters/rankr/webhookapp/schedule/insert"
 	"github.com/gocasters/rankr/webhookapp/schedule/recovery"
 	"github.com/gocasters/rankr/webhookapp/service/delivery"
 	"log/slog"
@@ -14,22 +16,19 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
-	"time"
 
 	"github.com/ThreeDotsLabs/watermill/message"
 
-	"github.com/go-co-op/gocron"
 	"github.com/gocasters/rankr/pkg/httpserver"
 	"github.com/gocasters/rankr/webhookapp/delivery/http"
 )
 
 type Application struct {
-	HTTPServer        http.Server
-	EventRepo         delivery.EventRepository
-	Logger            *slog.Logger
-	Config            Config
-	Sch               *gocron.Scheduler
-	RecoveryScheduler *recovery.LostDeliveriesScheduler
+	HTTPServer          http.Server
+	EventRepo           delivery.EventRepository
+	Config              Config
+	RecoveryScheduler   *recovery.LostDeliveriesScheduler
+	BulkInsertScheduler *insert.BulkInsertScheduler
 }
 
 // Setup builds and returns an Application configured with the provided config, logger,
@@ -39,7 +38,7 @@ type Application struct {
 // and delivery layer wired to a service using that repository and the publisher,
 // and returns an Application with HTTPServer, EventRepo, Logger, and Config populated.
 // Note: this function panics if initializing the HTTP service (httpserver.New) fails.
-func Setup(config Config, logger *slog.Logger, conn *database.Database, pub message.Publisher, redisAdapter *redis.Adapter) Application {
+func Setup(config Config, conn *database.Database, pub message.Publisher, redisAdapter *redis.Adapter) Application {
 	eventDurableRepo := repository.NewWebhookDurableRepository(redisAdapter)
 	eventRepo := repository.NewWebhookRepository(conn.Pool)
 	httpService, err := httpserver.New(config.HTTPServer)
@@ -49,7 +48,7 @@ func Setup(config Config, logger *slog.Logger, conn *database.Database, pub mess
 	deliveryService := delivery.New(&eventRepo, pub, &eventDurableRepo, config.InsertQueueName, config.InsertBatchSize)
 	appHttpServer := http.New(
 		httpService,
-		http.NewHandler(logger),
+		http.NewHandler(),
 		deliveryService,
 	)
 
@@ -59,13 +58,14 @@ func Setup(config Config, logger *slog.Logger, conn *database.Database, pub mess
 		github.NewGitHubClient(),
 	)
 
+	bulkInsertScheduler := insert.NewSchedulerService(config.BulkInsertConfig, *deliveryService)
+
 	return Application{
-		HTTPServer:        appHttpServer,
-		EventRepo:         &eventRepo,
-		Logger:            logger,
-		Config:            config,
-		Sch:               gocron.NewScheduler(time.UTC),
-		RecoveryScheduler: recoveryScheduler,
+		HTTPServer:          appHttpServer,
+		EventRepo:           &eventRepo,
+		Config:              config,
+		RecoveryScheduler:   recoveryScheduler,
+		BulkInsertScheduler: bulkInsertScheduler,
 	}
 }
 
@@ -78,10 +78,10 @@ func (app Application) Start() {
 	done := make(chan bool)
 
 	startServers(app, &wg)
-	runSchedules(app, ctx, &wg)
+	startBulkInsertScheduler(app, done, &wg)
 	startRecoveryScheduler(app, done, &wg)
 	<-ctx.Done()
-	app.Logger.Info("✅ Shutdown signal received...")
+	logger.L().Info("✅ Shutdown signal received...")
 
 	close(done)
 
@@ -89,14 +89,14 @@ func (app Application) Start() {
 	defer cancel()
 
 	if app.shutdownServers(shutdownTimeoutCtx) {
-		app.Logger.Info("✅ Servers shut down gracefully")
+		logger.L().Info("✅ Servers shut down gracefully")
 	} else {
-		app.Logger.Warn("❌ Shutdown timed out, exiting application")
+		logger.L().Warn("❌ Shutdown timed out, exiting application")
 		os.Exit(1)
 	}
 
 	wg.Wait()
-	app.Logger.Info("✅ webhook-app stopped")
+	logger.L().Info("✅ webhook-app stopped")
 
 }
 
@@ -104,16 +104,16 @@ func startServers(app Application, wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		app.Logger.Info(fmt.Sprintf("✅ HTTP server started on %d", app.Config.HTTPServer.Port))
+		logger.L().Info(fmt.Sprintf("✅ HTTP server started on %d", app.Config.HTTPServer.Port))
 		if err := app.HTTPServer.Serve(); err != nil {
-			app.Logger.Error(fmt.Sprintf("❌ error in HTTP server on %d", app.Config.HTTPServer.Port), slog.Any("error", err))
+			logger.L().Error(fmt.Sprintf("❌ error in HTTP server on %d", app.Config.HTTPServer.Port), slog.Any("error", err))
 		}
-		app.Logger.Info(fmt.Sprintf("✅ HTTP server stopped %d", app.Config.HTTPServer.Port))
+		logger.L().Info(fmt.Sprintf("✅ HTTP server stopped %d", app.Config.HTTPServer.Port))
 	}()
 }
 
 func (app Application) shutdownServers(ctx context.Context) bool {
-	app.Logger.Info("✅ Starting server shutdown process...")
+	logger.L().Info("✅ Starting server shutdown process...")
 	shutdownDone := make(chan struct{})
 
 	go func() {
@@ -123,7 +123,7 @@ func (app Application) shutdownServers(ctx context.Context) bool {
 
 		shutdownWg.Wait()
 		close(shutdownDone)
-		app.Logger.Info("✅ All servers have been shut down successfully.")
+		logger.L().Info("✅ All servers have been shut down successfully.")
 	}()
 
 	select {
@@ -135,74 +135,31 @@ func (app Application) shutdownServers(ctx context.Context) bool {
 }
 
 func (app Application) shutdownHTTPServer(parentCtx context.Context, wg *sync.WaitGroup) {
-	app.Logger.Info(fmt.Sprintf("✅ Starting graceful shutdown for HTTP server on port %d", app.Config.HTTPServer.Port))
+	logger.L().Info(fmt.Sprintf("✅ Starting graceful shutdown for HTTP server on port %d", app.Config.HTTPServer.Port))
 	defer wg.Done()
 	httpShutdownCtx, httpCancel := context.WithTimeout(parentCtx, app.Config.ShutDownCtxTimeout)
 	defer httpCancel()
 	if err := app.HTTPServer.Stop(httpShutdownCtx); err != nil {
-		app.Logger.Error(fmt.Sprintf("❌ HTTP server graceful shutdown failed: %v", err))
+		logger.L().Error(fmt.Sprintf("❌ HTTP server graceful shutdown failed: %v", err))
 	}
 
-	app.Logger.Info("✅ HTTP server shut down successfully.")
-}
-
-func (app Application) BulkInsertEvents() {
-	defer func() {
-		if r := recover(); r != nil {
-			app.Logger.Error("Panic recovered in bulk insert job",
-				slog.Any("recovery", r))
-		}
-	}()
-
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	defer cancel()
-
-	app.Logger.Info("🔄 Starting bulk insert processing...")
-
-	err := app.HTTPServer.Service.ProcessBatch(ctx)
-	if err != nil {
-		app.Logger.Error("Bulk insert job failed",
-			slog.Any("error", err),
-			slog.String("note", "job will retry on next schedule"))
-		return
-	}
-
-	app.Logger.Info("✅ Bulk insert job completed successfully")
-}
-
-func runSchedules(app Application, ctx context.Context, wg *sync.WaitGroup) {
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-
-		app.Sch.SingletonMode()
-		app.Sch.WaitForScheduleAll()
-
-		_, err := app.Sch.Every(app.Config.BulkInsertEventsIntervalInSeconds).Second().Do(app.BulkInsertEvents)
-		if err != nil {
-			app.Logger.Error("Failed to schedule bulk insert job", slog.Any("error", err))
-			return
-		}
-
-		app.Logger.Info("🚀 Scheduler started",
-			slog.Int("interval_seconds", app.Config.BulkInsertEventsIntervalInSeconds))
-
-		app.Sch.StartAsync()
-
-		<-ctx.Done()
-		app.Logger.Info("Shutdown signal received, stopping scheduler...")
-
-		// Stop scheduler gracefully
-		app.Sch.Stop()
-		app.Logger.Info("✅ Scheduler stopped gracefully")
-	}()
+	logger.L().Info("✅ HTTP server shut down successfully.")
 }
 
 func startRecoveryScheduler(app Application, done <-chan bool, wg *sync.WaitGroup) {
 	wg.Add(1)
-	app.Logger.Info("🚀 Starting recovery scheduler",
+	logger.L().Info("🚀 Starting recovery scheduler",
 		slog.Int("interval_seconds", app.Config.RecoveryConfig.RecoveryLostDeliveriesIntervalInSeconds),
 		slog.Int("webhooks_count", len(app.Config.RecoveryConfig.Webhooks)))
+
+	go app.RecoveryScheduler.Start(done, wg)
+}
+
+func startBulkInsertScheduler(app Application, done <-chan bool, wg *sync.WaitGroup) {
+	wg.Add(1)
+	logger.L().Info("🚀 Starting recovery scheduler",
+		slog.Int("interval_seconds", app.Config.BulkInsertConfig.BulkInsertIntervalInSeconds),
+	)
 
 	go app.RecoveryScheduler.Start(done, wg)
 }

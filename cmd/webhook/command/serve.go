@@ -191,6 +191,6 @@ func serve() {
 		lbLogger.Error("Failed to start redis adapter", slog.String("error", adErr.Error()))
 	}
 
-	app := webhookapp.Setup(cfg, lbLogger, databaseConn, publisher, adapter)
+	app := webhookapp.Setup(cfg, databaseConn, publisher, adapter)
 	app.Start()
 }
