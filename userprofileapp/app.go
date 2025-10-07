@@ -18,7 +18,7 @@ var userProfileLogger = logger.L()
 
 type Application struct {
 	Validator  userprofile.Validator
-	RPCAdapter adapter.RPCAdapter
+	RPCAdapter adapter.RPC
 	Service    userprofile.Service
 	Handler    *http.Handler
 	HTTPServer http.Server
@@ -26,9 +26,16 @@ type Application struct {
 }
 
 func Setup(ctx context.Context, cfg Config) (Application, error) {
-	rpcAdapter := adapter.NewRPCAdapter()
+	contributorInfoRPC := adapter.NewContributorInfoRPC()
+	contributorStatRPC := adapter.NewContributorStatRPC()
+	taskRPC := adapter.NewTaskRPC()
+
+	rpcAdapter := adapter.NewRPC(contributorInfoRPC, contributorStatRPC, taskRPC)
+
 	validator := userprofile.NewValidator(rpcAdapter)
+
 	service := userprofile.NewService(rpcAdapter, validator)
+
 	handler := http.NewHandler(service)
 
 	HTTPServer, err := httpserver.New(cfg.HTTPServer)

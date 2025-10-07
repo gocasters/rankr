@@ -5,15 +5,15 @@ import (
 	"github.com/gocasters/rankr/userprofileapp/service/userprofile"
 )
 
-type tasksRPC struct{}
+type TaskRPC struct{}
 
-func newTasksRPC() tasksRPC {
-	return tasksRPC{}
+func NewTaskRPC() TaskRPC {
+	return TaskRPC{}
 }
 
 // getTasks fetches contributor's tasks
 // TODO: Implement actual RPC call to taskapp
-func (a tasksRPC) getTasks(ctx context.Context, userID int64) ([]userprofile.Task, error) {
+func (a TaskRPC) getTasks(ctx context.Context, userID int64) ([]userprofile.Task, error) {
 	// Placeholder implementation
 
 	return []userprofile.Task{}, nil
