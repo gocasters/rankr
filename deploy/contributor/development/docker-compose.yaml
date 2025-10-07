@@ -26,6 +26,8 @@ services:
       - ALLOW_EMPTY_PASSWORD=yes
     profiles:
       - contributor
+    ports:
+      - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -51,6 +53,7 @@ services:
       - contributor-go-mod-cache:/go/pkg/mod
     profiles:
       - contributor
+
     labels:
       # routers with authentication
       - "traefik.enable=true"

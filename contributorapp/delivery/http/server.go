@@ -2,8 +2,9 @@ package http
 
 import (
 	"context"
-	"github.com/gocasters/rankr/pkg/httpserver"
 	"log/slog"
+
+	"github.com/gocasters/rankr/pkg/httpserver"
 )
 
 type Server struct {
@@ -36,6 +37,12 @@ func (s Server) RegisterRoutes() {
 	v1 := s.HTTPServer.GetRouter().Group("v1")
 
 	v1.GET("/health-check", s.healthCheck)
+
 	v1.GET("/profile", s.Handler.getProfile)
+
+	//This
+	v1.PUT("/profile", s.Handler.updateProfile)
+
+	v1.PUT("/profile", s.Handler.updateProfile)
 	v1.POST("/create", s.Handler.createContributor)
 }

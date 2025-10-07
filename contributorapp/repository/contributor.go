@@ -4,11 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log/slog"
+
 	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/contributorapp/service/contributor"
 	"github.com/gocasters/rankr/pkg/database"
-	"github.com/gocasters/rankr/type"
-	"log/slog"
+	types "github.com/gocasters/rankr/type"
 )
 
 type Config struct {
@@ -49,7 +50,6 @@ func (repo ContributorRepo) GetContributorByID(ctx context.Context, ID types.ID)
 		&contrib.Bio,
 		&contrib.CreatedAt,
 	)
-
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("result with id %d not found", ID)
@@ -59,6 +59,7 @@ func (repo ContributorRepo) GetContributorByID(ctx context.Context, ID types.ID)
 
 	return &contrib, nil
 }
+
 func (repo *ContributorRepo) CreateContributor(ctx context.Context, contributor contributor.Contributor) (*contributor.Contributor, error) {
 	query := `
     	INSERT INTO contributors (github_id, github_username, email , privacy_mode, display_name, profile_image, bio, created_at)
@@ -77,11 +78,50 @@ func (repo *ContributorRepo) CreateContributor(ctx context.Context, contributor 
 		contributor.Bio,
 		contributor.CreatedAt,
 	).Scan(&id)
-
 	if err != nil {
 		return nil, fmt.Errorf("failed to create contributor: %w", err)
 	}
 
 	contributor.ID = id
 	return &contributor, nil
+}
+
+func (repo *ContributorRepo) UpdateContributor(ctx context.Context, ID types.ID, contrib contributor.Contributor) (*contributor.Contributor, error) {
+	query := `
+			UPDATE contributors
+			SET
+				display_name = $1,
+				profile_image = $2,
+				bio = $3,
+				privacy_mode = $4,
+				updated_at = NOW()
+			WHERE id = $5
+			RETURNING id, github_id, github_username, email, is_verified, two_factor_enabled, privacy_mode, display_name, profile_image, bio, created_at, updated_at;
+
+`
+	row := repo.PostgreSQL.Pool.QueryRow(ctx, query, contrib.DisplayName, contrib.ProfileImage, contrib.Bio, contrib.PrivacyMode, ID)
+
+	var updatedContributor contributor.Contributor
+	err := row.Scan(
+		&updatedContributor.ID,
+		&updatedContributor.GitHubID,
+		&updatedContributor.GitHubUsername,
+		&updatedContributor.Email,
+		&updatedContributor.IsVerified,
+		&updatedContributor.TwoFactor,
+		&updatedContributor.PrivacyMode,
+		&updatedContributor.DisplayName,
+		&updatedContributor.ProfileImage,
+		&updatedContributor.Bio,
+		&updatedContributor.CreatedAt,
+		&updatedContributor.UpdatedAt,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("contributor with id %d not found", ID)
+		}
+		return nil, fmt.Errorf("error updating contributor with id: %d, error: %v", ID, err)
+	}
+
+	return &updatedContributor, nil
 }
