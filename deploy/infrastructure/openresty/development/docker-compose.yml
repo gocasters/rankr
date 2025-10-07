@@ -1,0 +1,15 @@
+version: "3"
+services:
+  nginx:
+    image: openresty/openresty:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf:ro
+      - ./conf.d:/etc/openresty/conf.d:ro
+    networks:
+      - rankr 
+networks:
+  rankr:
+    name: rankr
+    driver: bridge
