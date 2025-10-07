@@ -87,7 +87,7 @@ func Setup(ctx context.Context, config Config) *Application {
 	log.Info("NATS Watermill adapter initialized successfully")
 
 	// Initialize NATS native adapter (for processed events publishing/consumption)
-	natsAdapter, err := natsadapter.New(config.NatsAdapter)
+	natsAdapter, err := natsadapter.New(config.NatsAdapter, log)
 	if err != nil {
 		databaseConn.Close()
 		_ = redisAdapter.Close()

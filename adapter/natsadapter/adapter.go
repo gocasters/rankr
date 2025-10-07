@@ -66,24 +66,73 @@ type Config struct {
 	RetentionPolicy RetentionPolicyEnum `koanf:"retention_policy"`
 }
 
+func (c *Config) SetDefaults() {
+	if c.MaxReconnects == 0 {
+		c.MaxReconnects = 10
+	}
+	if c.ReconnectWait == 0 {
+		c.ReconnectWait = 2 * time.Second
+	}
+	if c.Replicas == 0 {
+		c.Replicas = 1
+	}
+	if c.StorageType == "" {
+		c.StorageType = StorageFile
+	}
+	if c.RetentionPolicy == "" {
+		c.RetentionPolicy = RetentionLimits
+	}
+}
+
+func (c *Config) Validate() []string {
+	var errors []string
+	if c.URL == "" {
+		errors = append(errors, "URL is required")
+	}
+	if c.StreamName == "" {
+		errors = append(errors, "StreamName is required")
+	}
+	if len(c.StreamSubjects) == 0 {
+		errors = append(errors, "StreamSubjects cannot be empty")
+	}
+	if c.MaxMessages < 0 {
+		errors = append(errors, "MaxMessages cannot be negative")
+	}
+	if c.MaxBytes < 0 {
+		errors = append(errors, "MaxBytes cannot be negative")
+	}
+	return errors
+}
+
+type Logger interface {
+	Info(msg string, fields ...interface{})
+	Error(msg string, fields ...interface{})
+}
+
 type Adapter struct {
 	conn   *nats.Conn
 	js     nats.JetStreamContext
 	config Config
+	logger Logger
 }
 
-func New(config Config) (*Adapter, error) {
+func New(config Config, logger Logger) (*Adapter, error) {
+	config.SetDefaults()
+	if errs := config.Validate(); len(errs) > 0 {
+		return nil, fmt.Errorf("invalid config: %v", errs)
+	}
+
 	opts := []nats.Option{
 		nats.RetryOnFailedConnect(true),
 		nats.MaxReconnects(config.MaxReconnects),
 		nats.ReconnectWait(config.ReconnectWait),
 		nats.DisconnectErrHandler(func(nc *nats.Conn, err error) {
 			if err != nil {
-				fmt.Printf("Disconnected from NATS: %v\n", err)
+				logger.Error("Disconnected from NATS", "error", err)
 			}
 		}),
 		nats.ReconnectHandler(func(nc *nats.Conn) {
-			fmt.Printf("Reconnected to NATS: %s\n", nc.ConnectedUrl())
+			logger.Info("Reconnected to NATS", "url", nc.ConnectedUrl())
 		}),
 	}
 
@@ -102,6 +151,7 @@ func New(config Config) (*Adapter, error) {
 		conn:   conn,
 		js:     js,
 		config: config,
+		logger: logger,
 	}
 
 	if err := adapter.ensureStream(); err != nil {
@@ -130,7 +180,7 @@ func (a *Adapter) ensureStream() error {
 		if err != nil {
 			return fmt.Errorf("create stream: %w", err)
 		}
-		fmt.Printf("Created stream: %s\n", a.config.StreamName)
+		a.logger.Info("Created stream", "name", a.config.StreamName)
 		return nil
 	}
 

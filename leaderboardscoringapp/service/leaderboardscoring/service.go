@@ -81,7 +81,12 @@ func (s *Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) erro
 		Timestamp: time.Now(),
 	}
 
-	dataMsg, _ := json.Marshal(pse)
+	dataMsg, mErr := json.Marshal(pse)
+	if mErr != nil {
+		log.Error("failed to marshal processed score event", slog.String("error", mErr.Error()))
+		return fmt.Errorf("marshal event: %w", mErr)
+	}
+
 	if err := s.publisher.Publish(ctx, s.topic, dataMsg); err != nil {
 		log.Error("failed to publish processed score event", slog.String("error", err.Error()))
 		return fmt.Errorf("publish event: %w", err)

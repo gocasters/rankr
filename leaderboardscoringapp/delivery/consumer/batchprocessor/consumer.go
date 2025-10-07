@@ -43,6 +43,13 @@ func (p *Processor) Start(ctx context.Context) error {
 	log := logger.L()
 	log.Info("Starting batch processor")
 
+	if p.config.TickInterval <= 0 {
+		return fmt.Errorf("invalid tick interval: must be > 0, got %s", p.config.TickInterval)
+	}
+	if p.config.MetricsInterval <= 0 {
+		return fmt.Errorf("invalid metrics interval: must be > 0, got %s", p.config.MetricsInterval)
+	}
+
 	ticker := time.NewTicker(p.config.TickInterval)
 	defer ticker.Stop()
 
