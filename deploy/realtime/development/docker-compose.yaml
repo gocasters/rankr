@@ -1,0 +1,64 @@
+services:
+  realtime-redis:
+    image: redis:8.0-M03-alpine3.21
+    restart: always
+    command: redis-server --loglevel warning --protected-mode no --save "" --appendonly no
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    profiles:
+      - realtime
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nats:
+    image: nats:2.10-alpine
+    restart: always
+    command: ["-js", "-m", "8222"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    profiles:
+      - realtime
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "4222"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  realtime-service:
+    build:
+      context: .
+      dockerfile: ./deploy/realtime/development/Dockerfile
+      args:
+        GO_IMAGE_NAME: ${GO_IMAGE_NAME}
+        GO_IMAGE_VERSION: ${GO_IMAGE_VERSION}
+    image: ${SERVICE_NAME}-realtime:${GO_IMAGE_NAME}-${GO_IMAGE_VERSION}
+    command: /bin/sh -c "air -c /home/app/.air/.air.realtime.toml"
+    depends_on:
+      realtime-redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+    volumes:
+      - ./:/home/app
+      - realtime-go-mod-cache:/go/pkg/mod
+    profiles:
+      - realtime
+    labels:
+      # routers for WebSocket and HTTP
+      - "traefik.enable=true"
+      - "traefik.http.routers.${SERVICE_NAME}_realtime.service=${SERVICE_NAME}_realtime"
+      - "traefik.http.routers.${SERVICE_NAME}_realtime.rule=Host(`${SERVICE_DOMAIN}`)&&PathPrefix(`/realtime`)"
+      - "traefik.http.routers.${SERVICE_NAME}_realtime.entrypoints=web"
+      - "traefik.http.services.${SERVICE_NAME}_realtime.loadbalancer.server.port=5009"
+
+      # middlewares
+      - "traefik.http.middlewares.${SERVICE_NAME}_strip_realtime.stripprefix.prefixes=/realtime"
+      - "traefik.http.routers.${SERVICE_NAME}_realtime.middlewares=${SERVICE_NAME}_strip_realtime"
+
+volumes:
+  realtime-data:
+  realtime-go-mod-cache:

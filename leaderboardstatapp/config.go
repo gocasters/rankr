@@ -4,6 +4,7 @@ import (
 	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/leaderboardstatapp/repository"
 	"github.com/gocasters/rankr/pkg/database"
+	"github.com/gocasters/rankr/pkg/grpc"
 	"github.com/gocasters/rankr/pkg/httpserver"
 	"github.com/gocasters/rankr/pkg/logger"
 	"time"
@@ -11,6 +12,7 @@ import (
 
 type Config struct {
 	HTTPServer           httpserver.Config `koanf:"http_server"`
+	RPCServer            grpc.ServerConfig `koanf:"rpc_server"`
 	PostgresDB           database.Config   `koanf:"postgres_db"`
 	Repository           repository.Config `koanf:"repository"`
 	Redis                redis.Config      `koanf:"redis"`

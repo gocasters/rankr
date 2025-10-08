@@ -27,7 +27,7 @@ redis:
   password: ""
   db: 0
 
-nats:
+watermill_nats:
   url: "nats://127.0.0.1:4222"
   client_id: "leaderboard-scoring"
   durable_name: "leaderboard-scoring-consumer"
@@ -49,7 +49,7 @@ logger:
   file_max_size_in_mb: 10
   file_max_age_in_days: 7
 
-consumer:
+raw_event_consumer:
   processed_key_ttl: 24h
   lock_key_ttl: 5m
   prefix_processed_key: "processed_events"
@@ -57,6 +57,37 @@ consumer:
 
 total_shutdown_timeout: 30s
 
-path_of_migration: "./leaderboardscoringapp/repository/migrations"
+path_of_migration: "./leaderboardscoringapp/repository/database/migrations"
 
-subscriber_topic: "CONTRIBUTION_REGISTERED"
+raw_event_subscriber_topic: "CONTRIBUTION_REGISTERED"
+
+database_retry:
+  max_retries: 3
+  retry_delay: 100ms
+
+nats_adapter:
+  url: "nats://localhost:4222"
+  stream_name: "SCORE_EVENTS"
+  max_reconnects: -1
+  reconnect_wait: 1s
+
+  # Stream settings
+  stream_subjects: [ "processed_score_events" ]
+  max_messages: 10000000
+  max_bytes: 10737418240
+  max_age: 24h
+  storage_type: "file" # "memory" → RAM
+  replicas: 1
+  retention_policy: "workqueue"
+
+pull_consumer:
+  subject: "processed_score_events"
+  durable_name: "batch-processor"
+  batch_size: 500
+  max_wait: 5s
+  max_deliver: 3
+  ack_wait: 30s
+
+batch_processor:
+  tick_interval: 10s
+  metrics_interval: 30s

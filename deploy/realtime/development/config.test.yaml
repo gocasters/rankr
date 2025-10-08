@@ -1,0 +1,28 @@
+total_shutdown_timeout: 15s
+
+http_server:
+  port: 8080
+  cors:
+    allow_origins: "*"
+  shutdown_context_timeout: "10s"
+
+redis:
+  host: localhost
+  port: 6379
+
+logger:
+  level: "info"
+  file_path: "logs/realtime/service.log"
+  use_local_time: true
+  file_max_size_in_mb: 10
+  file_max_age_in_days: 7
+
+nats:
+  url: "nats://localhost:4222"
+  cluster_id: "rankr-cluster"
+  client_id: "realtime-service-test"
+  durable_name: "realtime-durable"
+  queue_group: "realtime-queue"
+  use_jetstream: false
+
+subscribe_topics: "contributor.created,contributor.updated,task.created,task.updated,task.completed,leaderboard.scored,leaderboard.updated,project.created,project.updated"
