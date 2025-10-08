@@ -45,8 +45,10 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.38.0
 	go.opentelemetry.io/otel/trace v1.38.0
 
+
 	google.golang.org/grpc v1.75.1
 	google.golang.org/protobuf v1.36.9
+
 
 	google.golang.org/grpc v1.75.0
 	google.golang.org/protobuf v1.36.8
@@ -109,6 +111,7 @@ require (
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/gammazero/deque v0.2.1 // indirect
 	github.com/gdamore/encoding v1.0.1 // indirect
+	github.com/gdamore/tcell/v2 v2.9.0
 
 	github.com/gdamore/tcell/v2 v2.9.0
 
@@ -118,6 +121,7 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.4.0 // indirect
 	github.com/google/go-tpm v0.9.5 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
+	github.com/grafana/regexp v0.0.0-20240518133315-a468a5bfb3bc // indirect
 
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.2 // indirect
 
