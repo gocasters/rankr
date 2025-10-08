@@ -21,7 +21,7 @@ services:
     
     restart: always
     networks:
-      - rankr
+      - rankr-net
 
   postgres:
     # You must specify an image for the postgres service
@@ -38,10 +38,11 @@ services:
       - postgres_data:/var/lib/postgresql/data/
     restart: always
     networks:
-      - rankr
+      - rankr-net
 
 volumes:
   postgres_data:
 networks:
-  rankr:
+  rankr-net:
+    name: rankr-development-network
     external: true

@@ -8,56 +8,15 @@ services:
       - ./nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf:ro
       - ./conf.d:/usr/local/openresty/nginx/conf/conf.d:ro
     networks:
-      - www
-    depends_on:
-      - postgres
-      - auth
+      - rankr-net
+#    depends_on:
+#      - postgres
+#      - auth
 
 
-  auth:
-#    build: 
-#      context: ../../..
-#      dockerfile: ./deploy/auth/development/Dockerfile
-    image: development-auth:latest
-    ports:
-      - "5002:5002"
-    environment:
-      DB_HOST: postgres 
-      DB_PORT: 5432
-      DB_USER: rankr_user
-      DB_PASSWORD: rankr_password
-      DB_NAME: rankr_auth_db
-      DB_SSLMODE: disable
-      
-      JWT_SECRET: secret
-      TOKEN_DURATION: 120 # Minutes
-    depends_on:
-      - postgres
-    
-    restart: always
-    networks:
-      - www
 
 
-  postgres:
-    # You must specify an image for the postgres service
-    image: postgres:15-alpine 
-    ports:
-      - "5432:5432"
-    
-    environment:
-      POSTGRES_USER: rankr_user
-      POSTGRES_PASSWORD: rankr_password
-      POSTGRES_DB: rankr_auth_db
-    
-    volumes:
-      - postgres_data:/var/lib/postgresql/data/
-    restart: always
-    networks:
-      - www
-volumes:
-  postgres_data:
 networks:
-  www:
-    name: www
-    driver: bridge
+  rankr-net:
+    name: rankr-development-network
+    external: true
