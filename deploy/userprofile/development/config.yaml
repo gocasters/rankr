@@ -1,0 +1,39 @@
+# ===== General =====
+total_shutdown_timeout: "15s"
+
+# ===== HTTP Server =====
+http_server:
+  port: 5004
+  cors:
+    allow_origins: "*"
+  shutdown_context_timeout: "10s"
+
+# ===== gRPC Clients =====
+grpc_client:
+  contributor:
+    host: "${CONTRIBUTOR_SERVICE_HOST}"
+    port: ${CONTRIBUTOR_SERVICE_PORT}
+    type: "tcp"
+    shutdown_context_timeout: "10s"
+  task:
+    host: "${TASK_SERVICE_HOST}"
+    port: ${TASK_SERVICE_PORT}
+    type: "tcp"
+    shutdown_context_timeout: "10s"
+  leaderboardstat:
+    host: "${LEADERBOARDSTAT_SERVICE_HOST}"
+    port: ${LEADERBOARDSTAT_SERVICE_PORT}
+    type: "tcp"
+    shutdown_context_timeout: "10s"
+
+# ===== Logger =====
+logger:
+  level: "info"                   # روی prod معمولا debug نیست
+  file_path: "logs/userprofile/service.log"
+  use_local_time: true
+  file_max_size_in_mb: 50
+  file_max_age_in_days: 30
+
+# ===== Debug (optional) =====
+debug:
+  force_accept_otp: ""
