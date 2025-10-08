@@ -4,6 +4,8 @@ services:
     image: jaegertracing/all-in-one:${JAEGER_IMAGE_TAG:-1.57}
     volumes:
       - "./deploy/development/jaeger/jaeger-ui.json:/etc/jaeger/jaeger-ui.json"
+    networks:
+      - rankr-net
     command: --query.ui-config /etc/jaeger/jaeger-ui.json --query.max-clock-skew-adjustment 5s --query.base-path=/jaeger
     environment:
       - METRICS_STORAGE_TYPE=prometheus
@@ -21,3 +23,7 @@ services:
       - "traefik.http.routers.${SERVICE_NAME}_jaeger.rule=Host(`${SERVICE_DOMAIN}`)&&PathPrefix(`/jaeger`)"
       - "traefik.http.routers.${SERVICE_NAME}_jaeger.entrypoints=web"
       - "traefik.http.services.${SERVICE_NAME}_jaeger.loadbalancer.server.port=16686"
+networks:
+  rankr-net:
+    name: rankr-development-network
+    external: true
