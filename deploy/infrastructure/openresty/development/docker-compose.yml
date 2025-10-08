@@ -1,0 +1,22 @@
+version: "3"
+services:
+  nginx:
+    image: openresty/openresty:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf:ro
+      - ./conf.d:/usr/local/openresty/nginx/conf/conf.d:ro
+    networks:
+      - rankr-net
+#    depends_on:
+#      - postgres
+#      - auth
+
+
+
+
+networks:
+  rankr-net:
+    name: rankr-development-network
+    external: true
