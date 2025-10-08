@@ -1,38 +1,27 @@
 services:
-  leaderboardstat-db:
-    image: postgres:17.2-alpine
-    environment:
-      POSTGRES_DB: leaderboardstat_db
-      POSTGRES_USER: "stat_admin"
-      POSTGRES_PASSWORD: "password123"
-    restart: always
-    ports:
-      - "5438:5432"
-    volumes:
-      - leaderboardstat-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U stat_admin -d leaderboardstat_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   leaderboardstat-service:
     build:
       context: .
       dockerfile: ./deploy/leaderboardstat/development/Dockerfile
     image: rankr-leaderboardstat:development
     command: /bin/leaderboardstat serve --migrate-up
-    #command: /bin/sh -c "go run cmd/leaderboardstat/main.go serve --migrate-up"
+    networks:
+      - rankr-net
     depends_on:
-      leaderboardstat-db:
+      rankr-shared-postgres:
         condition: service_healthy
     volumes:
-      - ./:/home/app  # Mount project root
+      - ./:/home/app
     environment:
       - CONFIG_PATH=/home/app/deploy/leaderboardstat/development/config.yml
     ports:
       - "6011:6011"
     restart: unless-stopped
+
+networks:
+  rankr-net:
+    name: rankr-development-network
+    external: true
 
 volumes:
   leaderboardstat-data:

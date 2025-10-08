@@ -23,6 +23,7 @@ services:
       start_period: 10s
     networks:
       - rankr-network
+      - rankr-net
 
 
   nats-box:
@@ -32,6 +33,7 @@ services:
       - nats-jetstream
     networks:
       - rankr-network
+      - rankr-net
     profiles:
       - debug
     tty: true
@@ -42,3 +44,7 @@ networks:
   rankr-network:
     driver: bridge
     name: rankr-network
+  rankr-net:
+    name: rankr-development-network
+    external: true
+
