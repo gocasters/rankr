@@ -14,15 +14,18 @@ import (
 	"github.com/gocasters/rankr/leaderboardstatapp/service/leaderboardstat"
 	"github.com/gocasters/rankr/pkg/httpserver"
 
-	"github.com/gocasters/rankr/leaderboardstatapp/delivery/http"
+	statGRPC "github.com/gocasters/rankr/leaderboardstatapp/delivery/grpc"
+	statHTTP "github.com/gocasters/rankr/leaderboardstatapp/delivery/http"
+	"github.com/gocasters/rankr/pkg/grpc"
 	"github.com/gocasters/rankr/pkg/logger"
 )
 
 type Application struct {
 	LeaderboardstatRepo    leaderboardstat.Repository
 	LeaderboardstatSrv     leaderboardstat.Service
-	LeaderboardstatHandler http.Handler
-	HTTPServer             http.Server
+	LeaderboardstatHandler statHTTP.Handler
+	HTTPServer             statHTTP.Server
+	GRPCServer             statGRPC.Server
 	Config                 Config
 }
 
@@ -31,28 +34,37 @@ func Setup(
 	config Config,
 	postgresConn *database.Database,
 ) (Application, error) {
+	statLogger := logger.L()
+	statRepo := repository.NewLeaderboardstatRepo(config.Repository, postgresConn)
+	statValidator := leaderboardstat.NewValidator(statRepo)
+	statSvc := leaderboardstat.NewService(statRepo, statValidator)
+	statHandler := statHTTP.NewHandler(statSvc)
 
-	leaderboardstatRepo := repository.NewLeaderboardstatRepo(config.Repository, postgresConn)
-	leaderboardstatValidator := leaderboardstat.NewValidator(leaderboardstatRepo)
-	leaderboardstatSvc := leaderboardstat.NewService(leaderboardstatRepo, leaderboardstatValidator)
-	leaderboardstatHandler := http.NewHandler(leaderboardstatSvc)
-
-	leaderboardLogger := logger.L()
 	httpServer, err := httpserver.New(config.HTTPServer)
 	if err != nil {
-		leaderboardLogger.Error("failed to initialize HTTP server", err)
+		statLogger.Error("failed to initialize HTTP server", slog.Any("error", err))
 		return Application{}, err
 	}
 
+	// initial rpc server
+	rpcServer, gErr := grpc.NewServer(config.RPCServer)
+	if gErr != nil {
+		statLogger.Error("Failed to initialize gRPC server", slog.String("error", gErr.Error()))
+		return Application{}, gErr
+	}
+	statGrpcHandler := statGRPC.NewHandler(statSvc)
+	statGrpcServer := statGRPC.New(rpcServer, statGrpcHandler)
+
 	return Application{
-		LeaderboardstatRepo:    leaderboardstatRepo,
-		LeaderboardstatSrv:     leaderboardstatSvc,
-		LeaderboardstatHandler: leaderboardstatHandler,
-		HTTPServer: http.New(
+		LeaderboardstatRepo:    statRepo,
+		LeaderboardstatSrv:     statSvc,
+		LeaderboardstatHandler: statHandler,
+		HTTPServer: statHTTP.New(
 			*httpServer,
-			leaderboardstatHandler,
+			statHandler,
 		),
-		Config: config,
+		GRPCServer: statGrpcServer,
+		Config:     config,
 	}, nil
 }
 
@@ -65,50 +77,59 @@ func (app Application) Start() {
 	startServers(app, &wg)
 	<-ctx.Done()
 
-	leaderboardLogger := logger.L()
-	leaderboardLogger.Info("Shutdown signal received...")
+	statLogger := logger.L()
+	statLogger.Info("Shutdown signal received...")
 
 	shutdownTimeoutCtx, cancel := context.WithTimeout(context.Background(), app.Config.TotalShutdownTimeout)
 	defer cancel()
 
 	if app.shutdownServers(shutdownTimeoutCtx) {
-		leaderboardLogger.Info("Servers shut down gracefully")
+		statLogger.Info("Servers shut down gracefully")
 	} else {
-		leaderboardLogger.Warn("Shutdown timed out, exiting application")
+		statLogger.Warn("Shutdown timed out, exiting application")
 		os.Exit(1)
 	}
 
 	wg.Wait()
-	leaderboardLogger.Info("leaderboardstat_app stopped")
+	statLogger.Info("leaderboardstat_app stopped")
 }
 
 func startServers(app Application, wg *sync.WaitGroup) {
-	leaderboardLogger := logger.L()
+	statLogger := logger.L()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		leaderboardLogger.Info(fmt.Sprintf("HTTP server started on %d", app.Config.HTTPServer.Port))
+		statLogger.Info(fmt.Sprintf("HTTP server started on %d", app.Config.HTTPServer.Port))
 		if err := app.HTTPServer.Serve(); err != nil {
-			leaderboardLogger.Error(fmt.Sprintf("error in HTTP server on %d", app.Config.HTTPServer.Port), slog.Any("error", err))
+			statLogger.Error(fmt.Sprintf("error in leaderboard-stat HTTP server on %d", app.Config.HTTPServer.Port), slog.Any("error", err))
 		}
-		leaderboardLogger.Info(fmt.Sprintf("HTTP server stopped %d", app.Config.HTTPServer.Port))
+		statLogger.Info(fmt.Sprintf("HTTP server stopped %d", app.Config.HTTPServer.Port))
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := app.GRPCServer.Serve(); err != nil {
+			statLogger.Error("error in serving leaderboard-stat gRPC server", "error", err)
+		}
 	}()
 }
 
 func (app Application) shutdownServers(ctx context.Context) bool {
-	leaderboardLogger := logger.L()
-	leaderboardLogger.Info("Starting server shutdown process...")
+	statLogger := logger.L()
+	statLogger.Info("Starting leaderboard-stat server shutdown process...")
 	shutdownDone := make(chan struct{})
 
 	go func() {
 		var shutdownWg sync.WaitGroup
-		shutdownWg.Add(1)
+		shutdownWg.Add(2)
 		go app.shutdownHTTPServer(ctx, &shutdownWg)
+		go app.shutdownGRPCServer(ctx, &shutdownWg)
 
 		shutdownWg.Wait()
 		close(shutdownDone)
-		leaderboardLogger.Info("All servers have been shut down successfully.")
+		statLogger.Info("All servers have been shut down successfully.")
 
 	}()
 
@@ -121,16 +142,26 @@ func (app Application) shutdownServers(ctx context.Context) bool {
 }
 
 func (app Application) shutdownHTTPServer(parentCtx context.Context, wg *sync.WaitGroup) {
-	leaderboardLogger := logger.L()
-	leaderboardLogger.Info(fmt.Sprintf("Starting graceful shutdown for HTTP server on port %d", app.Config.HTTPServer.Port))
+	statLogger := logger.L()
+	statLogger.Info(fmt.Sprintf("Starting graceful shutdown for HTTP server on port %d", app.Config.HTTPServer.Port))
 
 	defer wg.Done()
 	httpShutdownCtx, httpCancel := context.WithTimeout(parentCtx, app.Config.HTTPServer.ShutdownTimeout)
 	defer httpCancel()
 
 	if err := app.HTTPServer.Stop(httpShutdownCtx); err != nil {
-		leaderboardLogger.Error(fmt.Sprintf("HTTP server graceful shutdown failed: %v", err))
+		statLogger.Error(fmt.Sprintf("HTTP server graceful shutdown failed: %v", err))
 	}
 
-	leaderboardLogger.Info("HTTP server shut down successfully.")
+	statLogger.Info("HTTP server shut down successfully.")
+}
+
+func (app Application) shutdownGRPCServer(parentCtx context.Context, wg *sync.WaitGroup) {
+	statLogger := logger.L()
+	defer wg.Done()
+	statLogger.Info("starting gracefully shutdown leaderboard-stat gRPC server")
+
+	app.GRPCServer.Stop()
+
+	statLogger.Info("leaderboard-stat gRPC server shutdown successfully.")
 }
