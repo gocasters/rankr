@@ -5,13 +5,12 @@ package logger
 
 import (
 	"fmt"
+	"gopkg.in/natefinch/lumberjack.v2"
 	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
-
-	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 var (
