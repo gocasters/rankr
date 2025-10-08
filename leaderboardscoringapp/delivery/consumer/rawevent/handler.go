@@ -1,4 +1,4 @@
-package consumer
+package rawevent
 
 import (
 	"errors"
@@ -11,11 +11,11 @@ import (
 )
 
 type Handler struct {
-	leaderboardSvc     leaderboardscoring.Service
+	leaderboardSvc     *leaderboardscoring.Service
 	idempotencyChecker *IdempotencyChecker
 }
 
-func NewHandler(svc leaderboardscoring.Service, checker *IdempotencyChecker) Handler {
+func NewHandler(svc *leaderboardscoring.Service, checker *IdempotencyChecker) Handler {
 	return Handler{
 		leaderboardSvc:     svc,
 		idempotencyChecker: checker,

@@ -70,3 +70,30 @@ func (h Handler) createContributor(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, res)
 }
+
+func (h Handler) updateProfile(c echo.Context) error {
+	var req contributor.UpdateProfileRequest
+
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": err.Error(),
+		})
+	}
+
+	res, err := h.ContributorService.UpdateProfile(c.Request().Context(), req)
+	if err != nil {
+		if vErr, ok := err.(validator.Error); ok {
+			return c.JSON(vErr.StatusCode(), vErr)
+		}
+
+		if eRes, ok := err.(errmsg.ErrorResponse); ok {
+			return c.JSON(statuscode.MapToHTTPStatusCode(eRes), eRes)
+		}
+
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, echo.Map{
+		"data": res,
+	})
+}
