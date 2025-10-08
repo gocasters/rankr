@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gocasters/rankr/pkg/logger"
+	"strings"
 	"time"
 
 	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
@@ -334,4 +335,58 @@ func (repo *WebhookRepository) BulkInsertPostgresSQL(ctx context.Context, events
 		"failed_inserts", failedCount)
 
 	return inserted, nil
+}
+
+func (repo *WebhookRepository) GetLostDeliveries(ctx context.Context, provider eventpb.EventProvider, deliveries []string) ([]string, error) {
+	if len(deliveries) == 0 {
+		return []string{}, nil
+	}
+
+	// Convert provider enum to int32 for database query
+	providerID := int32(provider)
+
+	// Create a temporary table structure using VALUES
+	placeholders := make([]string, len(deliveries))
+	args := make([]interface{}, len(deliveries)+1)
+
+	args[0] = providerID
+	for i, deliveryID := range deliveries {
+		placeholders[i] = fmt.Sprintf("($%d)", i+2)
+		args[i+1] = deliveryID
+	}
+
+	query := fmt.Sprintf(`
+		WITH expected_deliveries(delivery_id) AS (
+			VALUES %s
+		)
+		SELECT ed.delivery_id
+		FROM expected_deliveries ed
+		WHERE NOT EXISTS (
+			SELECT 1 
+			FROM webhook_events we 
+			WHERE we.provider = $1 
+			AND we.delivery_id = ed.delivery_id
+		)
+	`, strings.Join(placeholders, ","))
+
+	rows, err := repo.db.Query(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query missing deliveries: %w", err)
+	}
+	defer rows.Close()
+
+	var missingDeliveries []string
+	for rows.Next() {
+		var deliveryID string
+		if err := rows.Scan(&deliveryID); err != nil {
+			return nil, fmt.Errorf("failed to scan delivery ID: %w", err)
+		}
+		missingDeliveries = append(missingDeliveries, deliveryID)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+
+	return missingDeliveries, nil
 }

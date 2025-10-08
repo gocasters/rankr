@@ -1,6 +1,8 @@
-package service
+package delivery
 
-import "time"
+import (
+	"time"
+)
 
 type Label struct {
 	ID      uint64 `json:"id"`

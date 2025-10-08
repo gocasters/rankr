@@ -3,8 +3,9 @@ package http
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/gocasters/rankr/pkg/logger"
 	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
-	"github.com/gocasters/rankr/webhookapp/service"
+	"github.com/gocasters/rankr/webhookapp/service/delivery"
 	"github.com/labstack/echo/v4"
 	"io"
 	"net/http"
@@ -39,16 +40,16 @@ func (s *Server) PublishGithubActivity(c echo.Context) error {
 
 	var eventError error
 
-	switch service.EventType(eventName) {
-	case service.EventTypeIssues:
+	switch delivery.EventType(eventName) {
+	case delivery.EventTypeIssues:
 		eventError = s.Service.HandleIssuesEvent(eventpb.EventProvider_EVENT_PROVIDER_GITHUB, webhookAction, body, deliveryUID)
-	case service.EventTypeIssueComment:
+	case delivery.EventTypeIssueComment:
 		eventError = s.Service.HandleIssueCommentEvent(eventpb.EventProvider_EVENT_PROVIDER_GITHUB, webhookAction, body, deliveryUID)
-	case service.EventTypePullRequest:
+	case delivery.EventTypePullRequest:
 		eventError = s.Service.HandlePullRequestEvent(eventpb.EventProvider_EVENT_PROVIDER_GITHUB, webhookAction, body, deliveryUID)
-	case service.EventTypePullRequestReview:
+	case delivery.EventTypePullRequestReview:
 		eventError = s.Service.HandlePullRequestReviewEvent(eventpb.EventProvider_EVENT_PROVIDER_GITHUB, webhookAction, body, deliveryUID)
-	case service.EventTypePush:
+	case delivery.EventTypePush:
 		eventError = s.Service.HandlePushEvent(eventpb.EventProvider_EVENT_PROVIDER_GITHUB, body, deliveryUID)
 	default:
 		return c.JSON(http.StatusOK, map[string]string{
@@ -57,11 +58,9 @@ func (s *Server) PublishGithubActivity(c echo.Context) error {
 	}
 
 	if eventError != nil {
-		if s.Handler.Logger != nil {
-			s.Handler.Logger.Error("Failed to handle event",
-				"err", eventError, "event", eventName,
-				"delivery", deliveryUID, "action", webhookAction)
-		}
+		logger.L().Error("Failed to handle event",
+			"err", eventError, "event", eventName,
+			"delivery", deliveryUID, "action", webhookAction)
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": fmt.Sprintf("Failed to handle event. Event Type: %s", eventName),
 		})

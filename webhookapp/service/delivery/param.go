@@ -1,4 +1,4 @@
-package service
+package delivery
 
 type IssueCommentCreatedRequest struct {
 	Issue      Issue        `json:"issue"`

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
-	"github.com/gocasters/rankr/webhookapp/service"
+	"github.com/gocasters/rankr/webhookapp/service/delivery"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -482,9 +482,9 @@ func ProcessEventBulk(ctx context.Context, ev *eventpb.Event) error {
 
 /* Event Generation Functions */
 
-func randomEvent() service.EventType {
-	possibleEvents := []service.EventType{
-		service.EventTypeIssues,
+func randomEvent() delivery.EventType {
+	possibleEvents := []delivery.EventType{
+		delivery.EventTypeIssues,
 		//service.EventTypeIssueComment,
 		//service.EventTypePullRequest,
 		//service.EventTypePullRequestReview,
@@ -506,7 +506,7 @@ func RandomEventData() (*eventpb.Event, error) {
 	var ev eventpb.Event
 
 	switch eventName {
-	case service.EventTypeIssues:
+	case delivery.EventTypeIssues:
 		possibleActions := []string{"opened", "closed"}
 		randomAction := possibleActions[rand.Intn(len(possibleActions))]
 		switch randomAction {
