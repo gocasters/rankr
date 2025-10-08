@@ -49,7 +49,7 @@ func protobufToLeaderboardRes(leaderboardPBRes *leaderboardscoringpb.GetLeaderbo
 		row := lbscoring.LeaderboardRow{
 			Rank:   r.Rank,
 			UserID: r.UserId,
-			Score:  r.Score,
+			Score:  int64(r.Score),
 		}
 		rows = append(rows, row)
 	}

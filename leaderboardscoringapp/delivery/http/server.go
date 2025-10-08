@@ -7,12 +7,12 @@ import (
 )
 
 type Server struct {
-	LeaderboardscoringSvc leaderboardscoring.Service
+	LeaderboardscoringSvc *leaderboardscoring.Service
 	HTTPServer            *httpserver.Server
 	Handler               Handler
 }
 
-func New(server *httpserver.Server, handler Handler, leaderboardscoringSvc leaderboardscoring.Service) Server {
+func New(server *httpserver.Server, handler Handler, leaderboardscoringSvc *leaderboardscoring.Service) Server {
 	return Server{
 		LeaderboardscoringSvc: leaderboardscoringSvc,
 		HTTPServer:            server,
