@@ -331,7 +331,7 @@ func mapPbEventName(n eventpb.EventName) (EventName, error) {
 type LeaderboardRow struct {
 	Rank   uint64
 	UserID string
-	Score  uint64
+	Score  int64
 }
 
 type GetLeaderboardResponse struct {

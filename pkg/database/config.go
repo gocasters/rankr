@@ -7,6 +7,7 @@ type Config struct {
 	Username          string `koanf:"user"`
 	Password          string `koanf:"password"`
 	DBName            string `koanf:"db_name"`
+	Schema            string `koanf:"schema"`
 	SSLMode           string `koanf:"ssl_mode"`
 	MaxConns          int32  `koanf:"max_conns"`
 	MinConns          int32  `koanf:"min_conns"`
@@ -27,6 +28,7 @@ func NewConfig(opts ...ConfigOption) Config {
 		Username:          "root",
 		Password:          "",
 		DBName:            "dbname",
+		Schema:            "public",
 		SSLMode:           "disable",
 		MaxConns:          10,   // Default value
 		MinConns:          2,    // Default value
