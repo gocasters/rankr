@@ -3,95 +3,100 @@ package userprofile
 import (
 	"context"
 	"errors"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"testing"
-	"time"
 )
 
-type mockRPCRepository struct {
+// --- Mock types ---
+
+type mockContributorRPC struct {
 	mock.Mock
 }
 
-func (m *mockRPCRepository) GetProfileInfo(ctx context.Context, userID int64) (ContributorInfo, error) {
+func (m *mockContributorRPC) GetProfileInfo(ctx context.Context, userID int64) (ContributorInfo, error) {
 	args := m.Called(ctx, userID)
 	return args.Get(0).(ContributorInfo), args.Error(1)
 }
 
-func (m *mockRPCRepository) GetTasks(ctx context.Context, userID int64) ([]Task, error) {
+type mockTaskRPC struct {
+	mock.Mock
+}
+
+func (m *mockTaskRPC) GetTasks(ctx context.Context, userID int64) ([]Task, error) {
 	args := m.Called(ctx, userID)
 	return args.Get(0).([]Task), args.Error(1)
 }
 
-func (m *mockRPCRepository) GetContributorStat(ctx context.Context, userID int64) (ContributorStat, error) {
+type mockLeaderboardStatRPC struct {
+	mock.Mock
+}
+
+func (m *mockLeaderboardStatRPC) GetContributorStat(ctx context.Context, userID int64) (ContributorStat, error) {
 	args := m.Called(ctx, userID)
 	return args.Get(0).(ContributorStat), args.Error(1)
 }
 
-type mockValidator struct{}
+// --- Tests ---
 
-func (m mockValidator) Validate(_ context.Context, _ interface{}) error {
-	return nil
-}
-
-func TestGetUserProfile_Success(t *testing.T) {
+func TestContributorProfile_Success(t *testing.T) {
 	ctx := context.Background()
-	mockRepo := new(mockRPCRepository)
-	mockValidator := NewValidator(mockRepo)
+	userID := int64(123)
 
-	svc := NewService(mockRepo, mockValidator)
+	// mock data
+	expectedInfo := ContributorInfo{GitHubUsername: "John Doe"}
+	expectedTasks := []Task{{ID: 1}, {ID: 2}}
+	expectedStat := ContributorStat{GlobalRank: 5}
 
-	contributor := ContributorInfo{
-		ID:             1,
-		GitHubID:       12345,
-		GitHubUsername: "golang-dev",
-		DisplayName:    strPtr("Gopher"),
-		CreatedAt:      time.Now(),
-	}
-	tasks := []Task{
-		{ID: 101, Title: "Fix bug", Description: "Fix login bug", State: "open"},
-	}
-	stats := ContributorStat{
-		ContributorID: 1,
-		GlobalRank:    5,
-		TotalScore:    420.5,
-	}
+	// set up mocks
+	mockInfo := new(mockContributorRPC)
+	mockInfo.On("GetProfileInfo", mock.Anything, userID).Return(expectedInfo, nil)
 
-	mockRepo.On("GetProfileInfo", ctx, int64(1)).Return(contributor, nil)
-	mockRepo.On("GetTasks", ctx, int64(1)).Return(tasks, nil)
-	mockRepo.On("GetContributorStat", ctx, int64(1)).Return(stats, nil)
+	mockTask := new(mockTaskRPC)
+	mockTask.On("GetTasks", mock.Anything, userID).Return(expectedTasks, nil)
 
-	resp, err := svc.ContributorProfile(ctx, 1)
+	mockStat := new(mockLeaderboardStatRPC)
+	mockStat.On("GetContributorStat", mock.Anything, userID).Return(expectedStat, nil)
+
+	// use real validator (does nothing)
+	validator := NewValidator(nil)
+
+	svc := NewService(mockInfo, mockTask, mockStat, validator)
+
+	resp, err := svc.ContributorProfile(ctx, userID)
 
 	assert.NoError(t, err)
 	assert.NotNil(t, resp)
-	assert.Equal(t, int64(1), resp.Profile.ContributorInfo.ID)
-	assert.Equal(t, "golang-dev", resp.Profile.ContributorInfo.GitHubUsername)
-	assert.Len(t, resp.Profile.Tasks, 1)
-	assert.Equal(t, 420.5, resp.Profile.ContributorStat.TotalScore)
+	assert.Equal(t, expectedInfo, resp.Profile.ContributorInfo)
+	assert.Equal(t, expectedTasks, resp.Profile.Tasks)
+	assert.Equal(t, expectedStat, resp.Profile.ContributorStat)
 
-	mockRepo.AssertExpectations(t)
+	mockInfo.AssertExpectations(t)
+	mockTask.AssertExpectations(t)
+	mockStat.AssertExpectations(t)
 }
 
-func TestGetUserProfile_Failure_GetTasks(t *testing.T) {
+func TestContributorProfile_Error(t *testing.T) {
 	ctx := context.Background()
-	mockRepo := new(mockRPCRepository)
-	mockValidator := NewValidator(mockRepo)
+	userID := int64(123)
 
-	svc := NewService(mockRepo, mockValidator)
+	mockInfo := new(mockContributorRPC)
+	mockInfo.On("GetProfileInfo", mock.Anything, userID).Return(ContributorInfo{}, errors.New("failed"))
 
-	contributor := ContributorInfo{ID: 1, GitHubUsername: "golang-dev"}
+	mockTask := new(mockTaskRPC)
+	mockTask.On("GetTasks", mock.Anything, userID).Return([]Task{}, nil)
 
-	mockRepo.On("GetProfileInfo", ctx, int64(1)).Return(contributor, nil)
-	mockRepo.On("GetTasks", ctx, int64(1)).Return([]Task{}, errors.New("task service unavailable"))
+	mockStat := new(mockLeaderboardStatRPC)
+	mockStat.On("GetContributorStat", mock.Anything, userID).Return(ContributorStat{}, nil)
 
-	resp, err := svc.ContributorProfile(ctx, 1)
+	validator := NewValidator(nil)
+
+	svc := NewService(mockInfo, mockTask, mockStat, validator)
+
+	resp, err := svc.ContributorProfile(ctx, userID)
 
 	assert.Error(t, err)
 	assert.Nil(t, resp)
-	mockRepo.AssertExpectations(t)
-}
-
-func strPtr(s string) *string {
-	return &s
+	mockInfo.AssertExpectations(t)
 }

@@ -37,6 +37,7 @@ go.work.sum
 .cursor
 
 # logs
+logs
 /logs/*
 /log/*
 /cmd/*/temp/*
