@@ -22,7 +22,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type LeaderboardStatServiceClient interface {
-	GetContributorTotalStats(ctx context.Context, in *ContributorStatRequest, opts ...grpc.CallOption) (*ContributorStatResponse, error)
+	GetContributorStats(ctx context.Context, in *ContributorStatRequest, opts ...grpc.CallOption) (*ContributorStatResponse, error)
 }
 
 type leaderboardStatServiceClient struct {
@@ -33,9 +33,9 @@ func NewLeaderboardStatServiceClient(cc grpc.ClientConnInterface) LeaderboardSta
 	return &leaderboardStatServiceClient{cc}
 }
 
-func (c *leaderboardStatServiceClient) GetContributorTotalStats(ctx context.Context, in *ContributorStatRequest, opts ...grpc.CallOption) (*ContributorStatResponse, error) {
+func (c *leaderboardStatServiceClient) GetContributorStats(ctx context.Context, in *ContributorStatRequest, opts ...grpc.CallOption) (*ContributorStatResponse, error) {
 	out := new(ContributorStatResponse)
-	err := c.cc.Invoke(ctx, "/leaderboardstat.LeaderboardStatService/GetContributorTotalStats", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/leaderboardstat.LeaderboardStatService/GetContributorStats", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func (c *leaderboardStatServiceClient) GetContributorTotalStats(ctx context.Cont
 // All implementations must embed UnimplementedLeaderboardStatServiceServer
 // for forward compatibility
 type LeaderboardStatServiceServer interface {
-	GetContributorTotalStats(context.Context, *ContributorStatRequest) (*ContributorStatResponse, error)
+	GetContributorStats(context.Context, *ContributorStatRequest) (*ContributorStatResponse, error)
 	mustEmbedUnimplementedLeaderboardStatServiceServer()
 }
 
@@ -54,8 +54,8 @@ type LeaderboardStatServiceServer interface {
 type UnimplementedLeaderboardStatServiceServer struct {
 }
 
-func (UnimplementedLeaderboardStatServiceServer) GetContributorTotalStats(context.Context, *ContributorStatRequest) (*ContributorStatResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetContributorTotalStats not implemented")
+func (UnimplementedLeaderboardStatServiceServer) GetContributorStats(context.Context, *ContributorStatRequest) (*ContributorStatResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetContributorStats not implemented")
 }
 func (UnimplementedLeaderboardStatServiceServer) mustEmbedUnimplementedLeaderboardStatServiceServer() {
 }
@@ -71,20 +71,20 @@ func RegisterLeaderboardStatServiceServer(s grpc.ServiceRegistrar, srv Leaderboa
 	s.RegisterService(&LeaderboardStatService_ServiceDesc, srv)
 }
 
-func _LeaderboardStatService_GetContributorTotalStats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _LeaderboardStatService_GetContributorStats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ContributorStatRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LeaderboardStatServiceServer).GetContributorTotalStats(ctx, in)
+		return srv.(LeaderboardStatServiceServer).GetContributorStats(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/leaderboardstat.LeaderboardStatService/GetContributorTotalStats",
+		FullMethod: "/leaderboardstat.LeaderboardStatService/GetContributorStats",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LeaderboardStatServiceServer).GetContributorTotalStats(ctx, req.(*ContributorStatRequest))
+		return srv.(LeaderboardStatServiceServer).GetContributorStats(ctx, req.(*ContributorStatRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -97,8 +97,8 @@ var LeaderboardStatService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*LeaderboardStatServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "GetContributorTotalStats",
-			Handler:    _LeaderboardStatService_GetContributorTotalStats_Handler,
+			MethodName: "GetContributorStats",
+			Handler:    _LeaderboardStatService_GetContributorStats_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

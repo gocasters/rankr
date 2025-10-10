@@ -3,8 +3,10 @@
 CREATE TABLE IF NOT EXISTS scores (
     id SERIAL PRIMARY KEY,
     contributor_id BIGINT NOT NULL,
+    project_id BIGINT NOT NULL,
     activity VARCHAR(50) NOT NULL,
     score DECIMAL(10, 2) NOT NULL,
+    earned_at  TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ NULL,
     is_deleted BOOLEAN NULL

@@ -1,20 +1,31 @@
 syntax = "proto3";
-
+import "google/protobuf/timestamp.proto";
 package leaderboardstat;
 
 option go_package = "protobuf/golang/leaderboardstat";
 
 message ContributorStatResponse {
-  int64 contributor_id = 1;
-  int64 global_rank = 2;
+  uint64 contributor_id = 1;
+  uint64 global_rank = 2;
   double total_score = 3;
-  map<string, double> projects_score = 4;
+  map<uint64, double> projects_score = 4;
+  map<uint64, ProjectScoreHistory> score_history = 5;
+}
+
+message ProjectScoreHistory {
+  repeated ScoreEntry entries = 1;
+}
+
+message ScoreEntry {
+  string activity = 1;
+  double score = 2;
+  google.protobuf.Timestamp earned_at = 3;
 }
 
 message ContributorStatRequest{
-  int64 contributor_id = 1;
+  uint64 contributor_id = 1;
 }
 
 service LeaderboardStatService{
-  rpc GetContributorTotalStats(ContributorStatRequest) returns (ContributorStatResponse);
+  rpc GetContributorStats(ContributorStatRequest) returns (ContributorStatResponse);
 }
