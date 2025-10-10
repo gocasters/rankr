@@ -25,6 +25,10 @@ chmod +x ./deploy/setup-network.bash
 ```bash
 # Start only leaderboardstat service with database
 ./deploy/docker-compose-dev-leaderboardstat-local.bash up --build
+
+# Rebuild and restart just leaderboardstat service
+./deploy/docker-compose-dev.bash up -d leaderboardstat-service --build
+
 ```
 
 

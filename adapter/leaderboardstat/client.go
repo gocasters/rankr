@@ -31,13 +31,13 @@ func (c *Client) Close() {
 	}
 }
 
-func (c *Client) GetContributorTotalStats(ctx context.Context, getTotalStatsReq *lbstat.ContributorStatsRequest) (*lbstat.ContributorStatsResponse, error) {
+func (c *Client) GetContributorStats(ctx context.Context, contributorStatsReq *lbstat.ContributorStatsRequest) (*lbstat.ContributorStatsResponse, error) {
 
 	statPBReq := &leaderboardstatpb.ContributorStatRequest{
-		ContributorId: int64(getTotalStatsReq.ContributorID),
+		ContributorId: int64(contributorStatsReq.ContributorID),
 	}
 
-	statPRRes, err := c.leaderboardStatClient.GetContributorTotalStats(ctx, statPBReq)
+	statPRRes, err := c.leaderboardStatClient.GetContributorStats(ctx, statPBReq)
 	if err != nil {
 		return nil, err
 	}

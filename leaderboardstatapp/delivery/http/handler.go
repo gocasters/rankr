@@ -20,7 +20,6 @@ func NewHandler(leaderboardStatService leaderboardstat.Service) Handler {
 
 func (h Handler) GetContributorStats(c echo.Context) error {
 	idStr := c.Param("id")
-
 	idInt, err := strconv.Atoi(idStr)
 	if err != nil {
 		// TODO - use error pattern
@@ -30,8 +29,7 @@ func (h Handler) GetContributorStats(c echo.Context) error {
 	}
 
 	contributorID := types.ID(idInt)
-
-	response, err := h.LeaderboardStatService.GetContributorTotalStats(c.Request().Context(), contributorID)
+	response, err := h.LeaderboardStatService.GetContributorStats(c.Request().Context(), contributorID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "Failed to get contributor stats",

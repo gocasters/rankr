@@ -100,16 +100,18 @@ func startServers(app Application, wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		statLogger.Info(fmt.Sprintf("HTTP server started on %d", app.Config.HTTPServer.Port))
+		statLogger.Info(fmt.Sprintf("HTTP Server started on %d", app.Config.HTTPServer.Port))
 		if err := app.HTTPServer.Serve(); err != nil {
-			statLogger.Error(fmt.Sprintf("error in leaderboard-stat HTTP server on %d", app.Config.HTTPServer.Port), slog.Any("error", err))
+			statLogger.Error(fmt.Sprintf("error in leaderboard-stat HTTP Server on %d", app.Config.HTTPServer.Port), slog.Any("error", err))
 		}
-		statLogger.Info(fmt.Sprintf("HTTP server stopped %d", app.Config.HTTPServer.Port))
+		statLogger.Info(fmt.Sprintf("HTTP Server stopped %d", app.Config.HTTPServer.Port))
 	}()
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		fmt.Println("grpc server started")
+		statLogger.Info("gRPC Server started")
 		if err := app.GRPCServer.Serve(); err != nil {
 			statLogger.Error("error in serving leaderboard-stat gRPC server", "error", err)
 		}
@@ -119,6 +121,7 @@ func startServers(app Application, wg *sync.WaitGroup) {
 func (app Application) shutdownServers(ctx context.Context) bool {
 	statLogger := logger.L()
 	statLogger.Info("Starting leaderboard-stat server shutdown process...")
+	fmt.Println("grpc server stoppped...")
 	shutdownDone := make(chan struct{})
 
 	go func() {

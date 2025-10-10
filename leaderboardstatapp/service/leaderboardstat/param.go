@@ -12,9 +12,6 @@ type ContributorStatsResponse struct {
 	ProjectsScore map[string]float64 `koanf:"project_score"`
 }
 
-type ScoreboardResponse struct {
-	Entries []ScoreboardItem
-}
 type ScoresListResponse struct{}
 
 type CategoryList int

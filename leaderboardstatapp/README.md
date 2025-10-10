@@ -29,7 +29,23 @@
  curl -X GET http://localhost:6011/v1/health-check
  
  # get a contributor's statistics
- curl -X GET http://localhost:6011/v1/contributors/1/stats
+ curl -X GET http://localhost:6011/v1/contributors/8/stats
+```
+
+```bash
+ # discover available grpc services
+ grpcurl -plaintext localhost:8090 list
+ grpcurl -plaintext localhost:8090 list leaderboardstat.LeaderboardStatService
+
+ # describe a method
+ grpcurl -plaintext localhost:8090 describe leaderboardstat.LeaderboardStatService.GetContributorStats
+```
+
+```bash 
+ # call a gRPC method
+  grpcurl -plaintext \
+  -d '{"contributor_id": 8}' \
+  localhost:8090 leaderboardstat.LeaderboardStatService.GetContributorStats
 ```
 
 ### Run Docker Containers
