@@ -24,7 +24,7 @@ postgres_db:
 redis:
   host: "leaderboardscoring-redis"
   port: 6379
-  password: ""
+  password: "password1999"
   db: 0
 
 watermill_nats:
@@ -59,7 +59,7 @@ total_shutdown_timeout: 30s
 
 path_of_migration: "./leaderboardscoringapp/repository/database/migrations"
 
-raw_event_subscriber_topic: "CONTRIBUTION_REGISTERED"
+raw_event_topic: "raw_events"
 
 database_retry:
   max_retries: 3
