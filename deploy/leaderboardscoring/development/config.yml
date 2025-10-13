@@ -67,7 +67,7 @@ database_retry:
 
 nats_adapter:
   url: "nats://leaderboardscoring-nats:4222"
-  stream_name: "SCORE_EVENTS"
+  stream_name: "PROCESSED_EVENTS"
   max_reconnects: -1
   reconnect_wait: 1s
 

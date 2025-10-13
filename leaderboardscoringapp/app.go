@@ -193,7 +193,7 @@ func (app *Application) Start() {
 	shutdownTimeoutCtx, cancel := context.WithTimeout(context.Background(), app.Config.TotalShutdownTimeout)
 	defer cancel()
 
-	if app.shutdown(shutdownTimeoutCtx) {
+	if app.Shutdown(shutdownTimeoutCtx) {
 		log.Info("application shutdown completed successfully")
 	} else {
 		log.Warn("shutdown timeout exceeded, forcing exit")
@@ -313,7 +313,7 @@ func (app *Application) startBatchProcessor(ctx context.Context, wg *sync.WaitGr
 	}()
 }
 
-func (app *Application) shutdown(ctx context.Context) bool {
+func (app *Application) Shutdown(ctx context.Context) bool {
 	log := logger.L()
 	log.Info("initiating graceful shutdown sequence")
 

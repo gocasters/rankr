@@ -48,16 +48,16 @@ func TestIntegrationSuite(t *testing.T) {
 // SetupSuite initializes all containers and dependencies
 func (suite *IntegrationTestSuite) SetupSuite() {
 	logger.Init(logger.Config{
-		Level:            "info",
+		Level:            "debug",
 		FilePath:         "logs/leaderboardscoringapp/integration_test.log",
 		UseLocalTime:     true,
 		FileMaxSizeInMB:  10,
 		FileMaxAgeInDays: 7,
 	})
 
-	var networkName = "leaderboard-test-net" + uuid.New().String()
-
 	suite.ctx = context.Background()
+
+	var networkName = "leaderboard-integration-net" + uuid.New().String()
 	suite.networkName = networkName
 
 	// Create network for container communication
