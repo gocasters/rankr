@@ -34,7 +34,7 @@ func (h Handler) HandleEvent(msg *message.Message) error {
 		return err // NACK
 	}
 
-	eventReq, rErr := leaderboardscoring.NewEventRequest().ProtobufToEventRequest(&event)
+	eventReq, rErr := leaderboardscoring.NewEventRequest().MapProtoEventToEventRequest(&event)
 	if rErr != nil {
 		return rErr // NACK
 	}

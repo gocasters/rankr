@@ -33,7 +33,7 @@ func (h Handler) GetLeaderboard(ctx context.Context, req *leaderboardscoringpb.G
 	}
 
 	leaderboardReq := &leaderboardscoring.GetLeaderboardRequest{
-		Timeframe: leaderboardscoring.Timeframe(req.GetTimeframe()),
+		Timeframe: leaderboardscoring.FromProtoTimeframe(req.GetTimeframe()),
 		ProjectID: projectIDPtr,
 		PageSize:  req.GetPageSize(),
 		Offset:    req.GetOffset(),
@@ -77,7 +77,7 @@ func leaderboardResToProtobuf(leaderboardRes leaderboardscoring.GetLeaderboardRe
 	}
 
 	leaderboardPBRes := &leaderboardscoringpb.GetLeaderboardResponse{
-		Timeframe: leaderboardscoringpb.Timeframe(leaderboardRes.Timeframe),
+		Timeframe: leaderboardscoring.ToProtoTimeframe(leaderboardRes.Timeframe),
 		ProjectId: leaderboardRes.ProjectID,
 		Rows:      rows,
 	}

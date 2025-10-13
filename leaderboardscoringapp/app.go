@@ -49,10 +49,10 @@ const ProcessedScoreEventsTopic = "processed_score_events"
 func Setup(ctx context.Context, config Config) *Application {
 	log := logger.L()
 
-	if strings.TrimSpace(config.RawEventSubscriberTopic) == "" {
+	if strings.TrimSpace(config.RawEventTopic) == "" {
 		log.Error("raw event subscriber topic is required",
-			slog.String("config_key", "raw_event_subscriber_topic"))
-		panic("missing required configuration: raw_event_subscriber_topic")
+			slog.String("config_key", "raw_event_topic"))
+		panic("missing required configuration: raw_event_topic")
 	}
 
 	// Initialize PostgreSQL connection
@@ -261,15 +261,15 @@ func (app *Application) setupWatermill() {
 	checker := rawevent.NewIdempotencyChecker(app.RedisAdapter.Client(), app.Config.RawEventConsumer)
 	rawEventHandler := rawevent.NewHandler(app.LeaderboardSvc, checker)
 
-	router.AddNoPublisherHandler(
+	router.AddConsumerHandler(
 		"RawEventHandler",
-		app.Config.RawEventSubscriberTopic,
+		app.Config.RawEventTopic,
 		app.WMSubscriber,
 		rawEventHandler.HandleEvent,
 	)
 
 	log.Info("Watermill router configured",
-		slog.String("topic", app.Config.RawEventSubscriberTopic))
+		slog.String("topic", app.Config.RawEventTopic))
 
 	app.WMRouter = router
 }

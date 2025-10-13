@@ -1,6 +1,7 @@
 package leaderboardscoring
 
 import (
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"time"
 )
 
@@ -18,14 +19,40 @@ const (
 	CommitPush EventName = "commit_push"
 )
 
-var EventNames = []EventName{
-	PullRequestOpened,
-	PullRequestClosed,
-	PullRequestReview,
-	IssueOpened,
-	IssueClosed,
-	IssueComment,
-	CommitPush,
+func (e EventName) Validate() error {
+	return validation.Validate(string(e),
+		validation.Required,
+		validation.In(
+			string(PullRequestOpened),
+			string(PullRequestClosed),
+			string(PullRequestReview),
+			string(IssueOpened),
+			string(IssueClosed),
+			string(IssueComment),
+			string(CommitPush),
+		),
+	)
+}
+
+func (e EventName) String() string {
+	switch e {
+	case PullRequestOpened:
+		return "pull_request_opened"
+	case PullRequestClosed:
+		return "pull_request_closed"
+	case PullRequestReview:
+		return "pull_request_review"
+	case IssueOpened:
+		return "issue_opened"
+	case IssueClosed:
+		return "issue_closed"
+	case IssueComment:
+		return "issue_comment"
+	case CommitPush:
+		return "commit_push"
+	default:
+		return "unknown"
+	}
 }
 
 type Event struct {
