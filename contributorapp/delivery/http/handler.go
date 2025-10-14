@@ -6,10 +6,10 @@ import (
 	"github.com/gocasters/rankr/pkg/statuscode"
 	"github.com/gocasters/rankr/pkg/validator"
 	types "github.com/gocasters/rankr/type"
-
 	"github.com/labstack/echo/v4"
 	"log/slog"
 	"net/http"
+	"strconv"
 )
 
 type Handler struct {
@@ -25,15 +25,15 @@ func NewHandler(contributorSrv contributor.Service, logger *slog.Logger) Handler
 }
 
 func (h Handler) getProfile(c echo.Context) error {
+	idStr := c.Param("id")
 
-	// TODO complete user auth with token
-	userId := uint64(1)
+	id, err := strconv.Atoi(idStr)
 
-	profileRequest := contributor.GetProfileRequest{
-		ID: types.ID(userId),
+	if idStr == "" || err != nil {
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": "id is require"})
 	}
 
-	res, err := h.ContributorService.GetProfile(c.Request().Context(), profileRequest)
+	res, err := h.ContributorService.GetProfile(c.Request().Context(), types.ID(id))
 	if err != nil {
 		if vErr, ok := err.(validator.Error); ok {
 			return c.JSON(vErr.StatusCode(), vErr)

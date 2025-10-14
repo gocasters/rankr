@@ -9,7 +9,7 @@ import (
 )
 
 type Repository interface {
-	GetContributorByID(ctx context.Context, ID types.ID) (*Contributor, error)
+	GetContributorByID(ctx context.Context, id types.ID) (*Contributor, error)
 	CreateContributor(ctx context.Context, contributor Contributor) (*Contributor, error)
 	UpdateProfileContributor(ctx context.Context, contributor Contributor) (*Contributor, error)
 }
@@ -33,8 +33,8 @@ func NewService(
 	}
 }
 
-func (s Service) GetProfile(ctx context.Context, req GetProfileRequest) (GetProfileResponse, error) {
-	contributor, err := s.repository.GetContributorByID(ctx, req.ID)
+func (s Service) GetProfile(ctx context.Context, id types.ID) (GetProfileResponse, error) {
+	contributor, err := s.repository.GetContributorByID(ctx, id)
 	if err != nil {
 		logger.L().Error("contributor_get_profile", "error", err)
 		return GetProfileResponse{}, errmsg.ErrorResponse{
