@@ -3,13 +3,14 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/contributorapp/service/contributor"
 	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/type"
+	"github.com/jackc/pgx/v5"
 	"log/slog"
-	"strings"
 )
 
 type Config struct {
@@ -86,70 +87,52 @@ func (repo *ContributorRepo) CreateContributor(ctx context.Context, contributor 
 	contributor.ID = id
 	return &contributor, nil
 }
-
 func (repo *ContributorRepo) UpdateProfileContributor(ctx context.Context, contri contributor.Contributor) (*contributor.Contributor, error) {
-	var updateContributor contributor.Contributor
-	updates := make(map[string]interface{})
+	var updated contributor.Contributor
 
-	if contri.GitHubID != 0 {
-		updates["github_id"] = contri.GitHubID
+	query := `
+		UPDATE contributor
+		SET github_id=$1,
+		    github_username=$2,
+		    display_name=$3,
+		    profile_image=$4,
+		    bio=$5,
+		    privacy_mode=$6,
+		    email=$7,
+		    updated_at=NOW()
+		WHERE id=$8
+		RETURNING id, github_id, github_username, display_name, profile_image, bio, privacy_mode, email, created_at, updated_at
+	`
+
+	err := repo.PostgreSQL.Pool.QueryRow(ctx, query,
+		contri.GitHubID,
+		contri.GitHubUsername,
+		contri.DisplayName,
+		contri.ProfileImage,
+		contri.Bio,
+		contri.PrivacyMode,
+		contri.Email,
+		contri.ID,
+	).Scan(
+		&updated.ID,
+		&updated.GitHubID,
+		&updated.GitHubUsername,
+		&updated.DisplayName,
+		&updated.ProfileImage,
+		&updated.Bio,
+		&updated.PrivacyMode,
+		&updated.Email,
+		&updated.CreatedAt,
+		&updated.UpdatedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, fmt.Errorf("no contributor found with id %d", contri.ID)
+		}
+
+		return nil, fmt.Errorf("failed to update contributor profile: %w", err)
 	}
 
-	if contri.GitHubUsername != "" {
-		updates["github_username"] = contri.GitHubUsername
-	}
-
-	if contri.DisplayName != nil {
-		updates["display_name"] = *contri.DisplayName
-	}
-
-	if contri.ProfileImage != nil {
-		updates["profile_image"] = *contri.ProfileImage
-	}
-
-	if contri.Bio != nil {
-		updates["bio"] = *contri.Bio
-	}
-
-	if contri.PrivacyMode != "" {
-		updates["privacy_mode"] = contri.PrivacyMode
-	}
-
-	if len(updates) == 0 {
-		return &contri, nil
-	}
-
-	sets := make([]string, 0, len(updates))
-	args := make([]interface{}, 0, len(updates))
-	i := 1
-	for key, value := range updates {
-		sets = append(sets, fmt.Sprintf("%s=$%d", key, i))
-		args = append(args, value)
-		i++
-	}
-
-	query := fmt.Sprintf(
-		"UPDATE contributors SET %s WHERE id = $%d RETURNING id, github_id, github_username, display_name, profile_image, bio, privacy_mode, email, is_verified, two_factor_enabled, created_at, updated_at;",
-		strings.Join(sets, ", "), i)
-
-	args = append(args, contri.ID)
-
-	if err := repo.PostgreSQL.Pool.QueryRow(ctx, query, args...).Scan(
-		&updateContributor.ID,
-		&updateContributor.GitHubID,
-		&updateContributor.GitHubUsername,
-		&updateContributor.DisplayName,
-		&updateContributor.ProfileImage,
-		&updateContributor.Bio,
-		&updateContributor.PrivacyMode,
-		&updateContributor.Email,
-		&updateContributor.IsVerified,
-		&updateContributor.TwoFactor,
-		&updateContributor.CreatedAt,
-		&updateContributor.UpdatedAt,
-	); err != nil {
-		return nil, fmt.Errorf("failed update profile: %v", err)
-	}
-
-	return &updateContributor, nil
+	return &updated, nil
 }
