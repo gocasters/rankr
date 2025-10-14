@@ -19,23 +19,23 @@ type Config struct {
 }
 
 type ContributorRepo struct {
-	Config     Config
-	Logger     *slog.Logger
-	PostgreSQL *database.Database
-	Cache      *redis.Adapter
+	Config      Config
+	Logger      *slog.Logger
+	PostgresSQL *database.Database
+	Cache       *redis.Adapter
 }
 
 func NewContributorRepo(config Config, db *database.Database, logger *slog.Logger) contributor.Repository {
 	return &ContributorRepo{
-		Config:     config,
-		Logger:     logger,
-		PostgreSQL: db,
+		Config:      config,
+		Logger:      logger,
+		PostgresSQL: db,
 	}
 }
 
-func (repo *ContributorRepo) GetContributorByID(ctx context.Context, id types.ID) (*contributor.Contributor, error) {
+func (repo ContributorRepo) GetContributorByID(ctx context.Context, id types.ID) (*contributor.Contributor, error) {
 	query := "SELECT id, github_id, github_username, email, is_verified, two_factor_enabled, privacy_mode, display_name, profile_image, bio, created_at FROM contributors WHERE id=$1"
-	row := repo.PostgreSQL.Pool.QueryRow(ctx, query, id)
+	row := repo.PostgresSQL.Pool.QueryRow(ctx, query, id)
 
 	var contrib contributor.Contributor
 	err := row.Scan(
@@ -61,7 +61,7 @@ func (repo *ContributorRepo) GetContributorByID(ctx context.Context, id types.ID
 
 	return &contrib, nil
 }
-func (repo *ContributorRepo) CreateContributor(ctx context.Context, contributor contributor.Contributor) (*contributor.Contributor, error) {
+func (repo ContributorRepo) CreateContributor(ctx context.Context, contributor contributor.Contributor) (*contributor.Contributor, error) {
 	query := `
     	INSERT INTO contributors (github_id, github_username, email , privacy_mode, display_name, profile_image, bio, created_at)
     	VALUES ($1, $2, $3, $4 ,$5, $6, $7, $8)
@@ -69,7 +69,7 @@ func (repo *ContributorRepo) CreateContributor(ctx context.Context, contributor 
     `
 
 	var id int64
-	err := repo.PostgreSQL.Pool.QueryRow(ctx, query,
+	err := repo.PostgresSQL.Pool.QueryRow(ctx, query,
 		contributor.GitHubID,
 		contributor.GitHubUsername,
 		contributor.Email,
@@ -87,7 +87,7 @@ func (repo *ContributorRepo) CreateContributor(ctx context.Context, contributor 
 	contributor.ID = id
 	return &contributor, nil
 }
-func (repo *ContributorRepo) UpdateProfileContributor(ctx context.Context, contri contributor.Contributor) (*contributor.Contributor, error) {
+func (repo ContributorRepo) UpdateProfileContributor(ctx context.Context, contri contributor.Contributor) (*contributor.Contributor, error) {
 	var updated contributor.Contributor
 
 	query := `
@@ -104,7 +104,7 @@ func (repo *ContributorRepo) UpdateProfileContributor(ctx context.Context, contr
 		RETURNING id, github_id, github_username, display_name, profile_image, bio, privacy_mode, email, created_at, updated_at;
 	`
 
-	err := repo.PostgreSQL.Pool.QueryRow(ctx, query,
+	err := repo.PostgresSQL.Pool.QueryRow(ctx, query,
 		contri.GitHubID,
 		contri.GitHubUsername,
 		contri.DisplayName,
