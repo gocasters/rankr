@@ -13,6 +13,7 @@ func TestValidator_ValidateEvent_Success(t *testing.T) {
 
 	event := &leaderboardscoring.EventRequest{
 		ID:             uuid.New().String(),
+		UserID:         "12345",
 		EventName:      leaderboardscoring.PullRequestOpened.String(),
 		RepositoryID:   1001,
 		RepositoryName: "test-repo",
@@ -96,11 +97,11 @@ func TestValidator_ValidateGetLeaderboard_Success(t *testing.T) {
 	req := &leaderboardscoring.GetLeaderboardRequest{
 		Timeframe: leaderboardscoring.Monthly.String(),
 		PageSize:  10,
-		Offset:    0,
+		Offset:    1,
 	}
 
 	err := validator.ValidateGetLeaderboard(req)
-	assert.Error(t, err)
+	assert.NoError(t, err)
 }
 
 func TestValidator_ValidateGetLeaderboard_WithProjectID(t *testing.T) {

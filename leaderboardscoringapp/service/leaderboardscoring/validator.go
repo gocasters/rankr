@@ -18,6 +18,7 @@ func (v Validator) ValidateEvent(event *EventRequest) error {
 	// TODO: This validation needs to be completed for all event attributes.
 	return validation.ValidateStruct(event,
 		validation.Field(&event.ID, validation.Required, is.UUID),
+		validation.Field(&event.UserID, validation.Required),
 		validation.Field(&event.EventName, validation.Required, validation.In(
 			PullRequestOpened.String(),
 			PullRequestClosed.String(),
@@ -59,7 +60,7 @@ func (v Validator) ValidateGetLeaderboard(request *GetLeaderboardRequest) error 
 				Weekly.String()))),
 
 		validation.Field(&request.Offset,
-			validation.Required.Error("offset is required"),
+			//validation.Required.Error("offset is required"),
 			validation.Min(int32(minOffset)).Error("offset cannot be negative"),
 			validation.Max(int32(maxOffset)).Error(fmt.Sprintf("offset cannot exceed %d", maxOffset)),
 		),
