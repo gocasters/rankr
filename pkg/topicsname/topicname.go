@@ -1,4 +1,4 @@
-package realtimeconstant
+package topicsname
 
 const (
 	// NATS Topics

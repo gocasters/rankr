@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gocasters/rankr/pkg/realtimeconstant"
+	"github.com/gocasters/rankr/pkg/topicsname"
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -262,20 +262,20 @@ func TestService_BroadcastEvent(t *testing.T) {
 	ctx := context.Background()
 
 	client1 := createTestClient("client-1")
-	client1.Subscriptions[realtimeconstant.TopicTaskCreated] = true
+	client1.Subscriptions[topicsname.TopicTaskCreated] = true
 	service.RegisterClient(client1)
 
 	client2 := createTestClient("client-2")
-	client2.Subscriptions[realtimeconstant.TopicTaskCreated] = true
+	client2.Subscriptions[topicsname.TopicTaskCreated] = true
 	service.RegisterClient(client2)
 
 	client3 := createTestClient("client-3")
-	client3.Subscriptions[realtimeconstant.TopicContributorCreated] = true
+	client3.Subscriptions[topicsname.TopicContributorCreated] = true
 	service.RegisterClient(client3)
 
 	t.Run("should broadcast event to subscribed clients", func(t *testing.T) {
 		req := BroadcastEventRequest{
-			Topic: realtimeconstant.TopicTaskCreated,
+			Topic: topicsname.TopicTaskCreated,
 			Payload: map[string]interface{}{
 				"task_id":   "123",
 				"task_name": "Test Task",
@@ -288,7 +288,7 @@ func TestService_BroadcastEvent(t *testing.T) {
 		select {
 		case msg := <-client1.Send:
 			assert.NotNil(t, msg)
-			assert.Contains(t, string(msg), realtimeconstant.TopicTaskCreated)
+			assert.Contains(t, string(msg), topicsname.TopicTaskCreated)
 		case <-time.After(100 * time.Millisecond):
 			t.Fatal("client1 did not receive event")
 		}
@@ -296,7 +296,7 @@ func TestService_BroadcastEvent(t *testing.T) {
 		select {
 		case msg := <-client2.Send:
 			assert.NotNil(t, msg)
-			assert.Contains(t, string(msg), realtimeconstant.TopicTaskCreated)
+			assert.Contains(t, string(msg), topicsname.TopicTaskCreated)
 		case <-time.After(100 * time.Millisecond):
 			t.Fatal("client2 did not receive event")
 		}
@@ -311,7 +311,7 @@ func TestService_BroadcastEvent(t *testing.T) {
 
 	t.Run("should broadcast to different topic", func(t *testing.T) {
 		req := BroadcastEventRequest{
-			Topic: realtimeconstant.TopicContributorCreated,
+			Topic: topicsname.TopicContributorCreated,
 			Payload: map[string]interface{}{
 				"contributor_id": "456",
 				"username":       "testuser",
@@ -324,7 +324,7 @@ func TestService_BroadcastEvent(t *testing.T) {
 		select {
 		case msg := <-client3.Send:
 			assert.NotNil(t, msg)
-			assert.Contains(t, string(msg), realtimeconstant.TopicContributorCreated)
+			assert.Contains(t, string(msg), topicsname.TopicContributorCreated)
 		case <-time.After(100 * time.Millisecond):
 			t.Fatal("client3 did not receive event")
 		}
@@ -394,7 +394,7 @@ func TestService_ConcurrentOperations(t *testing.T) {
 		go func(id int) {
 			defer wg.Done()
 			req := SubscribeRequest{
-				Topics: []string{realtimeconstant.TopicTaskCreated, realtimeconstant.TopicTaskUpdated},
+				Topics: []string{topicsname.TopicTaskCreated, topicsname.TopicTaskUpdated},
 			}
 			service.SubscribeTopics(ctx, string(rune('0'+id)), req)
 		}(i)
@@ -406,7 +406,7 @@ func TestService_ConcurrentOperations(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			req := BroadcastEventRequest{
-				Topic: realtimeconstant.TopicTaskCreated,
+				Topic: topicsname.TopicTaskCreated,
 				Payload: map[string]interface{}{
 					"test": "data",
 				},
@@ -434,14 +434,14 @@ func TestService_BroadcastEvent_FullChannelHandling(t *testing.T) {
 
 	client := createTestClient("client-1")
 	client.Send = make(chan []byte, 2)
-	client.Subscriptions[realtimeconstant.TopicTaskCreated] = true
+	client.Subscriptions[topicsname.TopicTaskCreated] = true
 	service.RegisterClient(client)
 
 	client.Send <- []byte("message1")
 	client.Send <- []byte("message2")
 
 	req := BroadcastEventRequest{
-		Topic: realtimeconstant.TopicTaskCreated,
+		Topic: topicsname.TopicTaskCreated,
 		Payload: map[string]interface{}{
 			"test": "data",
 		},
@@ -462,9 +462,9 @@ func TestService_SubscriptionPersistence(t *testing.T) {
 
 	req := SubscribeRequest{
 		Topics: []string{
-			realtimeconstant.TopicTaskCreated,
-			realtimeconstant.TopicTaskUpdated,
-			realtimeconstant.TopicContributorCreated,
+			topicsname.TopicTaskCreated,
+			topicsname.TopicTaskUpdated,
+			topicsname.TopicContributorCreated,
 		},
 	}
 
@@ -473,19 +473,19 @@ func TestService_SubscriptionPersistence(t *testing.T) {
 
 	retrieved, ok := store.GetClient("client-1")
 	require.True(t, ok)
-	assert.True(t, retrieved.Subscriptions[realtimeconstant.TopicTaskCreated])
-	assert.True(t, retrieved.Subscriptions[realtimeconstant.TopicTaskUpdated])
-	assert.True(t, retrieved.Subscriptions[realtimeconstant.TopicContributorCreated])
+	assert.True(t, retrieved.Subscriptions[topicsname.TopicTaskCreated])
+	assert.True(t, retrieved.Subscriptions[topicsname.TopicTaskUpdated])
+	assert.True(t, retrieved.Subscriptions[topicsname.TopicContributorCreated])
 
 	unsub := UnsubscribeRequest{
-		Topics: []string{realtimeconstant.TopicTaskUpdated},
+		Topics: []string{topicsname.TopicTaskUpdated},
 	}
 	_, err = service.UnsubscribeTopics(ctx, "client-1", unsub)
 	require.NoError(t, err)
 
 	retrieved, ok = store.GetClient("client-1")
 	require.True(t, ok)
-	assert.True(t, retrieved.Subscriptions[realtimeconstant.TopicTaskCreated])
-	assert.False(t, retrieved.Subscriptions[realtimeconstant.TopicTaskUpdated])
-	assert.True(t, retrieved.Subscriptions[realtimeconstant.TopicContributorCreated])
+	assert.True(t, retrieved.Subscriptions[topicsname.TopicTaskCreated])
+	assert.False(t, retrieved.Subscriptions[topicsname.TopicTaskUpdated])
+	assert.True(t, retrieved.Subscriptions[topicsname.TopicContributorCreated])
 }
