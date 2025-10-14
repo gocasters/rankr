@@ -66,8 +66,8 @@ func loadAppConfig() userprofileapp.Config {
 
 	yamlPath := os.Getenv("CONFIG_PATH")
 	if yamlPath == "" {
-		yamlPath = filepath.Join(workDir, "deploy", "userprofile", "development", "config.yaml") // for docker container
-		//	yamlPath = filepath.Join(workDir, "deploy", "userprofile", "development", "config.local.yaml") // for local
+		// yamlPath = filepath.Join(workDir, "deploy", "userprofile", "development", "config.yaml") // for docker container
+		yamlPath = filepath.Join(workDir, "../../", "deploy", "userprofile", "development", "config.local.yaml") // for local
 	}
 
 	log.Printf("Loading user profile service config from: %s", yamlPath)

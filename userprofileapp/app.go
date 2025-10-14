@@ -8,17 +8,15 @@ import (
 	"github.com/gocasters/rankr/userprofileapp/adapter"
 	"github.com/gocasters/rankr/userprofileapp/delivery/http"
 	"github.com/gocasters/rankr/userprofileapp/service/userprofile"
+	"log/slog"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 )
 
-var userProfileLogger = logger.L()
-
 type Application struct {
 	Validator  userprofile.Validator
-	RPCAdapter adapter.RPC
 	Service    userprofile.Service
 	Handler    *http.Handler
 	HTTPServer http.Server
@@ -30,11 +28,9 @@ func Setup(ctx context.Context, cfg Config) (Application, error) {
 	contributorStatRPC := adapter.NewContributorStatRPC()
 	taskRPC := adapter.NewTaskRPC()
 
-	rpcAdapter := adapter.NewRPC(contributorInfoRPC, contributorStatRPC, taskRPC)
+	validator := userprofile.NewValidator(contributorInfoRPC)
 
-	validator := userprofile.NewValidator(rpcAdapter)
-
-	service := userprofile.NewService(rpcAdapter, validator)
+	service := userprofile.NewService(contributorInfoRPC, taskRPC, contributorStatRPC, validator)
 
 	handler := http.NewHandler(service)
 
@@ -48,7 +44,6 @@ func Setup(ctx context.Context, cfg Config) (Application, error) {
 
 	return Application{
 		Validator:  validator,
-		RPCAdapter: rpcAdapter,
 		Service:    service,
 		Handler:    handler,
 		HTTPServer: httpServer,
@@ -65,38 +60,38 @@ func (app Application) Start() {
 	startServers(app, &wg)
 	<-ctx.Done()
 
-	userProfileLogger.Info("Shutdown signal received...")
+	userProfileLogger().Info("Shutdown signal received...")
 
 	shutdownTimeoutCtx, cancel := context.WithTimeout(context.Background(), app.Config.HTTPServer.ShutdownTimeout)
 	defer cancel()
 
 	if app.shutdownServers(shutdownTimeoutCtx) {
-		userProfileLogger.Info("Servers shutdown gracefully")
+		userProfileLogger().Info("Servers shutdown gracefully")
 	} else {
-		userProfileLogger.Warn("Shutdown timed out, exiting application")
+		userProfileLogger().Warn("Shutdown timed out, exiting application")
 		os.Exit(1)
 	}
 
 	wg.Wait()
-	userProfileLogger.Info("user profile app stopped")
+	userProfileLogger().Info("user profile app stopped")
 }
 
 func startServers(app Application, wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		userProfileLogger.Info(fmt.Sprintf("HTTP server starting on port %d", app.Config.HTTPServer.Port))
+		userProfileLogger().Info(fmt.Sprintf("HTTP server starting on port %d", app.Config.HTTPServer.Port))
 		if err := app.HTTPServer.Serve(); err != nil {
-			userProfileLogger.Error(fmt.Sprintf("error listen and serve http server on port %d",
+			userProfileLogger().Error(fmt.Sprintf("error listen and serve http server on port %d",
 				app.Config.HTTPServer.Port), "error", err)
 		}
 
-		userProfileLogger.Info(fmt.Sprintf("Http server stopped on port %d", app.Config.HTTPServer.Port))
+		userProfileLogger().Info(fmt.Sprintf("Http server stopped on port %d", app.Config.HTTPServer.Port))
 	}()
 }
 
 func (app Application) shutdownServers(ctx context.Context) bool {
-	userProfileLogger.Info("Starting server shutdown process...")
+	userProfileLogger().Info("Starting server shutdown process...")
 	shutdownDone := make(chan struct{})
 
 	go func() {
@@ -106,7 +101,7 @@ func (app Application) shutdownServers(ctx context.Context) bool {
 
 		shutdownWg.Wait()
 		close(shutdownDone)
-		userProfileLogger.Info("All servers have been shut down successfully.")
+		userProfileLogger().Info("All servers have been shut down successfully.")
 
 	}()
 
@@ -119,15 +114,19 @@ func (app Application) shutdownServers(ctx context.Context) bool {
 }
 
 func (app Application) shutdownHTTPServe(parentCtx context.Context, wg *sync.WaitGroup) {
-	userProfileLogger.Info(fmt.Sprintf("Starting gracefully shutdown for http server on port %d", app.Config.HTTPServer.Port))
+	userProfileLogger().Info(fmt.Sprintf("Starting gracefully shutdown for http server on port %d", app.Config.HTTPServer.Port))
 
 	defer wg.Done()
 	httpShutdownCtx, httpCancel := context.WithTimeout(parentCtx, app.Config.HTTPServer.ShutdownTimeout)
 	defer httpCancel()
 
 	if err := app.HTTPServer.Stop(httpShutdownCtx); err != nil {
-		userProfileLogger.Error(fmt.Sprintf("failed http server gracefully shutdown: %v", err))
+		userProfileLogger().Error(fmt.Sprintf("failed http server gracefully shutdown: %v", err))
 	}
 
-	userProfileLogger.Info("Successfully http server gracefully shutdown")
+	userProfileLogger().Info("Successfully http server gracefully shutdown")
+}
+
+func userProfileLogger() *slog.Logger {
+	return logger.L()
 }

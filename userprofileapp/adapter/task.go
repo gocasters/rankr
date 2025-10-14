@@ -11,9 +11,9 @@ func NewTaskRPC() TaskRPC {
 	return TaskRPC{}
 }
 
-// getTasks fetches contributor's tasks
-// TODO: Implement actual RPC call to taskapp
-func (a TaskRPC) getTasks(ctx context.Context, userID int64) ([]userprofile.Task, error) {
+// GetTasks fetches contributor's tasks
+// TODO: Implement actual RPC call to task app
+func (a TaskRPC) GetTasks(ctx context.Context, userID int64) ([]userprofile.Task, error) {
 	// Placeholder implementation
 
 	return []userprofile.Task{}, nil
