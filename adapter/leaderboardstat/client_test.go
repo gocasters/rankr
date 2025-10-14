@@ -125,7 +125,7 @@ func TestClient_GetContributorStats_Success(t *testing.T) {
 
 	assert.Equal(t, float64(1000), resp.TotalScore)
 	assert.Len(t, resp.ProjectsScore, 2)
-	assert.Equal(t, float64(500), resp.ProjectsScore["project1"])
+	assert.Equal(t, float64(500), resp.ProjectsScore[types.ID(1)])
 }
 
 func TestClient_GetContributorStats_ServerError(t *testing.T) {
