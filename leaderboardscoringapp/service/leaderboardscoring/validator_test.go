@@ -136,7 +136,7 @@ func TestValidator_ValidateGetLeaderboard_MissingPageSize(t *testing.T) {
 	validator := leaderboardscoring.NewValidator()
 
 	req := &leaderboardscoring.GetLeaderboardRequest{
-		Timeframe: "invalid",
+		Timeframe: leaderboardscoring.Monthly.String(),
 		PageSize:  0,
 		Offset:    10,
 	}
@@ -149,7 +149,7 @@ func TestValidator_ValidateGetLeaderboard_InvalidPageSize(t *testing.T) {
 	validator := leaderboardscoring.NewValidator()
 
 	req := &leaderboardscoring.GetLeaderboardRequest{
-		Timeframe: "invalid",
+		Timeframe: leaderboardscoring.Monthly.String(),
 		PageSize:  1_001,
 		Offset:    10,
 	}
@@ -162,7 +162,7 @@ func TestValidator_ValidateGetLeaderboard_InvalidOffset(t *testing.T) {
 	validator := leaderboardscoring.NewValidator()
 
 	req := &leaderboardscoring.GetLeaderboardRequest{
-		Timeframe: "invalid",
+		Timeframe: leaderboardscoring.Monthly.String(),
 		PageSize:  20,
 		Offset:    -1,
 	}
