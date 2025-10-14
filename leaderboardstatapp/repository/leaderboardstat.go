@@ -103,7 +103,6 @@ func (repo LeaderboardstatRepo) GetContributorScoreHistory(ctx context.Context, 
 		if err != nil {
 			return nil, fmt.Errorf("error scanning score history: %v", err)
 		}
-		fmt.Println("...8...>>>", record)
 		scoreHistory = append(scoreHistory, record)
 	}
 	if err := rows.Err(); err != nil {

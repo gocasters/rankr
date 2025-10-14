@@ -101,7 +101,7 @@ func TestClient_GetContributorStats_Success(t *testing.T) {
 				ContributorId: req.ContributorId,
 				GlobalRank:    5,
 				TotalScore:    1000.0,
-				ProjectsScore: map[string]float64{"project1": 500.0, "project2": 500.0},
+				ProjectsScore: map[uint64]float64{1: 500.0, 2: 500.0},
 			}, nil
 		},
 	}
@@ -163,7 +163,7 @@ func TestClient_GetContributorStats_ContextCancellation(t *testing.T) {
 					ContributorId: req.ContributorId,
 					GlobalRank:    1,
 					TotalScore:    0.0,
-					ProjectsScore: map[string]float64{},
+					ProjectsScore: map[uint64]float64{},
 				}, nil
 			}
 		},
