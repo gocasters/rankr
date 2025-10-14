@@ -38,7 +38,7 @@ postgres_db:
   max_idle_conns: 15
   max_open_conns: 100
   conn_max_lifetime: 5
-  path_of_migration: "./../../contributorapp/repository/migrations"
+  path_of_migrations: "./../../contributorapp/repository/migrations"
   
   # pgx pool configs
   min_conns: 1
