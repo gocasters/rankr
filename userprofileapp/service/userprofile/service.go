@@ -3,13 +3,8 @@ package userprofile
 import (
 	"context"
 	"github.com/gocasters/rankr/pkg/logger"
+	"golang.org/x/sync/errgroup"
 )
-
-type RPCRepository interface {
-	ContributorRPC
-	TaskRPC
-	LeaderboardStatRPC
-}
 
 type ContributorRPC interface {
 	GetProfileInfo(ctx context.Context, userID int64) (ContributorInfo, error)
@@ -24,44 +19,78 @@ type LeaderboardStatRPC interface {
 }
 
 type Service struct {
-	rpcRepo   RPCRepository
-	validator Validator
+	contributorInfo ContributorRPC
+	task            TaskRPC
+	leaderboardStat LeaderboardStatRPC
+	validator       Validator
 }
 
-func NewService(rpcRepo RPCRepository, validator Validator) Service {
+func NewService(
+	contributorInfo ContributorRPC,
+	task TaskRPC,
+	leaderboardStat LeaderboardStatRPC,
+	validator Validator,
+) Service {
 	return Service{
-		rpcRepo:   rpcRepo,
-		validator: validator,
+		contributorInfo: contributorInfo,
+		task:            task,
+		leaderboardStat: leaderboardStat,
+		validator:       validator,
 	}
 }
 
 func (s Service) ContributorProfile(ctx context.Context, contributorID int64) (*ProfileResponse, error) {
 
-	contributorInfo, err := s.rpcRepo.GetProfileInfo(ctx, contributorID)
-	if err != nil {
-		logger.L().Error("userprofile-get-user-profile", "error: ", err)
+	var contributorInfo ContributorInfo
+	var tasks = make([]Task, 0)
+	var contributorStat ContributorStat
+
+	g, gctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		ci, err := s.contributorInfo.GetProfileInfo(gctx, contributorID)
+		if err != nil {
+			return err
+		}
+
+		contributorInfo = ci
+
+		return nil
+	})
+
+	g.Go(func() error {
+		ts, err := s.task.GetTasks(gctx, contributorID)
+		if err != nil {
+			return err
+		}
+
+		tasks = ts
+
+		return nil
+	})
+
+	g.Go(func() error {
+		cs, err := s.leaderboardStat.GetContributorStat(gctx, contributorID)
+		if err != nil {
+			return err
+		}
+
+		contributorStat = cs
+
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		logger.L().Error("userprofile-get-profile", "error", err)
+
 		return nil, err
 	}
 
-	tasks, err := s.rpcRepo.GetTasks(ctx, contributorID)
-	if err != nil {
-		logger.L().Error("userprofile-get-user-profile", "error: ", err)
-		return nil, err
-	}
-
-	contributorStat, err := s.rpcRepo.GetContributorStat(ctx, contributorID)
-	if err != nil {
-		logger.L().Error("userprofile-get-user-profile", "error: ", err)
-		return nil, err
-	}
-
-	userProfile := ProfileResponse{
+	return &ProfileResponse{
 		Profile: Profile{
 			ContributorInfo: contributorInfo,
 			Tasks:           tasks,
 			ContributorStat: contributorStat,
 		},
-	}
-
-	return &userProfile, nil
+	}, nil
 }
