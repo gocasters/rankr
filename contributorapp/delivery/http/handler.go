@@ -30,7 +30,7 @@ func (h Handler) getProfile(c echo.Context) error {
 	id, err := strconv.Atoi(idStr)
 
 	if idStr == "" || err != nil {
-		return c.JSON(http.StatusBadRequest, echo.Map{"error": "id is require"})
+		return c.JSON(http.StatusBadRequest, echo.Map{"error": "id is required"})
 	}
 
 	res, err := h.ContributorService.GetProfile(c.Request().Context(), types.ID(id))

@@ -116,5 +116,7 @@ func (s Service) UpdateProfile(ctx context.Context, req UpdateProfileRequest) (U
 		ProfileImage:   resContributor.ProfileImage,
 		Bio:            resContributor.Bio,
 		PrivacyMode:    resContributor.PrivacyMode,
+		CreatedAt:      resContributor.CreatedAt,
+		UpdatedAt:      resContributor.UpdatedAt,
 	}, nil
 }

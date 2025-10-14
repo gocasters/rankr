@@ -40,7 +40,7 @@ func Setup(
 	redisAdapter, err := redis.New(ctx, config.Redis)
 	if err != nil {
 		logger.Error("failed to initialize Redis", "err", err)
-		//return Application{}, err
+		return Application{}, err
 	}
 	cache := cachemanager.NewCacheManager(redisAdapter)
 

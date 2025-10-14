@@ -48,4 +48,5 @@ type UpdateProfileResponse struct {
 	Bio            string      `json:"bio,omitempty"`
 	PrivacyMode    PrivacyMode `json:"privacy_mode"`
 	CreatedAt      time.Time   `json:"created_at"`
+	UpdatedAt      time.Time   `json:"updated_at"`
 }
