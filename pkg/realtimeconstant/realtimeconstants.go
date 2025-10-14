@@ -1,4 +1,4 @@
-package constant
+package realtimeconstant
 
 const (
 	// NATS Topics

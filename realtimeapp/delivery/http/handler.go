@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gocasters/rankr/realtimeapp/constant"
+	"github.com/gocasters/rankr/pkg/realtimeconstant"
 	"github.com/gocasters/rankr/realtimeapp/service/realtime"
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
@@ -128,7 +128,7 @@ func (h Handler) handleClientMessage(client *realtime.Client, msg realtime.Messa
 	ctx := context.Background()
 
 	switch msg.Type {
-	case constant.MessageTypeSubscribe:
+	case realtimeconstant.MessageTypeSubscribe:
 		var req realtime.SubscribeRequest
 		topicsData, _ := json.Marshal(msg.Payload["topics"])
 		json.Unmarshal(topicsData, &req.Topics)
@@ -140,9 +140,9 @@ func (h Handler) handleClientMessage(client *realtime.Client, msg realtime.Messa
 			return
 		}
 
-		h.sendResponse(client, constant.MessageTypeAck, resp)
+		h.sendResponse(client, realtimeconstant.MessageTypeAck, resp)
 
-	case constant.MessageTypeUnsubscribe:
+	case realtimeconstant.MessageTypeUnsubscribe:
 		var req realtime.UnsubscribeRequest
 		topicsData, _ := json.Marshal(msg.Payload["topics"])
 		json.Unmarshal(topicsData, &req.Topics)
@@ -154,7 +154,7 @@ func (h Handler) handleClientMessage(client *realtime.Client, msg realtime.Messa
 			return
 		}
 
-		h.sendResponse(client, constant.MessageTypeAck, resp)
+		h.sendResponse(client, realtimeconstant.MessageTypeAck, resp)
 
 	default:
 		h.sendError(client, "unknown message type")
@@ -163,7 +163,7 @@ func (h Handler) handleClientMessage(client *realtime.Client, msg realtime.Messa
 
 func (h Handler) sendError(client *realtime.Client, message string) {
 	errMsg := realtime.ErrorMessage{
-		Type:    constant.MessageTypeError,
+		Type:    realtimeconstant.MessageTypeError,
 		Message: message,
 	}
 

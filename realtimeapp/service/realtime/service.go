@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/gocasters/rankr/realtimeapp/constant"
+	"github.com/gocasters/rankr/pkg/realtimeconstant"
 )
 
 type ConnectionStore interface {
@@ -97,7 +97,7 @@ func (s Service) UnsubscribeTopics(ctx context.Context, clientID string, req Uns
 
 func (s Service) BroadcastEvent(ctx context.Context, req BroadcastEventRequest) error {
 	event := Event{
-		Type:      constant.MessageTypeEvent,
+		Type:      realtimeconstant.MessageTypeEvent,
 		Topic:     req.Topic,
 		Payload:   req.Payload,
 		Timestamp: time.Now(),

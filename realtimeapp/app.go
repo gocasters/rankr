@@ -14,7 +14,7 @@ import (
 	natsadapter "github.com/gocasters/rankr/adapter/nats"
 	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/pkg/httpserver"
-	"github.com/gocasters/rankr/realtimeapp/constant"
+	"github.com/gocasters/rankr/pkg/realtimeconstant"
 	"github.com/gocasters/rankr/realtimeapp/delivery/http"
 	"github.com/gocasters/rankr/realtimeapp/repository"
 	"github.com/gocasters/rankr/realtimeapp/service/realtime"
@@ -197,15 +197,15 @@ func parseTopics(topicsStr string) []string {
 	if topicsStr == "" {
 
 		return []string{
-			constant.TopicContributorCreated,
-			constant.TopicContributorUpdated,
-			constant.TopicTaskCreated,
-			constant.TopicTaskUpdated,
-			constant.TopicTaskCompleted,
-			constant.TopicLeaderboardScored,
-			constant.TopicLeaderboardUpdated,
-			constant.TopicProjectCreated,
-			constant.TopicProjectUpdated,
+			realtimeconstant.TopicContributorCreated,
+			realtimeconstant.TopicContributorUpdated,
+			realtimeconstant.TopicTaskCreated,
+			realtimeconstant.TopicTaskUpdated,
+			realtimeconstant.TopicTaskCompleted,
+			realtimeconstant.TopicLeaderboardScored,
+			realtimeconstant.TopicLeaderboardUpdated,
+			realtimeconstant.TopicProjectCreated,
+			realtimeconstant.TopicProjectUpdated,
 		}
 	}
 
