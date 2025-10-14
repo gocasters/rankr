@@ -1,4 +1,4 @@
-package eventgen
+package eventgenerator
 
 import (
 	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"

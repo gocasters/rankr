@@ -6,7 +6,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/gocasters/rankr/adapter/nats"
-	"github.com/gocasters/rankr/leaderboardscoringapp/test/eventgen"
+	"github.com/gocasters/rankr/pkg/eventgenerator"
 	"google.golang.org/protobuf/proto"
 	"log"
 	"time"
@@ -33,7 +33,7 @@ func main() {
 	}
 	defer adapter.Close()
 
-	generator := eventgen.NewEventGenerator(1, "test-repo")
+	generator := eventgenerator.NewEventGenerator(1, "test-repo")
 	userIDs := []uint64{100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120}
 	events := generator.GenerateRandomEvents(*count, userIDs)
 

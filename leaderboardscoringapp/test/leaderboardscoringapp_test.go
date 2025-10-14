@@ -1,4 +1,4 @@
-package leaderboardscoringapp_test
+package test_test
 
 import (
 	"context"

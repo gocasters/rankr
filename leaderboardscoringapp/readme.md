@@ -8,7 +8,7 @@
 
     * [Run leaderboard-scoring app](#run-leaderboard-scoring-app)
     * [Stopping service](#stopping-service)
-    * [E2E Testing Guide](#e2e-testing-guide)
+    * [Testing Guide](#e2e-testing-guide)
 4. [API Endpoints](#4-api-endpoints)
 5. [gRPC API](#5-grpc-api)
 
@@ -119,13 +119,11 @@ Together, they achieve both **speed and scalability** in production.
 
 ---
 
-### E2E Testing Guide
+### Testing Guide
 
-For full **end-to-end (E2E)** testing instructions — including how to simulate events, verify Redis and PostgreSQL
-results, and inspect NATS JetStream —
-please see the detailed documentation here:
+This guide covers two testing approaches: automated integration tests and manual end-to-end testing.
 
-➡️ **[Leaderboard Scoring E2E Testing Guide](./test/readme.md)**
+➡️ **[Leaderboard Scoring Testing Guide](./test/test_readme)**
 
 ---
 
