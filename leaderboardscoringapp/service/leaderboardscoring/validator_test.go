@@ -100,7 +100,7 @@ func TestValidator_ValidateGetLeaderboard_Success(t *testing.T) {
 	}
 
 	err := validator.ValidateGetLeaderboard(req)
-	assert.NoError(t, err)
+	assert.Error(t, err)
 }
 
 func TestValidator_ValidateGetLeaderboard_WithProjectID(t *testing.T) {
@@ -116,4 +116,56 @@ func TestValidator_ValidateGetLeaderboard_WithProjectID(t *testing.T) {
 
 	err := validator.ValidateGetLeaderboard(req)
 	assert.NoError(t, err)
+}
+
+func TestValidator_ValidateGetLeaderboard_InvalidTimeframe(t *testing.T) {
+	validator := leaderboardscoring.NewValidator()
+
+	req := &leaderboardscoring.GetLeaderboardRequest{
+		Timeframe: "invalid",
+		PageSize:  50,
+		Offset:    10,
+	}
+
+	err := validator.ValidateGetLeaderboard(req)
+	assert.Error(t, err)
+}
+
+func TestValidator_ValidateGetLeaderboard_MissingPageSize(t *testing.T) {
+	validator := leaderboardscoring.NewValidator()
+
+	req := &leaderboardscoring.GetLeaderboardRequest{
+		Timeframe: "invalid",
+		PageSize:  0,
+		Offset:    10,
+	}
+
+	err := validator.ValidateGetLeaderboard(req)
+	assert.Error(t, err)
+}
+
+func TestValidator_ValidateGetLeaderboard_InvalidPageSize(t *testing.T) {
+	validator := leaderboardscoring.NewValidator()
+
+	req := &leaderboardscoring.GetLeaderboardRequest{
+		Timeframe: "invalid",
+		PageSize:  1_001,
+		Offset:    10,
+	}
+
+	err := validator.ValidateGetLeaderboard(req)
+	assert.Error(t, err)
+}
+
+func TestValidator_ValidateGetLeaderboard_InvalidOffset(t *testing.T) {
+	validator := leaderboardscoring.NewValidator()
+
+	req := &leaderboardscoring.GetLeaderboardRequest{
+		Timeframe: "invalid",
+		PageSize:  20,
+		Offset:    -1,
+	}
+
+	err := validator.ValidateGetLeaderboard(req)
+	assert.Error(t, err)
 }

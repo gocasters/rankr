@@ -133,3 +133,10 @@ type UserTotalScore struct {
 	TotalScore        int64
 	SnapshotTimestamp time.Time
 }
+
+const (
+	minPageSize = 1
+	maxPageSize = 1_000
+	minOffset   = 0
+	maxOffset   = 1_000_000
+)
