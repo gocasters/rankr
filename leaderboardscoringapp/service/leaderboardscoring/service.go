@@ -30,26 +30,26 @@ type Publisher interface {
 }
 
 type Service struct {
-	eventPersistence EventPersistence
-	leaderboard      LeaderboardCache
-	publisher        Publisher
-	topic            string
-	validator        Validator
+	eventPersistence    EventPersistence
+	leaderboard         LeaderboardCache
+	publisher           Publisher
+	processedEventTopic string
+	validator           Validator
 }
 
 func NewService(
 	persistence EventPersistence,
 	leaderboard LeaderboardCache,
 	publisher Publisher,
-	topic string,
+	processedEventTopic string,
 	validator Validator,
 ) *Service {
 	return &Service{
-		eventPersistence: persistence,
-		leaderboard:      leaderboard,
-		publisher:        publisher,
-		topic:            topic,
-		validator:        validator,
+		eventPersistence:    persistence,
+		leaderboard:         leaderboard,
+		publisher:           publisher,
+		processedEventTopic: processedEventTopic,
+		validator:           validator,
 	}
 }
 
@@ -61,24 +61,30 @@ func (s *Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) erro
 		return errors.Join(ErrInvalidEventRequest, err)
 	}
 
-	score := s.calculateScore(req)
-	if score == nil {
+	score := calculateScore(req.EventName)
+	if score == 0 {
 		log.Debug("unsupported event payload; skipping", slog.String("event_id", req.ID))
 		return nil
 	}
 
 	// Update Redis leaderboard (real-time)
-	if err := s.leaderboard.UpsertScores(ctx, score); err != nil {
+	keys := s.keys(strconv.FormatUint(req.RepositoryID, 10))
+	upsertScore := UpsertScore{
+		Keys:   keys,
+		Score:  score,
+		UserID: req.UserID,
+	}
+	if err := s.leaderboard.UpsertScores(ctx, &upsertScore); err != nil {
 		log.Error(ErrFailedToUpdateScores.Error(), slog.String("error", err.Error()))
 		return errors.Join(ErrFailedToUpdateScores, err)
 	}
 
 	// Publish to NATS JetStream for batch persistence
 	pse := ProcessedScoreEvent{
-		UserID:    score.UserID,
-		EventName: req.EventName,
-		Score:     score.Score,
-		Timestamp: time.Now(),
+		UserID:    req.UserID,
+		EventName: EventName(req.EventName),
+		Score:     score,
+		Timestamp: time.Now().UTC(),
 	}
 
 	dataMsg, mErr := json.Marshal(pse)
@@ -87,7 +93,7 @@ func (s *Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) erro
 		return fmt.Errorf("marshal event: %w", mErr)
 	}
 
-	if err := s.publisher.Publish(ctx, s.topic, dataMsg); err != nil {
+	if err := s.publisher.Publish(ctx, s.processedEventTopic, dataMsg); err != nil {
 		log.Error("failed to publish processed score event", slog.String("error", err.Error()))
 		return fmt.Errorf("publish event: %w", err)
 	}
@@ -105,20 +111,12 @@ func (s *Service) GetLeaderboard(ctx context.Context, req *GetLeaderboardRequest
 
 	if err := s.validator.ValidateGetLeaderboard(req); err != nil {
 		log.Warn("Invalid leaderboard request", slog.String("error", err.Error()))
-		return GetLeaderboardResponse{}, errors.Join(ErrInvalidArguments, err) // fmt.Errorf("%w:%v", ErrInvalidArguments, err)
+		return GetLeaderboardResponse{}, errors.Join(ErrInvalidArguments, err)
 	}
 
 	key := req.BuildKey()
 
-	const maxPageSize = 1000 // TODO: consider making this configurable
-	if req.Offset < 0 {
-		return GetLeaderboardResponse{}, errors.Join(ErrInvalidArguments, fmt.Errorf("offset must be >= 0"))
-	}
-	pageSize := req.PageSize
-	if pageSize <= 0 || pageSize > maxPageSize {
-		pageSize = maxPageSize
-	}
-	stop := int64(req.Offset) + int64(pageSize) - 1
+	stop := int64(req.Offset) + int64(req.PageSize) - 1
 
 	lbQuery := &LeaderboardQuery{
 		Key:   key,
@@ -171,13 +169,17 @@ func (s *Service) RestoreLeaderboardFromSnapshot(ctx context.Context) error {
 // leaderboard:{project_id}:monthly:{year}-{month}
 // leaderboard:{project_id}:weekly:{year}-W{week_number}
 func (s *Service) keys(projectID string) []string {
-	globalKeys := make([]string, 0, 4)
-	perProjectKeys := make([]string, 0, 4)
+	keyMap := make(map[string]struct{})
+	addKey := func(key string) {
+		if _, exists := keyMap[key]; !exists {
+			keyMap[key] = struct{}{}
+		}
+	}
 
-	globalKeys = append(globalKeys, getGlobalLeaderboardKey(AllTime, ""))
+	// Global keys
+	addKey(getGlobalLeaderboardKey(AllTime, ""))
 	for _, tf := range Timeframes {
 		var period string
-
 		switch tf {
 		case Yearly:
 			period = timettl.GetYear()
@@ -186,15 +188,13 @@ func (s *Service) keys(projectID string) []string {
 		case Weekly:
 			period = timettl.GetWeek()
 		}
-
-		key := getGlobalLeaderboardKey(tf, period)
-		globalKeys = append(globalKeys, key)
+		addKey(getGlobalLeaderboardKey(tf, period))
 	}
 
-	perProjectKeys = append(perProjectKeys, getPerProjectLeaderboardKey(projectID, AllTime, ""))
+	// Per-project keys
+	addKey(getPerProjectLeaderboardKey(projectID, AllTime, ""))
 	for _, tf := range Timeframes {
 		var period string
-
 		switch tf {
 		case Yearly:
 			period = timettl.GetYear()
@@ -203,70 +203,37 @@ func (s *Service) keys(projectID string) []string {
 		case Weekly:
 			period = timettl.GetWeek()
 		}
-
-		key := getPerProjectLeaderboardKey(projectID, tf, period)
-		perProjectKeys = append(perProjectKeys, key)
+		addKey(getPerProjectLeaderboardKey(projectID, tf, period))
 	}
 
-	keys := append(globalKeys, perProjectKeys...)
+	// Convert map keys to slice
+	keys := make([]string, 0, len(keyMap))
+	for k := range keyMap {
+		keys = append(keys, k)
+	}
+
 	return keys
 }
 
-func (s *Service) calculateScore(req *EventRequest) *UpsertScore {
-	var keys = s.keys(strconv.FormatUint(req.RepositoryID, 10))
-
-	switch payload := req.Payload.(type) {
-	case PullRequestOpenedPayload:
-		return &UpsertScore{
-			Keys:   keys,
-			Score:  1,
-			UserID: strconv.FormatUint(payload.UserID, 10),
-		}
-
-	case PullRequestClosedPayload:
-		return &UpsertScore{
-			Keys:   keys,
-			Score:  2,
-			UserID: strconv.FormatUint(payload.UserID, 10),
-		}
-
-	case PullRequestReviewPayload:
-		return &UpsertScore{
-			Keys:   keys,
-			Score:  3,
-			UserID: strconv.FormatUint(payload.ReviewerUserID, 10),
-		}
-
-	case IssueOpenedPayload:
-		return &UpsertScore{
-			Keys:   keys,
-			Score:  4,
-			UserID: strconv.FormatUint(payload.UserID, 10),
-		}
-
-	case IssueCommentedPayload:
-		return &UpsertScore{
-			Keys:   keys,
-			Score:  5,
-			UserID: strconv.FormatUint(payload.UserID, 10),
-		}
-
-	case IssueClosedPayload:
-		return &UpsertScore{
-			Keys:   keys,
-			Score:  6,
-			UserID: strconv.FormatUint(payload.UserID, 10),
-		}
-
-	case PushPayload:
-		return &UpsertScore{
-			Keys:   keys,
-			Score:  7,
-			UserID: strconv.FormatUint(payload.UserID, 10),
-		}
-
+func calculateScore(eventType string) int64 {
+	//var keys = s.keys(strconv.FormatUint(req.RepositoryID, 10))
+	switch eventType {
+	case PullRequestOpened.String():
+		return 1
+	case PullRequestClosed.String():
+		return 2
+	case PullRequestReview.String():
+		return 3
+	case IssueOpened.String():
+		return 4
+	case IssueClosed.String():
+		return 5
+	case IssueComment.String():
+		return 6
+	case CommitPush.String():
+		return 7
 	default:
-		return nil
+		return 0
 	}
 }
 
@@ -288,7 +255,7 @@ func getPerProjectLeaderboardKey(project string, timeframe Timeframe, period str
 
 func mapLeaderboardScoringToParam(scoring LeaderboardQueryResult) GetLeaderboardResponse {
 	leaderboardRes := GetLeaderboardResponse{
-		Timeframe:       0,
+		Timeframe:       TimeframeUnspecified.String(),
 		ProjectID:       nil,
 		LeaderboardRows: make([]LeaderboardRow, 0, len(scoring.LeaderboardRows)),
 	}

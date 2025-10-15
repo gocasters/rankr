@@ -1,34 +1,64 @@
 package leaderboardscoring
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/gocasters/rankr/pkg/timettl"
 	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
+	leaderboardscoringpb "github.com/gocasters/rankr/protobuf/golang/leaderboardscoring/v1"
+	"strconv"
 	"time"
 )
 
+type EventPayload interface {
+	EventType() string
+}
+
 type EventRequest struct {
-	ID             string
-	EventName      EventName
-	RepositoryID   uint64
-	RepositoryName string
-	Timestamp      time.Time
-	Payload        interface{}
+	ID             string       `json:"id"`
+	UserID         string       `json:"user_id"`
+	EventName      string       `json:"event_name"`
+	RepositoryID   uint64       `json:"repository_id"`
+	RepositoryName string       `json:"repository_name"`
+	Timestamp      time.Time    `json:"timestamp"`
+	Payload        EventPayload `json:"payload"`
 }
 
 func NewEventRequest() *EventRequest {
 	return &EventRequest{}
 }
 
-type PullRequestOpenedPayload struct {
-	UserID       uint64
-	PrID         uint64
-	PrNumber     int32
-	Title        string
-	BranchName   string
-	TargetBranch string
-	Labels       []string
-	Assignees    []uint64
+func (er *EventRequest) String() string {
+	data, _ := json.MarshalIndent(er, "", " ")
+	return string(data)
+}
+
+func (er *EventRequest) MapProtoEventToEventRequest(eventPB *eventpb.Event) (*EventRequest, error) {
+	if eventPB == nil {
+		return nil, fmt.Errorf("nil event")
+	}
+
+	ts := eventPB.GetTime()
+	if ts == nil || !ts.IsValid() {
+		return nil, fmt.Errorf("event with ID %s has a missing timestamp", eventPB.Id)
+	}
+
+	payload, userID, err := protobufToPayload(eventPB)
+	if err != nil {
+		return nil, err
+	}
+
+	contributionEvent := &EventRequest{
+		ID:             eventPB.Id,
+		UserID:         userID,
+		EventName:      payload.EventType(),
+		RepositoryID:   eventPB.RepositoryId,
+		RepositoryName: eventPB.RepositoryName,
+		Timestamp:      ts.AsTime().UTC(),
+		Payload:        payload,
+	}
+
+	return contributionEvent, nil
 }
 
 type PrCloseReason int32
@@ -53,35 +83,8 @@ func (pr PrCloseReason) String() string {
 	}
 }
 
-type PullRequestClosedPayload struct {
-	UserID       uint64
-	MergerUserID uint64
-	PrID         uint64
-	PrNumber     int32
-	CloseReason  PrCloseReason
-	Merged       bool
-	Additions    int32
-	Deletions    int32
-	FilesChanged int32
-	CommitsCount int32
-	Labels       []string
-	TargetBranch string
-	Assignees    []uint64
-}
-
-type PullRequestReviewPayload struct {
-	ReviewerUserID uint64
-	PrAuthorUserID uint64
-	PrID           uint64
-	PrNumber       int32
-}
-
-type IssueOpenedPayload struct {
-	UserID      uint64
-	IssueID     uint64
-	IssueNumber int32
-	Title       string
-	Labels      []string
+func (pr PrCloseReason) MarshalJSON() ([]byte, error) {
+	return json.Marshal(pr.String())
 }
 
 type IssueCloseReason int32
@@ -93,82 +96,139 @@ const (
 	IssueCloseReasonReopen
 )
 
+func (ic IssueCloseReason) String() string {
+	switch ic {
+	case IssueCloseReasonCompleted:
+		return "completed"
+	case IssueCloseReasonNotPlanned:
+		return "not_planned"
+	case IssueCloseReasonReopen:
+		return "reopen"
+	default:
+		return "unknown"
+	}
+}
+
+func (ic IssueCloseReason) MarshalJSON() ([]byte, error) {
+	return json.Marshal(ic.String())
+}
+
+type PullRequestOpenedPayload struct {
+	UserID       uint64   `json:"user_id"`
+	PrID         uint64   `json:"pr_id"`
+	PrNumber     int32    `json:"pr_number"`
+	Title        string   `json:"title"`
+	BranchName   string   `json:"branch_name"`
+	TargetBranch string   `json:"target_branch"`
+	Labels       []string `json:"labels"`
+	Assignees    []uint64 `json:"assignees"`
+}
+
+func (p PullRequestOpenedPayload) EventType() string {
+	return PullRequestOpened.String()
+}
+
+type PullRequestClosedPayload struct {
+	UserID       uint64        `json:"user_id"`
+	MergerUserID uint64        `json:"merger_user_id"`
+	PrID         uint64        `json:"pr_id"`
+	PrNumber     int32         `json:"pr_number"`
+	CloseReason  PrCloseReason `json:"close_reason"`
+	Merged       bool          `json:"merged"`
+	Additions    int32         `json:"additions"`
+	Deletions    int32         `json:"deletions"`
+	FilesChanged int32         `json:"files_changed"`
+	CommitsCount int32         `json:"commits_count"`
+	Labels       []string      `json:"labels"`
+	TargetBranch string        `json:"target_branch"`
+	Assignees    []uint64      `json:"assignees"`
+}
+
+func (p PullRequestClosedPayload) EventType() string {
+	return PullRequestClosed.String()
+}
+
+type PullRequestReviewPayload struct {
+	ReviewerUserID uint64 `json:"reviewer_user_id"`
+	PrAuthorUserID uint64 `json:"pr_author_user_id"`
+	PrID           uint64 `json:"pr_id"`
+	PrNumber       int32  `json:"pr_number"`
+}
+
+func (p PullRequestReviewPayload) EventType() string {
+	return PullRequestReview.String()
+}
+
+type IssueOpenedPayload struct {
+	UserID      uint64   `json:"user_id"`
+	IssueID     uint64   `json:"issue_id"`
+	IssueNumber int32    `json:"issue_number"`
+	Title       string   `json:"title"`
+	Labels      []string `json:"labels"`
+}
+
+func (i IssueOpenedPayload) EventType() string {
+	return IssueOpened.String()
+}
+
 type IssueClosedPayload struct {
-	UserID          uint64
-	IssueAuthorID   uint64
-	IssueID         uint64
-	IssueNumber     int32
-	CloseReason     IssueCloseReason
-	Labels          []string
-	OpenedAt        time.Time
-	CommentsCount   int32
-	ClosingPrNumber int32
+	UserID          uint64           `json:"user_id"`
+	IssueAuthorID   uint64           `json:"issue_author_id"`
+	IssueID         uint64           `json:"issue_id"`
+	IssueNumber     int32            `json:"issue_number"`
+	CloseReason     IssueCloseReason `json:"close_reason"`
+	Labels          []string         `json:"labels"`
+	OpenedAt        time.Time        `json:"opened_at"`
+	CommentsCount   int32            `json:"comments_count"`
+	ClosingPrNumber int32            `json:"closing_pr_number"`
+}
+
+func (i IssueClosedPayload) EventType() string {
+	return IssueClosed.String()
 }
 
 type IssueCommentedPayload struct {
-	UserID        uint64
-	IssueAuthorID uint64
-	IssueID       uint64
-	IssueNumber   int32
-	CommentLength int32
-	ContainsCode  bool
+	UserID        uint64 `json:"user_id"`
+	IssueAuthorID uint64 `json:"issue_author_id"`
+	IssueID       uint64 `json:"issue_id"`
+	IssueNumber   int32  `json:"issue_number"`
+	CommentLength int32  `json:"comment_length"`
+	ContainsCode  bool   `json:"contains_code"`
 }
 
-type CommitInfo struct {
-	AuthorName string
-	CommitID   string
-	Message    string
-	Additions  int32
-	Deletions  int32
-	Modified   int32
+func (i IssueCommentedPayload) EventType() string {
+	return IssueComment.String()
 }
 
 type PushPayload struct {
-	UserID       uint64
-	BranchName   string
-	CommitsCount int32
-	Commits      []*CommitInfo
+	UserID       uint64        `json:"user_id"`
+	BranchName   string        `json:"branch_name"`
+	CommitsCount int32         `json:"commits_count"`
+	Commits      []*CommitInfo `json:"commits"`
 }
 
-func (er *EventRequest) ProtobufToEventRequest(eventPB *eventpb.Event) (*EventRequest, error) {
-	if eventPB == nil {
-		return nil, fmt.Errorf("nil event")
-	}
-
-	ts := eventPB.GetTime()
-	if ts == nil || !ts.IsValid() {
-		return nil, fmt.Errorf("event with ID %s has a missing timestamp", eventPB.Id)
-	}
-
-	payload, err := protobufToPayload(eventPB)
-	if err != nil {
-		return nil, err
-	}
-
-	eventName, err := mapPbEventName(eventPB.GetEventName())
-	if err != nil {
-		return nil, err
-	}
-	contributionEvent := &EventRequest{
-		ID:             eventPB.Id,
-		EventName:      eventName,
-		RepositoryID:   eventPB.RepositoryId,
-		RepositoryName: eventPB.RepositoryName,
-		Timestamp:      ts.AsTime().UTC(),
-		Payload:        payload,
-	}
-
-	return contributionEvent, nil
+func (p PushPayload) EventType() string {
+	return CommitPush.String()
 }
 
-func protobufToPayload(eventPB *eventpb.Event) (interface{}, error) {
-	var payload interface{}
+type CommitInfo struct {
+	AuthorName string `json:"author_name"`
+	CommitID   string `json:"commit_id"`
+	Message    string `json:"message"`
+	Additions  int32  `json:"additions"`
+	Deletions  int32  `json:"deletions"`
+	Modified   int32  `json:"modified"`
+}
 
-	switch eventPB.GetEventName() {
-	case eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED:
+func protobufToPayload(eventPB *eventpb.Event) (EventPayload, string, error) {
+	var payload EventPayload
+	var userID string
+
+	switch eventPB.Payload.(type) {
+	case *eventpb.Event_PrOpenedPayload:
 		p := eventPB.GetPrOpenedPayload()
 		if p == nil {
-			return nil, fmt.Errorf("missing pr_opened payload (id=%s)", eventPB.Id)
+			return nil, "", fmt.Errorf("missing pr_opened payload (id=%s)", eventPB.Id)
 		}
 		prPayload := PullRequestOpenedPayload{
 			UserID:       p.GetUserId(),
@@ -181,11 +241,12 @@ func protobufToPayload(eventPB *eventpb.Event) (interface{}, error) {
 			Assignees:    p.GetAssignees(),
 		}
 		payload = prPayload
+		userID = strconv.FormatUint(prPayload.UserID, 10)
 
-	case eventpb.EventName_EVENT_NAME_PULL_REQUEST_CLOSED:
+	case *eventpb.Event_PrClosedPayload:
 		p := eventPB.GetPrClosedPayload()
 		if p == nil {
-			return nil, fmt.Errorf("missing pr_closed payload (id=%s)", eventPB.Id)
+			return nil, "", fmt.Errorf("missing pr_closed payload (id=%s)", eventPB.Id)
 		}
 		prClosedPayload := PullRequestClosedPayload{
 			UserID:       p.GetUserId(),
@@ -203,11 +264,12 @@ func protobufToPayload(eventPB *eventpb.Event) (interface{}, error) {
 			Assignees:    p.GetAssignees(),
 		}
 		payload = prClosedPayload
+		userID = strconv.FormatUint(prClosedPayload.UserID, 10)
 
-	case eventpb.EventName_EVENT_NAME_PULL_REQUEST_REVIEW_SUBMITTED:
+	case *eventpb.Event_PrReviewPayload:
 		p := eventPB.GetPrReviewPayload()
 		if p == nil {
-			return nil, fmt.Errorf("missing pr_review payload (id=%s)", eventPB.Id)
+			return nil, "", fmt.Errorf("missing pr_review payload (id=%s)", eventPB.Id)
 		}
 		prReviewPayload := PullRequestReviewPayload{
 			ReviewerUserID: p.GetReviewerUserId(),
@@ -216,11 +278,12 @@ func protobufToPayload(eventPB *eventpb.Event) (interface{}, error) {
 			PrNumber:       p.GetPrNumber(),
 		}
 		payload = prReviewPayload
+		userID = strconv.FormatUint(prReviewPayload.ReviewerUserID, 10)
 
-	case eventpb.EventName_EVENT_NAME_ISSUE_OPENED:
+	case *eventpb.Event_IssueOpenedPayload:
 		p := eventPB.GetIssueOpenedPayload()
 		if p == nil {
-			return nil, fmt.Errorf("missing issue_opened payload (id=%s)", eventPB.Id)
+			return nil, "", fmt.Errorf("missing issue_opened payload (id=%s)", eventPB.Id)
 		}
 		issueOpened := IssueOpenedPayload{
 			UserID:      p.GetUserId(),
@@ -230,15 +293,16 @@ func protobufToPayload(eventPB *eventpb.Event) (interface{}, error) {
 			Labels:      p.GetLabels(),
 		}
 		payload = issueOpened
+		userID = strconv.FormatUint(issueOpened.UserID, 10)
 
-	case eventpb.EventName_EVENT_NAME_ISSUE_CLOSED:
+	case *eventpb.Event_IssueClosedPayload:
 		p := eventPB.GetIssueClosedPayload()
 		if p == nil {
-			return nil, fmt.Errorf("missing issue_closed payload (id=%s)", eventPB.Id)
+			return nil, "", fmt.Errorf("missing issue_closed payload (id=%s)", eventPB.Id)
 		}
 		openedAtTS := p.GetOpenedAt()
 		if openedAtTS == nil || !openedAtTS.IsValid() {
-			return nil, fmt.Errorf("missing or invalid issue_closed.opened_at (id=%s)", eventPB.Id)
+			return nil, "", fmt.Errorf("missing or invalid issue_closed.opened_at (id=%s)", eventPB.Id)
 		}
 		issueClosed := IssueClosedPayload{
 			UserID:          p.GetUserId(),
@@ -252,11 +316,12 @@ func protobufToPayload(eventPB *eventpb.Event) (interface{}, error) {
 			ClosingPrNumber: p.GetClosingPrNumber(),
 		}
 		payload = issueClosed
+		userID = strconv.FormatUint(issueClosed.UserID, 10)
 
-	case eventpb.EventName_EVENT_NAME_ISSUE_COMMENTED:
+	case *eventpb.Event_IssueCommentedPayload:
 		p := eventPB.GetIssueCommentedPayload()
 		if p == nil {
-			return nil, fmt.Errorf("missing issue_commented payload (id=%s)", eventPB.Id)
+			return nil, "", fmt.Errorf("missing issue_commented payload (id=%s)", eventPB.Id)
 		}
 		issueCommented := IssueCommentedPayload{
 			UserID:        p.GetUserId(),
@@ -267,11 +332,12 @@ func protobufToPayload(eventPB *eventpb.Event) (interface{}, error) {
 			ContainsCode:  p.GetContainsCode(),
 		}
 		payload = issueCommented
+		userID = strconv.FormatUint(issueCommented.UserID, 10)
 
-	case eventpb.EventName_EVENT_NAME_PUSHED:
+	case *eventpb.Event_PushPayload:
 		p := eventPB.GetPushPayload()
 		if p == nil {
-			return nil, fmt.Errorf("missing pushed payload (id=%s)", eventPB.Id)
+			return nil, "", fmt.Errorf("missing pushed payload (id=%s)", eventPB.Id)
 		}
 		commitsPB := p.GetCommits()
 		commits := make([]*CommitInfo, 0, len(commitsPB))
@@ -295,37 +361,18 @@ func protobufToPayload(eventPB *eventpb.Event) (interface{}, error) {
 			Commits:      commits,
 		}
 		payload = push
+		userID = strconv.FormatUint(push.UserID, 10)
 
 	default:
-		return nil, fmt.Errorf(
-			"unsupported event name: %s (id=%s)",
-			eventPB.EventName.String(),
-			eventPB.Id,
-		)
+		return nil, "",
+			fmt.Errorf(
+				"unsupported event name: %s (id=%s)",
+				eventPB.EventName.String(),
+				eventPB.Id,
+			)
 	}
 
-	return payload, nil
-}
-
-func mapPbEventName(n eventpb.EventName) (EventName, error) {
-	switch n {
-	case eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED:
-		return PullRequestOpened, nil
-	case eventpb.EventName_EVENT_NAME_PULL_REQUEST_CLOSED:
-		return PullRequestClosed, nil
-	case eventpb.EventName_EVENT_NAME_PULL_REQUEST_REVIEW_SUBMITTED:
-		return PullRequestReview, nil
-	case eventpb.EventName_EVENT_NAME_ISSUE_OPENED:
-		return IssueOpened, nil
-	case eventpb.EventName_EVENT_NAME_ISSUE_CLOSED:
-		return IssueClosed, nil
-	case eventpb.EventName_EVENT_NAME_ISSUE_COMMENTED:
-		return IssueComment, nil
-	case eventpb.EventName_EVENT_NAME_PUSHED:
-		return CommitPush, nil
-	default:
-		return "", fmt.Errorf("unsupported event name: %s", n.String())
-	}
+	return payload, userID, nil
 }
 
 type LeaderboardRow struct {
@@ -335,18 +382,50 @@ type LeaderboardRow struct {
 }
 
 type GetLeaderboardResponse struct {
-	Timeframe       Timeframe
+	Timeframe       string
 	ProjectID       *string
 	LeaderboardRows []LeaderboardRow
 }
 
+func ToProtoTimeframe(tf string) leaderboardscoringpb.Timeframe {
+	switch tf {
+	case AllTime.String():
+		return leaderboardscoringpb.Timeframe_TIMEFRAME_ALL_TIME
+	case Yearly.String():
+		return leaderboardscoringpb.Timeframe_TIMEFRAME_YEARLY
+	case Monthly.String():
+		return leaderboardscoringpb.Timeframe_TIMEFRAME_MONTHLY
+	case Weekly.String():
+		return leaderboardscoringpb.Timeframe_TIMEFRAME_WEEKLY
+	default:
+		return leaderboardscoringpb.Timeframe_TIMEFRAME_UNSPECIFIED
+	}
+}
+
+func FromProtoTimeframe(tf leaderboardscoringpb.Timeframe) string {
+	switch tf {
+	case leaderboardscoringpb.Timeframe_TIMEFRAME_ALL_TIME:
+		return AllTime.String()
+	case leaderboardscoringpb.Timeframe_TIMEFRAME_YEARLY:
+		return Yearly.String()
+	case leaderboardscoringpb.Timeframe_TIMEFRAME_MONTHLY:
+		return Monthly.String()
+	case leaderboardscoringpb.Timeframe_TIMEFRAME_WEEKLY:
+		return Weekly.String()
+	default:
+		return TimeframeUnspecified.String()
+	}
+}
+
 type GetLeaderboardRequest struct {
-	Timeframe Timeframe
+	Timeframe string
 	ProjectID *string
 	PageSize  int32
 	Offset    int32
 }
 
+// leaderboard:global:all_time
+// leaderboard:1001:all_time
 func (q *GetLeaderboardRequest) BuildKey() string {
 
 	key := "leaderboard"
@@ -357,16 +436,18 @@ func (q *GetLeaderboardRequest) BuildKey() string {
 		key += ":global"
 	}
 
-	key += fmt.Sprintf(":%s", q.Timeframe.String())
+	key += fmt.Sprintf(":%s", q.Timeframe)
 
 	var period string
 	switch q.Timeframe {
-	case Yearly:
+	case Yearly.String():
 		period = timettl.GetYear()
-	case Monthly:
+	case Monthly.String():
 		period = timettl.GetMonth()
-	case Weekly:
+	case Weekly.String():
 		period = timettl.GetWeek()
+	case AllTime.String():
+		return key
 	default:
 		period = "unknown"
 	}

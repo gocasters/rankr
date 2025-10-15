@@ -27,7 +27,7 @@ func New(rpcClient *grpc.RPCClient) (*Client, error) {
 func (c *Client) GetLeaderboard(ctx context.Context, getLeaderboardReq *lbscoring.GetLeaderboardRequest) (*lbscoring.GetLeaderboardResponse, error) {
 
 	leaderboardPBReq := &leaderboardscoringpb.GetLeaderboardRequest{
-		Timeframe: leaderboardscoringpb.Timeframe(getLeaderboardReq.Timeframe),
+		Timeframe: lbscoring.ToProtoTimeframe(getLeaderboardReq.Timeframe),
 		ProjectId: getLeaderboardReq.ProjectID,
 		PageSize:  getLeaderboardReq.PageSize,
 		Offset:    getLeaderboardReq.Offset,
@@ -55,7 +55,7 @@ func protobufToLeaderboardRes(leaderboardPBRes *leaderboardscoringpb.GetLeaderbo
 	}
 
 	var getLeaderboardRes = &lbscoring.GetLeaderboardResponse{
-		Timeframe:       lbscoring.Timeframe(leaderboardPBRes.GetTimeframe()),
+		Timeframe:       lbscoring.FromProtoTimeframe(leaderboardPBRes.Timeframe),
 		ProjectID:       leaderboardPBRes.ProjectId,
 		LeaderboardRows: rows,
 	}

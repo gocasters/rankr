@@ -40,14 +40,22 @@ func NewProcessor(
 }
 
 func (p *Processor) Start(ctx context.Context) error {
+	var defaultTickInterval = 20 * time.Second
+	var defaultMetricsInterval = 30 * time.Second
+
 	log := logger.L()
 	log.Info("Starting batch processor")
 
 	if p.config.TickInterval <= 0 {
-		return fmt.Errorf("invalid tick interval: must be > 0, got %s", p.config.TickInterval)
+		log.Warn(fmt.Sprintf("invalid tick interval: must be > 0, got %s", p.config.TickInterval),
+			slog.String("default set", "20s"))
+		p.config.TickInterval = defaultTickInterval
 	}
+
 	if p.config.MetricsInterval <= 0 {
-		return fmt.Errorf("invalid metrics interval: must be > 0, got %s", p.config.MetricsInterval)
+		log.Warn(fmt.Sprintf("invalid metrics interval: must be > 0, got %s", p.config.MetricsInterval),
+			slog.String("default set", "30s"))
+		p.config.MetricsInterval = defaultMetricsInterval
 	}
 
 	ticker := time.NewTicker(p.config.TickInterval)
@@ -121,12 +129,12 @@ func (p *Processor) processBatch(ctx context.Context) error {
 	}
 
 	// Terminate invalid messages (don't retry)
-	for _, invalidMsg := range invalidMsgs {
+	/*for _, invalidMsg := range invalidMsgs {
 		if err := invalidMsg.Term(); err != nil {
 			log.Error("Failed to terminate invalid message",
 				slog.String("error", err.Error()))
 		}
-	}
+	}*/
 
 	if len(events) == 0 {
 		log.Debug("No valid messages in batch")
