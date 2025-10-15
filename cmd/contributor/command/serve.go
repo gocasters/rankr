@@ -38,7 +38,7 @@ func serve() {
 
 	yamlPath := os.Getenv("CONFIG_PATH")
 	if yamlPath == "" {
-		yamlPath = filepath.Join(workingDir, "deploy", "contributor", "development", "config.yaml")
+		yamlPath = filepath.Join(workingDir, "./../..", "deploy", "contributor", "development", "config.local.yaml")
 	}
 
 	options := cfgloader.Options{
@@ -66,7 +66,7 @@ func serve() {
 
 	// Run migrations if flags are set
 	if migrateUp || migrateDown {
-		mgr := migrator.New(cfg.PostgresDB, cfg.PathOfMigration)
+		mgr := migrator.New(cfg.PostgresDB, cfg.PostgresDB.PathOfMigrations)
 		if migrateUp {
 			contributorLogger.Info("Running migrations up...")
 			mgr.Up()

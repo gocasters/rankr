@@ -1,6 +1,7 @@
 total_shutdown_timeout: "15s"
 
 http_server:
+  host: "localhost"
   port: 5001
   cors:
     allow_origins: "*"
@@ -29,15 +30,15 @@ cache_config:
 postgres_db:
   driver: "postgres"
   host: "localhost"   # instead of contributor-db
-  port: 5432
-  user: "contributor_admin"
-  password: "password123"
+  port: 5433
+  user: "postgres"
+  password: "password"
   db_name: "contributor_db"
   ssl_mode: "disable"
   max_idle_conns: 15
   max_open_conns: 100
   conn_max_lifetime: 5
-  path_of_migration: "./contributorapp/repository/migrations"
+  path_of_migrations: "./../../contributorapp/repository/migrations"
   
   # pgx pool configs
   min_conns: 1
