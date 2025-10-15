@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/gocasters/rankr/realtimeapp/constant"
+	"github.com/gocasters/rankr/pkg/topicsname"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -114,9 +114,9 @@ func setupTestSubscriber() (*Subscriber, *MockMessageSubscriber, *MockRealtimeSe
 	mockSubscriber := NewMockMessageSubscriber()
 	mockService := NewMockRealtimeService()
 	topics := []string{
-		constant.TopicTaskCreated,
-		constant.TopicTaskUpdated,
-		constant.TopicContributorCreated,
+		topicsname.TopicTaskCreated,
+		topicsname.TopicTaskUpdated,
+		topicsname.TopicContributorCreated,
 	}
 
 	subscriber := NewSubscriber(mockSubscriber, mockService, topics, logger)
@@ -128,7 +128,7 @@ func TestNewSubscriber(t *testing.T) {
 	mockSubscriber := NewMockMessageSubscriber()
 	mockConnectionStore := NewMockConnectionStore()
 	service := NewService(mockConnectionStore, logger)
-	topics := []string{constant.TopicTaskCreated}
+	topics := []string{topicsname.TopicTaskCreated}
 
 	subscriber := NewSubscriber(mockSubscriber, service, topics, logger)
 
@@ -148,16 +148,16 @@ func TestSubscriber_Start(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, 3, len(mockSubscriber.subscriptions))
-	assert.Contains(t, mockSubscriber.subscriptions, constant.TopicTaskCreated)
-	assert.Contains(t, mockSubscriber.subscriptions, constant.TopicTaskUpdated)
-	assert.Contains(t, mockSubscriber.subscriptions, constant.TopicContributorCreated)
+	assert.Contains(t, mockSubscriber.subscriptions, topicsname.TopicTaskCreated)
+	assert.Contains(t, mockSubscriber.subscriptions, topicsname.TopicTaskUpdated)
+	assert.Contains(t, mockSubscriber.subscriptions, topicsname.TopicContributorCreated)
 }
 
 func TestSubscriber_ProcessMessages(t *testing.T) {
 	mockConnectionStore := NewMockConnectionStore()
 	service := NewService(mockConnectionStore, slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 	mockSubscriber := NewMockMessageSubscriber()
-	topics := []string{constant.TopicTaskCreated}
+	topics := []string{topicsname.TopicTaskCreated}
 
 	subscriber := NewSubscriber(mockSubscriber, service, topics, slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -173,7 +173,7 @@ func TestSubscriber_ProcessMessages(t *testing.T) {
 		ConnectedAt:   time.Now(),
 		LastActiveAt:  time.Now(),
 	}
-	client.Subscriptions[constant.TopicTaskCreated] = true
+	client.Subscriptions[topicsname.TopicTaskCreated] = true
 	service.RegisterClient(client)
 
 	payload := map[string]interface{}{
@@ -185,7 +185,7 @@ func TestSubscriber_ProcessMessages(t *testing.T) {
 
 	msg := message.NewMessage(uuid.New().String(), payloadBytes)
 
-	mockSubscriber.PublishToTopic(constant.TopicTaskCreated, msg)
+	mockSubscriber.PublishToTopic(topicsname.TopicTaskCreated, msg)
 
 	time.Sleep(200 * time.Millisecond)
 
@@ -194,7 +194,7 @@ func TestSubscriber_ProcessMessages(t *testing.T) {
 		var event Event
 		err := json.Unmarshal(eventData, &event)
 		require.NoError(t, err)
-		assert.Equal(t, constant.TopicTaskCreated, event.Topic)
+		assert.Equal(t, topicsname.TopicTaskCreated, event.Topic)
 		assert.Equal(t, "123", event.Payload["task_id"])
 		assert.Equal(t, "Test Task", event.Payload["task_name"])
 	default:
@@ -206,7 +206,7 @@ func TestSubscriber_ProcessMultipleMessages(t *testing.T) {
 	mockConnectionStore := NewMockConnectionStore()
 	service := NewService(mockConnectionStore, slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 	mockSubscriber := NewMockMessageSubscriber()
-	topics := []string{constant.TopicTaskCreated, constant.TopicTaskUpdated, constant.TopicContributorCreated}
+	topics := []string{topicsname.TopicTaskCreated, topicsname.TopicTaskUpdated, topicsname.TopicContributorCreated}
 
 	subscriber := NewSubscriber(mockSubscriber, service, topics, slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -218,7 +218,7 @@ func TestSubscriber_ProcessMultipleMessages(t *testing.T) {
 	client1 := &Client{
 		ID:            "client-1",
 		Send:          make(chan []byte, 256),
-		Subscriptions: map[string]bool{constant.TopicTaskCreated: true, constant.TopicTaskUpdated: true, constant.TopicContributorCreated: true},
+		Subscriptions: map[string]bool{topicsname.TopicTaskCreated: true, topicsname.TopicTaskUpdated: true, topicsname.TopicContributorCreated: true},
 		ConnectedAt:   time.Now(),
 		LastActiveAt:  time.Now(),
 	}
@@ -229,21 +229,21 @@ func TestSubscriber_ProcessMultipleMessages(t *testing.T) {
 		payload map[string]interface{}
 	}{
 		{
-			topic: constant.TopicTaskCreated,
+			topic: topicsname.TopicTaskCreated,
 			payload: map[string]interface{}{
 				"task_id": "1",
 				"action":  "created",
 			},
 		},
 		{
-			topic: constant.TopicTaskUpdated,
+			topic: topicsname.TopicTaskUpdated,
 			payload: map[string]interface{}{
 				"task_id": "2",
 				"action":  "updated",
 			},
 		},
 		{
-			topic: constant.TopicContributorCreated,
+			topic: topicsname.TopicContributorCreated,
 			payload: map[string]interface{}{
 				"contributor_id": "3",
 				"action":         "created",
@@ -272,16 +272,16 @@ func TestSubscriber_ProcessMultipleMessages(t *testing.T) {
 		}
 	}
 
-	assert.Equal(t, 1, receivedTopics[constant.TopicTaskCreated])
-	assert.Equal(t, 1, receivedTopics[constant.TopicTaskUpdated])
-	assert.Equal(t, 1, receivedTopics[constant.TopicContributorCreated])
+	assert.Equal(t, 1, receivedTopics[topicsname.TopicTaskCreated])
+	assert.Equal(t, 1, receivedTopics[topicsname.TopicTaskUpdated])
+	assert.Equal(t, 1, receivedTopics[topicsname.TopicContributorCreated])
 }
 
 func TestSubscriber_HandleInvalidJSON(t *testing.T) {
 	mockConnectionStore := NewMockConnectionStore()
 	service := NewService(mockConnectionStore, slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 	mockSubscriber := NewMockMessageSubscriber()
-	topics := []string{constant.TopicTaskCreated}
+	topics := []string{topicsname.TopicTaskCreated}
 
 	subscriber := NewSubscriber(mockSubscriber, service, topics, slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -293,7 +293,7 @@ func TestSubscriber_HandleInvalidJSON(t *testing.T) {
 	client := &Client{
 		ID:            "test-client",
 		Send:          make(chan []byte, 256),
-		Subscriptions: map[string]bool{constant.TopicTaskCreated: true},
+		Subscriptions: map[string]bool{topicsname.TopicTaskCreated: true},
 		ConnectedAt:   time.Now(),
 		LastActiveAt:  time.Now(),
 	}
@@ -302,7 +302,7 @@ func TestSubscriber_HandleInvalidJSON(t *testing.T) {
 	invalidJSON := []byte("{invalid json}")
 	msg := message.NewMessage(uuid.New().String(), invalidJSON)
 
-	mockSubscriber.PublishToTopic(constant.TopicTaskCreated, msg)
+	mockSubscriber.PublishToTopic(topicsname.TopicTaskCreated, msg)
 
 	time.Sleep(200 * time.Millisecond)
 
@@ -324,7 +324,7 @@ func TestSubscriber_ContextCancellation(t *testing.T) {
 	payload := map[string]interface{}{"test": "data"}
 	payloadBytes, _ := json.Marshal(payload)
 	msg := message.NewMessage(uuid.New().String(), payloadBytes)
-	mockSubscriber.PublishToTopic(constant.TopicTaskCreated, msg)
+	mockSubscriber.PublishToTopic(topicsname.TopicTaskCreated, msg)
 
 	time.Sleep(100 * time.Millisecond)
 	events := mockService.GetBroadcastEvents()
@@ -335,7 +335,7 @@ func TestSubscriber_ContextCancellation(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	msg2 := message.NewMessage(uuid.New().String(), payloadBytes)
-	mockSubscriber.PublishToTopic(constant.TopicTaskCreated, msg2)
+	mockSubscriber.PublishToTopic(topicsname.TopicTaskCreated, msg2)
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -368,7 +368,7 @@ func TestSubscriber_MessageAcknowledgement(t *testing.T) {
 	payloadBytes, _ := json.Marshal(payload)
 	msg := message.NewMessage(uuid.New().String(), payloadBytes)
 
-	mockSubscriber.PublishToTopic(constant.TopicTaskCreated, msg)
+	mockSubscriber.PublishToTopic(topicsname.TopicTaskCreated, msg)
 
 	time.Sleep(100 * time.Millisecond)
 
@@ -378,7 +378,7 @@ func TestSubscriber_ConcurrentMessageProcessing(t *testing.T) {
 	mockConnectionStore := NewMockConnectionStore()
 	service := NewService(mockConnectionStore, slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 	mockSubscriber := NewMockMessageSubscriber()
-	topics := []string{constant.TopicTaskCreated, constant.TopicTaskUpdated, constant.TopicContributorCreated}
+	topics := []string{topicsname.TopicTaskCreated, topicsname.TopicTaskUpdated, topicsname.TopicContributorCreated}
 
 	subscriber := NewSubscriber(mockSubscriber, service, topics, slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -391,9 +391,9 @@ func TestSubscriber_ConcurrentMessageProcessing(t *testing.T) {
 		ID:   "test-client",
 		Send: make(chan []byte, 256),
 		Subscriptions: map[string]bool{
-			constant.TopicTaskCreated:        true,
-			constant.TopicTaskUpdated:        true,
-			constant.TopicContributorCreated: true,
+			topicsname.TopicTaskCreated:        true,
+			topicsname.TopicTaskUpdated:        true,
+			topicsname.TopicContributorCreated: true,
 		},
 		ConnectedAt:  time.Now(),
 		LastActiveAt: time.Now(),
@@ -415,11 +415,11 @@ func TestSubscriber_ConcurrentMessageProcessing(t *testing.T) {
 			payloadBytes, _ := json.Marshal(payload)
 			msg := message.NewMessage(uuid.New().String(), payloadBytes)
 
-			topic := constant.TopicTaskCreated
+			topic := topicsname.TopicTaskCreated
 			if id%3 == 0 {
-				topic = constant.TopicTaskUpdated
+				topic = topicsname.TopicTaskUpdated
 			} else if id%3 == 1 {
-				topic = constant.TopicContributorCreated
+				topic = topicsname.TopicContributorCreated
 			}
 
 			mockSubscriber.PublishToTopic(topic, msg)
@@ -447,7 +447,7 @@ func TestSubscriber_EmptyPayload(t *testing.T) {
 	mockConnectionStore := NewMockConnectionStore()
 	service := NewService(mockConnectionStore, slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 	mockSubscriber := NewMockMessageSubscriber()
-	topics := []string{constant.TopicTaskCreated}
+	topics := []string{topicsname.TopicTaskCreated}
 
 	subscriber := NewSubscriber(mockSubscriber, service, topics, slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -459,7 +459,7 @@ func TestSubscriber_EmptyPayload(t *testing.T) {
 	client := &Client{
 		ID:            "test-client",
 		Send:          make(chan []byte, 256),
-		Subscriptions: map[string]bool{constant.TopicTaskCreated: true},
+		Subscriptions: map[string]bool{topicsname.TopicTaskCreated: true},
 		ConnectedAt:   time.Now(),
 		LastActiveAt:  time.Now(),
 	}
@@ -468,7 +468,7 @@ func TestSubscriber_EmptyPayload(t *testing.T) {
 	emptyPayload := []byte("{}")
 	msg := message.NewMessage(uuid.New().String(), emptyPayload)
 
-	mockSubscriber.PublishToTopic(constant.TopicTaskCreated, msg)
+	mockSubscriber.PublishToTopic(topicsname.TopicTaskCreated, msg)
 
 	time.Sleep(200 * time.Millisecond)
 
@@ -477,7 +477,7 @@ func TestSubscriber_EmptyPayload(t *testing.T) {
 		var event Event
 		err := json.Unmarshal(eventData, &event)
 		require.NoError(t, err)
-		assert.Equal(t, constant.TopicTaskCreated, event.Topic)
+		assert.Equal(t, topicsname.TopicTaskCreated, event.Topic)
 		assert.NotNil(t, event.Payload)
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("No event received")
@@ -488,7 +488,7 @@ func TestSubscriber_ComplexPayload(t *testing.T) {
 	mockConnectionStore := NewMockConnectionStore()
 	service := NewService(mockConnectionStore, slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 	mockSubscriber := NewMockMessageSubscriber()
-	topics := []string{constant.TopicTaskCreated}
+	topics := []string{topicsname.TopicTaskCreated}
 
 	subscriber := NewSubscriber(mockSubscriber, service, topics, slog.New(slog.NewJSONHandler(os.Stdout, nil)))
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -500,7 +500,7 @@ func TestSubscriber_ComplexPayload(t *testing.T) {
 	client := &Client{
 		ID:            "test-client",
 		Send:          make(chan []byte, 256),
-		Subscriptions: map[string]bool{constant.TopicTaskCreated: true},
+		Subscriptions: map[string]bool{topicsname.TopicTaskCreated: true},
 		ConnectedAt:   time.Now(),
 		LastActiveAt:  time.Now(),
 	}
@@ -526,7 +526,7 @@ func TestSubscriber_ComplexPayload(t *testing.T) {
 	payloadBytes, _ := json.Marshal(complexPayload)
 	msg := message.NewMessage(uuid.New().String(), payloadBytes)
 
-	mockSubscriber.PublishToTopic(constant.TopicTaskCreated, msg)
+	mockSubscriber.PublishToTopic(topicsname.TopicTaskCreated, msg)
 
 	time.Sleep(200 * time.Millisecond)
 
@@ -535,7 +535,7 @@ func TestSubscriber_ComplexPayload(t *testing.T) {
 		var event Event
 		err := json.Unmarshal(eventData, &event)
 		require.NoError(t, err)
-		assert.Equal(t, constant.TopicTaskCreated, event.Topic)
+		assert.Equal(t, topicsname.TopicTaskCreated, event.Topic)
 
 		taskData, ok := event.Payload["task"].(map[string]interface{})
 		require.True(t, ok)
