@@ -14,8 +14,11 @@ services:
       - ./:/home/app
     environment:
       - CONFIG_PATH=/home/app/deploy/leaderboardstat/development/config.yml
+      - GRPC_NETWORK_TYPE=tcp
+      - GRPC_PORT=8090
     ports:
       - "6011:6011"
+      - "8090:8090"
     restart: unless-stopped
 
 networks:

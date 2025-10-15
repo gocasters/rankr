@@ -7,6 +7,9 @@ import (
 
 type Repository interface {
 	GetContributorTotalScore(ctx context.Context, ID types.ID) (float64, error)
+	GetContributorTotalRank(ctx context.Context, ID types.ID) (uint, error)
+	GetContributorProjectScores(ctx context.Context, ID types.ID) (map[types.ID]float64, error)
+	GetContributorScoreHistory(ctx context.Context, ID types.ID) ([]ScoreRecord, error)
 }
 
 type Service struct {
@@ -26,19 +29,47 @@ func GetContributorScores(contributorID int, project string) ScoresListResponse 
 	return ScoresListResponse{}
 }
 
-func (s *Service) GetContributorTotalStats(ctx context.Context, contributorID types.ID) (ContributorStats, error) {
-	// TODO - validation if is needed
+func (s *Service) buildScoreHistory(records []ScoreRecord) map[types.ID][]ScoreEntry {
 
-	// TODO - implement functions and calc contributions stats related to this contributor
+	history := make(map[types.ID][]ScoreEntry)
+	for _, record := range records {
+		entry := ScoreEntry{
+			Activity: record.Activity,
+			Score:    record.Score,
+			EarnedAt: record.EarnedAt,
+		}
+		history[record.ProjectID] = append(history[record.ProjectID], entry)
+	}
+
+	return history
+}
+
+func (s *Service) GetContributorStats(ctx context.Context, contributorID types.ID) (ContributorStats, error) {
 	totalScore, err := s.repository.GetContributorTotalScore(ctx, contributorID)
 	if err != nil {
 		return ContributorStats{}, err
 	}
+	globalRank, err := s.repository.GetContributorTotalRank(ctx, contributorID)
+	if err != nil {
+		return ContributorStats{}, err
+	}
+	projectsScore, err := s.repository.GetContributorProjectScores(ctx, contributorID)
+	if err != nil {
+		return ContributorStats{}, err
+	}
+	scoreRecords, err := s.repository.GetContributorScoreHistory(ctx, contributorID)
+	if err != nil {
+		return ContributorStats{}, err
+	}
+
+	scoreHistory := s.buildScoreHistory(scoreRecords)
+
 	stats := ContributorStats{
 		ContributorID: contributorID,
-		GlobalRank:    1,
+		GlobalRank:    globalRank,
 		TotalScore:    totalScore,
-		ProjectsScore: map[string]float64{},
+		ProjectsScore: projectsScore,
+		ScoreHistory:  scoreHistory,
 	}
 	return stats, nil
 }
