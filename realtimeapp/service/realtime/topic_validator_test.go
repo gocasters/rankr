@@ -120,14 +120,21 @@ func TestTopicValidator_ValidateTopics(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			allowed, denied, _ := validator.ValidateTopics(tt.topics, tt.clientPerms)
+			allowed, denied, err := validator.ValidateTopics(tt.topics, tt.clientPerms)
 
 			assert.Equal(t, tt.expectedAllowed, allowed, "allowed topics mismatch")
 
 			if tt.checkDeniedCount {
 				assert.NotEmpty(t, denied, "expected some topics to be denied")
+				assert.Error(t, err, "expected error when topics are denied")
 			} else {
 				assert.Equal(t, tt.expectedDenied, denied, "denied topics mismatch")
+				if len(denied) > 0 {
+					assert.Error(t, err, "expected error when topics are denied")
+				} else {
+					assert.NoError(t, err, "expected no error when all topics are allowed")
+				}
+
 			}
 		})
 	}
@@ -505,11 +512,12 @@ func TestTopicValidator_MultipleUsersCannotAccessEachOther(t *testing.T) {
 		"user.789.notifications", // ❌ another user's topic
 	}
 
-	allowed, denied, _ := validator.ValidateTopics(topics, user123Perms)
+	allowed, denied, err := validator.ValidateTopics(topics, user123Perms)
 
 	// Should only allow own topics
 	assert.Equal(t, 2, len(allowed), "should allow only own topics")
 	assert.Equal(t, 2, len(denied), "should deny other users' topics")
+	assert.Error(t, err, "expected error when some topics are denied")
 
 	assert.Contains(t, allowed, "user.123.read")
 	assert.Contains(t, allowed, "user.123.notifications")
