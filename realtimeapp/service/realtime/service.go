@@ -132,7 +132,7 @@ func (s Service) BroadcastEvent(ctx context.Context, req BroadcastEventRequest) 
 	}
 
 	clients := s.ConnectionStore.GetClientsByTopic(req.Topic)
-	s.Logger.Info("broadcasting event", "topicnames", req.Topic, "client_count", len(clients))
+	s.Logger.Info("broadcasting event", "topic", req.Topic, "client_count", len(clients))
 
 	for _, client := range clients {
 		select {
