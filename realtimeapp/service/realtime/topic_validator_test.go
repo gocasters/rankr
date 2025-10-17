@@ -470,11 +470,12 @@ func TestTopicValidator_SameUserMultipleSubscriptions(t *testing.T) {
 		"user.123.read", // duplicate again - should be allowed
 	}
 
-	allowed, denied, _ := validator.ValidateTopics(topics, clientPerms)
+	allowed, denied, err := validator.ValidateTopics(topics, clientPerms)
 
 	// All should be allowed (validation doesn't prevent duplicates)
 	assert.Equal(t, 4, len(allowed), "all topics should be allowed including duplicates")
 	assert.Empty(t, denied, "no topics should be denied")
+	assert.NoError(t, err, "expected no error when all topics are allowed")
 
 	// Verify each duplicate is in the allowed list
 	assert.Contains(t, allowed, "user.123.read")
