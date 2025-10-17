@@ -46,23 +46,23 @@ func NewTopicValidator() *TopicValidator {
 	}
 }
 
-func (v *TopicValidator) ValidateTopics(topics []string, clientPerms ClientPermissions) (allowed []string, denied map[string]string, err error) {
+func (v *TopicValidator) ValidateTopics(topics []string, clientPerms ClientPermissions) (allowed []string, err error) {
 	allowed = make([]string, 0, len(topics))
-	denied = make(map[string]string)
+	hasInvalidTopics := false
 
 	for _, topic := range topics {
 		if err := v.validateTopic(topic, clientPerms); err != nil {
-			denied[topic] = err.Error()
+			hasInvalidTopics = true
 		} else {
 			allowed = append(allowed, topic)
 		}
 	}
 
-	if len(denied) > 0 {
-		err = fmt.Errorf("some topicnames denied")
+	if hasInvalidTopics {
+		err = fmt.Errorf("some topics are not allowed")
 	}
 
-	return allowed, denied, err
+	return allowed, err
 }
 
 func (v *TopicValidator) validateTopic(topic string, clientPerms ClientPermissions) error {

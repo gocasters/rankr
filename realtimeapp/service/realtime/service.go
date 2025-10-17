@@ -60,7 +60,7 @@ func (s Service) SubscribeTopics(ctx context.Context, clientID string, req Subsc
 	// TODO: Get actual client permissions from authentication context
 	clientPerms := DefaultClientPermissions()
 
-	allowedTopics, _, err := s.TopicValidator.ValidateTopics(req.Topics, clientPerms)
+	allowedTopics, err := s.TopicValidator.ValidateTopics(req.Topics, clientPerms)
 
 	if err != nil {
 		return SubscribeResponse{
