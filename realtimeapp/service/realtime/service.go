@@ -59,13 +59,14 @@ func (s Service) SubscribeTopics(ctx context.Context, clientID string, req Subsc
 
 	// TODO: Get actual client permissions from authentication context
 	clientPerms := DefaultClientPermissions()
-	allowedTopics, deniedTopics := s.TopicValidator.ValidateTopics(req.Topics, clientPerms)
 
-	if len(deniedTopics) > 0 {
-		s.Logger.Warn("some topics denied",
-			"client_id", clientID,
-			"denied", deniedTopics,
-			"allowed", allowedTopics)
+	allowedTopics, _, err := s.TopicValidator.ValidateTopics(req.Topics, clientPerms)
+
+	if err != nil {
+		return SubscribeResponse{
+			Success: false,
+			Message: err.Error(),
+		}, nil
 	}
 
 	client.SubsMu.Lock()
@@ -77,16 +78,11 @@ func (s Service) SubscribeTopics(ctx context.Context, clientID string, req Subsc
 	s.Logger.Info("client subscribed to topics",
 		"client_id", clientID,
 		"allowed_topics", allowedTopics,
-		"denied_count", len(deniedTopics))
+	)
 
 	response := SubscribeResponse{
 		Success: len(allowedTopics) > 0,
 		Topics:  allowedTopics,
-	}
-
-	if len(deniedTopics) > 0 {
-		response.Message = "some topics were denied"
-		response.DeniedTopics = deniedTopics
 	}
 
 	if len(allowedTopics) == 0 {
@@ -136,7 +132,7 @@ func (s Service) BroadcastEvent(ctx context.Context, req BroadcastEventRequest) 
 	}
 
 	clients := s.ConnectionStore.GetClientsByTopic(req.Topic)
-	s.Logger.Info("broadcasting event", "topic", req.Topic, "client_count", len(clients))
+	s.Logger.Info("broadcasting event", "topicnames", req.Topic, "client_count", len(clients))
 
 	for _, client := range clients {
 		select {

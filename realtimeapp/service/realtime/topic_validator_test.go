@@ -120,7 +120,7 @@ func TestTopicValidator_ValidateTopics(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			allowed, denied := validator.ValidateTopics(tt.topics, tt.clientPerms)
+			allowed, denied, _ := validator.ValidateTopics(tt.topics, tt.clientPerms)
 
 			assert.Equal(t, tt.expectedAllowed, allowed, "allowed topics mismatch")
 
@@ -463,7 +463,7 @@ func TestTopicValidator_SameUserMultipleSubscriptions(t *testing.T) {
 		"user.123.read", // duplicate again - should be allowed
 	}
 
-	allowed, denied := validator.ValidateTopics(topics, clientPerms)
+	allowed, denied, _ := validator.ValidateTopics(topics, clientPerms)
 
 	// All should be allowed (validation doesn't prevent duplicates)
 	assert.Equal(t, 4, len(allowed), "all topics should be allowed including duplicates")
@@ -505,7 +505,7 @@ func TestTopicValidator_MultipleUsersCannotAccessEachOther(t *testing.T) {
 		"user.789.notifications", // ❌ another user's topic
 	}
 
-	allowed, denied := validator.ValidateTopics(topics, user123Perms)
+	allowed, denied, _ := validator.ValidateTopics(topics, user123Perms)
 
 	// Should only allow own topics
 	assert.Equal(t, 2, len(allowed), "should allow only own topics")
