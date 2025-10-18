@@ -11,12 +11,11 @@ func TestTopicValidator_ValidateTopics(t *testing.T) {
 	validator := NewTopicValidator()
 
 	tests := []struct {
-		name             string
-		topics           []string
-		clientPerms      ClientPermissions
-		expectedAllowed  []string
-		expectedDenied   map[string]string
-		checkDeniedCount bool
+		name            string
+		topics          []string
+		clientPerms     ClientPermissions
+		expectedAllowed []string
+		expectError     bool
 	}{
 		{
 			name: "all public topics allowed for authenticated client",
@@ -34,7 +33,7 @@ func TestTopicValidator_ValidateTopics(t *testing.T) {
 				topicsname.TopicTaskUpdated,
 				topicsname.TopicLeaderboardScored,
 			},
-			expectedDenied: map[string]string{},
+			expectError: false,
 		},
 		{
 			name: "empty topic denied",
@@ -51,7 +50,7 @@ func TestTopicValidator_ValidateTopics(t *testing.T) {
 				topicsname.TopicContributorCreated,
 				topicsname.TopicTaskUpdated,
 			},
-			checkDeniedCount: true,
+			expectError: true,
 		},
 		{
 			name: "unknown topic denied",
@@ -67,7 +66,7 @@ func TestTopicValidator_ValidateTopics(t *testing.T) {
 			expectedAllowed: []string{
 				topicsname.TopicContributorCreated,
 			},
-			checkDeniedCount: true,
+			expectError: true,
 		},
 		{
 			name: "whitespace-only topic denied",
@@ -84,7 +83,7 @@ func TestTopicValidator_ValidateTopics(t *testing.T) {
 				topicsname.TopicTaskCreated,
 				topicsname.TopicProjectCreated,
 			},
-			checkDeniedCount: true,
+			expectError: true,
 		},
 		{
 			name: "all valid public topics",
@@ -114,20 +113,20 @@ func TestTopicValidator_ValidateTopics(t *testing.T) {
 				topicsname.TopicProjectCreated,
 				topicsname.TopicProjectUpdated,
 			},
-			expectedDenied: map[string]string{},
+			expectError: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			allowed, denied := validator.ValidateTopics(tt.topics, tt.clientPerms)
+			allowed, err := validator.ValidateTopics(tt.topics, tt.clientPerms)
 
 			assert.Equal(t, tt.expectedAllowed, allowed, "allowed topics mismatch")
 
-			if tt.checkDeniedCount {
-				assert.NotEmpty(t, denied, "expected some topics to be denied")
+			if tt.expectError {
+				assert.Error(t, err, "expected error when topics are denied")
 			} else {
-				assert.Equal(t, tt.expectedDenied, denied, "denied topics mismatch")
+				assert.NoError(t, err, "expected no error when all topics are allowed")
 			}
 		})
 	}
@@ -226,7 +225,6 @@ func TestNewTopicValidator(t *testing.T) {
 	assert.NotNil(t, validator.topicRules)
 	assert.NotNil(t, validator.topicPatterns)
 
-	// Verify all expected public topics are registered
 	expectedPublicTopics := []string{
 		topicsname.TopicContributorCreated,
 		topicsname.TopicContributorUpdated,
@@ -373,7 +371,7 @@ func TestTopicValidator_MatchPattern(t *testing.T) {
 			"user.*.read":          TopicAccessPrivate,
 			"user.*.notifications": TopicAccessPrivate,
 			"org.*.updates":        TopicAccessPublic,
-			"team.*.*.chat":        TopicAccessPrivate, // multi-level pattern
+			"team.*.*.chat":        TopicAccessPrivate,
 		},
 	}
 
@@ -455,25 +453,21 @@ func TestTopicValidator_SameUserMultipleSubscriptions(t *testing.T) {
 		UserID:                 "123",
 	}
 
-	// Test subscribing to the same topic multiple times
 	topics := []string{
 		"user.123.read",
-		"user.123.read", // duplicate - should be allowed
+		"user.123.read",
 		"user.123.notifications",
-		"user.123.read", // duplicate again - should be allowed
+		"user.123.read",
 	}
 
-	allowed, denied := validator.ValidateTopics(topics, clientPerms)
+	allowed, err := validator.ValidateTopics(topics, clientPerms)
 
-	// All should be allowed (validation doesn't prevent duplicates)
 	assert.Equal(t, 4, len(allowed), "all topics should be allowed including duplicates")
-	assert.Empty(t, denied, "no topics should be denied")
+	assert.NoError(t, err, "expected no error when all topics are allowed")
 
-	// Verify each duplicate is in the allowed list
 	assert.Contains(t, allowed, "user.123.read")
 	assert.Contains(t, allowed, "user.123.notifications")
 
-	// Count occurrences of user.123.read
 	count := 0
 	for _, topic := range allowed {
 		if topic == "user.123.read" {
@@ -491,7 +485,6 @@ func TestTopicValidator_MultipleUsersCannotAccessEachOther(t *testing.T) {
 		},
 	}
 
-	// User 123 tries to subscribe to their own and another user's topics
 	user123Perms := ClientPermissions{
 		IsAuthenticated:        true,
 		CanAccessPrivateTopics: true,
@@ -499,23 +492,17 @@ func TestTopicValidator_MultipleUsersCannotAccessEachOther(t *testing.T) {
 	}
 
 	topics := []string{
-		"user.123.read",          // ✅ own topic
-		"user.123.notifications", // ✅ own topic
-		"user.456.read",          // ❌ another user's topic
-		"user.789.notifications", // ❌ another user's topic
+		"user.123.read",
+		"user.123.notifications",
+		"user.456.read",
+		"user.789.notifications",
 	}
 
-	allowed, denied := validator.ValidateTopics(topics, user123Perms)
+	allowed, err := validator.ValidateTopics(topics, user123Perms)
 
-	// Should only allow own topics
 	assert.Equal(t, 2, len(allowed), "should allow only own topics")
-	assert.Equal(t, 2, len(denied), "should deny other users' topics")
+	assert.Error(t, err, "expected error when some topics are denied")
 
 	assert.Contains(t, allowed, "user.123.read")
 	assert.Contains(t, allowed, "user.123.notifications")
-
-	assert.Contains(t, denied, "user.456.read")
-	assert.Contains(t, denied, "user.789.notifications")
-	assert.Contains(t, denied["user.456.read"], "cannot subscribe to other user's topic")
-	assert.Contains(t, denied["user.789.notifications"], "cannot subscribe to other user's topic")
 }

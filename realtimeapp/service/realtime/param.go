@@ -5,10 +5,9 @@ type SubscribeRequest struct {
 }
 
 type SubscribeResponse struct {
-	Success      bool              `json:"success"`
-	Topics       []string          `json:"topics"`
-	Message      string            `json:"message,omitempty"`
-	DeniedTopics map[string]string `json:"denied_topics,omitempty"`
+	Success bool     `json:"success"`
+	Topics  []string `json:"topics"`
+	Message string   `json:"message,omitempty"`
 }
 
 type UnsubscribeRequest struct {
