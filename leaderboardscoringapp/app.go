@@ -19,11 +19,11 @@ import (
 	"github.com/gocasters/rankr/pkg/grpc"
 	"github.com/gocasters/rankr/pkg/httpserver"
 	"github.com/gocasters/rankr/pkg/logger"
+	"github.com/gocasters/rankr/pkg/topicsname"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"sync"
 	"syscall"
 )
@@ -44,16 +44,10 @@ type Application struct {
 	BatchProcessor            *batchprocessor.Processor
 }
 
-const ProcessedScoreEventsTopic = "processed_score_events"
-
 func Setup(ctx context.Context, config Config) *Application {
 	log := logger.L()
 
-	if strings.TrimSpace(config.RawEventTopic) == "" {
-		log.Error("raw event subscriber topic is required",
-			slog.String("config_key", "raw_event_topic"))
-		panic("missing required configuration: raw_event_topic")
-	}
+	config.StreamNameRawEvents = topicsname.StreamNameRawEvents
 
 	// Initialize PostgreSQL connection
 	databaseConn, err := database.Connect(config.PostgresDB)
@@ -87,6 +81,15 @@ func Setup(ctx context.Context, config Config) *Application {
 	log.Info("NATS Watermill adapter initialized successfully")
 
 	// Initialize NATS native adapter (for processed events publishing/consumption)
+	if config.NatsAdapter.StreamName == "" {
+		config.NatsAdapter.StreamName = topicsname.StreamNameLeaderboardscoringProcessedEvents
+	}
+	if config.NatsAdapter.StreamSubjects == nil {
+		config.NatsAdapter.StreamSubjects = []string{
+			topicsname.TopicProcessedScoreEvents,
+			topicsname.TopicProcessedScoreEventsDLQ,
+		}
+	}
 	natsAdapter, err := natsadapter.New(config.NatsAdapter, log)
 	if err != nil {
 		databaseConn.Close()
@@ -109,7 +112,7 @@ func Setup(ctx context.Context, config Config) *Application {
 		persistence,
 		leaderboard,
 		natsAdapter,
-		ProcessedScoreEventsTopic,
+		topicsname.TopicProcessedScoreEvents,
 		lbScoringValidator,
 	)
 	log.Info("leaderboard scoring service initialized")
@@ -149,6 +152,7 @@ func Setup(ctx context.Context, config Config) *Application {
 	// Initialize batch processor
 	processor := batchprocessor.NewProcessor(
 		pullConsumer,
+		natsAdapter,
 		persistence,
 		config.BatchProcessor,
 	)
@@ -263,13 +267,13 @@ func (app *Application) setupWatermill() {
 
 	router.AddConsumerHandler(
 		"RawEventHandler",
-		app.Config.RawEventTopic,
+		app.Config.StreamNameRawEvents,
 		app.WMSubscriber,
 		rawEventHandler.HandleEvent,
 	)
 
 	log.Info("Watermill router configured",
-		slog.String("topic", app.Config.RawEventTopic))
+		slog.String("topic", app.Config.StreamNameRawEvents))
 
 	app.WMRouter = router
 }

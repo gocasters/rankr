@@ -140,13 +140,13 @@ Inside container:
 nats stream ls
 
 # Check processed events stream
-nats stream info PROCESSED_EVENTS
+nats stream info leaderboardscoring_processed_events
 
 # View recent messages
-nats stream view PROCESSED_EVENTS --last 10
+nats stream view leaderboardscoring_processed_events --last 10
 
 # Check batch processor consumer
-nats consumer info PROCESSED_EVENTS batch-processor
+nats consumer info leaderboardscoring_processed_events batch-processor
 ```
 
 #### PostgreSQL Database

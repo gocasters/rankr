@@ -27,6 +27,13 @@ redis:
   password: "password1999"
   db: 0
 
+logger:
+  level: "debug" # Can be `debug`, `info`, `warn`, `error`
+  file_path: "logs/leaderboardscoringapp/service.log"
+  use_local_time: true
+  file_max_size_in_mb: 10
+  file_max_age_in_days: 7
+
 watermill_nats:
   url: "nats://127.0.0.1:4222"
   client_id: "leaderboard-scoring"
@@ -42,24 +49,11 @@ watermill_nats:
 
   use_jetstream: true
 
-logger:
-  level: "debug" # Can be `debug`, `info`, `warn`, `error`
-  file_path: "logs/leaderboardscoringapp/service.log"
-  use_local_time: true
-  file_max_size_in_mb: 10
-  file_max_age_in_days: 7
-
 raw_event_consumer:
   processed_key_ttl: 24h
   lock_key_ttl: 5m
   prefix_processed_key: "processed_events"
   prefix_lock_key: "lock"
-
-total_shutdown_timeout: 30s
-
-path_of_migration: "./leaderboardscoringapp/repository/database/migrations"
-
-raw_event_topic: "raw_events"
 
 database_retry:
   max_retries: 3
@@ -67,12 +61,10 @@ database_retry:
 
 nats_adapter:
   url: "nats://localhost:4222"
-  stream_name: "SCORE_EVENTS"
   max_reconnects: -1
   reconnect_wait: 1s
 
   # Stream settings
-  stream_subjects: [ "processed_score_events" ]
   max_messages: 10000000
   max_bytes: 10737418240
   max_age: 24h
@@ -81,13 +73,16 @@ nats_adapter:
   retention_policy: "workqueue"
 
 pull_consumer:
-  subject: "processed_score_events"
   durable_name: "batch-processor"
   batch_size: 500
   max_wait: 5s
-  max_deliver: 3
-  ack_wait: 30s
+  max_deliver: 20
+  ack_wait: 1m
 
 batch_processor:
   tick_interval: 10s
   metrics_interval: 30s
+
+total_shutdown_timeout: 30s
+
+path_of_migration: "./leaderboardscoringapp/repository/database/migrations"

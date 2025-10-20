@@ -15,7 +15,7 @@ import (
 // EventPersistence = database layer
 type EventPersistence interface {
 	AddProcessedScoreEvents(ctx context.Context, events []ProcessedScoreEvent) error
-	AddUserTotalScores(ctx context.Context, snapshots []UserTotalScore) error
+	AddSnapshotTotalScores(ctx context.Context, snapshots []UserTotalScore) error
 }
 
 // LeaderboardCache = redis layer

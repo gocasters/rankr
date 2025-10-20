@@ -174,6 +174,8 @@ func (a *Adapter) ensureStream() error {
 		Retention: a.config.RetentionPolicy.ToNatsRetention(),
 	}
 
+	fmt.Println(a.config.StreamName)
+	fmt.Println(a.config.StreamSubjects)
 	_, err := a.js.StreamInfo(a.config.StreamName)
 	if err != nil {
 		_, err = a.js.AddStream(streamConfig)
@@ -229,6 +231,7 @@ func (a *Adapter) CreatePullConsumer(config PullConsumerConfig) (*PullConsumer, 
 		config.DurableName,
 		nats.BindStream(a.config.StreamName),
 		nats.ManualAck(),
+		nats.AckExplicit(),
 		nats.MaxDeliver(config.MaxDeliver),
 		nats.AckWait(config.AckWait),
 	)
@@ -276,6 +279,19 @@ func (c *PullConsumer) Fetch() ([]*nats.Msg, error) {
 	}
 
 	return msgs, nil
+}
+
+// CanRetry determines whether a message is still eligible for redelivery (retry)
+// based on its delivery count and the configured MaxDeliver setting.
+//
+// This function returns `true` if the message can still be retried,
+// or `false` if it has reached the delivery limit and should be sent to DLQ.
+func (c *PullConsumer) CanRetry(msg *nats.Msg) bool {
+	meta, _ := msg.Metadata()
+	if c.config.MaxDeliver == int(meta.NumDelivered) {
+		return false
+	}
+	return true
 }
 
 // GetConsumerInfo returns consumer statistics

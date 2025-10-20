@@ -8,7 +8,7 @@
 
     * [Run leaderboard-scoring app](#run-leaderboard-scoring-app)
     * [Stopping service](#stopping-service)
-    * [Testing Guide](#e2e-testing-guide)
+    * [Testing Guide](#testing-guide)
 4. [API Endpoints](#4-api-endpoints)
 5. [gRPC API](#5-grpc-api)
 
@@ -123,7 +123,7 @@ Together, they achieve both **speed and scalability** in production.
 
 This guide covers two testing approaches: automated integration tests and manual end-to-end testing.
 
-➡️ **[Leaderboard Scoring Testing Guide](./test/test_readme)**
+➡️ **[Leaderboard Scoring Testing Guide](./test/test_readme.md)**
 
 ---
 
