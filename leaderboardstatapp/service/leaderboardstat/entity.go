@@ -27,3 +27,10 @@ type ContributorStats struct {
 	ProjectsScore map[types.ID]float64      `koanf:"project_score"`
 	ScoreHistory  map[types.ID][]ScoreEntry `koanf:"score_history"`
 }
+
+type ContributorTotalStats struct {
+	ContributorID types.ID             `koanf:"contributor_id"`
+	GlobalRank    uint                 `koanf:"global_rank"`
+	TotalScore    float64              `koanf:"total_score"`
+	ProjectsScore map[types.ID]float64 `koanf:"project_score"`
+}
