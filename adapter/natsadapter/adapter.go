@@ -174,8 +174,6 @@ func (a *Adapter) ensureStream() error {
 		Retention: a.config.RetentionPolicy.ToNatsRetention(),
 	}
 
-	fmt.Println(a.config.StreamName)
-	fmt.Println(a.config.StreamSubjects)
 	_, err := a.js.StreamInfo(a.config.StreamName)
 	if err != nil {
 		_, err = a.js.AddStream(streamConfig)
@@ -287,8 +285,11 @@ func (c *PullConsumer) Fetch() ([]*nats.Msg, error) {
 // This function returns `true` if the message can still be retried,
 // or `false` if it has reached the delivery limit and should be sent to DLQ.
 func (c *PullConsumer) CanRetry(msg *nats.Msg) bool {
-	meta, _ := msg.Metadata()
-	if c.config.MaxDeliver == int(meta.NumDelivered) {
+	meta, err := msg.Metadata()
+	if err != nil {
+		return true
+	}
+	if c.config.MaxDeliver <= int(meta.NumDelivered) {
 		return false
 	}
 	return true

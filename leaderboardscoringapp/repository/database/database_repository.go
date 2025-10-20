@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/gocasters/rankr/pkg/statuscode"
+	"log/slog"
 	"math/rand"
 	"time"
 
@@ -272,13 +273,17 @@ func isRetryableError(err error) bool {
 		case statuscode.ErrCodeConnectionException,
 			statuscode.ErrCodeConnectionNotExist,
 			statuscode.ErrCodeConnectionFailure:
-			logger.L().Info("------------------> ", time.Now(), ":", pgErr.Code)
+			logger.L().Info("postgres connection error; will retry",
+				slog.String("code", pgErr.Code),
+				slog.String("severity", pgErr.Severity),
+				slog.String("message", pgErr.Message),
+			)
 			return true
+			
 		case statuscode.ErrTooManyConnections:
-			time.Sleep(5 * time.Second)
 			return true
 		}
 	}
 
-	return true
+	return false
 }

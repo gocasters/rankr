@@ -47,7 +47,9 @@ type Application struct {
 func Setup(ctx context.Context, config Config) *Application {
 	log := logger.L()
 
-	config.StreamNameRawEvents = topicsname.StreamNameRawEvents
+	if config.StreamNameRawEvents == "" {
+		config.StreamNameRawEvents = topicsname.StreamNameRawEvents
+	}
 
 	// Initialize PostgreSQL connection
 	databaseConn, err := database.Connect(config.PostgresDB)
