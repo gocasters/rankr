@@ -1,4 +1,4 @@
-package constant
+package topicsname
 
 const (
 	// NATS Topics

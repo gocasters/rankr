@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gocasters/rankr/realtimeapp/constant"
+	"github.com/gocasters/rankr/pkg/topicsname"
 	"github.com/gocasters/rankr/realtimeapp/service/realtime"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
@@ -183,7 +183,7 @@ func TestHandler_WebSocketSubscribe(t *testing.T) {
 	defer ws.Close()
 
 	subscribeMsg := realtime.Message{
-		Type: constant.MessageTypeSubscribe,
+		Type: topicsname.MessageTypeSubscribe,
 		Payload: map[string]interface{}{
 			"topics": []interface{}{"task.created", "task.updated"},
 		},
@@ -196,7 +196,7 @@ func TestHandler_WebSocketSubscribe(t *testing.T) {
 	err = ws.ReadJSON(&response)
 	require.NoError(t, err)
 
-	assert.Equal(t, constant.MessageTypeAck, response["type"])
+	assert.Equal(t, topicsname.MessageTypeAck, response["type"])
 	payload, ok := response["payload"].(map[string]interface{})
 	require.True(t, ok)
 	assert.True(t, payload["success"].(bool))
@@ -218,7 +218,7 @@ func TestHandler_WebSocketUnsubscribe(t *testing.T) {
 	defer ws.Close()
 
 	subscribeMsg := realtime.Message{
-		Type: constant.MessageTypeSubscribe,
+		Type: topicsname.MessageTypeSubscribe,
 		Payload: map[string]interface{}{
 			"topics": []interface{}{"task.created", "task.updated"},
 		},
@@ -231,7 +231,7 @@ func TestHandler_WebSocketUnsubscribe(t *testing.T) {
 	require.NoError(t, err)
 
 	unsubscribeMsg := realtime.Message{
-		Type: constant.MessageTypeUnsubscribe,
+		Type: topicsname.MessageTypeUnsubscribe,
 		Payload: map[string]interface{}{
 			"topics": []interface{}{"task.created"},
 		},
@@ -243,7 +243,7 @@ func TestHandler_WebSocketUnsubscribe(t *testing.T) {
 	err = ws.ReadJSON(&unsubscribeResp)
 	require.NoError(t, err)
 
-	assert.Equal(t, constant.MessageTypeAck, unsubscribeResp["type"])
+	assert.Equal(t, topicsname.MessageTypeAck, unsubscribeResp["type"])
 	payload, ok := unsubscribeResp["payload"].(map[string]interface{})
 	require.True(t, ok)
 	assert.True(t, payload["success"].(bool))
@@ -271,7 +271,7 @@ func TestHandler_WebSocketInvalidMessage(t *testing.T) {
 	err = ws.ReadJSON(&response)
 	require.NoError(t, err)
 
-	assert.Equal(t, constant.MessageTypeError, response["type"])
+	assert.Equal(t, topicsname.MessageTypeError, response["type"])
 	assert.Contains(t, response["message"], "invalid message format")
 }
 
@@ -301,7 +301,7 @@ func TestHandler_WebSocketUnknownMessageType(t *testing.T) {
 	err = ws.ReadJSON(&response)
 	require.NoError(t, err)
 
-	assert.Equal(t, constant.MessageTypeError, response["type"])
+	assert.Equal(t, topicsname.MessageTypeError, response["type"])
 	assert.Contains(t, response["message"], "unknown message type")
 }
 
@@ -381,7 +381,7 @@ func TestHandler_MultipleWebSocketClients(t *testing.T) {
 
 	for _, ws := range clients {
 		subscribeMsg := realtime.Message{
-			Type: constant.MessageTypeSubscribe,
+			Type: topicsname.MessageTypeSubscribe,
 			Payload: map[string]interface{}{
 				"topics": []interface{}{"task.created"},
 			},
@@ -413,7 +413,7 @@ func TestHandler_SendError(t *testing.T) {
 		var errorMsg realtime.ErrorMessage
 		err := json.Unmarshal(msg, &errorMsg)
 		require.NoError(t, err)
-		assert.Equal(t, constant.MessageTypeError, errorMsg.Type)
+		assert.Equal(t, topicsname.MessageTypeError, errorMsg.Type)
 		assert.Equal(t, "test error message", errorMsg.Message)
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("No error message received")
@@ -435,14 +435,14 @@ func TestHandler_SendResponse(t *testing.T) {
 		Topics:  []string{"task.created"},
 	}
 
-	handler.sendResponse(client, constant.MessageTypeAck, payload)
+	handler.sendResponse(client, topicsname.MessageTypeAck, payload)
 
 	select {
 	case msg := <-client.Send:
 		var response map[string]interface{}
 		err := json.Unmarshal(msg, &response)
 		require.NoError(t, err)
-		assert.Equal(t, constant.MessageTypeAck, response["type"])
+		assert.Equal(t, topicsname.MessageTypeAck, response["type"])
 		assert.NotNil(t, response["payload"])
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("No response message received")

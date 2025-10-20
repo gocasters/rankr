@@ -6,7 +6,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/gocasters/rankr/realtimeapp/constant"
+	"github.com/gocasters/rankr/pkg/topicsname"
 )
 
 type ConnectionStore interface {
@@ -19,6 +19,7 @@ type ConnectionStore interface {
 
 type Service struct {
 	ConnectionStore ConnectionStore
+	TopicValidator  *TopicValidator
 	Logger          *slog.Logger
 }
 
@@ -28,6 +29,7 @@ func NewService(
 ) Service {
 	return Service{
 		ConnectionStore: connectionStore,
+		TopicValidator:  NewTopicValidator(),
 		Logger:          logger,
 	}
 }
@@ -55,19 +57,39 @@ func (s Service) SubscribeTopics(ctx context.Context, clientID string, req Subsc
 		}, nil
 	}
 
-	client.SubsMu.Lock()
-	defer client.SubsMu.Unlock()
+	// TODO: Get actual client permissions from authentication context
+	clientPerms := DefaultClientPermissions()
 
-	for _, topic := range req.Topics {
-		client.Subscriptions[topic] = true
+	allowedTopics, err := s.TopicValidator.ValidateTopics(req.Topics, clientPerms)
+
+	if err != nil {
+		return SubscribeResponse{
+			Success: false,
+			Message: err.Error(),
+		}, nil
 	}
 
-	s.Logger.Info("client subscribed to topics", "client_id", clientID, "topics", req.Topics)
+	client.SubsMu.Lock()
+	for _, topic := range allowedTopics {
+		client.Subscriptions[topic] = true
+	}
+	client.SubsMu.Unlock()
 
-	return SubscribeResponse{
-		Success: true,
-		Topics:  req.Topics,
-	}, nil
+	s.Logger.Info("client subscribed to topics",
+		"client_id", clientID,
+		"allowed_topics", allowedTopics,
+	)
+
+	response := SubscribeResponse{
+		Success: len(allowedTopics) > 0,
+		Topics:  allowedTopics,
+	}
+
+	if len(allowedTopics) == 0 {
+		response.Message = "no topics allowed"
+	}
+
+	return response, nil
 }
 
 func (s Service) UnsubscribeTopics(ctx context.Context, clientID string, req UnsubscribeRequest) (UnsubscribeResponse, error) {
@@ -97,7 +119,7 @@ func (s Service) UnsubscribeTopics(ctx context.Context, clientID string, req Uns
 
 func (s Service) BroadcastEvent(ctx context.Context, req BroadcastEventRequest) error {
 	event := Event{
-		Type:      constant.MessageTypeEvent,
+		Type:      topicsname.MessageTypeEvent,
 		Topic:     req.Topic,
 		Payload:   req.Payload,
 		Timestamp: time.Now(),

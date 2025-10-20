@@ -1,9 +1,10 @@
 services:
   # The main application service
-  lbapp:
+  leaderboardscoring-app:
     build:
       context: ../../.. # Build from the project root
       dockerfile: ./deploy/leaderboardscoring/development/Dockerfile
+    container_name: lb_app
     ports:
       - "8080:8080" # HTTP port
       - "8090:8090" # gRPC port
@@ -19,23 +20,21 @@ services:
         condition: service_healthy
       leaderboardscoring-nats:
         condition: service_healthy
-#      nats-init:
-#        condition: service_completed_successfully
     command: [ "/app/main", "serve", "--migrate-up" ]
 
   # PostgreSQL Database Service
   leaderboardscoring-db:
     image: postgres:14-alpine
-    container_name: leaderboardscoring-db
+    container_name: lb_db
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: leaderboardscoring_admin
-      POSTGRES_PASSWORD: password123
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: leaderboardscoring_db
     restart: always
     volumes:
-      - leaderboardscoring-data:/var/lib/postgresql/data
+      - lb_data_db:/var/lib/postgresql/data
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U leaderboardscoring_admin -d leaderboardscoring_db" ]
       interval: 10s
@@ -45,16 +44,41 @@ services:
 
   # Redis Service
   leaderboardscoring-redis:
-    image: redis:6.2-alpine
-    container_name: leaderboardscoring-redis
+    image: bitnami/redis:8.0.1-debian-12-r2
+    container_name: lb_redis
     ports:
       - "6379:6379"
+    environment:
+      REDIS_DAEMON_USER: ${REDIS_USER}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_RDB_POLICY_DISABLE: yes
+      REDIS_AOF_ENABLED: yes
+#      REDIS_RDB_ENABLED: yes
+#      ALLOW_EMPTY_PASSWORD: yes
     restart: always
+    volumes:
+      - redis_data:/bitnami/redis/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-a", "$$REDIS_PASSWORD", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redisinsight:
+    image: redislabs/redisinsight:latest
+    container_name: redis_insight
+    restart: unless-stopped
+    ports:
+      - "5540:5540"
+    depends_on:
+      - leaderboardscoring-redis
+
 
   # NATS JetStream Service
   leaderboardscoring-nats:
     image: nats:2.10-alpine
-    container_name: nats_jetstream
+    container_name: lb_nats_jetstream
     restart: unless-stopped
     ports:
       - "4222:4222" # Client port
@@ -73,6 +97,22 @@ services:
       retries: 10
       start_period: 10s
 
+  # NATS Box for CLI and testing
+  nats-box:
+    image: natsio/nats-box:0.8.0
+    container_name: nats_box
+    depends_on:
+      leaderboardscoring-nats:
+        condition: service_healthy
+    environment:
+      - NATS_URL=nats://leaderboardscoring-nats:4222
+    tty: true
+    stdin_open: true
+
 volumes:
-  leaderboardscoring-data:
+  lb_data_db:
+    driver: local
   nats_data:
+    driver: local
+  redis_data:
+    driver: local

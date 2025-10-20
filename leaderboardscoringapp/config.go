@@ -35,7 +35,7 @@ type Config struct {
 	DatabaseRetry    postgrerepository.RetryConfig `koanf:"database_retry"`
 
 	// Topics
-	RawEventSubscriberTopic string `koanf:"raw_event_subscriber_topic"`
+	RawEventTopic string `koanf:"raw_event_topic"`
 
 	// Lifecycle
 	TotalShutdownTimeout time.Duration `koanf:"total_shutdown_timeout"`
