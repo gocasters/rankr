@@ -26,6 +26,7 @@ func New(leaderboardSvc *leaderboardscoring.Service, schedulerCfg Config) Schedu
 	sch, err := gocron.NewScheduler(gocron.WithLocation(time.Local))
 	if err != nil {
 		logger.L().Error("failed to create Scheduler", slog.String("error", err.Error()))
+		panic(err)
 	}
 
 	return Scheduler{

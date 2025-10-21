@@ -329,7 +329,6 @@ func (app *Application) startBatchProcessor(ctx context.Context, wg *sync.WaitGr
 func (app *Application) startScheduler(ctx context.Context, wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {
-		defer wg.Done()
 		app.Scheduler.Start(ctx, wg)
 	}()
 }
