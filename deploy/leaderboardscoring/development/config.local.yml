@@ -8,6 +8,10 @@ rpc_server:
   port: 8090
   network_type: "tcp"
 
+scheduler_cfg:
+  snapshot_crontab: "0 */3 * * *"
+  snapshot_job_context_timeout: 5m
+
 postgres_db:
   host: "127.0.0.1"
   port: 5432

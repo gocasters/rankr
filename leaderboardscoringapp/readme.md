@@ -5,13 +5,11 @@
 1. [Overview](#1-overview)
 2. [Core Architecture](#2-core-architecture)
 3. [Usage](#3-usage)
-
     * [Run leaderboard-scoring app](#run-leaderboard-scoring-app)
     * [Stopping service](#stopping-service)
     * [Testing Guide](#testing-guide)
 4. [API Endpoints](#4-api-endpoints)
 5. [gRPC API](#5-grpc-api)
-
     * [Service Discovery](#service-discovery)
     * [Calling the GetLeaderboard Method](#calling-the-getleaderboard-method)
 
@@ -44,6 +42,10 @@ key patterns:
   leaderboards to PostgreSQL. A restore function can quickly rebuild the leaderboards from the latest snapshot after a
   failure, avoiding the need to reprocess the entire event history.
 
+📘 **Related Documentation:**  
+For detailed information about Redis key structures and snapshot policies, see  
+➡️ [**Leaderboard Keys Documentation**](./doc/leaderboard_keys.md)
+
 ---
 
 ### Event-Driven Models: Push-Based vs Pull-Based (JetStream Native Batching)
@@ -61,7 +63,9 @@ Used for *real-time leaderboard updates* via **Watermill**:
 - ⚠️ Higher DB load since every event triggers a separate write.
 
 ```
+
 Webhook → JetStream → Watermill Consumer → Process → Update Redis
+
 ```
 
 #### 🔹 Pull-Based Model (JetStream Native)
@@ -75,8 +79,10 @@ Used for *batch persistence* of processed events:
 - ✅ No in-memory buffering, reliable by design.
 
 ```
+
 Processed Events → JetStream ← Pull Consumer (Batch 500) → PostgreSQL
-```
+
+````
 
 #### Why JetStream Native Batching?
 
@@ -101,11 +107,11 @@ Together, they achieve both **speed and scalability** in production.
   # run compose file
  docker compose -f deploy/leaderboardscoring/development/docker-compose.no-service.yml up -d
   # run leaderboard-scoring app
- go run ./cmd/leaderboardscoring/main.go serve
+ go run ./cmd/leaderboardscoring/main.go serve --migrate-up
  
   # for show containers log
  docker compose -f deploy/leaderboardscoring/development/docker-compose.no-service.yml logs -f
-```
+````
 
 ### Stopping service
 

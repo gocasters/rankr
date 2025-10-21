@@ -12,6 +12,7 @@ import (
 	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/consumer/rawevent"
 	leaderboardGRPC "github.com/gocasters/rankr/leaderboardscoringapp/delivery/grpc"
 	leaderboardHTTP "github.com/gocasters/rankr/leaderboardscoringapp/delivery/http"
+	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/scheduler"
 	postgrerepository "github.com/gocasters/rankr/leaderboardscoringapp/repository/database"
 	"github.com/gocasters/rankr/leaderboardscoringapp/repository/redisrepository"
 	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
@@ -42,6 +43,7 @@ type Application struct {
 	NatsWMAdapter             *nats.Adapter
 	NatsAdapter               *natsadapter.Adapter
 	BatchProcessor            *batchprocessor.Processor
+	Scheduler                 scheduler.Scheduler
 }
 
 func Setup(ctx context.Context, config Config) *Application {
@@ -162,6 +164,9 @@ func Setup(ctx context.Context, config Config) *Application {
 		slog.Duration("tick_interval", config.BatchProcessor.TickInterval),
 		slog.Duration("metrics_interval", config.BatchProcessor.MetricsInterval))
 
+	// Initialize Scheduler
+	sch := scheduler.New(lbScoringService, config.SchedulerCfg)
+
 	return &Application{
 		HTTPServer:                leaderboardHttpServer,
 		LeaderboardGrpcServer:     leaderboardGrpcServer,
@@ -176,6 +181,7 @@ func Setup(ctx context.Context, config Config) *Application {
 		NatsWMAdapter:             natsWMAdapter,
 		NatsAdapter:               natsAdapter,
 		BatchProcessor:            processor,
+		Scheduler:                 sch,
 	}
 }
 
@@ -190,6 +196,7 @@ func (app *Application) Start() {
 	app.startWatermill(ctx, &wg)
 	app.startGRPCServer(&wg)
 	app.startBatchProcessor(ctx, &wg)
+	app.startScheduler(ctx, &wg)
 
 	log.Info("leaderboard scoring application is ready and running")
 
@@ -316,6 +323,14 @@ func (app *Application) startBatchProcessor(ctx context.Context, wg *sync.WaitGr
 		}
 
 		log.Info("batch processor worker stopped")
+	}()
+}
+
+func (app *Application) startScheduler(ctx context.Context, wg *sync.WaitGroup) {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		app.Scheduler.Start(ctx, wg)
 	}()
 }
 

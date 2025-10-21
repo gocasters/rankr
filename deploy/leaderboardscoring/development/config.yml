@@ -8,6 +8,10 @@ rpc_server:
   port: 8090
   network_type: "tcp"
 
+scheduler_cfg:
+  snapshot_crontab: "0 */3 * * *"
+  snapshot_job_context_timeout: 5m
+
 postgres_db:
   host: "leaderboardscoring-db"
   port: 5432
@@ -83,6 +87,6 @@ batch_processor:
   tick_interval: 10s
   metrics_interval: 30s
 
-total_shutdown_timeout: 30s
+total_shutdown_timeout: 1m
 
 path_of_migration: "./leaderboardscoringapp/repository/database/migrations"
