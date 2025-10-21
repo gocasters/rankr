@@ -97,19 +97,43 @@ func (s *Service) GetContributorTotalStats(ctx context.Context, contributorID ty
 		}
 	}
 
-	rpcResponse, err := s.leaderboardScoringRPC.GetContributorScores(ctx, contributorID)
-	if err != nil {
-		return ContributorTotalStats{}, fmt.Errorf("RPC call failed: %v", err)
+	var stats ContributorTotalStats
+	if s.leaderboardScoringRPC != nil {
+		rpcResponse, err := s.leaderboardScoringRPC.GetContributorScores(ctx, contributorID)
+		if err != nil {
+			return ContributorTotalStats{}, fmt.Errorf("RPC call failed: %v", err)
+		}
+		stats = ContributorTotalStats{
+			ContributorID: contributorID,
+			GlobalRank:    uint(rpcResponse.GetGlobalRank()),
+			TotalScore:    rpcResponse.GetTotalScore(),
+			ProjectsScore: convertProtoProjectsScore(rpcResponse.GetProjectScores()),
+		}
+	} else {
+		// Fallback to repository
+		totalScore, err := s.repository.GetContributorTotalScore(ctx, contributorID)
+		if err != nil {
+			return ContributorTotalStats{}, err
+		}
+		globalRank, err := s.repository.GetContributorTotalRank(ctx, contributorID)
+		if err != nil {
+			return ContributorTotalStats{}, err
+		}
+		projectsScore, err := s.repository.GetContributorProjectScores(ctx, contributorID)
+		if err != nil {
+			return ContributorTotalStats{}, err
+		}
+		stats = ContributorTotalStats{
+			ContributorID: contributorID,
+			GlobalRank:    globalRank,
+			TotalScore:    totalScore,
+			ProjectsScore: projectsScore,
+		}
 	}
-	stats := ContributorTotalStats{
-		ContributorID: contributorID,
-		GlobalRank:    uint(rpcResponse.GetGlobalRank()),
-		TotalScore:    rpcResponse.GetTotalScore(),
-		ProjectsScore: convertProtoProjectsScore(rpcResponse.GetProjectScores()),
+
+	if b, mErr := json.Marshal(stats); mErr == nil {
+		_ = s.cacheManager.Set(ctx, cacheKey, string(b), 5*time.Minute)
 	}
-	
-	statsJSON, _ := json.Marshal(stats)
-	s.cacheManager.Set(ctx, cacheKey, string(statsJSON), 5*time.Minute)
 
 	return stats, nil
 }

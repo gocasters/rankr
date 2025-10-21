@@ -49,7 +49,7 @@ func Setup(
 
 	statRepo := repository.NewLeaderboardstatRepo(config.Repository, postgresConn)
 	statValidator := leaderboardstat.NewValidator(statRepo)
-	statSvc := leaderboardstat.NewService(statRepo, statValidator)
+	statSvc := leaderboardstat.NewService(statRepo, statValidator, *cache, nil)
 	statHandler := statHTTP.NewHandler(statSvc)
 
 	httpServer, err := httpserver.New(config.HTTPServer)
@@ -78,6 +78,7 @@ func Setup(
 		GRPCServer:   statGrpcServer,
 		Config:       config,
 		CacheManager: *cache,
+		redis:        redisAdapter,
 	}, nil
 }
 
