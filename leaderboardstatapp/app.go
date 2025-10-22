@@ -3,7 +3,9 @@ package leaderboardstatapp
 import (
 	"context"
 	"fmt"
+	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/leaderboardstatapp/repository"
+	"github.com/gocasters/rankr/pkg/cachemanager"
 	"github.com/gocasters/rankr/pkg/database"
 	"log/slog"
 	"os"
@@ -27,6 +29,8 @@ type Application struct {
 	HTTPServer             statHTTP.Server
 	GRPCServer             statGRPC.Server
 	Config                 Config
+	CacheManager           cachemanager.CacheManager
+	redis                  *redis.Adapter
 }
 
 func Setup(
@@ -35,9 +39,17 @@ func Setup(
 	postgresConn *database.Database,
 ) (Application, error) {
 	statLogger := logger.L()
+
+	redisAdapter, err := redis.New(ctx, config.Redis)
+	if err != nil {
+		statLogger.Error("failed to initialize Redis", "err", err)
+		return Application{}, err
+	}
+	cache := cachemanager.NewCacheManager(redisAdapter)
+
 	statRepo := repository.NewLeaderboardstatRepo(config.Repository, postgresConn)
 	statValidator := leaderboardstat.NewValidator(statRepo)
-	statSvc := leaderboardstat.NewService(statRepo, statValidator)
+	statSvc := leaderboardstat.NewService(statRepo, statValidator, *cache, nil)
 	statHandler := statHTTP.NewHandler(statSvc)
 
 	httpServer, err := httpserver.New(config.HTTPServer)
@@ -63,8 +75,10 @@ func Setup(
 			*httpServer,
 			statHandler,
 		),
-		GRPCServer: statGrpcServer,
-		Config:     config,
+		GRPCServer:   statGrpcServer,
+		Config:       config,
+		CacheManager: *cache,
+		redis:        redisAdapter,
 	}, nil
 }
 

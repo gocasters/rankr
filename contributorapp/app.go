@@ -9,8 +9,8 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/gocasters/rankr/cachemanager"
 	"github.com/gocasters/rankr/contributorapp/service/contributor"
+	"github.com/gocasters/rankr/pkg/cachemanager"
 
 	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/contributorapp/delivery/http"

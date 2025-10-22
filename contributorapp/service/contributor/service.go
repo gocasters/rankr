@@ -2,7 +2,7 @@ package contributor
 
 import (
 	"context"
-	"github.com/gocasters/rankr/cachemanager"
+	"github.com/gocasters/rankr/pkg/cachemanager"
 	errmsg "github.com/gocasters/rankr/pkg/err_msg"
 	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/gocasters/rankr/type"

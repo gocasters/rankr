@@ -1,4 +1,4 @@
-package grpc
+ package grpc
 
 import (
 	"context"
@@ -65,4 +65,19 @@ func transformScoreEntries(entries []leaderboardstat.ScoreEntry) []*leaderboards
 	}
 
 	return pbEntries
+}
+
+func (h Handler) GetContributorTotalStats(ctx context.Context, req *leaderboardstatpb.ContributorStatRequest) (*leaderboardstatpb.ContributorStatResponse, error) {
+	stats, err := h.leaderboardStatSvc.GetContributorTotalStats(ctx, types.ID(req.GetContributorId()))
+	if err != nil {
+		return nil, err
+	}
+
+	return &leaderboardstatpb.ContributorStatResponse{
+		ContributorId: req.GetContributorId(),
+		GlobalRank:    uint64(stats.GlobalRank),
+		TotalScore:    stats.TotalScore,
+		ProjectsScore: slice.MapFromIDFloat64ToUint64Float64(stats.ProjectsScore),
+		ScoreHistory:  nil, // TODO - add history
+	}, nil
 }
