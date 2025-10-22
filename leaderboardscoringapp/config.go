@@ -6,6 +6,7 @@ import (
 	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/consumer/batchprocessor"
 	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/consumer/rawevent"
+	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/scheduler"
 	postgrerepository "github.com/gocasters/rankr/leaderboardscoringapp/repository/database"
 	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/pkg/grpc"
@@ -18,6 +19,9 @@ type Config struct {
 	// Server configurations
 	HTTPServer httpserver.Config `koanf:"http_server"`
 	RPCServer  grpc.ServerConfig `koanf:"rpc_server"`
+
+	// Scheduler configurations
+	SchedulerCfg scheduler.Config `koanf:"scheduler_cfg"`
 
 	// Data store configurations
 	PostgresDB database.Config `koanf:"postgres_db"`
@@ -35,7 +39,7 @@ type Config struct {
 	DatabaseRetry    postgrerepository.RetryConfig `koanf:"database_retry"`
 
 	// Topics
-	RawEventTopic string `koanf:"raw_event_topic"`
+	StreamNameRawEvents string `koanf:"stream_name_raw_events"`
 
 	// Lifecycle
 	TotalShutdownTimeout time.Duration `koanf:"total_shutdown_timeout"`

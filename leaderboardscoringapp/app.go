@@ -12,6 +12,7 @@ import (
 	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/consumer/rawevent"
 	leaderboardGRPC "github.com/gocasters/rankr/leaderboardscoringapp/delivery/grpc"
 	leaderboardHTTP "github.com/gocasters/rankr/leaderboardscoringapp/delivery/http"
+	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/scheduler"
 	postgrerepository "github.com/gocasters/rankr/leaderboardscoringapp/repository/database"
 	"github.com/gocasters/rankr/leaderboardscoringapp/repository/redisrepository"
 	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
@@ -19,11 +20,11 @@ import (
 	"github.com/gocasters/rankr/pkg/grpc"
 	"github.com/gocasters/rankr/pkg/httpserver"
 	"github.com/gocasters/rankr/pkg/logger"
+	"github.com/gocasters/rankr/pkg/topicsname"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"sync"
 	"syscall"
 )
@@ -42,17 +43,14 @@ type Application struct {
 	NatsWMAdapter             *nats.Adapter
 	NatsAdapter               *natsadapter.Adapter
 	BatchProcessor            *batchprocessor.Processor
+	Scheduler                 scheduler.Scheduler
 }
-
-const ProcessedScoreEventsTopic = "processed_score_events"
 
 func Setup(ctx context.Context, config Config) *Application {
 	log := logger.L()
 
-	if strings.TrimSpace(config.RawEventTopic) == "" {
-		log.Error("raw event subscriber topic is required",
-			slog.String("config_key", "raw_event_topic"))
-		panic("missing required configuration: raw_event_topic")
+	if config.StreamNameRawEvents == "" {
+		config.StreamNameRawEvents = topicsname.StreamNameRawEvents
 	}
 
 	// Initialize PostgreSQL connection
@@ -87,6 +85,15 @@ func Setup(ctx context.Context, config Config) *Application {
 	log.Info("NATS Watermill adapter initialized successfully")
 
 	// Initialize NATS native adapter (for processed events publishing/consumption)
+	if config.NatsAdapter.StreamName == "" {
+		config.NatsAdapter.StreamName = topicsname.StreamNameLeaderboardscoringProcessedEvents
+	}
+	if config.NatsAdapter.StreamSubjects == nil {
+		config.NatsAdapter.StreamSubjects = []string{
+			topicsname.TopicProcessedScoreEvents,
+			topicsname.TopicProcessedScoreEventsDLQ,
+		}
+	}
 	natsAdapter, err := natsadapter.New(config.NatsAdapter, log)
 	if err != nil {
 		databaseConn.Close()
@@ -109,7 +116,7 @@ func Setup(ctx context.Context, config Config) *Application {
 		persistence,
 		leaderboard,
 		natsAdapter,
-		ProcessedScoreEventsTopic,
+		topicsname.TopicProcessedScoreEvents,
 		lbScoringValidator,
 	)
 	log.Info("leaderboard scoring service initialized")
@@ -149,12 +156,16 @@ func Setup(ctx context.Context, config Config) *Application {
 	// Initialize batch processor
 	processor := batchprocessor.NewProcessor(
 		pullConsumer,
+		natsAdapter,
 		persistence,
 		config.BatchProcessor,
 	)
 	log.Info("batch processor initialized",
 		slog.Duration("tick_interval", config.BatchProcessor.TickInterval),
 		slog.Duration("metrics_interval", config.BatchProcessor.MetricsInterval))
+
+	// Initialize Scheduler
+	sch := scheduler.New(lbScoringService, config.SchedulerCfg)
 
 	return &Application{
 		HTTPServer:                leaderboardHttpServer,
@@ -170,6 +181,7 @@ func Setup(ctx context.Context, config Config) *Application {
 		NatsWMAdapter:             natsWMAdapter,
 		NatsAdapter:               natsAdapter,
 		BatchProcessor:            processor,
+		Scheduler:                 sch,
 	}
 }
 
@@ -184,6 +196,7 @@ func (app *Application) Start() {
 	app.startWatermill(ctx, &wg)
 	app.startGRPCServer(&wg)
 	app.startBatchProcessor(ctx, &wg)
+	app.startScheduler(ctx, &wg)
 
 	log.Info("leaderboard scoring application is ready and running")
 
@@ -263,13 +276,13 @@ func (app *Application) setupWatermill() {
 
 	router.AddConsumerHandler(
 		"RawEventHandler",
-		app.Config.RawEventTopic,
+		app.Config.StreamNameRawEvents,
 		app.WMSubscriber,
 		rawEventHandler.HandleEvent,
 	)
 
 	log.Info("Watermill router configured",
-		slog.String("topic", app.Config.RawEventTopic))
+		slog.String("topic", app.Config.StreamNameRawEvents))
 
 	app.WMRouter = router
 }
@@ -310,6 +323,13 @@ func (app *Application) startBatchProcessor(ctx context.Context, wg *sync.WaitGr
 		}
 
 		log.Info("batch processor worker stopped")
+	}()
+}
+
+func (app *Application) startScheduler(ctx context.Context, wg *sync.WaitGroup) {
+	wg.Add(1)
+	go func() {
+		app.Scheduler.Start(ctx, wg)
 	}()
 }
 

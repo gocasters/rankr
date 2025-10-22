@@ -51,9 +51,8 @@ services:
     depends_on:
       - leaderboardscoring-redis
 
-  # NATS JetStream Service
   leaderboardscoring-nats:
-    image: nats:2.10-alpine
+    image: nats:2.10.14-alpine
     container_name: lb_nats
     restart: unless-stopped
     ports:
@@ -73,9 +72,8 @@ services:
       retries: 10
       start_period: 10s
 
-  # NATS Box for CLI and testing
   nats-box:
-    image: natsio/nats-box:0.8.0
+    image: natsio/nats-box:0.15.0
     container_name: nats_box
     depends_on:
       leaderboardscoring-nats:

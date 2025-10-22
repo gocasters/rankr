@@ -7,6 +7,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/gocasters/rankr/adapter/nats"
 	"github.com/gocasters/rankr/pkg/eventgenerator"
+	"github.com/gocasters/rankr/pkg/topicsname"
 	"google.golang.org/protobuf/proto"
 	"log"
 	"time"
@@ -15,7 +16,7 @@ import (
 func main() {
 	natsURL := flag.String("nats", "nats://localhost:4222", "NATS URL")
 	count := flag.Int("count", 10, "Number of events to generate")
-	topic := flag.String("topic", "raw_events", "Topic name")
+	topic := flag.String("topic", topicsname.StreamNameRawEvents, "Topic name")
 	flag.Parse()
 
 	ctx := context.Background()

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/gocasters/rankr/pkg/logger"
+	"github.com/gocasters/rankr/pkg/topicsname"
 	"github.com/nats-io/nats.go"
 	"log/slog"
 	"time"
@@ -13,8 +14,13 @@ import (
 
 type PullConsumer interface {
 	Fetch() ([]*nats.Msg, error)
+	CanRetry(msg *nats.Msg) bool
 	GetConsumerInfo() (*nats.ConsumerInfo, error)
 	Close() error
+}
+
+type Publisher interface {
+	Publish(ctx context.Context, subject string, data []byte) error
 }
 
 type Config struct {
@@ -23,17 +29,20 @@ type Config struct {
 }
 type Processor struct {
 	consumer    PullConsumer
+	publisher   Publisher
 	persistence leaderboardscoring.EventPersistence
 	config      Config
 }
 
 func NewProcessor(
 	consumer PullConsumer,
+	publisher Publisher,
 	persistence leaderboardscoring.EventPersistence,
 	config Config,
 ) *Processor {
 	return &Processor{
 		consumer:    consumer,
+		publisher:   publisher,
 		persistence: persistence,
 		config:      config,
 	}
@@ -89,9 +98,8 @@ func (p *Processor) Close() error {
 // processBatch fetches and processes a single batch
 // 1. Fetch messages
 // 2. Parse messages
-// 3. Terminate invalid messages (don't retry)
-// 4. Persist valid events
-// 5. ACK all valid messages on success
+// 3. Persist valid events
+// 4. ACK all valid messages on success
 func (p *Processor) processBatch(ctx context.Context) error {
 	log := logger.L()
 
@@ -128,14 +136,6 @@ func (p *Processor) processBatch(ctx context.Context) error {
 		events = append(events, event)
 	}
 
-	// Terminate invalid messages (don't retry)
-	/*for _, invalidMsg := range invalidMsgs {
-		if err := invalidMsg.Term(); err != nil {
-			log.Error("Failed to terminate invalid message",
-				slog.String("error", err.Error()))
-		}
-	}*/
-
 	if len(events) == 0 {
 		log.Debug("No valid messages in batch")
 		return nil
@@ -153,6 +153,16 @@ func (p *Processor) processBatch(ctx context.Context) error {
 
 		// NAK all valid messages for retry
 		for _, validMsg := range validMsgs {
+
+			// If message reached max delivery attempts → send to DLQ; otherwise NAK for retry
+			if !p.consumer.CanRetry(validMsg) {
+				if pErr := p.publisher.Publish(ctx, topicsname.TopicProcessedScoreEventsDLQ, validMsg.Data); pErr != nil {
+					log.Error("failed to publish processed score event to DLQ", slog.String("error", pErr.Error()))
+					continue
+				}
+				_ = validMsg.Term()
+			}
+
 			if nakErr := validMsg.Nak(); nakErr != nil {
 				log.Error(
 					"Failed to NAK message",

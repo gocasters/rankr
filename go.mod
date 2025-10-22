@@ -13,6 +13,7 @@ require (
 	github.com/eclipse/paho.mqtt.golang v1.5.1
 	github.com/gdamore/tcell/v2 v2.9.0
 	github.com/go-co-op/gocron v1.37.0
+	github.com/go-co-op/gocron/v2 v2.17.0
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/go-redis/redismock/v9 v9.2.0
 	github.com/golang-jwt/jwt/v5 v5.3.0
@@ -137,6 +138,7 @@ require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
+	github.com/jonboulle/clockwork v0.5.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/jpillora/backoff v1.0.0 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect

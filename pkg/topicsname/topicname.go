@@ -19,3 +19,11 @@ const (
 	MessageTypeError       = "error"
 	MessageTypeAck         = "ack"
 )
+
+const (
+	StreamNameRawEvents                         = "rankr_raw_events"
+	StreamNameLeaderboardscoringProcessedEvents = "leaderboardscoring_processed_events"
+
+	TopicProcessedScoreEvents    = "leaderboardscoring.processed.score.events"
+	TopicProcessedScoreEventsDLQ = "leaderboardscoring.processed.score.events.dlq"
+)
