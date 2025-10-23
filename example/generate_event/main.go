@@ -1,3 +1,22 @@
+// Package main provides a simple command-line tool for generating and publishing
+// random raw events into NATS JetStream.
+//
+// This utility is designed to feed test or demo data into the leaderboard scoring
+// service by simulating various repository events (issues, pull requests, commits, etc.).
+// It uses the `pkg/eventgenerator` package to create random event payloads and publishes
+// them to a specified NATS JetStream topic.
+//
+// Usage example:
+//
+//	go run ./cmd/eventgenerator/main.go --nats nats://localhost:4222 --count 50 --topic stream.raw.events
+//
+// Flags:
+//
+//	--nats     NATS server URL (default: nats://localhost:4222)
+//	--count    Number of random events to generate (default: 10)
+//	--topic    NATS topic name to publish events to (default: stream.raw.events)
+//
+// Each event is serialized using protobuf and sent as a Watermill message to JetStream.
 package main
 
 import (
