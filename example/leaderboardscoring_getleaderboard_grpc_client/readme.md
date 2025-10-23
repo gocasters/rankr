@@ -29,7 +29,7 @@ go run ./cmd/leaderboardscoring/test/rpc.go [flags]
 ### Fetch top 10 monthly scores for project 1
 
 ```bash
-go run ./cmd/leaderboardscoring/test/rpc.go \
+go run ./example/leaderboardscoring_getleaderboard_grpc_client/main.go \
   --addr localhost:8090 \
   --timeframe monthly \
   --project 1 \
@@ -39,7 +39,7 @@ go run ./cmd/leaderboardscoring/test/rpc.go \
 ### Fetch the next page (offset 20)
 
 ```bash
-go run ./cmd/leaderboardscoring/test/rpc.go \
+go run ./example/leaderboardscoring_getleaderboard_grpc_client/main.go \
   --addr localhost:8090 \
   --timeframe monthly \
   --project 1 \

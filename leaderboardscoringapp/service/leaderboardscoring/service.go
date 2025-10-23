@@ -132,7 +132,7 @@ func (s *Service) GetLeaderboard(ctx context.Context, req *GetLeaderboardRequest
 
 	if len(leaderboardScoring.LeaderboardRows) == 0 {
 		log.Debug("No leaderboard data found for the given criteria", slog.String("key", key))
-		return GetLeaderboardResponse{}, ErrLeaderboardNotFound
+		return GetLeaderboardResponse{}, nil
 	}
 
 	leaderboardRes := mapLeaderboardScoringToParam(leaderboardScoring)

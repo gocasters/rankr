@@ -48,12 +48,8 @@ func (h Handler) GetLeaderboard(ctx context.Context, req *leaderboardscoringpb.G
 		)
 
 		switch {
-		case errors.Is(err, leaderboardscoring.ErrLeaderboardNotFound):
-			return nil, status.Error(codes.NotFound, "The requested leaderboard could not be found.")
-
 		case errors.Is(err, leaderboardscoring.ErrInvalidArguments):
 			return nil, status.Error(codes.InvalidArgument, "Invalid request parameters provided.")
-
 		default:
 			return nil, status.Error(codes.Internal, "An unexpected internal error occurred.")
 		}

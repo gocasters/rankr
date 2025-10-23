@@ -1,9 +1,0 @@
-postgres_db:
-  host: "127.0.0.1"
-  port: 5432
-  user: "leaderboardscoring_admin"
-  password: "password123"
-  db_name: "leaderboardscoring_db"
-  ssl_mode: "disable"
-
-path_of_migration: "./leaderboardscoring/repository/database/migrations"
