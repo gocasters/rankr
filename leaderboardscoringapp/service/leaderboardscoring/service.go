@@ -9,13 +9,20 @@ import (
 	"github.com/gocasters/rankr/pkg/timettl"
 	"log/slog"
 	"strconv"
+	"sync"
 	"time"
+)
+
+const (
+	snapshotBatchSize     = 100  // Fetch 100 users at a time
+	snapshotPersistBatch  = 1000 // Persist every 1000 rows
+	snapshotRetryAttempts = 3
 )
 
 // EventPersistence = database layer
 type EventPersistence interface {
 	AddProcessedScoreEvents(ctx context.Context, events []ProcessedScoreEvent) error
-	AddSnapshotTotalScores(ctx context.Context, snapshots []UserTotalScore) error
+	AddSnapshot(ctx context.Context, snapshots []SnapshotRow) error
 }
 
 // LeaderboardCache = redis layer
@@ -143,16 +150,189 @@ func (s *Service) GetLeaderboard(ctx context.Context, req *GetLeaderboardRequest
 	return leaderboardRes, nil
 }
 
-// CreateLeaderboardSnapshot TODO - reads the current state of the all-time leaderboards from Redis
-// and persists them to the database. This should be run periodically by a scheduler.
-func (s *Service) CreateLeaderboardSnapshot(ctx context.Context) error {
+// LeaderboardSnapshot creates snapshots for specified project leaderboards
+func (s *Service) LeaderboardSnapshot(ctx context.Context, projectIDs []string) error {
+	log := logger.L()
+
+	log.Info("starting leaderboard snapshot creation", slog.Int("project_count", len(projectIDs)))
+
+	keys := getSnapshotKeys(projectIDs)
+	if len(keys) == 0 {
+		log.Warn("no snapshot keys to process")
+		return nil
+	}
+
+	// Process keys
+	results := s.processKeys(ctx, keys)
+
+	var errs []error
+	for err := range results {
+		if err != nil {
+			errs = append(errs, err)
+			log.Error("snapshot failed", slog.String("error", err.Error()))
+		}
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("snapshot had %d failures: %v", len(errs), errs)
+	}
+
 	return nil
 }
 
-// RestoreLeaderboardFromSnapshot TODO - rebuilds the Redis leaderboards from the latest
-// snapshot stored in the database. This is typically called on service startup if Redis is empty.
-func (s *Service) RestoreLeaderboardFromSnapshot(ctx context.Context) error {
-	return nil
+// processKeys processes multiple keys concurrently
+func (s *Service) processKeys(ctx context.Context, keys []string) <-chan error {
+	results := make(chan error, len(keys))
+	var wg sync.WaitGroup
+
+	for _, key := range keys {
+		wg.Add(1)
+		go func(k string) {
+			defer wg.Done()
+
+			_, err := s.createSnapshotForKey(ctx, k)
+			results <- err
+		}(key)
+	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+	return results
+}
+
+// createSnapshotForKey creates snapshot for a single leaderboard key
+func (s *Service) createSnapshotForKey(ctx context.Context, key string) (int, error) {
+	log := logger.L()
+	snapshotTime := time.Now().UTC()
+
+	var tempSnapshots []SnapshotRow
+	totalRows := 0
+
+	offset := int64(0)
+	batchSize := int64(snapshotBatchSize)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return totalRows, ctx.Err()
+		default:
+		}
+
+		// Fetch batch from Redis
+		query := &LeaderboardQuery{
+			Key:   key,
+			Start: offset,
+			Stop:  offset + batchSize - 1,
+		}
+
+		leaderboard, err := s.leaderboard.GetLeaderboard(ctx, query)
+		if err != nil {
+			return totalRows, fmt.Errorf("failed to fetch leaderboard: %w", err)
+		}
+
+		if len(leaderboard.LeaderboardRows) == 0 {
+			break
+		}
+
+		// Convert to snapshot rows
+		for _, row := range leaderboard.LeaderboardRows {
+			snapshot := SnapshotRow{
+				Rank:              row.Rank,
+				UserID:            row.UserID,
+				TotalScore:        row.Score,
+				LeaderboardKey:    key,
+				SnapshotTimestamp: snapshotTime,
+			}
+			tempSnapshots = append(tempSnapshots, snapshot)
+		}
+
+		totalRows += len(leaderboard.LeaderboardRows)
+
+		if len(tempSnapshots) >= snapshotPersistBatch {
+			if err := s.persistSnapshotBatch(ctx, tempSnapshots); err != nil {
+				return totalRows, fmt.Errorf("failed to persist snapshot batch: %w", err)
+			}
+			log.Debug("persisted snapshot batch",
+				slog.String("key", key),
+				slog.Int("batch_size", len(tempSnapshots)))
+			tempSnapshots = tempSnapshots[:0] // Reset slice
+		}
+
+		// Next batch
+		offset += batchSize
+
+		// Safety check: prevent infinite loop
+		if offset > maxOffset {
+			log.Warn("offset exceeded safety limit, stopping pagination", slog.String("key", key))
+			break
+		}
+	}
+
+	if len(tempSnapshots) > 0 {
+		if err := s.persistSnapshotBatch(ctx, tempSnapshots); err != nil {
+			return totalRows, fmt.Errorf("failed to persist final snapshot batch: %w", err)
+		}
+	}
+
+	return totalRows, nil
+}
+
+// persistSnapshotBatch persists a batch with retry logic
+func (s *Service) persistSnapshotBatch(ctx context.Context, snapshots []SnapshotRow) error {
+	log := logger.L()
+
+	var lastErr error
+	for attempt := 1; attempt <= snapshotRetryAttempts; attempt++ {
+		err := s.eventPersistence.AddSnapshot(ctx, snapshots)
+		if err == nil {
+			return nil
+		}
+
+		lastErr = err
+		log.Warn("failed persist snapshots",
+			slog.String("error", lastErr.Error()))
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(time.Duration(attempt) * 2 * time.Second):
+		}
+	}
+
+	return lastErr
+}
+
+// RestoreLeaderboardFromSnapshot rebuilds Redis leaderboards from the latest snapshot
+func (s *Service) RestoreLeaderboardFromSnapshot(ctx context.Context, keys []string) error {
+	log := logger.L()
+	log.Info("starting leaderboard restore from snapshot", slog.Int("keys", len(keys)))
+
+	// TODO: Implement restore logic
+	// 1. Query latest snapshots for each key from database
+	// 2. Group by leaderboard_key
+	// 3. Bulk insert to Redis using pipeline
+	// 4. Verify counts match
+
+	return fmt.Errorf("not implemented")
+}
+
+// Helper: get snapshot keys for projects
+func getSnapshotKeys(projectIDs []string) []string {
+	keys := make([]string, 0, len(projectIDs)+1)
+
+	// Global all-time leaderboard
+	keys = append(keys, getGlobalLeaderboardKey(AllTime, ""))
+
+	// Per-project all-time leaderboards
+	for _, pID := range projectIDs {
+		if pID != "" {
+			keys = append(keys, getPerProjectLeaderboardKey(pID, AllTime, ""))
+		}
+	}
+
+	return keys
 }
 
 // All Keys
