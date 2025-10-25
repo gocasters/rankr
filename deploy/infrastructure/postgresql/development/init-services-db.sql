@@ -1,11 +1,18 @@
 -- ==================================================
 -- Rankr Microservices PostgreSQL Initialization Script
 -- ==================================================
--- This script:
---   - Creates a dedicated user & database for each service
---   - Ensures idempotency (safe to re-run multiple times)
---   - Grants full privileges to each respective user
--- ==================================================
+
+-- Load users and passwords from environment variables
+\set LEADERBOARDSTAT_USER :'LEADERBOARDSTAT_USER'
+\set LEADERBOARDSTAT_PASS :'LEADERBOARDSTAT_PASS'
+\set CONTRIBUTOR_USER :'CONTRIBUTOR_USER'
+\set CONTRIBUTOR_PASS :'CONTRIBUTOR_PASS'
+\set PROJECT_USER :'PROJECT_USER'
+\set PROJECT_PASS :'PROJECT_PASS'
+\set WEBHOOK_USER :'WEBHOOK_USER'
+\set WEBHOOK_PASS :'WEBHOOK_PASS'
+\set LEADERBOARDSCORING_USER :'LEADERBOARDSCORING_USER'
+\set LEADERBOARDSCORING_PASS :'LEADERBOARDSCORING_PASS'
 
 \echo '========================================='
 \echo 'Initializing Rankr microservice databases...'
@@ -16,105 +23,135 @@
 -- ==================================================
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'leaderboardstat_user') THEN
-        CREATE USER leaderboardstat_user WITH PASSWORD 'leaderboard_pass_123';
-        RAISE NOTICE 'User leaderboardstat_user created';
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'LEADERBOARDSTAT_USER') THEN
+        EXECUTE format(
+            'CREATE USER %I WITH PASSWORD %L',
+            :'LEADERBOARDSTAT_USER',
+            :'LEADERBOARDSTAT_PASS'
+        );
+        RAISE NOTICE 'User % created', :'LEADERBOARDSTAT_USER';
 ELSE
-        RAISE NOTICE 'User leaderboardstat_user already exists';
+        RAISE NOTICE 'User % already exists', :'LEADERBOARDSTAT_USER';
 END IF;
 END
 $$;
 
-SELECT 'CREATE DATABASE leaderboardstat_db OWNER leaderboardstat_user'
-    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'leaderboardstat_db')\gexec
+SELECT format(
+               'CREATE DATABASE leaderboardstat_db OWNER %I',
+               :'LEADERBOARDSTAT_USER'
+       ) WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'leaderboardstat_db') \gexec;
 
-GRANT ALL PRIVILEGES ON DATABASE leaderboardstat_db TO leaderboardstat_user;
+GRANT ALL PRIVILEGES ON DATABASE leaderboardstat_db TO :'LEADERBOARDSTAT_USER';
 
-\echo '✔ leaderboardstat_db ready (owner: leaderboardstat_user)'
+\echo 'leaderboardstat_db ready (owner: leaderboardstat_user)'
 
 -- ==================================================
 -- 2. Contributor Service
 -- ==================================================
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'contributor_user') THEN
-        CREATE USER contributor_user WITH PASSWORD 'contributor_pass_123';
-        RAISE NOTICE 'User contributor_user created';
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'CONTRIBUTOR_USER') THEN
+        EXECUTE format(
+            'CREATE USER %I WITH PASSWORD %L',
+            :'CONTRIBUTOR_USER',
+            :'CONTRIBUTOR_PASS'
+        );
+        RAISE NOTICE 'User % created', :'CONTRIBUTOR_USER';
 ELSE
-        RAISE NOTICE 'User contributor_user already exists';
+        RAISE NOTICE 'User % already exists', :'CONTRIBUTOR_USER';
 END IF;
 END
 $$;
 
-SELECT 'CREATE DATABASE contributor_db OWNER contributor_user'
-    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'contributor_db')\gexec
+SELECT format(
+               'CREATE DATABASE contributor_db OWNER %I',
+               :'CONTRIBUTOR_USER'
+       ) WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'contributor_db') \gexec;
 
-GRANT ALL PRIVILEGES ON DATABASE contributor_db TO contributor_user;
+GRANT ALL PRIVILEGES ON DATABASE contributor_db TO :'CONTRIBUTOR_USER';
 
-\echo '✔ contributor_db ready (owner: contributor_user)'
+\echo 'contributor_db ready (owner: contributor_user)'
 
 -- ==================================================
 -- 3. Project Service
 -- ==================================================
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'project_user') THEN
-        CREATE USER project_user WITH PASSWORD 'project_pass_123';
-        RAISE NOTICE 'User project_user created';
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'PROJECT_USER') THEN
+        EXECUTE format(
+            'CREATE USER %I WITH PASSWORD %L',
+            :'PROJECT_USER',
+            :'PROJECT_PASS'
+        );
+        RAISE NOTICE 'User % created', :'PROJECT_USER';
 ELSE
-        RAISE NOTICE 'User project_user already exists';
+        RAISE NOTICE 'User % already exists', :'PROJECT_USER';
 END IF;
 END
 $$;
 
-SELECT 'CREATE DATABASE project_db OWNER project_user'
-    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'project_db')\gexec
+SELECT format(
+               'CREATE DATABASE project_db OWNER %I',
+               :'PROJECT_USER'
+       ) WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'project_db') \gexec;
 
-GRANT ALL PRIVILEGES ON DATABASE project_db TO project_user;
+GRANT ALL PRIVILEGES ON DATABASE project_db TO :'PROJECT_USER';
 
-\echo '✔ project_db ready (owner: project_user)'
+\echo 'project_db ready (owner: project_user)'
 
 -- ==================================================
 -- 4. Webhook Service
 -- ==================================================
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'webhook_user') THEN
-        CREATE USER webhook_user WITH PASSWORD 'webhook_pass_123';
-        RAISE NOTICE 'User webhook_user created';
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'WEBHOOK_USER') THEN
+        EXECUTE format(
+            'CREATE USER %I WITH PASSWORD %L',
+            :'WEBHOOK_USER',
+            :'WEBHOOK_PASS'
+        );
+        RAISE NOTICE 'User % created', :'WEBHOOK_USER';
 ELSE
-        RAISE NOTICE 'User webhook_user already exists';
+        RAISE NOTICE 'User % already exists', :'WEBHOOK_USER';
 END IF;
 END
 $$;
 
-SELECT 'CREATE DATABASE webhook_db OWNER webhook_user'
-    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'webhook_db')\gexec
+SELECT format(
+               'CREATE DATABASE webhook_db OWNER %I',
+               :'WEBHOOK_USER'
+       ) WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'webhook_db') \gexec;
 
-GRANT ALL PRIVILEGES ON DATABASE webhook_db TO webhook_user;
+GRANT ALL PRIVILEGES ON DATABASE webhook_db TO :'WEBHOOK_USER';
 
-\echo '✔ webhook_db ready (owner: webhook_user)'
+\echo 'webhook_db ready (owner: webhook_user)'
 
 -- ==================================================
 -- 5. Leaderboard Scoring Service
 -- ==================================================
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'leaderboardscoring_user') THEN
-        CREATE USER leaderboardscoring_user WITH PASSWORD 'leaderboardscoring_pass_123';
-        RAISE NOTICE 'User leaderboardscoring_user created';
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'LEADERBOARDSCORING_USER') THEN
+        EXECUTE format(
+            'CREATE USER %I WITH PASSWORD %L',
+            :'LEADERBOARDSCORING_USER',
+            :'LEADERBOARDSCORING_PASS'
+        );
+        RAISE NOTICE 'User % created', :'LEADERBOARDSCORING_USER';
 ELSE
-        RAISE NOTICE 'User leaderboardscoring_user already exists';
+        RAISE NOTICE 'User % already exists', :'LEADERBOARDSCORING_USER';
 END IF;
 END
 $$;
 
-SELECT 'CREATE DATABASE leaderboardscoring_db OWNER leaderboardscoring_user'
-    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'leaderboardscoring_db')\gexec
+SELECT format(
+               'CREATE DATABASE leaderboardscoring_db OWNER %I',
+               :'LEADERBOARDSCORING_USER'
+       ) WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'leaderboardscoring_db') \gexec;
 
-GRANT ALL PRIVILEGES ON DATABASE leaderboardscoring_db TO leaderboardscoring_user;
+GRANT ALL PRIVILEGES ON DATABASE leaderboardscoring_db TO :'LEADERBOARDSCORING_USER';
 
-\echo '✔ leaderboardscoring_db ready (owner: leaderboardscoring_user)'
+\echo 'leaderboardscoring_db ready (owner: leaderboardscoring_user)'
 
 -- ==================================================
 -- Summary

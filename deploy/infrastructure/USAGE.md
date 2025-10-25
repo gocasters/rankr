@@ -83,8 +83,6 @@ bash deploy/script/start_infrastructure.sh help
 
 ---
 
----
-
 ## Stopping Infrastructure
 
 To stop infrastructure services, use the helper script commands.

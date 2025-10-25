@@ -2,10 +2,12 @@ services:
   shared-postgres:
     build: .
     container_name: rankr-shared-postgres
+    env_file:
+      - ./.env
     environment:
-      POSTGRES_USER: rankr_admin
-      POSTGRES_PASSWORD: rankr_password_123
-      POSTGRES_DB: postgres
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - rankr-shared-postgres-data:/var/lib/postgresql/data
     ports:
@@ -14,7 +16,7 @@ services:
       - rankr-shared-development-network
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U rankr_admin -d postgres" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
       interval: 10s
       timeout: 5s
       retries: 5
