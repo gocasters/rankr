@@ -1,0 +1,46 @@
+services:
+  shared-redis:
+    image: redis:8.0-alpine
+    container_name: rankr-shared-redis
+    command: >
+      redis-server
+      --loglevel notice
+      --protected-mode no
+      --save ""
+      --appendonly yes
+    volumes:
+      - rankr-shared-redis-data:/data
+    ports:
+      - "6380:6379"
+    networks:
+      - rankr-shared-development-network
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    mem_limit: 512m
+    cpus: 0.5
+
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: rankr-redisinsight
+    ports:
+      - "5540:5540"
+    networks:
+      - rankr-shared-development-network
+    restart: unless-stopped
+    depends_on:
+      shared-redis:
+        condition: service_healthy
+    mem_limit: 512m
+    cpus: 0.5
+
+networks:
+  rankr-shared-development-network:
+    external: true
+
+volumes:
+  rankr-shared-redis-data:
+    external: true

@@ -5,8 +5,6 @@ BUF_VERSION ?= v1.56.0
 DEFAULT_BRANCH ?= main
 PROTOC_GEN_GO_VERSION ?= v1.34.2
 PROTOC_GEN_GO_GRPC_VERSION ?= v1.5.1
-# Use a variable for the leaderboard script path for cleanliness
-LB_SCRIPT := ./deploy/leaderboardscoring/development/service.sh
 
 # ====================================================================================
 # General Go Commands
@@ -189,43 +187,6 @@ start-project-app-dev-log:
 	./deploy/docker-compose-dev.bash --profile project up
 
 # ====================================================================================
-# Leaderboard Service Lifecycle Commands (via service.sh)
-# ====================================================================================
-.PHONY: lb-up lb-down lb-stop lb-logs lb-up-deps lb-run lb-down-deps lb-stop-deps lb-logs-deps lb-help
-
-# --- Full Dockerized Environment ---
-lb-up: ## Build and start the full leaderboard stack (app + dependencies)
-	@$(LB_SCRIPT) up
-
-lb-down: ## Stop and remove the full leaderboard stack and its data
-	@$(LB_SCRIPT) down
-
-lb-stop: ## Stop the full leaderboard stack without deleting data
-	@$(LB_SCRIPT) stop
-
-lb-logs: ## Follow the logs for the full leaderboard stack
-	@$(LB_SCRIPT) logs
-
-# --- Local Development Helpers ---
-lb-up-deps: ## Start only the dependency services (Postgres, Redis, NATS)
-	@$(LB_SCRIPT) up-deps
-
-lb-run: ## Start the Go service locally (requires dependencies to be running)
-	@$(LB_SCRIPT) run
-
-lb-down-deps: ## Stop and remove the standalone dependency services and their data
-	@$(LB_SCRIPT) down-deps
-
-lb-stop-deps: ## Stop the standalone dependency services
-	@$(LB_SCRIPT) stop-deps
-
-lb-logs-deps: ## Follow the logs for the standalone dependency services
-	@$(LB_SCRIPT) logs-deps
-
-lb-help: ## Show the help message for the leaderboard service script
-	@$(LB_SCRIPT) help
-
-# ====================================================================================
 # Help Target
 # ====================================================================================
 help:
@@ -239,17 +200,6 @@ help:
 	@echo "  install-linter - Install golangci-lint"
 	@echo "  build          - Compile binary"
 	@echo "  clean          - Remove build artifacts"
-	@echo ""
-	@echo "Leaderboard Service Lifecycle Commands (run 'make lb-help' for details):"
-	@echo "  --- Full Dockerized Environment ---"
-	@echo "  lb-up          - Build and start the full leaderboard stack (app + dependencies)"
-	@echo "  lb-down        - Stop and remove the full leaderboard stack"
-	@echo "  lb-stop        - Stop the full leaderboard stack"
-	@echo "  lb-logs        - Follow the logs for the full stack"
-	@echo "  --- Local Development Helpers ---"
-	@echo "  lb-up-deps     - Start only the dependency services"
-	@echo "  lb-run         - Start the Go service locally"
-	@echo "  lb-down-deps   - Stop and remove the dependency services"
 	@echo ""
 	@echo "Protobuf targets (run 'make' to see all):"
 	@echo "  proto-gen      - Generate Go code from protobuf files"

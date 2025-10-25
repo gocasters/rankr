@@ -2,16 +2,12 @@ package leaderboardstat
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"github.com/gocasters/rankr/pkg/cachemanager"
-	leaderboardscoringpb "github.com/gocasters/rankr/protobuf/golang/leaderboardscoring/v1"
 	types "github.com/gocasters/rankr/type"
-	"time"
 )
 
 type LeaderboardScoringRPC interface {
-	GetContributorScores(ctx context.Context, contributorID types.ID) (*leaderboardscoringpb.ContributorScoresResponse, error)
+	//GetContributorScores(ctx context.Context, contributorID types.ID) (*leaderboardscoringpb.ContributorScoresResponse, error)
 }
 
 type Repository interface {
@@ -87,7 +83,7 @@ func (s *Service) GetContributorStats(ctx context.Context, contributorID types.I
 	return stats, nil
 }
 
-func (s *Service) GetContributorTotalStats(ctx context.Context, contributorID types.ID) (ContributorTotalStats, error) {
+/*func (s *Service) GetContributorTotalStats(ctx context.Context, contributorID types.ID) (ContributorTotalStats, error) {
 	cacheKey := fmt.Sprintf("contributor:%d:total_stats", contributorID)
 	cached, err := s.cacheManager.Get(ctx, cacheKey)
 	if err == nil {
@@ -136,7 +132,7 @@ func (s *Service) GetContributorTotalStats(ctx context.Context, contributorID ty
 	}
 
 	return stats, nil
-}
+}*/
 
 func convertProtoProjectsScore(protoScores map[uint64]float64) map[types.ID]float64 {
 	projectsScore := make(map[types.ID]float64)
