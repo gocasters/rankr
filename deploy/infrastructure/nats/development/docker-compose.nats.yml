@@ -1,0 +1,33 @@
+services:
+  shared-nats:
+    image: nats:2.10.14-alpine
+    container_name: rankr-shared-nats
+    command:
+      - "--name=rankr-shared-nats"
+      - "--js"
+      - "--sd=/data"
+      - "--http_port=8222"
+    volumes:
+      - rankr-shared-nats-data:/data
+    ports:
+      - "4223:4222"
+      - "8223:8222"
+    networks:
+      - rankr-shared-development-network
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8222/varz && nc -z localhost 4222" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    mem_limit: 1g
+    cpus: 1.0
+
+networks:
+  rankr-shared-development-network:
+    external: true
+
+volumes:
+  rankr-shared-nats-data:
+    external: true
