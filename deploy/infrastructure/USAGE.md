@@ -12,7 +12,7 @@ This guide explains how to start and manage the shared infrastructure components
 
 ```bash
 chmod +x deploy/script/start_infrastructure.sh
-````
+```
 
 ---
 

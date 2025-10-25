@@ -138,7 +138,7 @@ function logs_all() {
   echo "Showing logs for all running containers..."
   docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
   echo ""
-  docker compose -p $PROJECT_NAME logs -f
+  docker compose -p $PROJECT_NAME -f $BASE_PATH -f $PG_PATH -f $REDIS_PATH -f $NATS_PATH -f $EMQX_PATH logs -f
 }
 
 case "$1" in
@@ -147,19 +147,19 @@ case "$1" in
   logs-base) logs_base ;;
 
   up-postgres) up_base; up_postgres ;;
-  down-postgres) down_postgres; down_base ;;
+  down-postgres) down_postgres ;;
   logs-postgres) logs_postgres ;;
 
   up-redis) up_base; up_redis ;;
-  down-redis) down_redis; down_base ;;
+  down-redis) down_redis ;;
   logs-redis) logs_redis ;;
 
   up-nats) up_base; up_nats ;;
-  down-nats) down_nats; down_base ;;
+  down-nats) down_nats ;;
   logs-nats) logs_nats ;;
 
   up-emqx) up_base; up_emqx ;;
-  down-emqx) down_emqx; down_base ;;
+  down-emqx) down_emqx ;;
   logs-emqx) logs_emqx ;;
 
   up-all|"") up_all ;;
