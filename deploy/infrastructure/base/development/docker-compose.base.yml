@@ -1,0 +1,28 @@
+networks:
+  rankr-shared-net:
+    name: rankr-shared-development-network
+    driver: bridge
+
+volumes:
+  shared-postgres-data:
+    name: rankr-shared-postgres-data
+  shared-nats-data:
+    name: rankr-shared-nats-data
+  shared-redis-data:
+    name: rankr-shared-redis-data
+  shared-emqx-data:
+    name: rankr-shared-emqx-data
+
+services:
+  base-placeholder:
+    image: alpine:latest
+    container_name: rankr-base-placeholder
+    command: [ "echo", "Base infrastructure initialized" ]
+    networks:
+      - rankr-shared-net
+    volumes:
+      - shared-postgres-data:/mnt/shared-postgres
+      - shared-nats-data:/mnt/shared-nats
+      - shared-redis-data:/mnt/shared-redis
+      - shared-emqx-data:/mnt/shared-emqx
+    restart: "no"
