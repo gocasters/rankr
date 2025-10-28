@@ -7,13 +7,21 @@ import (
 
 // Repository defines the methods required for persisting and retrieving notifications.
 type Repository interface {
+	Query
+	Command
+}
+
+type Query interface {
+	Get(ctx context.Context, notificationID, userID int64) (Notification, error)
+	List(ctx context.Context, userID int64) ([]Notification, error)
+	GetUnreadCount(ctx context.Context, userID int64) (int, error)
+}
+
+type Command interface {
 	Create(ctx context.Context, notification Notification) (Notification, error)
-	Get(ctx context.Context, notificationID, userID string) (Notification, error)
-	List(ctx context.Context, userID string) ([]Notification, error)
-	MarkAsRead(ctx context.Context, notificationID, userID string) (Notification, error)
-	MarkAllAsRead(ctx context.Context, userID string) error
-	Delete(ctx context.Context, notificationID, userID string) error
-	GetUnreadCount(ctx context.Context, userID string) (int, error)
+	MarkAsRead(ctx context.Context, notificationID, userID int64) (Notification, error)
+	MarkAllAsRead(ctx context.Context, userID int64) error
+	Delete(ctx context.Context, notificationID, userID int64) error
 }
 
 type Service struct {
@@ -26,7 +34,7 @@ func NewService(repo Repository) *Service {
 
 // Create creates a new notification.
 func (s *Service) Create(ctx context.Context, req CreateRequest) (CreateResponse, error) {
-	n := new(req.UserID, req.Message, req.Type)
+	n := newNotify(req.UserID, req.Message, req.Type)
 
 	createdNotification, err := s.repo.Create(ctx, *n)
 	if err != nil {
