@@ -18,5 +18,5 @@ type UpdateTaskParam struct {
 	IssueNumber    int
 	RepositoryName string
 	State          string
-	ClosedAt       time.Time
+	ClosedAt       *time.Time
 }

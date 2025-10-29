@@ -4,12 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"log/slog"
 
 	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/taskapp/service/task"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/lib/pq"
 )
 
@@ -37,7 +37,7 @@ func (r *TaskRepo) CreateTask(ctx context.Context, param task.CreateTaskParam) e
 	query := `
 		INSERT INTO tasks (version_control_system_id, issue_number, title, state, repository_name, labels, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
-		ON CONFLICT (version_control_system_id) DO NOTHING
+		ON CONFLICT DO NOTHING
 	`
 
 	_, err := r.PostgreSQL.Pool.Exec(ctx, query,
@@ -51,8 +51,37 @@ func (r *TaskRepo) CreateTask(ctx context.Context, param task.CreateTaskParam) e
 	)
 
 	if err != nil {
-		r.Logger.Error("Failed to create task", slog.String("error", err.Error()))
-		return fmt.Errorf("failed to create task: %w", err)
+
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+
+			switch pgErr.Code[0:2] {
+			case "08", "53", "57", "58":
+				r.Logger.Error("Database connection/system error",
+					slog.String("error", err.Error()),
+					slog.String("pg_code", pgErr.Code),
+				)
+				return task.NewRetriableError(err, "database connection or system error")
+			case "23":
+
+				r.Logger.Warn("Integrity constraint violation not handled by ON CONFLICT",
+					slog.String("error", err.Error()),
+					slog.String("pg_code", pgErr.Code),
+				)
+				return task.ErrTaskAlreadyExists
+			default:
+				r.Logger.Error("Database error",
+					slog.String("error", err.Error()),
+					slog.String("pg_code", pgErr.Code),
+				)
+				return task.NewRetriableError(err, "database error")
+			}
+		}
+
+		r.Logger.Error("Failed to create task",
+			slog.String("error", err.Error()),
+		)
+		return task.NewRetriableError(err, "failed to create task")
 	}
 
 	return nil
@@ -65,9 +94,16 @@ func (r *TaskRepo) UpdateTaskByIssueNumber(ctx context.Context, param task.Updat
 		WHERE issue_number = $3 AND repository_name = $4
 	`
 
+	var closedAt interface{}
+	if param.ClosedAt != nil {
+		closedAt = *param.ClosedAt
+	} else {
+		closedAt = nil
+	}
+
 	result, err := r.PostgreSQL.Pool.Exec(ctx, query,
 		param.State,
-		param.ClosedAt,
+		closedAt,
 		param.IssueNumber,
 		param.RepositoryName,
 	)

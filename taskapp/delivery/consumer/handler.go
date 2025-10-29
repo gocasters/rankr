@@ -115,11 +115,12 @@ func (h Handler) handleIssueClosed(ctx context.Context, event *eventpb.Event) er
 		return nil
 	}
 
+	closedTime := event.Time.AsTime()
 	updateParam := task.UpdateTaskParam{
 		IssueNumber:    int(payload.IssueNumber),
 		RepositoryName: event.RepositoryName,
 		State:          "closed",
-		ClosedAt:       event.Time.AsTime(),
+		ClosedAt:       &closedTime,
 	}
 
 	err := h.taskSvc.UpdateTask(ctx, updateParam)
