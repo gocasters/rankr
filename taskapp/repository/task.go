@@ -83,7 +83,7 @@ func (r *TaskRepo) UpdateTaskByIssueNumber(ctx context.Context, param task.Updat
 			slog.Int("issue_number", param.IssueNumber),
 			slog.String("repository", param.RepositoryName),
 		)
-		// Task not found is a non-retriable error - the task doesn't exist
+
 		return task.ErrTaskNotFound
 	}
 
@@ -126,7 +126,12 @@ func (r *TaskRepo) GetTaskByIssueNumber(ctx context.Context, issueNumber int, re
 		t.ClosedAt = &closedAt.Time
 	}
 
-	t.Labels = labels
+	t.Labels = make([]task.Label, len(labels))
+	for i, labelName := range labels {
+		t.Labels[i] = task.Label{
+			Name: labelName,
+		}
+	}
 
 	return &t, nil
 }
