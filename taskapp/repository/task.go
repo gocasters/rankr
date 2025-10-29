@@ -10,7 +10,6 @@ import (
 	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/taskapp/service/task"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/lib/pq"
 )
 
 type Config struct {
@@ -46,7 +45,7 @@ func (r *TaskRepo) CreateTask(ctx context.Context, param task.CreateTaskParam) e
 		param.Title,
 		param.State,
 		param.RepositoryName,
-		pq.Array(param.Labels),
+		param.Labels,
 		param.CreatedAt,
 	)
 
@@ -144,7 +143,7 @@ func (r *TaskRepo) GetTaskByIssueNumber(ctx context.Context, issueNumber int, re
 		&t.Title,
 		&t.State,
 		&t.RepositoryName,
-		pq.Array(&labels),
+		&labels,
 		&t.CreatedAt,
 		&t.UpdatedAt,
 		&closedAt,
