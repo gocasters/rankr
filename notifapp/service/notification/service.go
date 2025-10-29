@@ -34,7 +34,7 @@ func NewService(repo Repository) *Service {
 // Create creates a new notification.
 func (s *Service) Create(ctx context.Context, req CreateRequest) (CreateResponse, error) {
 
-	var notify Notification
+	notify := req.mapToNotification()
 
 	createdNotification, err := s.repo.Create(ctx, notify)
 	if err != nil {

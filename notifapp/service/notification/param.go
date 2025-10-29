@@ -6,6 +6,15 @@ type CreateRequest struct {
 	Type    NotificationType `json:"type"`
 }
 
+func (c CreateRequest) mapToNotification() Notification {
+	return Notification{
+		UserID:  c.UserID,
+		Message: c.Message,
+		Type:    c.Type,
+		Status:  StatusUnread,
+	}
+}
+
 type GetRequest struct {
 	UserID         int64 `json:"user_id"`
 	NotificationID int64 `json:"notification_id"`

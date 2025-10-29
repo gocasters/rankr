@@ -10,8 +10,7 @@ import (
 
 func (r Repository) Get(ctx context.Context, notificationID, userID int64) (notification.Notification, error) {
 
-	query := `
-              SELECT id, user_id, message, type, status, created_at, read_at
+	query := `SELECT id, user_id, message, type, status, created_at, read_at
               FROM notifications 
               WHERE id=$1 AND user_id=$2 AND deleted_at IS NULL;`
 
@@ -38,8 +37,7 @@ func (r Repository) Get(ctx context.Context, notificationID, userID int64) (noti
 
 func (r Repository) List(ctx context.Context, userID int64) ([]notification.Notification, error) {
 
-	query := `
-             SELECT id, user_id, message, type, status, created_at, read_at
+	query := `SELECT id, user_id, message, type, status, created_at, read_at
              FROM notifications 
              WHERE user_id=$1 AND deleted_at IS NULL 
              ORDER BY created_at DESC;`

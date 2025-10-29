@@ -38,12 +38,11 @@ func (r Repository) Create(ctx context.Context, notify notification.Notification
 
 func (r Repository) MarkAsRead(ctx context.Context, notificationID, userID int64) (notification.Notification, error) {
 
-	query := `
-	UPDATE notifications
-	SET status=$1, read_at=$2
-	WHERE id=$3 AND user_id=$4 AND deleted_at IS NULL 
-	 RETURNING id, user_id, message, type, status, created_at, read_at;
-`
+	query := `UPDATE notifications
+			  SET status=$1, read_at=$2
+		      WHERE id=$3 AND user_id=$4 AND deleted_at IS NULL 
+	          RETURNING id, user_id, message, type, status, created_at, read_at;`
+
 	var notify notification.Notification
 
 	err := r.db.Pool.QueryRow(ctx, query,
@@ -73,10 +72,9 @@ func (r Repository) MarkAsRead(ctx context.Context, notificationID, userID int64
 
 func (r Repository) MarkAllAsRead(ctx context.Context, userID int64) error {
 
-	query := `
-	UPDATE notifications
-	SET status=$1, read_at=$2
-	WHERE user_id=$3 AND status=$4 AND deleted_at IS NULL ;`
+	query := `UPDATE notifications
+			  SET status=$1, read_at=$2
+	          WHERE user_id=$3 AND status=$4 AND deleted_at IS NULL ;`
 
 	_, err := r.db.Pool.Exec(ctx, query,
 		notification.StatusRead,
@@ -94,10 +92,9 @@ func (r Repository) MarkAllAsRead(ctx context.Context, userID int64) error {
 
 func (r Repository) Delete(ctx context.Context, notificationID, userID int64) error {
 
-	query := `
-	UPDATE notifications
-	SET deleted_at=$1
-	WHERE user_id=$2 AND id=$3 AND deleted_at IS NULL ;`
+	query := `UPDATE notifications
+	          SET deleted_at=$1
+	          WHERE user_id=$2 AND id=$3 AND deleted_at IS NULL ;`
 
 	cmdTag, err := r.db.Pool.Exec(ctx, query,
 		time.Now(),

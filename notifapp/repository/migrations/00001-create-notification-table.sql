@@ -1,5 +1,5 @@
 -- +migrate Up
-CREATE TABLE notifications
+CREATE TABLE IF NOT EXISTS notifications
 (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL,
