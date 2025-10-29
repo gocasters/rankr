@@ -9,6 +9,7 @@ CREATE TABLE notifications
     status VARCHAR(100) NOT NULL CHECK (
         status IN ('unread','read')),
     created_at TIMESTAMP DEFAULT NOW(),
+    deleted_at TIMESTAMP,
     read_at TIMESTAMP
 );
 
@@ -16,5 +17,6 @@ CREATE TABLE notifications
 -- +migrate Down
 DROP TABLE IF EXISTS notifications;
 
-CREATE INDEX idx_notify_user_id ON notifications(user_id);
-CREATE INDEX idx_notify_status ON notifications(status);
+CREATE INDEX idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX idx_notifications_status ON notifications(status);
+CREATE INDEX idx_notifications_user_status ON notifications(user_id, status);

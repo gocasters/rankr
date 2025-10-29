@@ -2,7 +2,6 @@ package notification
 
 import (
 	"context"
-	"fmt"
 )
 
 // Repository defines the methods required for persisting and retrieving notifications.
@@ -34,11 +33,12 @@ func NewService(repo Repository) *Service {
 
 // Create creates a new notification.
 func (s *Service) Create(ctx context.Context, req CreateRequest) (CreateResponse, error) {
-	n := newNotify(req.UserID, req.Message, req.Type)
 
-	createdNotification, err := s.repo.Create(ctx, *n)
+	var notify Notification
+
+	createdNotification, err := s.repo.Create(ctx, notify)
 	if err != nil {
-		return CreateResponse{}, fmt.Errorf("failed to create notification: %w", err)
+		return CreateResponse{}, err
 	}
 
 	return CreateResponse{Notification: createdNotification}, nil
@@ -46,19 +46,20 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (CreateResponse
 
 // Get retrieves a single notification.
 func (s *Service) Get(ctx context.Context, req GetRequest) (GetResponse, error) {
+
 	notification, err := s.repo.Get(ctx, req.NotificationID, req.UserID)
 	if err != nil {
-		return GetResponse{},
-			fmt.Errorf("failed to get notification: %w", err)
+		return GetResponse{}, err
 	}
 
 	return GetResponse{Notification: notification}, nil
 }
 
 func (s *Service) List(ctx context.Context, req ListRequest) (ListResponse, error) {
+
 	notifications, err := s.repo.List(ctx, req.UserID)
 	if err != nil {
-		return ListResponse{}, fmt.Errorf("failed to list notifications: %w", err)
+		return ListResponse{}, err
 	}
 
 	return ListResponse{Notifications: notifications}, nil
@@ -66,9 +67,10 @@ func (s *Service) List(ctx context.Context, req ListRequest) (ListResponse, erro
 
 // MarkAsRead marks a notification as read.
 func (s *Service) MarkAsRead(ctx context.Context, req MarkAsReadRequest) (MarkAsReadResponse, error) {
+
 	updatedNotification, err := s.repo.MarkAsRead(ctx, req.NotificationID, req.UserID)
 	if err != nil {
-		return MarkAsReadResponse{}, fmt.Errorf("failed to mark as read: %w", err)
+		return MarkAsReadResponse{}, err
 	}
 
 	return MarkAsReadResponse{Notification: updatedNotification}, nil
@@ -76,25 +78,31 @@ func (s *Service) MarkAsRead(ctx context.Context, req MarkAsReadRequest) (MarkAs
 
 // MarkAllAsRead marks all of a user's notifications as read.
 func (s *Service) MarkAllAsRead(ctx context.Context, req MarkAllAsReadRequest) error {
+
 	if err := s.repo.MarkAllAsRead(ctx, req.UserID); err != nil {
-		return fmt.Errorf("failed to mark all as read: %w", err)
+		return err
 	}
+
 	return nil
 }
 
 // Delete removes a notification after checking for ownership.
 func (s *Service) Delete(ctx context.Context, req DeleteRequest) error {
+
 	if err := s.repo.Delete(ctx, req.NotificationID, req.UserID); err != nil {
-		return fmt.Errorf("failed to delete notification: %w", err)
+		return err
 	}
+
 	return nil
 }
 
 // GetUnreadCount gets the unread count for a user.
 func (s *Service) GetUnreadCount(ctx context.Context, req CountUnreadRequest) (GetUnreadCountResponse, error) {
+
 	count, err := s.repo.GetUnreadCount(ctx, req.UserID)
 	if err != nil {
-		return GetUnreadCountResponse{}, fmt.Errorf("failed to get unread count: %w", err)
+		return GetUnreadCountResponse{}, err
 	}
+
 	return GetUnreadCountResponse{Count: count}, nil
 }
