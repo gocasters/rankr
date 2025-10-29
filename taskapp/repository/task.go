@@ -59,21 +59,61 @@ func (r *TaskRepo) CreateTask(ctx context.Context, param task.CreateTaskParam) e
 				r.Logger.Error("Database connection/system error",
 					slog.String("error", err.Error()),
 					slog.String("pg_code", pgErr.Code),
+					slog.String("pg_message", pgErr.Message),
 				)
 				return task.NewRetriableError(err, "database connection or system error")
 			case "23":
 
-				r.Logger.Warn("Integrity constraint violation not handled by ON CONFLICT",
-					slog.String("error", err.Error()),
-					slog.String("pg_code", pgErr.Code),
-				)
-				return task.ErrTaskAlreadyExists
+				switch pgErr.Code {
+				case "23505":
+					r.Logger.Warn("Unique constraint violation not handled by ON CONFLICT",
+						slog.String("error", err.Error()),
+						slog.String("pg_code", pgErr.Code),
+						slog.String("pg_message", pgErr.Message),
+						slog.String("constraint", pgErr.ConstraintName),
+					)
+					return task.ErrTaskAlreadyExists
+				case "23502":
+					r.Logger.Error("NOT NULL constraint violation",
+						slog.String("error", err.Error()),
+						slog.String("pg_code", pgErr.Code),
+						slog.String("pg_message", pgErr.Message),
+						slog.String("column", pgErr.ColumnName),
+					)
+					return task.NewNonRetriableError(task.ErrMissingRequiredField, pgErr.Message)
+				case "23503":
+					r.Logger.Error("Foreign key constraint violation",
+						slog.String("error", err.Error()),
+						slog.String("pg_code", pgErr.Code),
+						slog.String("pg_message", pgErr.Message),
+						slog.String("constraint", pgErr.ConstraintName),
+					)
+					return task.NewNonRetriableError(task.ErrForeignKeyViolation, pgErr.Message)
+				case "23514":
+					r.Logger.Error("CHECK constraint violation",
+						slog.String("error", err.Error()),
+						slog.String("pg_code", pgErr.Code),
+						slog.String("pg_message", pgErr.Message),
+						slog.String("constraint", pgErr.ConstraintName),
+					)
+					return task.NewNonRetriableError(task.ErrCheckConstraintFailed, pgErr.Message)
+				default:
+
+					r.Logger.Error("Unhandled integrity constraint violation",
+						slog.String("error", err.Error()),
+						slog.String("pg_code", pgErr.Code),
+						slog.String("pg_message", pgErr.Message),
+						slog.String("constraint", pgErr.ConstraintName),
+					)
+					return task.NewNonRetriableError(task.ErrConstraintViolation, pgErr.Message)
+				}
 			default:
 				r.Logger.Error("Database error",
 					slog.String("error", err.Error()),
 					slog.String("pg_code", pgErr.Code),
+					slog.String("pg_message", pgErr.Message),
 				)
-				return task.NewRetriableError(err, "database error")
+				return err
 			}
 		}
 

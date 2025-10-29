@@ -19,6 +19,9 @@ var (
 	ErrInvalidRepositoryName = errors.New("invalid repository name")
 	ErrInvalidState          = errors.New("invalid task state")
 	ErrMissingRequiredField  = errors.New("missing required field")
+	ErrConstraintViolation   = errors.New("database constraint violation")
+	ErrForeignKeyViolation   = errors.New("foreign key constraint violation")
+	ErrCheckConstraintFailed = errors.New("check constraint failed")
 )
 
 type TaskError struct {
@@ -80,7 +83,10 @@ func IsRetriable(err error) bool {
 		errors.Is(err, ErrInvalidIssueNumber) ||
 		errors.Is(err, ErrInvalidRepositoryName) ||
 		errors.Is(err, ErrInvalidState) ||
-		errors.Is(err, ErrMissingRequiredField) {
+		errors.Is(err, ErrMissingRequiredField) ||
+		errors.Is(err, ErrConstraintViolation) ||
+		errors.Is(err, ErrForeignKeyViolation) ||
+		errors.Is(err, ErrCheckConstraintFailed) {
 		return false
 	}
 
