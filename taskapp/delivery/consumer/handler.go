@@ -58,28 +58,41 @@ func (h Handler) handleIssueOpened(ctx context.Context, event *eventpb.Event) er
 	payload := event.GetIssueOpenedPayload()
 	if payload == nil {
 		log.Error("IssueOpenedPayload is nil", slog.String("event_id", event.Id))
+		// Invalid payload is a non-retriable error - acknowledge the message
 		return nil
 	}
 
 	taskParam := task.CreateTaskParam{
-		GithubID:       int64(payload.IssueId),
-		IssueNumber:    int(payload.IssueNumber),
-		Title:          payload.Title,
-		State:          "open",
-		RepositoryName: event.RepositoryName,
-		Labels:         payload.Labels,
-		CreatedAt:      event.Time.AsTime(),
+		VersionControlSystemId: int64(payload.IssueId),
+		IssueNumber:            int(payload.IssueNumber),
+		Title:                  payload.Title,
+		State:                  "open",
+		RepositoryName:         event.RepositoryName,
+		Labels:                 payload.Labels,
+		CreatedAt:              event.Time.AsTime(),
 	}
 
 	err := h.taskSvc.CreateTask(ctx, taskParam)
 	if err != nil {
-		log.Error(
-			"Failed to create task",
+		if task.IsRetriable(err) {
+			log.Error(
+				"Failed to create task (retriable)",
+				slog.String("event_id", event.Id),
+				slog.Int("issue_number", int(payload.IssueNumber)),
+				slog.String("error", err.Error()),
+			)
+			// Return error to trigger retry
+			return err
+		}
+
+		log.Warn(
+			"Failed to create task (non-retriable)",
 			slog.String("event_id", event.Id),
 			slog.Int("issue_number", int(payload.IssueNumber)),
 			slog.String("error", err.Error()),
 		)
-		return err
+		// Non-retriable error - acknowledge the message to avoid redelivery loop
+		return nil
 	}
 
 	log.Info(
@@ -98,6 +111,7 @@ func (h Handler) handleIssueClosed(ctx context.Context, event *eventpb.Event) er
 	payload := event.GetIssueClosedPayload()
 	if payload == nil {
 		log.Error("IssueClosedPayload is nil", slog.String("event_id", event.Id))
+		// Invalid payload is a non-retriable error - acknowledge the message
 		return nil
 	}
 
@@ -110,13 +124,25 @@ func (h Handler) handleIssueClosed(ctx context.Context, event *eventpb.Event) er
 
 	err := h.taskSvc.UpdateTask(ctx, updateParam)
 	if err != nil {
-		log.Error(
-			"Failed to update task",
+		if task.IsRetriable(err) {
+			log.Error(
+				"Failed to update task (retriable)",
+				slog.String("event_id", event.Id),
+				slog.Int("issue_number", int(payload.IssueNumber)),
+				slog.String("error", err.Error()),
+			)
+			// Return error to trigger retry
+			return err
+		}
+
+		log.Warn(
+			"Failed to update task (non-retriable)",
 			slog.String("event_id", event.Id),
 			slog.Int("issue_number", int(payload.IssueNumber)),
 			slog.String("error", err.Error()),
 		)
-		return err
+		// Non-retriable error (e.g., task not found) - acknowledge to avoid redelivery loop
+		return nil
 	}
 
 	log.Info(

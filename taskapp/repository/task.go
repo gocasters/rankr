@@ -35,13 +35,13 @@ func NewTaskRepo(config Config, db *database.Database, logger *slog.Logger) task
 
 func (r *TaskRepo) CreateTask(ctx context.Context, param task.CreateTaskParam) error {
 	query := `
-		INSERT INTO tasks (github_id, issue_number, title, state, repository_name, labels, created_at, updated_at)
+		INSERT INTO tasks (version_control_system_id, issue_number, title, state, repository_name, labels, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
-		ON CONFLICT (github_id) DO NOTHING
+		ON CONFLICT (version_control_system_id) DO NOTHING
 	`
 
 	_, err := r.PostgreSQL.Pool.Exec(ctx, query,
-		param.GithubID,
+		param.VersionControlSystemId,
 		param.IssueNumber,
 		param.Title,
 		param.State,
@@ -74,7 +74,7 @@ func (r *TaskRepo) UpdateTaskByIssueNumber(ctx context.Context, param task.Updat
 
 	if err != nil {
 		r.Logger.Error("Failed to update task", slog.String("error", err.Error()))
-		return fmt.Errorf("failed to update task: %w", err)
+		return task.NewRetriableError(err, "failed to update task in database")
 	}
 
 	rowsAffected := result.RowsAffected()
@@ -83,6 +83,8 @@ func (r *TaskRepo) UpdateTaskByIssueNumber(ctx context.Context, param task.Updat
 			slog.Int("issue_number", param.IssueNumber),
 			slog.String("repository", param.RepositoryName),
 		)
+		// Task not found is a non-retriable error - the task doesn't exist
+		return task.ErrTaskNotFound
 	}
 
 	return nil
@@ -90,7 +92,7 @@ func (r *TaskRepo) UpdateTaskByIssueNumber(ctx context.Context, param task.Updat
 
 func (r *TaskRepo) GetTaskByIssueNumber(ctx context.Context, issueNumber int, repositoryName string) (*task.Task, error) {
 	query := `
-		SELECT id, github_id, issue_number, title, state, repository_name, labels, created_at, updated_at, closed_at
+		SELECT id, version_control_system_id, issue_number, title, state, repository_name, labels, created_at, updated_at, closed_at
 		FROM tasks
 		WHERE issue_number = $1 AND repository_name = $2
 	`
@@ -101,7 +103,7 @@ func (r *TaskRepo) GetTaskByIssueNumber(ctx context.Context, issueNumber int, re
 
 	err := r.PostgreSQL.Pool.QueryRow(ctx, query, issueNumber, repositoryName).Scan(
 		&t.ID,
-		&t.GithubID,
+		&t.VersionControlSystemId,
 		&t.IssueNumber,
 		&t.Title,
 		&t.State,
@@ -114,15 +116,17 @@ func (r *TaskRepo) GetTaskByIssueNumber(ctx context.Context, issueNumber int, re
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("task not found")
+			return nil, task.ErrTaskNotFound
 		}
 		r.Logger.Error("Failed to get task", slog.String("error", err.Error()))
-		return nil, fmt.Errorf("failed to get task: %w", err)
+		return nil, task.NewRetriableError(err, "failed to get task from database")
 	}
 
 	if closedAt.Valid {
 		t.ClosedAt = &closedAt.Time
 	}
+
+	t.Labels = labels
 
 	return &t, nil
 }
