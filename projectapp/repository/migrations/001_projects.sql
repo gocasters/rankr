@@ -4,33 +4,34 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- Project status enum
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'project_status') THEN
-    CREATE TYPE project_status AS ENUM ('ACTIVE', 'ARCHIVED');
-  END IF;
-END$$;
+CREATE TYPE project_status AS ENUM ('ACTIVE', 'ARCHIVED');
+
+-- VCS provider enum
+CREATE TYPE vcs_provider AS ENUM ('GITHUB', 'GITLAB', 'BITBUCKET');
 
 -- projects table
 CREATE TABLE IF NOT EXISTS projects (
-                                        id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name                 VARCHAR(200) NOT NULL,
     slug                 VARCHAR(120) NOT NULL UNIQUE,
     description          TEXT,
     design_reference_url TEXT,
+    git_repo_id          VARCHAR(255),
+    repo_provider        vcs_provider,
     status               project_status NOT NULL DEFAULT 'ACTIVE',
     created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
     archived_at          TIMESTAMPTZ
-    );
+);
 
 -- Common function to maintain updated_at
 CREATE OR REPLACE FUNCTION set_updated_at()
-RETURNS trigger LANGUAGE plpgsql AS $$
+RETURNS trigger LANGUAGE plpgsql AS '
 BEGIN
   NEW.updated_at := now();
   RETURN NEW;
-END$$;
+END;
+';
 
 -- Trigger for projects.updated_at
 DROP TRIGGER IF EXISTS trg_projects_set_updated_at ON projects;
@@ -50,22 +51,9 @@ DROP TRIGGER IF EXISTS trg_projects_set_updated_at ON projects;
 -- Drop table
 DROP TABLE IF EXISTS projects;
 
--- Drop enum if no longer used
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1
-    FROM pg_type t
-    JOIN pg_depend d ON d.refobjid = t.oid
-    WHERE t.typname = 'project_status'
-      AND d.classid = 'pg_type'::regclass
-      AND d.refobjid = t.oid
-      AND d.objid <> 0
-  ) THEN
-    -- No dependencies found; safe to drop
-    DROP TYPE IF EXISTS project_status;
-END IF;
-END$$;
+-- Drop enums
+DROP TYPE IF EXISTS vcs_provider;
+DROP TYPE IF EXISTS project_status;
 
 -- Optionally drop the helper function (only if nothing else depends on it)
 DROP FUNCTION IF EXISTS set_updated_at();
