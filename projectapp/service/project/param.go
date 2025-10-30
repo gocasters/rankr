@@ -33,9 +33,9 @@ type UpdateProjectInput struct {
 	ID                 string                  `json:"id"`
 	Name               *string                 `json:"name,omitempty"`
 	Slug               *string                 `json:"slug,omitempty"`
-	Description        **string                `json:"description,omitempty"`
-	DesignReferenceURL **string                `json:"designReferenceUrl,omitempty"`
-	GitRepoID          **string                `json:"gitRepoId,omitempty"`
+	Description        *string                 `json:"description,omitempty"`
+	DesignReferenceURL *string                 `json:"designReferenceUrl,omitempty"`
+	GitRepoID          *string                 `json:"gitRepoId,omitempty"`
 	RepoProvider       *constant.VcsProvider   `json:"repoProvider,omitempty"`
 	Status             *constant.ProjectStatus `json:"status,omitempty"`
 }

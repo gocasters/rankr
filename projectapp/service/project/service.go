@@ -144,13 +144,15 @@ func (s Service) UpdateProject(ctx context.Context, input UpdateProjectInput) (U
 		p.Slug = stringsTrim(*input.Slug)
 	}
 	if input.Description != nil {
-		p.Description = stringsTrimPtr(*input.Description)
+		p.Description = stringsTrimPtr(input.Description)
+
 	}
 	if input.DesignReferenceURL != nil {
-		p.DesignReferenceURL = stringsTrimPtr(*input.DesignReferenceURL)
+		p.DesignReferenceURL = stringsTrimPtr(input.DesignReferenceURL)
 	}
+
 	if input.GitRepoID != nil {
-		p.GitRepoID = stringsTrimPtr(*input.GitRepoID)
+		p.GitRepoID = stringsTrimPtr(input.GitRepoID)
 	}
 	if input.RepoProvider != nil {
 		p.RepoProvider = input.RepoProvider
