@@ -50,6 +50,8 @@ func (s Service) CreateProject(ctx context.Context, input CreateProjectInput) (C
 		Slug:               stringsTrim(input.Slug),
 		Description:        stringsTrimPtr(input.Description),
 		DesignReferenceURL: stringsTrimPtr(input.DesignReferenceURL),
+		GitRepoID:          stringsTrimPtr(input.GitRepoID),
+		RepoProvider:       input.RepoProvider,
 		Status:             constant.ProjectStatusActive,
 		CreatedAt:          now,
 		UpdatedAt:          now,
@@ -64,6 +66,8 @@ func (s Service) CreateProject(ctx context.Context, input CreateProjectInput) (C
 		Slug:               p.Slug,
 		Description:        p.Description,
 		DesignReferenceURL: p.DesignReferenceURL,
+		GitRepoID:          p.GitRepoID,
+		RepoProvider:       p.RepoProvider,
 		Status:             p.Status,
 		CreatedAt:          p.CreatedAt,
 		UpdatedAt:          p.UpdatedAt,
@@ -81,6 +85,8 @@ func (s Service) GetProject(ctx context.Context, id string) (*GetProjectByIDResp
 		Slug:               project.Slug,
 		Description:        project.Description,
 		DesignReferenceURL: project.DesignReferenceURL,
+		GitRepoID:          project.GitRepoID,
+		RepoProvider:       project.RepoProvider,
 		Status:             project.Status,
 		CreatedAt:          project.CreatedAt,
 		UpdatedAt:          project.UpdatedAt,
@@ -109,6 +115,8 @@ func (s Service) ListProjects(ctx context.Context) (ListProjectsResponse, error)
 			Slug:               p.Slug,
 			Description:        p.Description,
 			DesignReferenceURL: p.DesignReferenceURL,
+			GitRepoID:          p.GitRepoID,
+			RepoProvider:       p.RepoProvider,
 			Status:             p.Status,
 			CreatedAt:          p.CreatedAt,
 			UpdatedAt:          p.UpdatedAt,
@@ -140,6 +148,12 @@ func (s Service) UpdateProject(ctx context.Context, input UpdateProjectInput) (U
 	}
 	if input.DesignReferenceURL != nil {
 		p.DesignReferenceURL = stringsTrimPtr(*input.DesignReferenceURL)
+	}
+	if input.GitRepoID != nil {
+		p.GitRepoID = stringsTrimPtr(*input.GitRepoID)
+	}
+	if input.RepoProvider != nil {
+		p.RepoProvider = input.RepoProvider
 	}
 	if input.Status != nil {
 		p.Status = *input.Status

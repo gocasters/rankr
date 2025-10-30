@@ -19,25 +19,25 @@ func NewProjectRepository(database *database.Database) project.Repository {
 
 const (
 	sqlProjectInsert = `
-		INSERT INTO projects (id, name, slug, description, design_reference_url, status)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO projects (id, name, slug, description, design_reference_url, git_repo_id, repo_provider, status)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING created_at, updated_at, archived_at;
 	`
 
 	sqlProjectByID = `
-		SELECT id, name, slug, description, design_reference_url, status, created_at, updated_at, archived_at
+		SELECT id, name, slug, description, design_reference_url, git_repo_id, repo_provider, status, created_at, updated_at, archived_at
 		FROM projects
 		WHERE id = $1;
 	`
 
 	sqlProjectBySlug = `
-		SELECT id, name, slug, description, design_reference_url, status, created_at, updated_at, archived_at
+		SELECT id, name, slug, description, design_reference_url, git_repo_id, repo_provider, status, created_at, updated_at, archived_at
 		FROM projects
 		WHERE slug = $1;
 	`
 
 	sqlProjectList = `
-		SELECT id, name, slug, description, design_reference_url, status, created_at, updated_at, archived_at
+		SELECT id, name, slug, description, design_reference_url, git_repo_id, repo_provider, status, created_at, updated_at, archived_at
 		FROM projects
 		ORDER BY created_at DESC;
 	`
@@ -48,7 +48,9 @@ const (
 		    slug = $3,
 		    description = $4,
 		    design_reference_url = $5,
-		    status = $6
+		    git_repo_id = $6,
+		    repo_provider = $7,
+		    status = $8
 		WHERE id = $1
 		RETURNING created_at, updated_at, archived_at;
 	`
@@ -59,7 +61,7 @@ const (
 func (r *ProjectRepository) Create(ctx context.Context, p *project.ProjectEntity) error {
 
 	row := r.database.Pool.QueryRow(ctx, sqlProjectInsert,
-		p.ID, p.Name, p.Slug, p.Description, p.DesignReferenceURL, p.Status,
+		p.ID, p.Name, p.Slug, p.Description, p.DesignReferenceURL, p.GitRepoID, p.RepoProvider, p.Status,
 	)
 	if err := row.Scan(&p.CreatedAt, &p.UpdatedAt, &p.ArchivedAt); err != nil {
 		if isUniqueViolation(err) {
@@ -74,7 +76,7 @@ func (r *ProjectRepository) FindByID(ctx context.Context, id string) (*project.P
 	var p project.ProjectEntity
 	err := r.database.Pool.
 		QueryRow(ctx, sqlProjectByID, id).
-		Scan(&p.ID, &p.Name, &p.Slug, &p.Description, &p.DesignReferenceURL, &p.Status, &p.CreatedAt, &p.UpdatedAt, &p.ArchivedAt)
+		Scan(&p.ID, &p.Name, &p.Slug, &p.Description, &p.DesignReferenceURL, &p.GitRepoID, &p.RepoProvider, &p.Status, &p.CreatedAt, &p.UpdatedAt, &p.ArchivedAt)
 	if err != nil {
 		if isNoRows(err) {
 			return nil, constant.ErrNotFound
@@ -88,7 +90,7 @@ func (r *ProjectRepository) FindBySlug(ctx context.Context, slug string) (*proje
 	var p project.ProjectEntity
 	err := r.database.Pool.
 		QueryRow(ctx, sqlProjectBySlug, slug).
-		Scan(&p.ID, &p.Name, &p.Slug, &p.Description, &p.DesignReferenceURL, &p.Status, &p.CreatedAt, &p.UpdatedAt, &p.ArchivedAt)
+		Scan(&p.ID, &p.Name, &p.Slug, &p.Description, &p.DesignReferenceURL, &p.GitRepoID, &p.RepoProvider, &p.Status, &p.CreatedAt, &p.UpdatedAt, &p.ArchivedAt)
 	if err != nil {
 		if isNoRows(err) {
 			return nil, constant.ErrNotFound
@@ -108,7 +110,7 @@ func (r *ProjectRepository) List(ctx context.Context) ([]*project.ProjectEntity,
 	var out []*project.ProjectEntity
 	for rows.Next() {
 		var p project.ProjectEntity
-		if err := rows.Scan(&p.ID, &p.Name, &p.Slug, &p.Description, &p.DesignReferenceURL, &p.Status, &p.CreatedAt, &p.UpdatedAt, &p.ArchivedAt); err != nil {
+		if err := rows.Scan(&p.ID, &p.Name, &p.Slug, &p.Description, &p.DesignReferenceURL, &p.GitRepoID, &p.RepoProvider, &p.Status, &p.CreatedAt, &p.UpdatedAt, &p.ArchivedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, &p)
@@ -121,7 +123,7 @@ func (r *ProjectRepository) List(ctx context.Context) ([]*project.ProjectEntity,
 
 func (r *ProjectRepository) Update(ctx context.Context, p *project.ProjectEntity) error {
 	row := r.database.Pool.QueryRow(ctx, sqlProjectUpdate,
-		p.ID, p.Name, p.Slug, p.Description, p.DesignReferenceURL, p.Status,
+		p.ID, p.Name, p.Slug, p.Description, p.DesignReferenceURL, p.GitRepoID, p.RepoProvider, p.Status,
 	)
 	if err := row.Scan(&p.CreatedAt, &p.UpdatedAt, &p.ArchivedAt); err != nil {
 		if isNoRows(err) {

@@ -11,6 +11,8 @@ type CreateProjectInput struct {
 	Slug               string                 `json:"slug"`
 	Description        *string                `json:"description,omitempty"`
 	DesignReferenceURL *string                `json:"designReferenceUrl,omitempty"`
+	GitRepoID          *string                `json:"gitRepoId,omitempty"`
+	RepoProvider       *constant.VcsProvider  `json:"repoProvider,omitempty"`
 	Status             constant.ProjectStatus `json:"status"`
 }
 
@@ -20,6 +22,8 @@ type CreateProjectResponse struct {
 	Slug               string                 `json:"slug"`
 	Description        *string                `json:"description,omitempty"`
 	DesignReferenceURL *string                `json:"designReferenceUrl,omitempty"`
+	GitRepoID          *string                `json:"gitRepoId,omitempty"`
+	RepoProvider       *constant.VcsProvider  `json:"repoProvider,omitempty"`
 	Status             constant.ProjectStatus `json:"status"`
 	CreatedAt          time.Time              `json:"createdAt"`
 	UpdatedAt          time.Time              `json:"updatedAt"`
@@ -31,6 +35,8 @@ type UpdateProjectInput struct {
 	Slug               *string                 `json:"slug,omitempty"`
 	Description        **string                `json:"description,omitempty"`
 	DesignReferenceURL **string                `json:"designReferenceUrl,omitempty"`
+	GitRepoID          **string                `json:"gitRepoId,omitempty"`
+	RepoProvider       *constant.VcsProvider   `json:"repoProvider,omitempty"`
 	Status             *constant.ProjectStatus `json:"status,omitempty"`
 }
 
@@ -48,6 +54,8 @@ type GetProjectByIDResponse struct {
 	Slug               string                 `json:"slug"`
 	Description        *string                `json:"description,omitempty"`
 	DesignReferenceURL *string                `json:"designReferenceUrl,omitempty"`
+	GitRepoID          *string                `json:"gitRepoId,omitempty"`
+	RepoProvider       *constant.VcsProvider  `json:"repoProvider,omitempty"`
 	Status             constant.ProjectStatus `json:"status"`
 	CreatedAt          time.Time              `json:"createdAt"`
 	UpdatedAt          time.Time              `json:"updatedAt"`
