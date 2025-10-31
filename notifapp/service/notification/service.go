@@ -27,12 +27,12 @@ type Service struct {
 	repo Repository
 }
 
-func NewService(repo Repository) *Service {
-	return &Service{repo: repo}
+func NewService(repo Repository) Service {
+	return Service{repo: repo}
 }
 
 // Create creates a new notification.
-func (s *Service) Create(ctx context.Context, req CreateRequest) (CreateResponse, error) {
+func (s Service) Create(ctx context.Context, req CreateRequest) (CreateResponse, error) {
 
 	notify := req.mapToNotification()
 
@@ -45,7 +45,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (CreateResponse
 }
 
 // Get retrieves a single notification.
-func (s *Service) Get(ctx context.Context, req GetRequest) (GetResponse, error) {
+func (s Service) Get(ctx context.Context, req GetRequest) (GetResponse, error) {
 
 	notification, err := s.repo.Get(ctx, req.NotificationID, req.UserID)
 	if err != nil {
@@ -55,7 +55,7 @@ func (s *Service) Get(ctx context.Context, req GetRequest) (GetResponse, error) 
 	return GetResponse{Notification: notification}, nil
 }
 
-func (s *Service) List(ctx context.Context, req ListRequest) (ListResponse, error) {
+func (s Service) List(ctx context.Context, req ListRequest) (ListResponse, error) {
 
 	notifications, err := s.repo.List(ctx, req.UserID)
 	if err != nil {
@@ -66,7 +66,7 @@ func (s *Service) List(ctx context.Context, req ListRequest) (ListResponse, erro
 }
 
 // MarkAsRead marks a notification as read.
-func (s *Service) MarkAsRead(ctx context.Context, req MarkAsReadRequest) (MarkAsReadResponse, error) {
+func (s Service) MarkAsRead(ctx context.Context, req MarkAsReadRequest) (MarkAsReadResponse, error) {
 
 	updatedNotification, err := s.repo.MarkAsRead(ctx, req.NotificationID, req.UserID)
 	if err != nil {
@@ -77,7 +77,7 @@ func (s *Service) MarkAsRead(ctx context.Context, req MarkAsReadRequest) (MarkAs
 }
 
 // MarkAllAsRead marks all of a user's notifications as read.
-func (s *Service) MarkAllAsRead(ctx context.Context, req MarkAllAsReadRequest) error {
+func (s Service) MarkAllAsRead(ctx context.Context, req MarkAllAsReadRequest) error {
 
 	if err := s.repo.MarkAllAsRead(ctx, req.UserID); err != nil {
 		return err
@@ -87,7 +87,7 @@ func (s *Service) MarkAllAsRead(ctx context.Context, req MarkAllAsReadRequest) e
 }
 
 // Delete removes a notification after checking for ownership.
-func (s *Service) Delete(ctx context.Context, req DeleteRequest) error {
+func (s Service) Delete(ctx context.Context, req DeleteRequest) error {
 
 	if err := s.repo.Delete(ctx, req.NotificationID, req.UserID); err != nil {
 		return err
@@ -97,7 +97,7 @@ func (s *Service) Delete(ctx context.Context, req DeleteRequest) error {
 }
 
 // GetUnreadCount gets the unread count for a user.
-func (s *Service) GetUnreadCount(ctx context.Context, req CountUnreadRequest) (GetUnreadCountResponse, error) {
+func (s Service) GetUnreadCount(ctx context.Context, req CountUnreadRequest) (GetUnreadCountResponse, error) {
 
 	count, err := s.repo.GetUnreadCount(ctx, req.UserID)
 	if err != nil {
