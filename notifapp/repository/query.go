@@ -6,9 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gocasters/rankr/notifapp/service/notification"
+	types "github.com/gocasters/rankr/type"
 )
 
-func (r Repository) Get(ctx context.Context, notificationID, userID int64) (notification.Notification, error) {
+func (r Repository) Get(ctx context.Context, notificationID, userID types.ID) (notification.Notification, error) {
 
 	query := `SELECT id, user_id, message, type, status, created_at, read_at
               FROM notifications 
@@ -40,7 +41,7 @@ func (r Repository) Get(ctx context.Context, notificationID, userID int64) (noti
 	return notify, nil
 }
 
-func (r Repository) List(ctx context.Context, userID int64) ([]notification.Notification, error) {
+func (r Repository) List(ctx context.Context, userID types.ID) ([]notification.Notification, error) {
 
 	query := `SELECT id, user_id, message, type, status, created_at, read_at
              FROM notifications 
@@ -89,7 +90,7 @@ func (r Repository) List(ctx context.Context, userID int64) ([]notification.Noti
 	return notifies, nil
 }
 
-func (r Repository) GetUnreadCount(ctx context.Context, userID int64) (int, error) {
+func (r Repository) GetUnreadCount(ctx context.Context, userID types.ID) (int, error) {
 
 	query := `SELECT COUNT(*)
 			  FROM notifications 

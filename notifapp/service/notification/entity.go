@@ -1,10 +1,13 @@
 package notification
 
-import "time"
+import (
+	types "github.com/gocasters/rankr/type"
+	"time"
+)
 
 type Notification struct {
-	ID        int64              `json:"id"`
-	UserID    int64              `json:"user_id"`
+	ID        types.ID           `json:"id"`
+	UserID    types.ID           `json:"user_id"`
 	Message   string             `json:"message"`
 	Type      NotificationType   `json:"type"`
 	Status    NotificationStatus `json:"status"`

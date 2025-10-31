@@ -1,9 +1,12 @@
 package notification
 
-import "time"
+import (
+	types "github.com/gocasters/rankr/type"
+	"time"
+)
 
 type CreateRequest struct {
-	UserID  int64            `json:"user_id"`
+	UserID  types.ID         `json:"user_id"`
 	Message string           `json:"message"`
 	Type    NotificationType `json:"type"`
 }
@@ -19,30 +22,30 @@ func (c CreateRequest) mapToNotification() Notification {
 }
 
 type GetRequest struct {
-	UserID         int64 `json:"user_id"`
-	NotificationID int64 `json:"notification_id"`
+	UserID         types.ID `json:"user_id"`
+	NotificationID types.ID `json:"notification_id"`
 }
 
 type ListRequest struct {
-	UserID int64 `json:"user_id"`
+	UserID types.ID `json:"user_id"`
 }
 
 type MarkAsReadRequest struct {
-	UserID         int64 `json:"user_id"`
-	NotificationID int64 `json:"notification_id"`
+	UserID         types.ID `json:"user_id"`
+	NotificationID types.ID `json:"notification_id"`
 }
 
 type MarkAllAsReadRequest struct {
-	UserID int64 `json:"user_id"`
+	UserID types.ID `json:"user_id"`
 }
 
 type DeleteRequest struct {
-	UserID         int64 `json:"user_id"`
-	NotificationID int64 `json:"notification_id"`
+	UserID         types.ID `json:"user_id"`
+	NotificationID types.ID `json:"notification_id"`
 }
 
 type CountUnreadRequest struct {
-	UserID int64 `json:"user_id"`
+	UserID types.ID `json:"user_id"`
 }
 
 type CreateResponse struct {

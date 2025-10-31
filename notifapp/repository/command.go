@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gocasters/rankr/notifapp/service/notification"
+	types "github.com/gocasters/rankr/type"
 	"time"
 )
 
@@ -28,12 +29,12 @@ func (r Repository) Create(ctx context.Context, notify notification.Notification
 		return notification.Notification{}, fmt.Errorf("failed create notification: %w", err)
 	}
 
-	notify.ID = id
+	notify.ID = types.ID(id)
 
 	return notify, nil
 }
 
-func (r Repository) MarkAsRead(ctx context.Context, notificationID, userID int64) (notification.Notification, error) {
+func (r Repository) MarkAsRead(ctx context.Context, notificationID, userID types.ID) (notification.Notification, error) {
 
 	query := `UPDATE notifications
 			  SET status=$1, read_at=$2
@@ -67,7 +68,7 @@ func (r Repository) MarkAsRead(ctx context.Context, notificationID, userID int64
 	return notify, nil
 }
 
-func (r Repository) MarkAllAsRead(ctx context.Context, userID int64) error {
+func (r Repository) MarkAllAsRead(ctx context.Context, userID types.ID) error {
 
 	query := `UPDATE notifications
 			  SET status=$1, read_at=$2
@@ -87,7 +88,7 @@ func (r Repository) MarkAllAsRead(ctx context.Context, userID int64) error {
 	return nil
 }
 
-func (r Repository) Delete(ctx context.Context, notificationID, userID int64) error {
+func (r Repository) Delete(ctx context.Context, notificationID, userID types.ID) error {
 
 	query := `UPDATE notifications
 	          SET deleted_at=$1

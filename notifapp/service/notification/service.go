@@ -2,6 +2,7 @@ package notification
 
 import (
 	"context"
+	types "github.com/gocasters/rankr/type"
 )
 
 // Repository defines the methods required for persisting and retrieving notifications.
@@ -11,16 +12,16 @@ type Repository interface {
 }
 
 type Query interface {
-	Get(ctx context.Context, notificationID, userID int64) (Notification, error)
-	List(ctx context.Context, userID int64) ([]Notification, error)
-	GetUnreadCount(ctx context.Context, userID int64) (int, error)
+	Get(ctx context.Context, notificationID, userID types.ID) (Notification, error)
+	List(ctx context.Context, userID types.ID) ([]Notification, error)
+	GetUnreadCount(ctx context.Context, userID types.ID) (int, error)
 }
 
 type Command interface {
 	Create(ctx context.Context, notification Notification) (Notification, error)
-	MarkAsRead(ctx context.Context, notificationID, userID int64) (Notification, error)
-	MarkAllAsRead(ctx context.Context, userID int64) error
-	Delete(ctx context.Context, notificationID, userID int64) error
+	MarkAsRead(ctx context.Context, notificationID, userID types.ID) (Notification, error)
+	MarkAllAsRead(ctx context.Context, userID types.ID) error
+	Delete(ctx context.Context, notificationID, userID types.ID) error
 }
 
 type Service struct {
