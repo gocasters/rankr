@@ -13,10 +13,11 @@ CREATE TABLE IF NOT EXISTS notifications
     read_at TIMESTAMP
 );
 
+CREATE INDEX idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX idx_notifications_status ON notifications(status);
+CREATE INDEX idx_notifications_user_status ON notifications(user_id, status);
 
 -- +migrate Down
 DROP TABLE IF EXISTS notifications;
 
-CREATE INDEX idx_notifications_user_id ON notifications(user_id);
-CREATE INDEX idx_notifications_status ON notifications(status);
-CREATE INDEX idx_notifications_user_status ON notifications(user_id, status);
+

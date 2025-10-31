@@ -28,9 +28,6 @@ func (r Repository) Create(ctx context.Context, notify notification.Notification
 		return notification.Notification{}, fmt.Errorf("failed create notification: %w", err)
 	}
 
-	if notify.CreatedAt.IsZero() {
-		notify.CreatedAt = time.Now()
-	}
 	notify.ID = id
 
 	return notify, nil

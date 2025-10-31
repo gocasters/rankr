@@ -15,6 +15,7 @@ func (r Repository) Get(ctx context.Context, notificationID, userID int64) (noti
               WHERE id=$1 AND user_id=$2 AND deleted_at IS NULL;`
 
 	var notify notification.Notification
+	var readAt sql.NullTime
 	err := r.db.Pool.QueryRow(ctx, query, notificationID, userID).Scan(
 		&notify.ID,
 		&notify.UserID,
@@ -22,7 +23,7 @@ func (r Repository) Get(ctx context.Context, notificationID, userID int64) (noti
 		&notify.Type,
 		&notify.Status,
 		&notify.CreatedAt,
-		&notify.ReadAt,
+		&readAt,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -30,6 +31,10 @@ func (r Repository) Get(ctx context.Context, notificationID, userID int64) (noti
 		}
 
 		return notification.Notification{}, fmt.Errorf("failed to get notification: %w", err)
+	}
+
+	if readAt.Valid {
+		notify.ReadAt = &readAt.Time
 	}
 
 	return notify, nil
@@ -53,6 +58,7 @@ func (r Repository) List(ctx context.Context, userID int64) ([]notification.Noti
 
 	for rows.Next() {
 		var notify notification.Notification
+		var readAt sql.NullTime
 		if err := rows.Scan(
 			&notify.ID,
 			&notify.UserID,
@@ -60,9 +66,13 @@ func (r Repository) List(ctx context.Context, userID int64) ([]notification.Noti
 			&notify.Type,
 			&notify.Status,
 			&notify.CreatedAt,
-			&notify.ReadAt,
+			&readAt,
 		); err != nil {
 			return nil, fmt.Errorf("failed to scan row in list of notification: %w", err)
+		}
+
+		if readAt.Valid {
+			notify.ReadAt = &readAt.Time
 		}
 
 		notifies = append(notifies, notify)

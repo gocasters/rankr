@@ -1,5 +1,7 @@
 package notification
 
+import "time"
+
 type CreateRequest struct {
 	UserID  int64            `json:"user_id"`
 	Message string           `json:"message"`
@@ -8,10 +10,11 @@ type CreateRequest struct {
 
 func (c CreateRequest) mapToNotification() Notification {
 	return Notification{
-		UserID:  c.UserID,
-		Message: c.Message,
-		Type:    c.Type,
-		Status:  StatusUnread,
+		UserID:    c.UserID,
+		Message:   c.Message,
+		Type:      c.Type,
+		Status:    StatusUnread,
+		CreatedAt: time.Now(),
 	}
 }
 
