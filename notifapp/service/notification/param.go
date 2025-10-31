@@ -1,36 +1,51 @@
 package notification
 
+import (
+	types "github.com/gocasters/rankr/type"
+	"time"
+)
+
 type CreateRequest struct {
-	UserID  string           `json:"user_id"`
+	UserID  types.ID         `json:"user_id"`
 	Message string           `json:"message"`
 	Type    NotificationType `json:"type"`
 }
 
+func (c CreateRequest) mapToNotification() Notification {
+	return Notification{
+		UserID:    c.UserID,
+		Message:   c.Message,
+		Type:      c.Type,
+		Status:    StatusUnread,
+		CreatedAt: time.Now(),
+	}
+}
+
 type GetRequest struct {
-	UserID         string `json:"user_id"`
-	NotificationID string `json:"notification_id"`
+	UserID         types.ID `json:"user_id"`
+	NotificationID types.ID `json:"notification_id"`
 }
 
 type ListRequest struct {
-	UserID string `json:"user_id"`
+	UserID types.ID `json:"user_id"`
 }
 
 type MarkAsReadRequest struct {
-	UserID         string `json:"user_id"`
-	NotificationID string `json:"notification_id"`
+	UserID         types.ID `json:"user_id"`
+	NotificationID types.ID `json:"notification_id"`
 }
 
 type MarkAllAsReadRequest struct {
-	UserID string `json:"user_id"`
+	UserID types.ID `json:"user_id"`
 }
 
 type DeleteRequest struct {
-	UserID         string `json:"user_id"`
-	NotificationID string `json:"notification_id"`
+	UserID         types.ID `json:"user_id"`
+	NotificationID types.ID `json:"notification_id"`
 }
 
 type CountUnreadRequest struct {
-	UserID string `json:"user_id"`
+	UserID types.ID `json:"user_id"`
 }
 
 type CreateResponse struct {
