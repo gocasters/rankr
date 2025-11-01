@@ -11,7 +11,7 @@ type CreateRequest struct {
 	Type    NotificationType `json:"type"`
 }
 
-func (c CreateRequest) mapToNotification() Notification {
+func (c CreateRequest) createRequestMapToNotification() Notification {
 	return Notification{
 		UserID:    c.UserID,
 		Message:   c.Message,
@@ -49,7 +49,23 @@ type CountUnreadRequest struct {
 }
 
 type CreateResponse struct {
-	Notification Notification `json:"notification"`
+	ID        types.ID           `json:"id"`
+	UserID    types.ID           `json:"user_id"`
+	Message   string             `json:"message"`
+	Type      NotificationType   `json:"type"`
+	Status    NotificationStatus `json:"status"`
+	CreatedAt time.Time          `json:"created_at"`
+}
+
+func (n Notification) notificationMapToCreateResponse() CreateResponse {
+	return CreateResponse{
+		ID:        n.ID,
+		UserID:    n.UserID,
+		Message:   n.Message,
+		Type:      n.Type,
+		Status:    StatusUnread,
+		CreatedAt: time.Now(),
+	}
 }
 
 type GetResponse struct {

@@ -2,6 +2,7 @@ package notification
 
 import (
 	"context"
+	"github.com/gocasters/rankr/pkg/logger"
 	types "github.com/gocasters/rankr/type"
 )
 
@@ -35,14 +36,17 @@ func NewService(repo Repository) Service {
 // Create creates a new notification.
 func (s Service) Create(ctx context.Context, req CreateRequest) (CreateResponse, error) {
 
-	notify := req.mapToNotification()
+	notify := req.createRequestMapToNotification()
 
 	createdNotification, err := s.repo.Create(ctx, notify)
 	if err != nil {
+		logger.L().Error("notifapp/create-notification", "error", err)
 		return CreateResponse{}, err
 	}
 
-	return CreateResponse{Notification: createdNotification}, nil
+	createResponse := createdNotification.notificationMapToCreateResponse()
+
+	return createResponse, nil
 }
 
 // Get retrieves a single notification.
@@ -50,6 +54,7 @@ func (s Service) Get(ctx context.Context, req GetRequest) (GetResponse, error) {
 
 	notification, err := s.repo.Get(ctx, req.NotificationID, req.UserID)
 	if err != nil {
+		logger.L().Error("notifapp/get-notification", "error", err)
 		return GetResponse{}, err
 	}
 
@@ -60,6 +65,7 @@ func (s Service) List(ctx context.Context, req ListRequest) (ListResponse, error
 
 	notifications, err := s.repo.List(ctx, req.UserID)
 	if err != nil {
+		logger.L().Error("notifapp/list-notifications", "error", err)
 		return ListResponse{}, err
 	}
 
@@ -71,6 +77,7 @@ func (s Service) MarkAsRead(ctx context.Context, req MarkAsReadRequest) (MarkAsR
 
 	updatedNotification, err := s.repo.MarkAsRead(ctx, req.NotificationID, req.UserID)
 	if err != nil {
+		logger.L().Error("notifapp/mark-as-read-notification", "error", err)
 		return MarkAsReadResponse{}, err
 	}
 
@@ -81,6 +88,7 @@ func (s Service) MarkAsRead(ctx context.Context, req MarkAsReadRequest) (MarkAsR
 func (s Service) MarkAllAsRead(ctx context.Context, req MarkAllAsReadRequest) error {
 
 	if err := s.repo.MarkAllAsRead(ctx, req.UserID); err != nil {
+		logger.L().Error("notifapp/mark-all-as-read-notification", "error", err)
 		return err
 	}
 
@@ -91,6 +99,7 @@ func (s Service) MarkAllAsRead(ctx context.Context, req MarkAllAsReadRequest) er
 func (s Service) Delete(ctx context.Context, req DeleteRequest) error {
 
 	if err := s.repo.Delete(ctx, req.NotificationID, req.UserID); err != nil {
+		logger.L().Error("notifapp/delete-notification", "error", err)
 		return err
 	}
 
@@ -102,6 +111,7 @@ func (s Service) GetUnreadCount(ctx context.Context, req CountUnreadRequest) (Ge
 
 	count, err := s.repo.GetUnreadCount(ctx, req.UserID)
 	if err != nil {
+		logger.L().Error("notifapp/get-unread-count-notification", "error", err)
 		return GetUnreadCountResponse{}, err
 	}
 

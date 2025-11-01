@@ -171,3 +171,25 @@ func (v Validate) DeleteNotificationValidate(req DeleteRequest) (map[string]stri
 
 	return nil, nil
 }
+
+func (v Validate) GetUnreadCountNotificationValidate(req CountUnreadRequest) (map[string]string, error) {
+
+	if err := validation.ValidateStruct(&req,
+		validation.Field(&req.UserID, validation.Required, validation.By(validID)),
+	); err != nil {
+		fieldErr := make(map[string]string)
+
+		errV, ok := err.(validation.Errors)
+		if ok {
+			for key, value := range errV {
+				if value != nil {
+					fieldErr[key] = value.Error()
+				}
+			}
+		}
+
+		return fieldErr, ErrMsgInvalidInput
+	}
+
+	return nil, nil
+}
