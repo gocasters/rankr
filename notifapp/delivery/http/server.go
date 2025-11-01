@@ -28,6 +28,11 @@ func (s Server) Stop(ctx context.Context) error {
 }
 
 func (s Server) registerRoutes() {
+
+	health := s.HTTPServer.GetRouter()
+
+	health.GET("/v1/notifapp/health-check", s.healthCheck)
+
 	v1 := s.HTTPServer.GetRouter().Group("/v1/notifapp/users/:user_id/notifications")
 
 	v1.GET("/:notification_id", s.handler.getNotification)
