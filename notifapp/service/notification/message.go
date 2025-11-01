@@ -10,6 +10,15 @@ const (
 	TypeSuccess NotificationType = "success"
 )
 
+func (t NotificationType) IsValid() bool {
+	switch t {
+	case TypeInfo, TypeSuccess, TypeWarning, TypeError:
+		return true
+	}
+
+	return false
+}
+
 // NotificationStatus defines the status of a notification.
 type NotificationStatus string
 
