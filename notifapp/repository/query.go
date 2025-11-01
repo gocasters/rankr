@@ -49,7 +49,7 @@ func (r Repository) List(ctx context.Context, userID types.ID) ([]notification.N
              WHERE user_id=$1 AND deleted_at IS NULL 
              ORDER BY created_at DESC;`
 
-	var notifies []notification.Notification
+	var notifies = make([]notification.Notification, 0)
 
 	rows, err := r.db.Pool.Query(ctx, query, userID)
 	if err != nil {
@@ -83,10 +83,6 @@ func (r Repository) List(ctx context.Context, userID types.ID) ([]notification.N
 
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("error to reading notifications: %w", err)
-	}
-
-	if len(notifies) == 0 {
-		return nil, ErrNotificationNotFound
 	}
 
 	return notifies, nil
