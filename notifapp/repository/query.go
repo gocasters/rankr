@@ -35,7 +35,8 @@ func (r Repository) Get(ctx context.Context, notificationID, userID types.ID) (n
 	}
 
 	if readAt.Valid {
-		notify.ReadAt = &readAt.Time
+		t := readAt.Time
+		notify.ReadAt = &t
 	}
 
 	return notify, nil
