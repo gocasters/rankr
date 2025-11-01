@@ -63,8 +63,8 @@ func (n Notification) notificationMapToCreateResponse() CreateResponse {
 		UserID:    n.UserID,
 		Message:   n.Message,
 		Type:      n.Type,
-		Status:    StatusUnread,
-		CreatedAt: time.Now(),
+		Status:    n.Status,
+		CreatedAt: n.CreatedAt,
 	}
 }
 

@@ -27,7 +27,7 @@ func getID(c echo.Context, param string) (types.ID, error) {
 		return 0, echo.ErrBadRequest
 	}
 
-	id, err := strconv.Atoi(idStr)
+	id, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
 		return 0, echo.ErrBadRequest
 	}

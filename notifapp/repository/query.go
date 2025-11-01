@@ -73,7 +73,8 @@ func (r Repository) List(ctx context.Context, userID types.ID) ([]notification.N
 		}
 
 		if readAt.Valid {
-			notify.ReadAt = &readAt.Time
+			t := readAt.Time
+			notify.ReadAt = &t
 		}
 
 		notifies = append(notifies, notify)
