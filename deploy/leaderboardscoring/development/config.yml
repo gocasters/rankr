@@ -13,10 +13,10 @@ scheduler_cfg:
   snapshot_job_context_timeout: 15m
 
 postgres_db:
-  host: "leaderboardscoring-db"
+  host: "shared-postgres"
   port: 5432
-  user: "leaderboardscoring_admin"
-  password: "password123"
+  user: "leaderboardscoring_user"
+  password: "leaderboardscoring_pass_123"
   db_name: "leaderboardscoring_db"
   ssl_mode: "disable"
   max_conns: 10
@@ -26,13 +26,13 @@ postgres_db:
   health_check_period: 60 # in seconds
 
 redis:
-  host: "leaderboardscoring-redis"
+  host: "shared-redis"
   port: 6379
-  password: "password1999"
+  password: ""
   db: 0
 
 watermill_nats:
-  url: "nats://leaderboardscoring-nats:4222"
+  url: "nats://shared-nats:4222"
   client_id: "leaderboard-scoring"
   durable_name: "leaderboard-scoring-consumer"
   queue_group: "event-group"
@@ -64,7 +64,7 @@ database_retry:
   retry_delay: 100ms
 
 nats_adapter:
-  url: "nats://leaderboardscoring-nats:4222"
+  url: "nats://shared-nats:4222"
   max_reconnects: -1
   reconnect_wait: 1s
 
