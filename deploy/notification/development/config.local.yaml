@@ -1,0 +1,25 @@
+total_shutdown_timeout: "15s"
+path_of_migration: "./../../notifapp/repository/migrations"
+
+http_server:
+  host: "localhost"
+  port: 5050
+  cors:
+    allow_origins: "*"
+  shutdown_context_timeout: "10s"
+
+postgres_db:
+  host: "localhost"
+  port: 5433
+  user: "postgres"
+  password: "password"
+  db_name: "notifications"
+  ssl_mode: "disable"
+
+
+logger:
+  level: "debug"
+  file_path: "logs/notifapp/service.log"
+  use_local_time: true
+  file_max_size_in_mb: 50
+  file_max_age_in_days: 30
