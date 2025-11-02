@@ -305,8 +305,10 @@ func (s *Service) persistSnapshotBatch(ctx context.Context, snapshots []Snapshot
 }
 
 // RestoreLeaderboardFromSnapshot rebuilds Redis leaderboards from the latest snapshot
-func (s *Service) RestoreLeaderboardFromSnapshot(ctx context.Context, keys []string) error {
+func (s *Service) RestoreLeaderboardFromSnapshot(ctx context.Context, projectIDs []string) error {
 	log := logger.L()
+
+	keys := getSnapshotKeys(projectIDs)
 	log.Info("starting leaderboard restore from snapshot", slog.Int("keys", len(keys)))
 
 	// TODO: Implement restore logic
