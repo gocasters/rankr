@@ -7,6 +7,7 @@ import (
 	"github.com/gocasters/rankr/leaderboardstatapp/service/leaderboardstat"
 	"github.com/gocasters/rankr/pkg/database"
 	types "github.com/gocasters/rankr/type"
+	"github.com/jackc/pgx/v5"
 )
 
 type Config struct {
@@ -110,4 +111,188 @@ func (repo LeaderboardstatRepo) GetContributorScoreHistory(ctx context.Context, 
 	}
 
 	return scoreHistory, nil
+}
+
+func (repo LeaderboardstatRepo) StoreDailyContributorScores(ctx context.Context, scores []leaderboardstat.DailyContributorScore) error {
+	if len(scores) == 0 {
+		return nil
+	}
+
+	tx, err := repo.PostgreSQL.Pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	// Create temp table for bulk insert
+	_, err = tx.Exec(ctx, `
+		CREATE TEMP TABLE temp_daily_scores (
+			contributor_id BIGINT NOT NULL,
+			user_id VARCHAR(100) NOT NULL,
+			daily_score BIGINT NOT NULL,
+			rank BIGINT NOT NULL,
+			timeframe VARCHAR(50) NOT NULL,
+			calculated_at TIMESTAMP NOT NULL
+		) ON COMMIT DROP
+	`)
+	if err != nil {
+		return fmt.Errorf("create temp table: %w", err)
+	}
+
+	// Bulk insert to temp table
+	columns := []string{"contributor_id", "user_id", "daily_score", "rank", "timeframe", "calculated_at"}
+	rows := make([][]interface{}, len(scores))
+	for i, score := range scores {
+		rows[i] = []interface{}{
+			score.ContributorID,
+			score.UserID,
+			score.DailyScore,
+			score.Rank,
+			score.Timeframe,
+			score.CalculatedAt,
+		}
+	}
+
+	_, err = tx.CopyFrom(
+		ctx,
+		pgx.Identifier{"temp_daily_scores"},
+		columns,
+		pgx.CopyFromRows(rows),
+	)
+	if err != nil {
+		return fmt.Errorf("copy to temp table: %w", err)
+	}
+
+	// Insert into main table
+	_, err = tx.Exec(ctx, `
+		INSERT INTO daily_contributor_scores (contributor_id, user_id, daily_score, rank, timeframe, calculated_at)
+		SELECT contributor_id, user_id, daily_score, rank, timeframe, calculated_at
+		FROM temp_daily_scores
+		ON CONFLICT (contributor_id, timeframe, calculated_at::date) DO UPDATE 
+		SET daily_score = EXCLUDED.daily_score,
+			rank = EXCLUDED.rank,
+			user_id = EXCLUDED.user_id
+	`)
+	if err != nil {
+		return fmt.Errorf("insert daily scores: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit transaction: %w", err)
+	}
+
+	return nil
+}
+
+func (repo LeaderboardstatRepo) GetPendingDailyScores(ctx context.Context) ([]leaderboardstat.DailyContributorScore, error) {
+	query := `
+		SELECT id, contributor_id, user_id, daily_score, rank, timeframe, calculated_at
+		FROM daily_contributor_scores 
+		WHERE status = 0
+		ORDER BY calculated_at
+	`
+
+	rows, err := repo.PostgreSQL.Pool.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query pending scores: %w", err)
+	}
+	defer rows.Close()
+
+	var scores []leaderboardstat.DailyContributorScore
+	for rows.Next() {
+		var score leaderboardstat.DailyContributorScore
+		err := rows.Scan(
+			&score.ID,
+			&score.ContributorID,
+			&score.UserID,
+			&score.DailyScore,
+			&score.Rank,
+			&score.Timeframe,
+			&score.CalculatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan score: %w", err)
+		}
+		scores = append(scores, score)
+	}
+
+	return scores, nil
+}
+func (repo LeaderboardstatRepo) UpdateUserScores(ctx context.Context, userScores []leaderboardstat.UserScore) error {
+	if len(userScores) == 0 {
+		return nil
+	}
+
+	batch := &pgx.Batch{}
+
+	query := `
+		INSERT INTO user_scores (user_id, score) 
+		VALUES ($1, $2)
+		ON CONFLICT (user_id) 
+		DO UPDATE SET score = user_scores.score + EXCLUDED.score
+	`
+
+	for _, userScore := range userScores {
+		batch.Queue(query, userScore.UserID, userScore.Score)
+	}
+
+	results := repo.PostgreSQL.Pool.SendBatch(ctx, batch)
+	defer results.Close()
+
+	for i := 0; i < batch.Len(); i++ {
+		_, err := results.Exec()
+		if err != nil {
+			return fmt.Errorf("failed to update user score at index %d: %w", i, err)
+		}
+	}
+
+	return nil
+}
+func (repo LeaderboardstatRepo) UpdateProjectScores(ctx context.Context, projectScores []leaderboardstat.ProjectScore) error {
+	if len(projectScores) == 0 {
+		return nil
+	}
+
+	batch := &pgx.Batch{}
+
+	query := `
+		INSERT INTO project_scores (user_id, project_id, score) 
+		VALUES ($1, $2, $3)
+		ON CONFLICT (user_id, project_id) 
+		DO UPDATE SET score = project_scores.score + EXCLUDED.score
+	`
+
+	for _, projectScore := range projectScores {
+		batch.Queue(query, projectScore.UserID, projectScore.ProjectID, projectScore.Score)
+	}
+
+	results := repo.PostgreSQL.Pool.SendBatch(ctx, batch)
+	defer results.Close()
+
+	for i := 0; i < batch.Len(); i++ {
+		_, err := results.Exec()
+		if err != nil {
+			return fmt.Errorf("failed to update project score at index %d: %w", i, err)
+		}
+	}
+
+	return nil
+}
+func (repo LeaderboardstatRepo) MarkDailyScoresAsProcessed(ctx context.Context, scoreIDs []types.ID) error {
+	if len(scoreIDs) == 0 {
+		return nil
+	}
+
+	query := `
+		UPDATE daily_contributor_scores 
+		SET status = 1 
+		WHERE id = ANY($1)
+	`
+
+	_, err := repo.PostgreSQL.Pool.Exec(ctx, query, scoreIDs)
+	if err != nil {
+		return fmt.Errorf("failed to mark scores as processed: %w", err)
+	}
+
+	return nil
 }

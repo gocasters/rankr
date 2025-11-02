@@ -2,8 +2,15 @@ package leaderboardstat
 
 import (
 	"context"
+	"fmt"
+	"github.com/gocasters/rankr/adapter/leaderboardscoring"
+	lbscoring "github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/gocasters/rankr/pkg/cachemanager"
+	"github.com/gocasters/rankr/pkg/logger"
 	types "github.com/gocasters/rankr/type"
+	"github.com/labstack/gommon/log"
+	"log/slog"
+	"time"
 )
 
 type LeaderboardScoringRPC interface {
@@ -15,6 +22,12 @@ type Repository interface {
 	GetContributorTotalRank(ctx context.Context, ID types.ID) (uint, error)
 	GetContributorProjectScores(ctx context.Context, ID types.ID) (map[types.ID]float64, error)
 	GetContributorScoreHistory(ctx context.Context, ID types.ID) ([]ScoreRecord, error)
+	StoreDailyContributorScores(ctx context.Context, scores []DailyContributorScore) error
+
+	GetPendingDailyScores(ctx context.Context) ([]DailyContributorScore, error)
+	UpdateUserScores(ctx context.Context, userScores []UserScore) error
+	UpdateProjectScores(ctx context.Context, projectScores []ProjectScore) error
+	MarkDailyScoresAsProcessed(ctx context.Context, scoreIDs []types.ID) error
 }
 
 type Service struct {
@@ -22,15 +35,210 @@ type Service struct {
 	validator             Validator
 	cacheManager          cachemanager.CacheManager
 	leaderboardScoringRPC LeaderboardScoringRPC
+	lbScoringClient       *leaderboardscoring.Client
 }
 
-func NewService(repo Repository, validator Validator, cacheManger cachemanager.CacheManager, rpc LeaderboardScoringRPC) Service {
+func NewService(repo Repository, validator Validator, cacheManger cachemanager.CacheManager, rpc LeaderboardScoringRPC, lbClient *leaderboardscoring.Client) Service {
 	return Service{
 		repository:            repo,
 		validator:             validator,
 		cacheManager:          cacheManger,
 		leaderboardScoringRPC: rpc,
+		lbScoringClient:       lbClient,
 	}
+}
+
+func (s *Service) CalculateDailyContributorScores(ctx context.Context) error {
+	log := logger.L()
+	log.Info("Starting daily contributor scores calculation")
+
+	if s.lbScoringClient == nil {
+		return fmt.Errorf("leaderboardscoring client is not initialized")
+	}
+
+	// Get daily leaderboard from leaderboardscoring service
+	getLeaderboardReq := &lbscoring.GetLeaderboardRequest{
+		Timeframe: "", //leaderboardscoring.Timeframe_TIMEFRAME_UNSPECIFIED, // TODO - set proper timestamp
+		PageSize:  1000,
+		Offset:    0,
+	}
+
+	leaderboardRes, err := s.lbScoringClient.GetLeaderboard(ctx, getLeaderboardReq)
+	if err != nil {
+		return fmt.Errorf("failed to get leaderboard data: %w", err)
+	}
+
+	log.Info("Retrieved leaderboard data",
+		slog.Int("row_count", len(leaderboardRes.LeaderboardRows)),
+		slog.String("timeframe", string(leaderboardRes.Timeframe)),
+	)
+
+	// Process and store daily scores
+	var dailyScores []DailyContributorScore
+	calculatedAt := time.Now()
+
+	for _, row := range leaderboardRes.LeaderboardRows {
+		contributorID, err := s.mapUserIDToContributorID(ctx, row.UserID)
+		if err != nil {
+			log.Warn("Failed to map user ID to contributor ID",
+				slog.String("user_id", row.UserID),
+				slog.String("error", err.Error()),
+			)
+
+			continue
+		}
+
+		dailyScore := DailyContributorScore{
+			ContributorID: contributorID,
+			UserID:        row.UserID,
+			DailyScore:    float64(row.Score), // TODO - define is score data type float or int
+			Rank:          row.Rank,
+			Timeframe:     string(leaderboardRes.Timeframe),
+			CalculatedAt:  calculatedAt,
+		}
+		dailyScores = append(dailyScores, dailyScore)
+	}
+
+	// Store the daily scores
+	if err := s.repository.StoreDailyContributorScores(ctx, dailyScores); err != nil {
+		return fmt.Errorf("failed to store daily contributor scores: %w", err)
+	}
+
+	// TODO- do calculations
+	go s.processDailyScoreCalculations(context.Background())
+
+	//if err := s.updateCacheAfterDailyCalculation(ctx, dailyScores); err != nil {
+	//	log.Warn("Failed to update cache after daily calculation", slog.String("error", err.Error()))
+	//}
+
+	log.Info("Successfully calculated and stored daily contributor scores",
+		slog.Int("processed_count", len(dailyScores)),
+	)
+
+	return nil
+}
+
+func (s *Service) processDailyScoreCalculations(ctx context.Context) error {
+	log := logger.L()
+	log.Info("Starting background processing of daily score calculations")
+
+	// Get pending daily scores (status = 0)
+	pendingScores, err := s.repository.GetPendingDailyScores(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to get pending daily scores: %w", err)
+	}
+
+	if len(pendingScores) == 0 {
+		log.Info("No pending daily scores to process")
+		return nil
+	}
+
+	log.Info("Processing pending daily scores", slog.Int("count", len(pendingScores)))
+
+	// Calculate user total scores
+	userScores := s.calculateUserTotalScores(pendingScores)
+
+	// Calculate project scores
+	projectScores, err := s.calculateProjectScores(ctx, pendingScores)
+	if err != nil {
+		return fmt.Errorf("failed to calculate project scores: %w", err)
+	}
+
+	// Update user scores in batch
+	if err := s.repository.UpdateUserScores(ctx, userScores); err != nil {
+		return fmt.Errorf("failed to update user scores: %w", err)
+	}
+
+	// Update project scores in batch
+	if err := s.repository.UpdateProjectScores(ctx, projectScores); err != nil {
+		return fmt.Errorf("failed to update project scores: %w", err)
+	}
+
+	// Mark daily scores as processed
+	scoreIDs := make([]types.ID, len(pendingScores))
+	for i, score := range pendingScores {
+		scoreIDs[i] = score.ID
+	}
+	if err := s.repository.MarkDailyScoresAsProcessed(ctx, scoreIDs); err != nil {
+		return fmt.Errorf("failed to mark daily scores as processed: %w", err)
+	}
+
+	// Update cache
+	if err := s.updateCacheAfterDailyCalculation(ctx, pendingScores); err != nil {
+		log.Warn("Failed to update cache after daily calculation", slog.String("error", err.Error()))
+	}
+
+	log.Info("Successfully processed daily score calculations",
+		slog.Int("users_updated", len(userScores)),
+		slog.Int("projects_updated", len(projectScores)),
+	)
+
+	return nil
+}
+
+func (s *Service) calculateUserTotalScores(dailyScores []DailyContributorScore) []UserScore {
+	userScoreMap := make(map[types.ID]float64)
+
+	for _, score := range dailyScores {
+		userScoreMap[score.ContributorID] += score.DailyScore
+	}
+
+	userScores := make([]UserScore, 0, len(userScoreMap))
+	for userID, totalScore := range userScoreMap {
+		userScores = append(userScores, UserScore{
+			UserID: userID,
+			Score:  totalScore,
+		})
+	}
+
+	return userScores
+}
+
+func (s *Service) calculateProjectScores(ctx context.Context, dailyScores []DailyContributorScore) ([]ProjectScore, error) {
+	// TODO - Implement project mapping logic
+	projectScores := make([]ProjectScore, 0)
+
+	for _, score := range dailyScores {
+		userProjects, err := s.getUserProjects(ctx, score.UserID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get user projects: %w", err)
+		}
+
+		for _, projectID := range userProjects {
+			projectScore := score.DailyScore / float64(len(userProjects))
+
+			projectScores = append(projectScores, ProjectScore{
+				UserID:    score.ContributorID,
+				ProjectID: projectID,
+				Score:     projectScore,
+			})
+		}
+	}
+
+	return projectScores, nil
+}
+
+func (s *Service) getUserProjects(ctx context.Context, userID string) ([]types.ID, error) {
+	// TODO: Implement actual logic to get user's projects
+	return []types.ID{types.ID(1), types.ID(2)}, nil
+}
+
+func (s *Service) mapUserIDToContributorID(ctx context.Context, userID string) (types.ID, error) {
+	return types.ID(1), nil
+}
+
+func (s *Service) updateCacheAfterDailyCalculation(ctx context.Context, scores []DailyContributorScore) error {
+	cacheKey := "global_leaderboard:daily"
+	if err := s.cacheManager.Delete(ctx, cacheKey); err != nil {
+		return fmt.Errorf("failed to clear cache: %w", err)
+	}
+	cacheSetErr := s.cacheManager.Set(ctx, cacheKey, scores, 24*time.Hour)
+	if cacheSetErr != nil {
+		return fmt.Errorf("failed to set cache: %w", cacheSetErr)
+	}
+
+	log.Info("Cache set successfully", slog.String(time.Now().String(), cacheKey))
+	return nil
 }
 
 func GetContributorScores(contributorID int, project string) ScoresListResponse {
