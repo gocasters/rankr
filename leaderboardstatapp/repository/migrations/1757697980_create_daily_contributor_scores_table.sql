@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS daily_contributor_scores (
     contributor_id BIGINT NOT NULL,
     user_id VARCHAR(100) NOT NULL,
     daily_score BIGINT NOT NULL,
+    -- TODO- add project_id
     rank BIGINT NOT NULL,
     timeframe VARCHAR(50) NOT NULL,
     calculated_at TIMESTAMPTZ NOT NULL,

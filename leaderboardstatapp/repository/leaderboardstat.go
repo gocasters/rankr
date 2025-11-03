@@ -118,67 +118,37 @@ func (repo LeaderboardstatRepo) StoreDailyContributorScores(ctx context.Context,
 		return nil
 	}
 
-	tx, err := repo.PostgreSQL.Pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("begin transaction: %w", err)
-	}
-	defer func() { _ = tx.Rollback(ctx) }()
+	batch := &pgx.Batch{}
 
-	// Create temp table for bulk insert
-	_, err = tx.Exec(ctx, `
-		CREATE TEMP TABLE temp_daily_scores (
-			contributor_id BIGINT NOT NULL,
-			user_id VARCHAR(100) NOT NULL,
-			daily_score BIGINT NOT NULL,
-			rank BIGINT NOT NULL,
-			timeframe VARCHAR(50) NOT NULL,
-			calculated_at TIMESTAMP NOT NULL
-		) ON COMMIT DROP
-	`)
-	if err != nil {
-		return fmt.Errorf("create temp table: %w", err)
-	}
+	query := `
+		INSERT INTO daily_contributor_scores 
+		(contributor_id, user_id, daily_score, rank, timeframe, calculated_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		ON CONFLICT (contributor_id, timeframe, calculated_at::date) DO UPDATE 
+		SET daily_score = EXCLUDED.daily_score,
+			rank = EXCLUDED.rank,
+			user_id = EXCLUDED.user_id
+	`
 
-	// Bulk insert to temp table
-	columns := []string{"contributor_id", "user_id", "daily_score", "rank", "timeframe", "calculated_at"}
-	rows := make([][]interface{}, len(scores))
-	for i, score := range scores {
-		rows[i] = []interface{}{
+	for _, score := range scores {
+		batch.Queue(query,
 			score.ContributorID,
 			score.UserID,
 			score.DailyScore,
 			score.Rank,
 			score.Timeframe,
 			score.CalculatedAt,
+		)
+	}
+
+	results := repo.PostgreSQL.Pool.SendBatch(ctx, batch)
+	defer results.Close()
+
+	for i := 0; i < batch.Len(); i++ {
+		_, err := results.Exec()
+		if err != nil {
+			return fmt.Errorf("failed to insert daily score at index %d: %w", i, err)
 		}
-	}
-
-	_, err = tx.CopyFrom(
-		ctx,
-		pgx.Identifier{"temp_daily_scores"},
-		columns,
-		pgx.CopyFromRows(rows),
-	)
-	if err != nil {
-		return fmt.Errorf("copy to temp table: %w", err)
-	}
-
-	// Insert into main table
-	_, err = tx.Exec(ctx, `
-		INSERT INTO daily_contributor_scores (contributor_id, user_id, daily_score, rank, timeframe, calculated_at)
-		SELECT contributor_id, user_id, daily_score, rank, timeframe, calculated_at
-		FROM temp_daily_scores
-		ON CONFLICT (contributor_id, timeframe, calculated_at::date) DO UPDATE 
-		SET daily_score = EXCLUDED.daily_score,
-			rank = EXCLUDED.rank,
-			user_id = EXCLUDED.user_id
-	`)
-	if err != nil {
-		return fmt.Errorf("insert daily scores: %w", err)
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("commit transaction: %w", err)
 	}
 
 	return nil

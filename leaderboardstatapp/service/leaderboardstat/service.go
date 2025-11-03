@@ -58,7 +58,7 @@ func (s *Service) CalculateDailyContributorScores(ctx context.Context) error {
 
 	// Get daily leaderboard from leaderboardscoring service
 	getLeaderboardReq := &lbscoring.GetLeaderboardRequest{
-		Timeframe: "", //leaderboardscoring.Timeframe_TIMEFRAME_UNSPECIFIED, // TODO - set proper timestamp
+		Timeframe: "", //leaderboardscoring.Daily, // TODO - set proper timestamp
 		PageSize:  1000,
 		Offset:    0,
 	}
@@ -118,6 +118,7 @@ func (s *Service) CalculateDailyContributorScores(ctx context.Context) error {
 	return nil
 }
 
+// TODO - get dailyScores as input parameters, check if it is nil get it from DB
 func (s *Service) processDailyScoreCalculations(ctx context.Context) error {
 	log := logger.L()
 	log.Info("Starting background processing of daily score calculations")
@@ -138,15 +139,15 @@ func (s *Service) processDailyScoreCalculations(ctx context.Context) error {
 	// Calculate user total scores
 	userScores := s.calculateUserTotalScores(pendingScores)
 
+	// Update user scores in batch
+	if err := s.repository.UpdateUserScores(ctx, userScores); err != nil {
+		return fmt.Errorf("failed to update user scores: %w", err)
+	}
+
 	// Calculate project scores
 	projectScores, err := s.calculateProjectScores(ctx, pendingScores)
 	if err != nil {
 		return fmt.Errorf("failed to calculate project scores: %w", err)
-	}
-
-	// Update user scores in batch
-	if err := s.repository.UpdateUserScores(ctx, userScores); err != nil {
-		return fmt.Errorf("failed to update user scores: %w", err)
 	}
 
 	// Update project scores in batch
