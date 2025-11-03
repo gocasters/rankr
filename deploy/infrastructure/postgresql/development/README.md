@@ -1,107 +1,252 @@
 # PostgreSQL Infrastructure for Rankr Microservices
 
-This directory contains the Docker Compose setup for PostgreSQL used by **Rankr microservices**. It includes a base
-database initialization script (`init-services-db.sql`) and a `.env` template to securely configure database
-credentials.
+This directory contains the Docker-based PostgreSQL setup for **Rankr microservices**. It includes an initialization script that automatically creates databases and users for all services using environment variables from `.env`.
 
 ---
 
-## Usage Instructions
+## Structure
 
-### 1. Configure `.env`
+```
+.
+├── Dockerfile                          # PostgreSQL image with init script
+├── docker-compose.postgresql.yml       # Docker Compose configuration
+├── init-services-db.sh                 # Database initialization script
+├── init-services-db.sql               # Alternative SQL-based init (optional)
+├── .env-example                        # Template for environment variables
+└── README.md                           # This file
+```
 
-* Copy the example file to `.env`:
+---
+
+## Quick Start
+
+### 1. Setup Environment Variables
+
+Copy the example file and configure your credentials:
 
 ```bash
 cp .env-example .env
 ```
 
-* Edit `.env` to add credentials for your service(s):
+Edit `.env` with secure passwords:
 
 ```dotenv
-# Example
+# PostgreSQL Admin
+POSTGRES_USER=rankr_admin
+POSTGRES_PASSWORD=your_strong_admin_password
+POSTGRES_DB=postgres
+
+# Service Users
 LEADERBOARDSTAT_USER=leaderboardstat_user
-LEADERBOARDSTAT_PASS=supersecret1
+LEADERBOARDSTAT_PASS=secure_password_1
+
 CONTRIBUTOR_USER=contributor_user
-CONTRIBUTOR_PASS=supersecret2
+CONTRIBUTOR_PASS=secure_password_2
+
 PROJECT_USER=project_user
-PROJECT_PASS=supersecret3
+PROJECT_PASS=secure_password_3
+
 WEBHOOK_USER=webhook_user
-WEBHOOK_PASS=supersecret4
+WEBHOOK_PASS=secure_password_4
+
 LEADERBOARDSCORING_USER=leaderboardscoring_user
-LEADERBOARDSCORING_PASS=supersecret5
+LEADERBOARDSCORING_PASS=secure_password_5
 ```
 
-> **Important:** Never commit `.env` to source control. Keep it local or use a secure vault.
+> **⚠️ Security Note:** Never commit `.env` to version control. Add it to `.gitignore`.
 
 ---
 
-### 2. Add Your Service to `init-services-db.sql`
+### 2. Create Docker Network and Volume
 
-* If your service needs its own database and user, append a block in `init-services-db.sql` following the pattern of
-  existing users:
+Create the required external network and volume:
+
+```bash
+# Create network
+docker network create rankr-shared-development-network
+
+# Create volume
+docker volume create rankr-shared-postgres-data
+```
+
+---
+
+### 3. Build and Start PostgreSQL
+
+Build the Docker image and start the container:
+
+```bash
+# Build the image
+docker compose -f docker-compose.postgresql.yml build --no-cache
+
+# Start the container
+docker compose -f docker-compose.postgresql.yml up -d
+```
+
+---
+
+### 4. Verify Installation
+
+Check that all databases were created successfully:
+
+```bash
+# View container logs
+docker logs rankr-shared-postgres
+
+# Connect to PostgreSQL
+docker exec -it rankr-shared-postgres psql -U rankr_admin -d postgres
+
+# List all databases
+\l
+
+# List all users
+\du
+
+# Exit psql
+\q
+```
+
+You should see:
+- 5 service databases (leaderboardstat_db, contributor_db, project_db, webhook_db, leaderboardscoring_db)
+- 5 service users with appropriate ownership
+
+---
+
+## Adding a New Service
+
+### Option 1: Using Shell Script (Recommended)
+
+Edit `init-services-db.sh` and add a new service call:
+
+```bash
+# Add after existing services
+create_service_db "$NEWSERVICE_USER" "$NEWSERVICE_PASS" "newservice_db"
+```
+
+Add environment variables to `.env`:
+
+```dotenv
+NEWSERVICE_USER=newservice_user
+NEWSERVICE_PASS=secure_password_6
+```
+
+### Option 2: Using SQL Script
+
+If you prefer using `init-services-db.sql`, add a new block:
 
 ```sql
-DO
-$$
+-- New Service
+DO $$
 BEGIN
-    IF
-NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'MY_SERVICE_USER') THEN
-        EXECUTE format(
-            'CREATE USER %I WITH PASSWORD %L',
-            :'MY_SERVICE_USER',
-            :'MY_SERVICE_PASS'
-        );
-END IF;
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'newservice_user') THEN
+        CREATE USER newservice_user WITH PASSWORD 'newservice_pass';
+        RAISE NOTICE 'User newservice_user created';
+    ELSE
+        RAISE NOTICE 'User newservice_user already exists';
+    END IF;
 END
 $$;
 
-SELECT format(
-               'CREATE DATABASE my_service_db OWNER %I',
-               :'MY_SERVICE_USER'
-       ) WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'my_service_db') \gexec;
+SELECT 'CREATE DATABASE newservice_db OWNER newservice_user'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'newservice_db')
+\gexec
 
-GRANT
-ALL
-PRIVILEGES
-ON
-DATABASE
-my_service_db TO :'MY_SERVICE_USER';
+GRANT ALL PRIVILEGES ON DATABASE newservice_db TO newservice_user;
 ```
 
-* Then, add corresponding environment variables to your `.env`:
+Then update your Dockerfile to use the SQL script:
 
-```dotenv
-MY_SERVICE_USER=my_service_user
-MY_SERVICE_PASS=supersecret6
+```dockerfile
+FROM postgres:17.2-alpine
+COPY init-services-db.sql /docker-entrypoint-initdb.d/
 ```
 
 ---
 
-### 3. Start PostgreSQL
+## Rebuild and Reset
 
-Run the PostgreSQL container using Docker Compose:
+### Rebuild After Changes
+
+If you modify initialization scripts:
 
 ```bash
-docker compose up -d
+# Stop and remove container
+docker compose -f docker-compose.postgresql.yml down
+
+# Remove the volume (WARNING: deletes all data)
+docker volume rm rankr-shared-postgres-data
+
+# Recreate volume
+docker volume create rankr-shared-postgres-data
+
+# Rebuild and restart
+docker compose -f docker-compose.postgresql.yml build --no-cache
+docker compose -f docker-compose.postgresql.yml up -d
 ```
 
-* The container will initialize databases and users from `.env` via `init-services-db.sql`.
+### Keep Data, Just Restart
+
+If you only need to restart without losing data:
+
+```bash
+docker compose -f docker-compose.postgresql.yml restart
+```
 
 ---
 
-### 4. Notes
+## Security Best Practices
 
-* This setup ensures **idempotent initialization** — safe to re-run multiple times.
-* Use `.env` for all credentials to avoid hardcoding passwords in SQL.
-* Each microservice should have a dedicated user and database to prevent conflicts.
+1. **Never commit `.env`** - Add to `.gitignore`
+2. **Use strong passwords** - Generate random passwords for production
+3. **Rotate credentials regularly** - Update passwords periodically
+4. **Limit network access** - Use Docker networks to isolate services
+5. **Use secrets management** - Consider Docker secrets or vault solutions for production
 
 ---
 
-This README makes it clear for developers:
+## Database Connection Info
 
-1. Copy `.env-example` → `.env`.
-2. Add credentials for any new services.
-3. Update `init-services-db.sql` with new DB/user logic.
-4. Start the container via Docker Compose.
+Each microservice should connect using its own credentials:
 
+| Service | Database | User | Port (Host) |
+|---------|----------|------|-------------|
+| Leaderboard Stats | leaderboardstat_db | leaderboardstat_user | 5439 |
+| Contributor | contributor_db | contributor_user | 5439 |
+| Project | project_db | project_user | 5439 |
+| Webhook | webhook_db | webhook_user | 5439 |
+| Leaderboard Scoring | leaderboardscoring_db | leaderboardscoring_user | 5439 |
+
+**Connection string example:**
+```
+postgresql://leaderboardstat_user:secure_password_1@localhost:5439/leaderboardstat_db
+```
+
+---
+
+## Troubleshooting
+
+### Container Keeps Restarting
+
+Check logs for errors:
+```bash
+docker logs rankr-shared-postgres -f
+```
+
+### Database Not Initialized
+
+Ensure the volume is clean before first run:
+```bash
+docker volume rm rankr-shared-postgres-data
+docker volume create rankr-shared-postgres-data
+```
+
+### Permission Denied Errors
+
+Make sure the initialization script is executable:
+```bash
+chmod +x init-services-db.sh
+```
+
+### Environment Variables Not Working
+
+Verify `.env` file is in the same directory as `docker-compose.postgresql.yml` and properly formatted.

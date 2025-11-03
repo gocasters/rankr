@@ -2,7 +2,7 @@
 
 set -e
 
-COMPOSE_FILE_FULL="../leaderboardscoring/development/docker-compose.yml"
+COMPOSE_FILE_FULL="deploy/leaderboardscoring/development/docker-compose.yml"
 SERVICE_NAME="leaderboardscoring"
 COMMAND=$1
 

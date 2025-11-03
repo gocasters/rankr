@@ -58,7 +58,7 @@ function logs_base() {
 
 function up_postgres() {
   echo "Starting PostgreSQL..."
-  docker compose -p $PROJECT_NAME -f $PG_PATH up -d
+  docker compose -p $PROJECT_NAME -f $PG_PATH up -d --build --force-recreate
 }
 
 function down_postgres() {

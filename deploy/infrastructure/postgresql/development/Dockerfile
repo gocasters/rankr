@@ -1,2 +1,7 @@
 FROM postgres:17.2-alpine
-COPY init-services-db.sql /docker-entrypoint-initdb.d/
+
+# Copy initialization script
+COPY init-services-db.sh /docker-entrypoint-initdb.d/
+
+# Make it executable
+RUN chmod +x /docker-entrypoint-initdb.d/init-services-db.sh
