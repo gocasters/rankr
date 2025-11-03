@@ -27,7 +27,7 @@ type EventPersistence interface {
 
 // LeaderboardCache = redis layer
 type LeaderboardCache interface {
-	UpsertScores(ctx context.Context, score *UpsertScore) error
+	UpsertScores(ctx context.Context, score *UpsertScore, timeframe Timeframe) error
 	GetLeaderboard(ctx context.Context, leaderboard *LeaderboardQuery) (LeaderboardQueryResult, error)
 }
 
@@ -60,7 +60,6 @@ func NewService(
 	}
 }
 
-// ProcessScoreEvent handles only the critical, real-time login.
 func (s *Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) error {
 	log := logger.L()
 
@@ -75,37 +74,42 @@ func (s *Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) erro
 	}
 
 	// Update Redis leaderboard (real-time)
-	keys := s.keys(strconv.FormatUint(req.RepositoryID, 10))
-	upsertScore := UpsertScore{
-		Keys:   keys,
-		Score:  score,
-		UserID: req.UserID,
-	}
-	if err := s.leaderboard.UpsertScores(ctx, &upsertScore); err != nil {
-		log.Error(ErrFailedToUpdateScores.Error(), slog.String("error", err.Error()))
-		return errors.Join(ErrFailedToUpdateScores, err)
+	for _, tf := range Timeframes {
+
+		keys := s.generateKeys(strconv.FormatUint(req.RepositoryID, 10), tf)
+
+		upsertScore := UpsertScore{
+			Keys:   keys,
+			Score:  score,
+			UserID: req.UserID,
+		}
+		if err := s.leaderboard.UpsertScores(ctx, &upsertScore, tf); err != nil {
+			log.Error(ErrFailedToUpdateScores.Error(), slog.String("error", err.Error()))
+			return errors.Join(ErrFailedToUpdateScores, err)
+		}
+
+		// Publish to NATS JetStream for batch persistence
+		pse := ProcessedScoreEvent{
+			UserID:    req.UserID,
+			EventName: EventName(req.EventName),
+			Score:     score,
+			Timestamp: time.Now().UTC(),
+		}
+
+		dataMsg, mErr := json.Marshal(pse)
+		if mErr != nil {
+			log.Error("failed to marshal processed score event", slog.String("error", mErr.Error()))
+			return fmt.Errorf("marshal event: %w", mErr)
+		}
+
+		if err := s.publisher.Publish(ctx, s.processedEventTopic, dataMsg); err != nil {
+			log.Error("failed to publish processed score event", slog.String("error", err.Error()))
+			return fmt.Errorf("publish event: %w", err)
+		}
+
+		log.Debug(MsgSuccessfullyProcessedEvent, slog.String("event_id", req.ID))
 	}
 
-	// Publish to NATS JetStream for batch persistence
-	pse := ProcessedScoreEvent{
-		UserID:    req.UserID,
-		EventName: EventName(req.EventName),
-		Score:     score,
-		Timestamp: time.Now().UTC(),
-	}
-
-	dataMsg, mErr := json.Marshal(pse)
-	if mErr != nil {
-		log.Error("failed to marshal processed score event", slog.String("error", mErr.Error()))
-		return fmt.Errorf("marshal event: %w", mErr)
-	}
-
-	if err := s.publisher.Publish(ctx, s.processedEventTopic, dataMsg); err != nil {
-		log.Error("failed to publish processed score event", slog.String("error", err.Error()))
-		return fmt.Errorf("publish event: %w", err)
-	}
-
-	log.Debug(MsgSuccessfullyProcessedEvent, slog.String("event_id", req.ID))
 	return nil
 }
 
@@ -344,13 +348,15 @@ func getSnapshotKeys(projectIDs []string) []string {
 // leaderboard:global:yearly:{year}
 // leaderboard:global:monthly:{year}-{month}
 // leaderboard:global:weekly:{year}-W{week_number}
+// leaderboard:global:daily:{year}-{week_number}-{day_number}
 
 // Per-Project Leaderboards
 // leaderboard:{project_id}:all_time
 // leaderboard:{project_id}:yearly:{year}
 // leaderboard:{project_id}:monthly:{year}-{month}
 // leaderboard:{project_id}:weekly:{year}-W{week_number}
-func (s *Service) keys(projectID string) []string {
+// leaderboard:{project_id}:daily:{year}-{week_number}-{day_number}
+func (s *Service) generateKeys(projectID string, timeframe Timeframe) []string {
 	keyMap := make(map[string]struct{})
 	addKey := func(key string) {
 		if _, exists := keyMap[key]; !exists {
@@ -358,33 +364,28 @@ func (s *Service) keys(projectID string) []string {
 		}
 	}
 
-	// Global keys
-	addKey(getGlobalLeaderboardKey(AllTime, ""))
-	for _, tf := range Timeframes {
-		var period string
-		switch tf {
-		case Yearly:
-			period = timettl.GetYear()
-		case Monthly:
-			period = timettl.GetMonth()
-		case Weekly:
-			period = timettl.GetWeek()
-		}
-		addKey(getGlobalLeaderboardKey(tf, period))
+	var period string
+	var tf Timeframe
+	switch timeframe {
+	case AllTime:
+		addKey(getGlobalLeaderboardKey(AllTime, ""))
+		addKey(getPerProjectLeaderboardKey(projectID, AllTime, ""))
+	case Yearly:
+		period = timettl.GetYear()
+		tf = Yearly
+	case Monthly:
+		period = timettl.GetMonth()
+		tf = Monthly
+	case Weekly:
+		period = timettl.GetWeek()
+		tf = Weekly
+	case Daily:
+		period = timettl.GetDay()
+		tf = Daily
 	}
 
-	// Per-project keys
-	addKey(getPerProjectLeaderboardKey(projectID, AllTime, ""))
-	for _, tf := range Timeframes {
-		var period string
-		switch tf {
-		case Yearly:
-			period = timettl.GetYear()
-		case Monthly:
-			period = timettl.GetMonth()
-		case Weekly:
-			period = timettl.GetWeek()
-		}
+	if timeframe != AllTime {
+		addKey(getGlobalLeaderboardKey(tf, period))
 		addKey(getPerProjectLeaderboardKey(projectID, tf, period))
 	}
 

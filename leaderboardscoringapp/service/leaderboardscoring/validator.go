@@ -53,11 +53,18 @@ func (v Validator) ValidateGetLeaderboard(request *GetLeaderboardRequest) error 
 				Yearly.String(),
 				Monthly.String(),
 				Weekly.String(),
-			).Error(fmt.Sprintf("timeframe must be one of: %s, %s, %s, %s",
-				AllTime.String(),
-				Yearly.String(),
-				Monthly.String(),
-				Weekly.String()))),
+				Daily.String(),
+			).Error(
+				fmt.Sprintf(
+					"timeframe must be one of: %s, %s, %s, %s, %s",
+					AllTime.String(),
+					Yearly.String(),
+					Monthly.String(),
+					Weekly.String(),
+					Daily.String(),
+				),
+			),
+		),
 
 		validation.Field(&request.Offset,
 			//validation.Required.Error("offset is required"),

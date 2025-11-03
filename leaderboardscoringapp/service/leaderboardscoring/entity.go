@@ -73,6 +73,7 @@ const (
 	Yearly
 	Monthly
 	Weekly
+	Daily
 )
 
 var Timeframes = []Timeframe{
@@ -80,6 +81,7 @@ var Timeframes = []Timeframe{
 	Yearly,
 	Monthly,
 	Weekly,
+	Daily,
 }
 
 func (tf Timeframe) String() string {
@@ -92,6 +94,8 @@ func (tf Timeframe) String() string {
 		return "monthly"
 	case Weekly:
 		return "weekly"
+	case Daily:
+		return "daily"
 	default:
 		return "unknown"
 	}

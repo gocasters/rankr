@@ -13,14 +13,14 @@ go run ./cmd/leaderboardscoring/test/rpc.go [flags]
 
 ### Available Flags
 
-| Flag          | Description                                                       | Default          |
-|---------------|-------------------------------------------------------------------|------------------|
-| `--addr`      | gRPC server address (`host:port`)                                 | `localhost:8090` |
-| `--timeframe` | Leaderboard timeframe (`all_time`, `yearly`, `monthly`, `weekly`) | `all_time`       |
-| `--project`   | Project ID (empty for global leaderboard)                         | `1`              |
-| `--limit`     | Number of records to fetch                                        | `10`             |
-| `--offset`    | Offset for pagination                                             | `0`              |
-| `--timeout`   | Request timeout duration                                          | `5s`             |
+| Flag          | Description                                                                | Default          |
+|---------------|----------------------------------------------------------------------------|------------------|
+| `--addr`      | gRPC server address (`host:port`)                                          | `localhost:8090` |
+| `--timeframe` | Leaderboard timeframe (`all_time`, `yearly`, `monthly`, `weekly`, `daily`) | `all_time`       |
+| `--project`   | Project ID (empty for global leaderboard)                                  | `1`              |
+| `--limit`     | Number of records to fetch                                                 | `10`             |
+| `--offset`    | Offset for pagination                                                      | `0`              |
+| `--timeout`   | Request timeout duration                                                   | `5s`             |
 
 ---
 

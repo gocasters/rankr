@@ -9,7 +9,7 @@ rpc_server:
   network_type: "tcp"
 
 scheduler_cfg:
-  snapshot_crontab: "* * * * *"
+  snapshot_crontab: "0 */3 * * *"
   snapshot_job_context_timeout: 15m
 
 postgres_db:

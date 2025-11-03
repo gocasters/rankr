@@ -397,6 +397,8 @@ func ToProtoTimeframe(tf string) leaderboardscoringpb.Timeframe {
 		return leaderboardscoringpb.Timeframe_TIMEFRAME_MONTHLY
 	case Weekly.String():
 		return leaderboardscoringpb.Timeframe_TIMEFRAME_WEEKLY
+	case Daily.String():
+		return leaderboardscoringpb.Timeframe_TIMEFRAME_DAILY
 	default:
 		return leaderboardscoringpb.Timeframe_TIMEFRAME_UNSPECIFIED
 	}
@@ -412,6 +414,8 @@ func FromProtoTimeframe(tf leaderboardscoringpb.Timeframe) string {
 		return Monthly.String()
 	case leaderboardscoringpb.Timeframe_TIMEFRAME_WEEKLY:
 		return Weekly.String()
+	case leaderboardscoringpb.Timeframe_TIMEFRAME_DAILY:
+		return Daily.String()
 	default:
 		return TimeframeUnspecified.String()
 	}
@@ -424,8 +428,8 @@ type GetLeaderboardRequest struct {
 	Offset    int32
 }
 
-// leaderboard:global:all_time
-// leaderboard:1001:all_time
+// leaderboard:global:all_time , leaderboard:global:daily
+// leaderboard:1001:all_time , leaderboard:1001:daily
 func (q *GetLeaderboardRequest) BuildKey() string {
 
 	key := "leaderboard"
@@ -446,6 +450,8 @@ func (q *GetLeaderboardRequest) BuildKey() string {
 		period = timettl.GetMonth()
 	case Weekly.String():
 		period = timettl.GetWeek()
+	case Daily.String():
+		period = timettl.GetDay()
 	case AllTime.String():
 		return key
 	default:
