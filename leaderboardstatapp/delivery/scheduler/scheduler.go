@@ -91,7 +91,12 @@ func (s *Scheduler) dailyScoreCalculationTask(parentCtx context.Context) {
 
 	log.Info("dailyScoreCalculationTask started", slog.String("time", time.Now().Format(time.RFC3339)))
 
-	ctx, cancel := context.WithTimeout(parentCtx, s.cfg.JobContextTimeout)
+	timeout := s.cfg.JobContextTimeout
+	if timeout <= 0 {
+		log.Warn("scheduler JobContextTimeout not configured; defaulting to 5m")
+		timeout = 5 * time.Minute
+	}
+	ctx, cancel := context.WithTimeout(parentCtx, timeout)
 	defer cancel()
 
 	if sErr := s.leaderboardStatSvc.CalculateDailyContributorScores(ctx); sErr != nil {

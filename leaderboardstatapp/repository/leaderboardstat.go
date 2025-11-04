@@ -127,7 +127,9 @@ func (repo LeaderboardstatRepo) StoreDailyContributorScores(ctx context.Context,
 		ON CONFLICT (contributor_id, timeframe, calculated_at::date) DO UPDATE 
 		SET daily_score = EXCLUDED.daily_score,
 			rank = EXCLUDED.rank,
-			user_id = EXCLUDED.user_id
+			user_id = EXCLUDED.user_id,
+			status = 0,
+			calculated_at = EXCLUDED.calculated_at
 	`
 
 	for _, score := range scores {

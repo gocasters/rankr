@@ -10,6 +10,7 @@ type DailyContributorScore struct {
 	ContributorID types.ID
 	UserID        string  //TODO - data type
 	DailyScore    float64 //TODO - data type
+	ProjectID     types.ID
 	Rank          uint64
 	Timeframe     string
 	CalculatedAt  time.Time
@@ -51,7 +52,8 @@ type UserScore struct {
 }
 
 type ProjectScore struct {
-	UserID    types.ID
-	ProjectID types.ID
-	Score     float64
+	ContributorID types.ID
+	UserID        string
+	ProjectID     types.ID
+	Score         float64
 }

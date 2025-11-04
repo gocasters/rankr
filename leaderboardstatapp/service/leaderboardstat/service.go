@@ -10,6 +10,7 @@ import (
 	types "github.com/gocasters/rankr/type"
 	"github.com/labstack/gommon/log"
 	"log/slog"
+	"sort"
 	"time"
 )
 
@@ -105,8 +106,10 @@ func (s *Service) CalculateDailyContributorScores(ctx context.Context) error {
 	}
 
 	// TODO- do calculations
-	go s.processDailyScoreCalculations(context.Background())
+	go s.processDailyScoreCalculations(context.Background(), dailyScores)
 
+	// TODO - cache if it is needed
+	// TODO - cache key value pattern
 	//if err := s.updateCacheAfterDailyCalculation(ctx, dailyScores); err != nil {
 	//	log.Warn("Failed to update cache after daily calculation", slog.String("error", err.Error()))
 	//}
@@ -118,15 +121,20 @@ func (s *Service) CalculateDailyContributorScores(ctx context.Context) error {
 	return nil
 }
 
-// TODO - get dailyScores as input parameters, check if it is nil get it from DB
-func (s *Service) processDailyScoreCalculations(ctx context.Context) error {
+func (s *Service) processDailyScoreCalculations(ctx context.Context, dailyScores []DailyContributorScore) error {
 	log := logger.L()
 	log.Info("Starting background processing of daily score calculations")
 
-	// Get pending daily scores (status = 0)
-	pendingScores, err := s.repository.GetPendingDailyScores(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get pending daily scores: %w", err)
+	var pendingScores []DailyContributorScore
+	if dailyScores == nil {
+		// Get pending daily scores (status = 0)
+		var err error
+		pendingScores, err = s.repository.GetPendingDailyScores(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to get pending daily scores: %w", err)
+		}
+	} else {
+		pendingScores = dailyScores
 	}
 
 	if len(pendingScores) == 0 {
@@ -139,7 +147,7 @@ func (s *Service) processDailyScoreCalculations(ctx context.Context) error {
 	// Calculate user total scores
 	userScores := s.calculateUserTotalScores(pendingScores)
 
-	// Update user scores in batch
+	// Update user scores
 	if err := s.repository.UpdateUserScores(ctx, userScores); err != nil {
 		return fmt.Errorf("failed to update user scores: %w", err)
 	}
@@ -150,7 +158,7 @@ func (s *Service) processDailyScoreCalculations(ctx context.Context) error {
 		return fmt.Errorf("failed to calculate project scores: %w", err)
 	}
 
-	// Update project scores in batch
+	// Update project scores
 	if err := s.repository.UpdateProjectScores(ctx, projectScores); err != nil {
 		return fmt.Errorf("failed to update project scores: %w", err)
 	}
@@ -197,21 +205,34 @@ func (s *Service) calculateUserTotalScores(dailyScores []DailyContributorScore) 
 
 func (s *Service) calculateProjectScores(ctx context.Context, dailyScores []DailyContributorScore) ([]ProjectScore, error) {
 	// TODO - Implement project mapping logic
-	projectScores := make([]ProjectScore, 0)
 
-	for _, score := range dailyScores {
-		userProjects, err := s.getUserProjects(ctx, score.UserID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get user projects: %w", err)
+	//userProjects, err := s.getUserProjects(ctx, score.UserID)
+	//if err != nil {
+	//	return nil, fmt.Errorf("failed to get user projects: %w", err)
+	//}
+	sortedUserProjects := s.sortDailyScores(dailyScores)
+
+	// Create a map to store sums: userID -> projectID -> total score
+	userProjectSums := make(map[string]map[types.ID]float64)
+
+	// Calculate sums
+	for _, score := range sortedUserProjects {
+		// Initialize user map if not exists
+		if userProjectSums[score.UserID] == nil {
+			userProjectSums[score.UserID] = make(map[types.ID]float64)
 		}
+		// Add score to the project total
+		userProjectSums[score.UserID][score.ProjectID] += score.DailyScore
+	}
 
-		for _, projectID := range userProjects {
-			projectScore := score.DailyScore / float64(len(userProjects))
-
+	// Convert the map to ProjectScore slice
+	var projectScores []ProjectScore
+	for userID, projectMap := range userProjectSums {
+		for projectID, totalScore := range projectMap {
 			projectScores = append(projectScores, ProjectScore{
-				UserID:    score.ContributorID,
+				UserID:    userID, // TODO-  Convert string to types.ID if needed
 				ProjectID: projectID,
-				Score:     projectScore,
+				Score:     totalScore,
 			})
 		}
 	}
@@ -219,10 +240,27 @@ func (s *Service) calculateProjectScores(ctx context.Context, dailyScores []Dail
 	return projectScores, nil
 }
 
-func (s *Service) getUserProjects(ctx context.Context, userID string) ([]types.ID, error) {
-	// TODO: Implement actual logic to get user's projects
-	return []types.ID{types.ID(1), types.ID(2)}, nil
+func (s *Service) sortDailyScores(dailyScores []DailyContributorScore) []DailyContributorScore {
+	sorted := make([]DailyContributorScore, len(dailyScores))
+	copy(sorted, dailyScores)
+
+	// Sort by UserID (primary) and ProjectID (secondary)
+	sort.Slice(sorted, func(i, j int) bool {
+		// First compare by UserID
+		if sorted[i].UserID != sorted[j].UserID {
+			return sorted[i].UserID < sorted[j].UserID
+		}
+		// If UserID is the same, compare by ProjectID
+		return sorted[i].ProjectID < sorted[j].ProjectID
+	})
+
+	return sorted
 }
+
+//func (s *Service) getUserProjects(ctx context.Context, userID string) ([]types.ID, error) {
+//	// TODO: Implement actual logic to get user's projects
+//	return []types.ID{types.ID(1), types.ID(2)}, nil
+//}
 
 func (s *Service) mapUserIDToContributorID(ctx context.Context, userID string) (types.ID, error) {
 	return types.ID(1), nil
