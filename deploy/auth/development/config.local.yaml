@@ -1,0 +1,49 @@
+# ===== General =====
+total_shutdown_timeout: "15s"
+path_of_migration: "./authapp/repository/migrations"
+
+# ===== HTTP Server =====
+http_server:
+  host: "localhost"
+  port: 5002
+  cors:
+    allow_origins:
+      - "*"
+  shutdown_context_timeout: "10s"
+
+# ===== Postgres =====
+postgres_db:
+  host: "localhost"
+  port: 5432
+  user: "rankr_user"
+  password: "rankr_password"
+  db_name: "rankr_auth_db"
+  schema: "public"
+  ssl_mode: "disable"
+  max_conn_lifetime: 1800
+  max_conn_idle_time: 600
+  health_check_period: 30
+  path_of_migrations: "./../../authapp/repository/migrations"
+
+# ===== Redis =====
+redis:
+  host: "localhost"
+  port: 6379
+  
+# ===== Repository =====
+repository:
+  cache_enabled: false
+  cache_prefix: "auth_local"
+
+# ===== Logger =====
+logger:
+  level: "debug"
+  file_path: "logs/auth/service.log"
+  use_local_time: true
+  file_max_size_in_mb: 10
+  file_max_age_in_days: 7
+
+# ===== JWT =====
+jwt:
+  secret: "local-secret"
+  token_duration: "120m"

@@ -1,48 +1,26 @@
-version: '3'
-services: 
-  auth:
-    build: 
+services:
+  authapp:
+    build:
       context: ../../..
-      dockerfile: ./deploy/auth/development/Dockerfile
+      dockerfile: deploy/auth/development/Dockerfile
+      args:
+        GO_IMAGE_NAME: ${GO_IMAGE_NAME}
+        GO_IMAGE_VERSION: ${GO_IMAGE_VERSION}
+    container_name: authapp
     ports:
-      - "5002:5002"
+      - "5005:5004"
     environment:
-      DB_HOST: postgres 
-      DB_PORT: 5432
-      DB_USER: rankr_user
-      DB_PASSWORD: rankr_password
-      DB_NAME: rankr_auth_db
-      DB_SSLMODE: disable
-      
-      JWT_SECRET: secret
-      TOKEN_DURATION: 120 # Minutes
-    depends_on:
-      - postgres
-    
-    restart: always
-    networks:
-      - rankr-net
+      # gRPC clients
+      CONTRIBUTOR_SERVICE_HOST: "contributorapp"
+      CONTRIBUTOR_SERVICE_PORT: 6001
+      TASK_SERVICE_HOST: "taskapp"
+      TASK_SERVICE_PORT: 6002
+      LEADERBOARD_SERVICE_HOST: "leaderboardstatapp"
+      LEADERBOARD_SERVICE_PORT: 6011
 
-  postgres:
-    # You must specify an image for the postgres service
-    image: postgres:15-alpine 
-    ports:
-      - "5432:5432"
-    
-    environment:
-      POSTGRES_USER: rankr_user
-      POSTGRES_PASSWORD: rankr_password
-      POSTGRES_DB: rankr_auth_db
-    
+    #    depends_on:
+    #      - contributorapp
+    #      - taskapp
+    #     - leaderboardapp
     volumes:
-      - postgres_data:/var/lib/postgresql/data/
-    restart: always
-    networks:
-      - rankr-net
-
-volumes:
-  postgres_data:
-networks:
-  rankr-net:
-    name: rankr-development-network
-    external: true
+      - ./logs/auth:/home/app/logs/auth

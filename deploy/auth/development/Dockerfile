@@ -1,22 +1,24 @@
 FROM golang:1.25-alpine AS builder
-ENV CGO_ENABLED=0 \
-    GOOS=linux
-WORKDIR /app
-COPY go.mod go.sum ./
 
+WORKDIR /app
+
+COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
 
-RUN go build -ldflags "-s -w" -o /auth ./authapp/app.go
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/main ./cmd/auth/main.go
 
-# Use a minimal, empty base image for the final runtime
-FROM scratch
 
-ENV TZ=UTC
+FROM alpine:latest
 
-COPY --from=builder /auth /auth
+WORKDIR /app
 
-EXPOSE 5002
+COPY --from=builder /app/main .
 
-ENTRYPOINT ["/auth"]
+COPY --from=builder /app/authapp/repository/migrations ./authapp/repository/migrations
+
+EXPOSE 8080
+
+CMD ["/app/main", "serve"]
