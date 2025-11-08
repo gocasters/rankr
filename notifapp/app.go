@@ -41,6 +41,7 @@ func Setup(cfg Config) (Application, error) {
 
 	httpServer, err := httpserver.New(cfg.HTTPServer)
 	if err != nil {
+		postgresConn.Close()
 		return Application{}, err
 	}
 
@@ -75,7 +76,7 @@ func (app Application) Start() {
 		notifLogger().Info("Servers shutdown gracefully")
 	} else {
 		notifLogger().Warn("Shutdown timed out, exiting application")
-		os.Exit(1)
+		return
 	}
 
 	wg.Wait()
