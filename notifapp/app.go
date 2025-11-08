@@ -35,12 +35,13 @@ func Setup(ctx context.Context, cfg Config) (Application, error) {
 	}
 
 	repo := repository.New(postgresConn)
-	service := notification.NewService(repo)
 	validate := notification.NewValidation()
-	handler := http.NewHandler(service, validate)
+	service := notification.NewService(repo, validate)
+	handler := http.NewHandler(service)
 
 	httpServer, err := httpserver.New(cfg.HTTPServer)
 	if err != nil {
+		postgresConn.Close()
 		return Application{}, err
 	}
 
@@ -75,7 +76,7 @@ func (app Application) Start() {
 		notifLogger().Info("Servers shutdown gracefully")
 	} else {
 		notifLogger().Warn("Shutdown timed out, exiting application")
-		os.Exit(1)
+		return
 	}
 
 	wg.Wait()

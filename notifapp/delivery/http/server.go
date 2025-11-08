@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	echomiddleware "github.com/gocasters/rankr/pkg/echo_middleware"
 	"github.com/gocasters/rankr/pkg/httpserver"
 )
 
@@ -33,7 +34,7 @@ func (s Server) registerRoutes() {
 
 	health.GET("/v1/notifapp/health-check", s.healthCheck)
 
-	v1 := s.HTTPServer.GetRouter().Group("/v1/notifapp/users/:user_id/notifications")
+	v1 := s.HTTPServer.GetRouter().Group("/v1/notifapp/notifications", echomiddleware.ParseUserDataMiddleware)
 
 	v1.GET("/:notification_id", s.handler.getNotification)
 	v1.GET("", s.handler.listNotification)
