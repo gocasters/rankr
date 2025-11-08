@@ -22,7 +22,7 @@ func NewHandler(svc notification.Service) Handler {
 	return Handler{service: svc}
 }
 
-func getNotifID(c echo.Context) (types.ID, error) {
+func getNotificationID(c echo.Context) (types.ID, error) {
 
 	idStr := c.Param(notificationID)
 	if idStr == "" {
@@ -73,7 +73,7 @@ func (h Handler) deleteNotification(c echo.Context) error {
 
 	req.UserID = getUserID(c)
 
-	notifyID, err := getNotifID(c)
+	notifyID, err := getNotificationID(c)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, err)
 	}
@@ -102,7 +102,7 @@ func (h Handler) markAsRead(c echo.Context) error {
 
 	req.UserID = getUserID(c)
 
-	notifyID, err := getNotifID(c)
+	notifyID, err := getNotificationID(c)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, err)
 	}
@@ -151,7 +151,7 @@ func (h Handler) getNotification(c echo.Context) error {
 
 	var req notification.GetRequest
 
-	notifyID, err := getNotifID(c)
+	notifyID, err := getNotificationID(c)
 
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, err)
