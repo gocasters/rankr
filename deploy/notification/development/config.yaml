@@ -12,7 +12,7 @@ postgres_db:
   host: "rankr-shared-postgres"
   port: 5432
   user: "notifapp_user"
-  password: "notifapp_pass_123"
+  password: "notifapp_pass"
   db_name: "notifications"
   ssl_mode: "disable"
 

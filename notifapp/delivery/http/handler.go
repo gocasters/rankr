@@ -38,7 +38,7 @@ func getNotificationID(c echo.Context) (types.ID, error) {
 }
 
 func getUserID(c echo.Context) types.ID {
-	return c.Get("userInfo").(types.UserClaim).ID
+	return c.Get("userInfo").(*types.UserClaim).ID
 }
 
 func (h Handler) createNotification(c echo.Context) error {
@@ -144,7 +144,7 @@ func (h Handler) markAllAsRead(c echo.Context) error {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}
 
-	return c.JSON(http.StatusOK, echo.Map{"message": "Successfully done all notifications as read"})
+	return c.JSON(http.StatusOK, echo.Map{"message": "Successfully marked all notifications as read"})
 }
 
 func (h Handler) getNotification(c echo.Context) error {

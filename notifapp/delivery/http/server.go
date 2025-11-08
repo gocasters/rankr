@@ -36,9 +36,9 @@ func (s Server) registerRoutes() {
 
 	v1 := s.HTTPServer.GetRouter().Group("/v1/notifapp/notifications", echomiddleware.ParseUserDataMiddleware)
 
+	v1.GET("/unread/count", s.handler.getUnreadCount)
 	v1.GET("/:notification_id", s.handler.getNotification)
 	v1.GET("", s.handler.listNotification)
-	v1.GET("/unread/count", s.handler.getUnreadCount)
 
 	v1.POST("", s.handler.createNotification)
 	v1.PUT("/:notification_id", s.handler.markAsRead)
