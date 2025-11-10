@@ -1,0 +1,29 @@
+version: '3.3'
+
+services:
+  notification-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: rankr-notification-service
+    environment:
+      DB_HOST: rankr-shared-postgres
+      DB_PORT: 5432
+      DB_USER: notifapp_user
+      DB_PASSWORD: notifapp_pass
+      DB_NAME: notifications
+    depends_on:
+      rankr-shared-postgres:
+        condition: service_healthy
+    networks:
+      - rankr-shared-development-network
+    volumes:
+      - ./:/home/app
+    restart: unless-stopped
+
+networks:
+  rankr-shared-development-network:
+    external: true
+
+volumes:
+  notifapp-data:

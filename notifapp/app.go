@@ -28,7 +28,7 @@ type Application struct {
 	Config  Config
 }
 
-func Setup(cfg Config) (Application, error) {
+func Setup(ctx context.Context, cfg Config) (Application, error) {
 	postgresConn, err := database.Connect(cfg.PostgresDB)
 	if err != nil {
 		return Application{}, err

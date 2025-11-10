@@ -38,7 +38,7 @@ func getNotificationID(c echo.Context) (types.ID, error) {
 }
 
 func getUserID(c echo.Context) types.ID {
-	return c.Get("userInfo").(types.UserClaim).ID
+	return c.Get("userInfo").(*types.UserClaim).ID
 }
 
 func (h Handler) createNotification(c echo.Context) error {
@@ -53,15 +53,7 @@ func (h Handler) createNotification(c echo.Context) error {
 
 	res, err := h.service.Create(c.Request().Context(), req)
 	if err != nil {
-		if vErr, ok := err.(validator.Error); ok {
-			return c.JSON(vErr.StatusCode(), vErr)
-		}
-
-		if eRes, ok := err.(errmsg.ErrorResponse); ok {
-			return c.JSON(statuscode.MapToHTTPStatusCode(eRes), eRes)
-		}
-
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return handleServiceErr(c, err)
 	}
 
 	return c.JSON(http.StatusCreated, res)
@@ -82,15 +74,7 @@ func (h Handler) deleteNotification(c echo.Context) error {
 
 	err = h.service.Delete(c.Request().Context(), req)
 	if err != nil {
-		if vErr, ok := err.(validator.Error); ok {
-			return c.JSON(vErr.StatusCode(), vErr)
-		}
-
-		if eRes, ok := err.(errmsg.ErrorResponse); ok {
-			return c.JSON(statuscode.MapToHTTPStatusCode(eRes), eRes)
-		}
-
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return handleServiceErr(c, err)
 	}
 
 	return c.NoContent(http.StatusNoContent)
@@ -111,15 +95,7 @@ func (h Handler) markAsRead(c echo.Context) error {
 
 	res, err := h.service.MarkAsRead(c.Request().Context(), req)
 	if err != nil {
-		if vErr, ok := err.(validator.Error); ok {
-			return c.JSON(vErr.StatusCode(), vErr)
-		}
-
-		if eRes, ok := err.(errmsg.ErrorResponse); ok {
-			return c.JSON(statuscode.MapToHTTPStatusCode(eRes), eRes)
-		}
-
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return handleServiceErr(c, err)
 	}
 
 	return c.JSON(http.StatusOK, res)
@@ -133,18 +109,10 @@ func (h Handler) markAllAsRead(c echo.Context) error {
 
 	err := h.service.MarkAllAsRead(c.Request().Context(), req)
 	if err != nil {
-		if vErr, ok := err.(validator.Error); ok {
-			return c.JSON(vErr.StatusCode(), vErr)
-		}
-
-		if eRes, ok := err.(errmsg.ErrorResponse); ok {
-			return c.JSON(statuscode.MapToHTTPStatusCode(eRes), eRes)
-		}
-
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return handleServiceErr(c, err)
 	}
 
-	return c.JSON(http.StatusOK, echo.Map{"message": "Successfully done all notifications as read"})
+	return c.JSON(http.StatusOK, echo.Map{"message": "Successfully marked all notifications as read"})
 }
 
 func (h Handler) getNotification(c echo.Context) error {
@@ -162,15 +130,7 @@ func (h Handler) getNotification(c echo.Context) error {
 
 	res, err := h.service.Get(c.Request().Context(), req)
 	if err != nil {
-		if vErr, ok := err.(validator.Error); ok {
-			return c.JSON(vErr.StatusCode(), vErr)
-		}
-
-		if eRes, ok := err.(errmsg.ErrorResponse); ok {
-			return c.JSON(statuscode.MapToHTTPStatusCode(eRes), eRes)
-		}
-
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return handleServiceErr(c, err)
 	}
 
 	return c.JSON(http.StatusOK, res)
@@ -184,15 +144,7 @@ func (h Handler) listNotification(c echo.Context) error {
 
 	res, err := h.service.List(c.Request().Context(), req)
 	if err != nil {
-		if vErr, ok := err.(validator.Error); ok {
-			return c.JSON(vErr.StatusCode(), vErr)
-		}
-
-		if eRes, ok := err.(errmsg.ErrorResponse); ok {
-			return c.JSON(statuscode.MapToHTTPStatusCode(eRes), eRes)
-		}
-
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return handleServiceErr(c, err)
 	}
 
 	return c.JSON(http.StatusOK, res)
@@ -206,16 +158,20 @@ func (h Handler) getUnreadCount(c echo.Context) error {
 
 	res, err := h.service.GetUnreadCount(c.Request().Context(), req)
 	if err != nil {
-		if vErr, ok := err.(validator.Error); ok {
-			return c.JSON(vErr.StatusCode(), vErr)
-		}
-
-		if eRes, ok := err.(errmsg.ErrorResponse); ok {
-			return c.JSON(statuscode.MapToHTTPStatusCode(eRes), eRes)
-		}
-
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return handleServiceErr(c, err)
 	}
 
 	return c.JSON(http.StatusOK, res)
+}
+
+func handleServiceErr(c echo.Context, err error) error {
+	if vErr, ok := err.(validator.Error); ok {
+		return c.JSON(vErr.StatusCode(), vErr)
+	}
+
+	if eRes, ok := err.(errmsg.ErrorResponse); ok {
+		return c.JSON(statuscode.MapToHTTPStatusCode(eRes), eRes)
+	}
+
+	return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 }
