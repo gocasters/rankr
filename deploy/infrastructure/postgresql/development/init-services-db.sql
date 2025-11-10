@@ -2,6 +2,21 @@
 -- Rankr Microservices PostgreSQL Initialization Script
 -- ==================================================
 
+
+-- Load users and passwords from environment variables
+\set LEADERBOARDSTAT_USER :'LEADERBOARDSTAT_USER'
+\set LEADERBOARDSTAT_PASS :'LEADERBOARDSTAT_PASS'
+\set CONTRIBUTOR_USER :'CONTRIBUTOR_USER'
+\set CONTRIBUTOR_PASS :'CONTRIBUTOR_PASS'
+\set PROJECT_USER :'PROJECT_USER'
+\set PROJECT_PASS :'PROJECT_PASS'
+\set WEBHOOK_USER :'WEBHOOK_USER'
+\set WEBHOOK_PASS :'WEBHOOK_PASS'
+\set LEADERBOARDSCORING_USER :'LEADERBOARDSCORING_USER'
+\set LEADERBOARDSCORING_PASS :'LEADERBOARDSCORING_PASS'
+\set NOTIFAPP_USER :'NOTIFAPP_USER'
+\set NOTIFAPP_PASS :'NOTIFAPP_PASS'
+
 \echo '========================================='
 \echo 'Initializing Rankr microservice databases...'
 \echo '========================================='
@@ -111,6 +126,33 @@ GRANT ALL PRIVILEGES ON DATABASE leaderboardscoring_db TO leaderboardscoring_use
 \echo 'All privileges granted successfully'
 
 -- ==================================================
+-- 6. Notification Service
+-- ==================================================
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'NOTIFAPP_USER') THEN
+        EXECUTE format(
+            'CREATE USER %I WITH PASSWORD %L',
+            :'NOTIFAPP_USER',
+            :'NOTIFAPP_PASS'
+        );
+        RAISE NOTICE 'User % created', :'NOTIFAPP_USER';
+ELSE
+        RAISE NOTICE 'User % already exists', :'NOTIFAPP_USER';
+END IF;
+END
+$$;
+
+SELECT format(
+               'CREATE DATABASE notifications OWNER %I',
+               :'NOTIFAPP_USER'
+       ) WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'notifications') \gexec;
+
+GRANT ALL PRIVILEGES ON DATABASE notifications TO :'NOTIFAPP_USER';
+
+\echo 'notifications DB ready (owner: notifapp_user)'
+
+-- ==================================================
 -- Summary
 -- ==================================================
 \echo '========================================='
@@ -122,6 +164,7 @@ GRANT ALL PRIVILEGES ON DATABASE leaderboardscoring_db TO leaderboardscoring_use
 \echo '  - project_db               → project_user'
 \echo '  - webhook_db               → webhook_user'
 \echo '  - leaderboardscoring_db    → leaderboardscoring_user'
+\echo '  - notifications            → notifapp_user'
 \echo '========================================='
 \echo 'SECURITY NOTE: Default passwords are used!'
 \echo 'Change passwords in production environment.'
