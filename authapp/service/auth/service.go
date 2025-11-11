@@ -51,9 +51,6 @@ func (s Service) CreateRole(ctx context.Context, req CreateRoleRequest) (CreateR
 		return CreateRoleResponse{}, errmsg.ErrorResponse{
 			Message:         "failed to create role",
 			InternalErrCode: statuscode.IntCodeUnExpected,
-			Errors: map[string]any{
-				"repository_error": err.Error(),
-			},
 		}
 	}
 
