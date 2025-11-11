@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"log/slog"
 
@@ -19,8 +20,8 @@ var serveCmd = &cobra.Command{
 	Use:   "serve",
 	Short: "Start the auth service",
 	Long:  `This command starts the main auth service.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		serve()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return serve()
 	},
 }
 
@@ -31,13 +32,13 @@ func init() {
 	RootCmd.AddCommand(serveCmd)
 }
 
-func serve() {
+func serve() error {
 	// Load config
 	cfg := loadAppConfig()
 
 	// Initialize logger
 	if err := logger.Init(cfg.Logger); err != nil {
-		log.Fatalf("Failed to initialize logger: %v", err)
+		return fmt.Errorf("failed to initialize logger: %w", err)
 	}
 	defer func() {
 		if err := logger.Close(); err != nil {
@@ -51,7 +52,7 @@ func serve() {
 		if migrateUp && migrateDown {
 			svcLogger.Error("invalid flags: --migrate-up and --migrate-down cannot be used together")
 
-			return
+			return fmt.Errorf("invalid flags: --migrate-up and --migrate-down cannot be used together")
 		}
 
 		mgr := migrator.New(cfg.PostgresDB, cfg.PathOfMigration)
@@ -77,17 +78,19 @@ func serve() {
 	db, err := database.Connect(cfg.PostgresDB)
 	if err != nil {
 		svcLogger.Error("failed to connect to database", slog.Any("error", err))
-		return
+		return fmt.Errorf("failed to connect to database: %w", err)
 	}
 	defer db.Close()
 
 	app, err := authapp.Setup(ctx, cfg, db)
 	if err != nil {
 		svcLogger.Error("auth setup failed", slog.Any("error", err))
-		return
+		return fmt.Errorf("auth setup failed: %w", err)
 	}
 
 	app.Start()
 
 	svcLogger.Info("auth service started")
+
+	return nil
 }
