@@ -30,7 +30,7 @@ if [ "$CMD" = "up -d" ] && [ $# -eq 0 ]; then
   docker compose \
     --env-file ./deploy/.env \
     --project-directory . \
-    -f ./deploy/infrastructure/postgres/development/docker-compose.yml \
+    -f ./deploy/infrastructure/postgresql/development/docker-compose.postgresql.yml \
     -f ./deploy/development/grafana-compose.yml \
     -f ./deploy/development/jaeger-compose.yml \
     -f ./deploy/development/centrifugo-compose.yml \
@@ -50,7 +50,7 @@ echo "🚀 Running docker compose for app stack ($CMD $*)..."
 docker compose \
   --env-file ./deploy/.env \
   --project-directory . \
-  -f ./deploy/infrastructure/postgres/development/docker-compose.yml \
+  -f ./deploy/infrastructure/postgresql/development/docker-compose.postgresql.yml \
   -f ./deploy/development/nats-compose.yml \
   -f ./deploy/contributor/development/docker-compose.yaml \
   -f ./deploy/development/otel_collector-compose.yml \
