@@ -27,9 +27,9 @@ services:
     image: postgres:15
     container_name: auth-db
     environment:
-      POSTGRES_USER: auth_admin
-      POSTGRES_PASSWORD: password123
-      POSTGRES_DB: auth_db
+       POSTGRES_USER: ${POSTGRES_USER:-auth_admin}
+       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password123}
+       POSTGRES_DB: ${POSTGRES_DB:-auth_db}
     ports:
       - "5432:5432"
     networks:
@@ -42,7 +42,7 @@ services:
   auth-redis:
     image: redis:7
     container_name: auth-redis
-    command: ["redis-server", "--requirepass", "password1999"]
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-password1999}"]
     ports:
       - "6379:6379"
     networks:
