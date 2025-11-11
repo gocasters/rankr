@@ -1,24 +1,31 @@
-FROM golang:1.25-alpine AS builder
+ARG GO_IMAGE_NAME=golang
+ARG GO_IMAGE_VERSION=1.25.0-alpine
 
-WORKDIR /app
+FROM ${GO_IMAGE_NAME}:${GO_IMAGE_VERSION} AS builder
 
+# Set GOPROXY with direct fallback
+ENV GOPROXY=https://proxy.golang.org,direct
+ENV GOSUMDB=sum.golang.org
+
+WORKDIR /home/app
+
+# Copy from project root (context is set to ../../.. in compose)
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/main ./cmd/auth/main.go
+RUN go build -o /bin/auth cmd/auth/main.go
 
+FROM alpine:3.19
 
-FROM alpine:latest
+RUN echo "https://dl-cdn.alpinelinux.org/alpine/v3.19/main" > /etc/apk/repositories && \
+    echo "https://dl-cdn.alpinelinux.org/alpine/v3.19/community" >> /etc/apk/repositories
 
-WORKDIR /app
+COPY --from=builder /bin/auth /bin/auth
 
-COPY --from=builder /app/main .
+WORKDIR /home/app
 
-COPY --from=builder /app/authapp/repository/migrations ./authapp/repository/migrations
+EXPOSE 6011
 
-EXPOSE 8080
-
-CMD ["/app/main", "serve"]
+CMD ["/bin/auth", "serve"]

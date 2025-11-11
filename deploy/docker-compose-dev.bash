@@ -56,7 +56,7 @@ docker compose \
   -f ./deploy/development/otel_collector-compose.yml \
   -f ./deploy/development/jaeger-compose.yml \
   -f ./deploy/task/development/docker-compose.yaml \
-  -f ./deploy/leaderboardstat/development/docker-compose.yml \
+  -f ./deploy/auth/development/docker-compose.yml \
   $CMD "$@"
 
 echo "✅ Done."

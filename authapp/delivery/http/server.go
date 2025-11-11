@@ -34,9 +34,13 @@ func (s Server) RegisterRoutes() {
 	v1 := s.HTTPServer.GetRouter().Group("v1")
 
 	v1.GET("/health-check", s.Handler.healthCheck)
-	v1.GET("/grant/:id", s.Handler.getGrant)
-	v1.GET("/grants", s.Handler.listGrants)
-	v1.POST("/grant", s.Handler.createGrant)
-	v1.PUT("/grant", s.Handler.updateGrant)
-	v1.DELETE("/grant/:id", s.Handler.deleteGrant)
+	v1.POST("/login", s.Handler.login)
+	v1.POST("/token/verify", s.Handler.verifyToken)
+	v1.GET("/role/:id", s.Handler.getRole)
+	v1.GET("/roles", s.Handler.listRoles)
+	v1.POST("/role", s.Handler.createRole)
+	v1.PUT("/role", s.Handler.updateRole)
+	v1.DELETE("/role/:id", s.Handler.deleteRole)
+	v1.POST("/role/permission", s.Handler.addPermissionToRole)
+	v1.DELETE("/role/permission", s.Handler.removePermissionFromRole)
 }

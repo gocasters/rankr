@@ -1,37 +1,67 @@
 package auth
 
 import (
-	"time"
-
 	types "github.com/gocasters/rankr/type"
 )
 
-type CreateGrantRequest struct {
-	Subject string   `json:"subject"`
-	Object  string   `json:"object"`
-	Action  string   `json:"action"`
-	Field   []string `json:"field,omitempty"`
+type CreateRoleRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
 }
 
-type UpdateGrantRequest struct {
-	ID      types.ID `json:"id"`
-	Subject string   `json:"subject,omitempty"`
-	Object  string   `json:"object,omitempty"`
-	Action  string   `json:"action,omitempty"`
-	Field   []string `json:"field,omitempty"`
+type CreateRoleResponse struct {
+	RoleID types.ID `json:"role_id"`
 }
 
-type GrantResponse struct {
-	ID        types.ID  `json:"id"`
-	Subject   string    `json:"subject"`
-	Object    string    `json:"object"`
-	Action    string    `json:"action"`
-	Field     []string  `json:"field,omitempty"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+type GetRoleRequest struct {
+	RoleID types.ID `json:"role_id"`
 }
 
-type ListGrantsResponse struct {
-	Grants []GrantResponse `json:"grants"`
-	Total  int             `json:"total"`
+type GetRoleResponse struct {
+	Role Role `json:"role"`
+}
+
+type UpdateRoleRequest struct {
+	RoleID      types.ID `json:"role_id"`
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+}
+
+type UpdateRoleResponse struct {
+	Success bool `json:"success"`
+}
+
+type DeleteRoleRequest struct {
+	RoleID types.ID `json:"role_id"`
+}
+
+type DeleteRoleResponse struct {
+	Success bool `json:"success"`
+}
+
+type ListRoleRequest struct {
+	Page     int `json:"page"`
+	PageSize int `json:"page_size"`
+}
+
+type ListRoleResponse struct {
+	Roles []Role `json:"roles"`
+}
+
+type AddPermissionRequest struct {
+	RoleID       types.ID `json:"role_id"`
+	PermissionID types.ID `json:"permission_id"`
+}
+
+type AddPermissionResponse struct {
+	Success bool `json:"success"`
+}
+
+type RemovePermissionRequest struct {
+	RoleID       types.ID `json:"role_id"`
+	PermissionID types.ID `json:"permission_id"`
+}
+
+type RemovePermissionResponse struct {
+	Success bool `json:"success"`
 }

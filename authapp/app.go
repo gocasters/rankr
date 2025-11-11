@@ -2,7 +2,6 @@ package authapp
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -10,23 +9,22 @@ import (
 	"syscall"
 
 	statHTTP "github.com/gocasters/rankr/authapp/delivery/http"
-
-	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/authapp/repository"
 	"github.com/gocasters/rankr/authapp/service/auth"
-	"github.com/gocasters/rankr/pkg/cachemanager"
+	"github.com/gocasters/rankr/authapp/service/tokenservice"
 	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/pkg/httpserver"
 	"github.com/gocasters/rankr/pkg/logger"
 )
 
 type Application struct {
-	Repo       auth.Repository
-	Srv        auth.Service
-	Handler    statHTTP.Handler
-	HTTPServer statHTTP.Server
-	Config     Config
-	Validator  auth.Validator
+	Repo         auth.Repository
+	Srv          auth.Service
+	TokenService *tokenservice.AuthService
+	Handler      statHTTP.Handler
+	HTTPServer   statHTTP.Server
+	Config       Config
+	Validator    auth.Validator
 }
 
 func Setup(
@@ -36,16 +34,12 @@ func Setup(
 ) (Application, error) {
 	log := logger.L()
 
-	redisAdapter, err := redis.New(ctx, config.Redis)
-	if err != nil {
-		log.Error("failed to initialize Redis", "err", err)
-		return Application{}, err
-	}
-	cache := cachemanager.NewCacheManager(redisAdapter)
-
-	repo := repository.NewAuthRepo(config.Repository, postgresConn)
+	repo := repository.NewRepository(postgresConn)
 	validator := auth.NewValidator(repo)
-	svc := auth.NewService(repo, validator, *cache, nil)
+	svc := auth.NewService(repo, validator)
+
+	jwtManager := tokenservice.NewJWTManager(config.JWT.Secret, config.JWT.TokenDuration)
+	tokenSvc := tokenservice.NewAuthService(jwtManager)
 
 	httpSrvCore, err := httpserver.New(config.HTTPServer)
 	if err != nil {
@@ -53,16 +47,17 @@ func Setup(
 		return Application{}, err
 	}
 
-	httpHandler := statHTTP.NewHandler(svc)
+	httpHandler := statHTTP.NewHandler(svc, tokenSvc)
 	httpSrv := statHTTP.New(*httpSrvCore, httpHandler)
 
 	return Application{
-		Repo:       repo,
-		Srv:        svc,
-		Handler:    httpHandler,
-		HTTPServer: httpSrv,
-		Config:     config,
-		Validator:  validator,
+		Repo:         repo,
+		Srv:          svc,
+		TokenService: tokenSvc,
+		Handler:      httpHandler,
+		HTTPServer:   httpSrv,
+		Config:       config,
+		Validator:    validator,
 	}, nil
 }
 
@@ -76,15 +71,15 @@ func (app Application) Start() {
 	startServers(app, &wg)
 
 	<-ctx.Done()
-	log.Info("Shutdown signal received...")
+	log.Info("shutdown signal received")
 
 	shutdownTimeoutCtx, cancel := context.WithTimeout(context.Background(), app.Config.TotalShutdownTimeout)
 	defer cancel()
 
 	if app.shutdownServers(shutdownTimeoutCtx) {
-		log.Info("Servers shut down gracefully")
+		log.Info("servers shut down gracefully")
 	} else {
-		log.Warn("Shutdown timed out, exiting application")
+		log.Warn("shutdown timed out; forcing exit")
 		os.Exit(1)
 	}
 
@@ -98,17 +93,17 @@ func startServers(app Application, wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		log.Info(fmt.Sprintf("HTTP Server started on %d", app.Config.HTTPServer.Port))
+		log.Info("HTTP server starting", slog.Int("port", app.Config.HTTPServer.Port))
 		if err := app.HTTPServer.Serve(); err != nil {
-			log.Error(fmt.Sprintf("error in authapp HTTP Server on %d", app.Config.HTTPServer.Port), slog.Any("error", err))
+			log.Error("HTTP server error", slog.Int("port", app.Config.HTTPServer.Port), slog.Any("error", err))
 		}
-		log.Info(fmt.Sprintf("HTTP Server stopped %d", app.Config.HTTPServer.Port))
+		log.Info("HTTP server stopped", slog.Int("port", app.Config.HTTPServer.Port))
 	}()
 }
 
 func (app Application) shutdownServers(ctx context.Context) bool {
 	log := logger.L()
-	log.Info("Starting authapp server shutdown process...")
+	log.Info("starting authapp server shutdown process")
 
 	shutdownDone := make(chan struct{})
 
@@ -119,7 +114,7 @@ func (app Application) shutdownServers(ctx context.Context) bool {
 
 		shutdownWg.Wait()
 		close(shutdownDone)
-		log.Info("HTTP server has been shut down successfully.")
+		log.Info("HTTP server has been shut down successfully")
 	}()
 
 	select {
@@ -133,7 +128,7 @@ func (app Application) shutdownServers(ctx context.Context) bool {
 func (app Application) shutdownHTTPServer(parentCtx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 	log := logger.L()
-	log.Info(fmt.Sprintf("Starting graceful shutdown for HTTP server on port %d", app.Config.HTTPServer.Port))
+	log.Info("starting graceful shutdown for HTTP server", slog.Int("port", app.Config.HTTPServer.Port))
 
 	httpShutdownCtx, httpCancel := context.WithTimeout(parentCtx, app.Config.HTTPServer.ShutdownTimeout)
 	defer httpCancel()
@@ -143,5 +138,5 @@ func (app Application) shutdownHTTPServer(parentCtx context.Context, wg *sync.Wa
 		return
 	}
 
-	log.Info("HTTP server shut down successfully.")
+	log.Info("HTTP server shut down successfully")
 }
