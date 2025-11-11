@@ -8,7 +8,6 @@ import (
 	"github.com/gocasters/rankr/pkg/cachemanager"
 	"github.com/gocasters/rankr/pkg/logger"
 	types "github.com/gocasters/rankr/type"
-	"github.com/labstack/gommon/log"
 	"log/slog"
 	"sort"
 	"time"
@@ -158,13 +157,20 @@ func (s *Service) processDailyScoreCalculations(ctx context.Context, dailyScores
 	// Mark daily scores as processed
 	scoreIDs := make([]types.ID, len(pendingScores))
 	for i, score := range pendingScores {
+		if score.ID == 0 {
+			continue
+		}
 		scoreIDs[i] = score.ID
 	}
+
+	if len(scoreIDs) == 0 {
+		return nil
+	}
+
 	if err := s.repository.MarkDailyScoresAsProcessed(ctx, scoreIDs); err != nil {
 		return fmt.Errorf("failed to mark daily scores as processed: %w", err)
 	}
 
-	// Update cache
 	if err := s.updateCacheAfterDailyCalculation(ctx, pendingScores); err != nil {
 		log.Warn("Failed to update cache after daily calculation", slog.String("error", err.Error()))
 	}
@@ -226,6 +232,7 @@ func (s *Service) mapUserIDToContributorID(ctx context.Context, userID string) (
 }
 
 func (s *Service) updateCacheAfterDailyCalculation(ctx context.Context, scores []DailyContributorScore) error {
+	log := logger.L()
 	cacheKey := "global_leaderboard:daily"
 	if err := s.cacheManager.Delete(ctx, cacheKey); err != nil {
 		return fmt.Errorf("failed to clear cache: %w", err)
@@ -235,7 +242,7 @@ func (s *Service) updateCacheAfterDailyCalculation(ctx context.Context, scores [
 		return fmt.Errorf("failed to set cache: %w", cacheSetErr)
 	}
 
-	log.Info("Cache set successfully", slog.String(time.Now().String(), cacheKey))
+	log.Info("Cache set successfully", slog.String("cache_key", cacheKey), slog.String("timestamp", time.Now().String()))
 	return nil
 }
 

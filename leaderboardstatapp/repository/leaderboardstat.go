@@ -123,12 +123,10 @@ func (repo LeaderboardstatRepo) StoreDailyContributorScores(ctx context.Context,
 
 	query := `
 		INSERT INTO scores 
-		(contributor_id, score, project_id, rank, timeframe, calculated_at)
+		(contributor_id, project_id, daily_score, rank, timeframe, calculated_at, status)
 		VALUES ($1, $2, $3, $4, $5, $6)
-		--ON CONFLICT (contributor_id, timeframe, calculated_at::date) DO UPDATE 
-		SET score = EXCLUDED.score,
+		SET sdaily_score   = EXCLUDED.daily_score,
 			rank = EXCLUDED.rank,
-			--user_id = EXCLUDED.user_id,
 			status = 0,
 			calculated_at = EXCLUDED.calculated_at
 	`
@@ -136,7 +134,6 @@ func (repo LeaderboardstatRepo) StoreDailyContributorScores(ctx context.Context,
 	for _, score := range scores {
 		batch.Queue(query,
 			score.ContributorID,
-			//score.UserID,
 			score.Score,
 			score.ProjectID,
 			score.Rank,
@@ -239,7 +236,7 @@ func (repo LeaderboardstatRepo) UpdateGlobalScores(ctx context.Context, userProj
 	batch := &pgx.Batch{}
 	query := `
 		INSERT INTO user_project_scores (contributor_id, project_id, score, timeframe, time_value, updated_at)
-		VALUES ($1, 0, $2, NULL, NULL, $3)
+		VALUES ($1, 0, $2, 'daily', 'global', $3)
 		ON CONFLICT (contributor_id, project_id, timeframe, time_value) 
 		DO UPDATE SET score = user_project_scores.score + EXCLUDED.score,
 		              updated_at = EXCLUDED.updated_at
