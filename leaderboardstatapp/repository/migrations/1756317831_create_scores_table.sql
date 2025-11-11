@@ -6,10 +6,11 @@ CREATE TABLE IF NOT EXISTS scores (
     project_id BIGINT NOT NULL,
     activity VARCHAR(50) NOT NULL,
     score DECIMAL(10, 2) NOT NULL,
+    rank INT,
     earned_at  TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NULL,
-    is_deleted BOOLEAN NULL
+    is_deleted BOOLEAN NULL,
+    status INT DEFAULT 0
 );
 
 -- +migrate Down

@@ -8,6 +8,7 @@ import (
 	"github.com/gocasters/rankr/pkg/database"
 	types "github.com/gocasters/rankr/type"
 	"github.com/jackc/pgx/v5"
+	"time"
 )
 
 type Config struct {
@@ -121,13 +122,13 @@ func (repo LeaderboardstatRepo) StoreDailyContributorScores(ctx context.Context,
 	batch := &pgx.Batch{}
 
 	query := `
-		INSERT INTO daily_contributor_scores 
-		(contributor_id, user_id, daily_score, rank, timeframe, calculated_at)
+		INSERT INTO scores 
+		(contributor_id, score, project_id, rank, timeframe, calculated_at)
 		VALUES ($1, $2, $3, $4, $5, $6)
-		ON CONFLICT (contributor_id, timeframe, calculated_at::date) DO UPDATE 
-		SET daily_score = EXCLUDED.daily_score,
+		--ON CONFLICT (contributor_id, timeframe, calculated_at::date) DO UPDATE 
+		SET score = EXCLUDED.score,
 			rank = EXCLUDED.rank,
-			user_id = EXCLUDED.user_id,
+			--user_id = EXCLUDED.user_id,
 			status = 0,
 			calculated_at = EXCLUDED.calculated_at
 	`
@@ -135,8 +136,9 @@ func (repo LeaderboardstatRepo) StoreDailyContributorScores(ctx context.Context,
 	for _, score := range scores {
 		batch.Queue(query,
 			score.ContributorID,
-			score.UserID,
-			score.DailyScore,
+			//score.UserID,
+			score.Score,
+			score.ProjectID,
 			score.Rank,
 			score.Timeframe,
 			score.CalculatedAt,
@@ -177,7 +179,7 @@ func (repo LeaderboardstatRepo) GetPendingDailyScores(ctx context.Context) ([]le
 			&score.ID,
 			&score.ContributorID,
 			&score.UserID,
-			&score.DailyScore,
+			&score.Score,
 			&score.Rank,
 			&score.Timeframe,
 			&score.CalculatedAt,
@@ -190,52 +192,24 @@ func (repo LeaderboardstatRepo) GetPendingDailyScores(ctx context.Context) ([]le
 
 	return scores, nil
 }
-func (repo LeaderboardstatRepo) UpdateUserScores(ctx context.Context, userScores []leaderboardstat.UserScore) error {
-	if len(userScores) == 0 {
+
+func (repo LeaderboardstatRepo) UpdateUserProjectScores(ctx context.Context, userProjectScores []leaderboardstat.UserProjectScore) error {
+	if len(userProjectScores) == 0 {
 		return nil
 	}
 
 	batch := &pgx.Batch{}
 
 	query := `
-		INSERT INTO user_scores (user_id, score) 
-		VALUES ($1, $2)
-		ON CONFLICT (user_id) 
-		DO UPDATE SET score = user_scores.score + EXCLUDED.score
+		INSERT INTO user_project_scores (contributor_id, project_id, score, timeframe, time_value, updated_at 
+		VALUES ($1, $2, $3, $4, $5, $6)
+		ON CONFLICT (contributor_id, project_id, timeframe, time_value) 
+		DO UPDATE SET score = user_project_scores.score + EXCLUDED.score
+					  updated_at = EXCLUDED.updated_at
 	`
 
-	for _, userScore := range userScores {
-		batch.Queue(query, userScore.UserID, userScore.Score)
-	}
-
-	results := repo.PostgreSQL.Pool.SendBatch(ctx, batch)
-	defer results.Close()
-
-	for i := 0; i < batch.Len(); i++ {
-		_, err := results.Exec()
-		if err != nil {
-			return fmt.Errorf("failed to update user score at index %d: %w", i, err)
-		}
-	}
-
-	return nil
-}
-func (repo LeaderboardstatRepo) UpdateProjectScores(ctx context.Context, projectScores []leaderboardstat.ProjectScore) error {
-	if len(projectScores) == 0 {
-		return nil
-	}
-
-	batch := &pgx.Batch{}
-
-	query := `
-		INSERT INTO project_scores (user_id, project_id, score) 
-		VALUES ($1, $2, $3)
-		ON CONFLICT (user_id, project_id) 
-		DO UPDATE SET score = project_scores.score + EXCLUDED.score
-	`
-
-	for _, projectScore := range projectScores {
-		batch.Queue(query, projectScore.UserID, projectScore.ProjectID, projectScore.Score)
+	for _, upScore := range userProjectScores {
+		batch.Queue(query, upScore.ContributorID, upScore.ProjectID, upScore.Score, upScore.Timeframe, upScore.TimeValue, time.Now())
 	}
 
 	results := repo.PostgreSQL.Pool.SendBatch(ctx, batch)
@@ -245,6 +219,43 @@ func (repo LeaderboardstatRepo) UpdateProjectScores(ctx context.Context, project
 		_, err := results.Exec()
 		if err != nil {
 			return fmt.Errorf("failed to update project score at index %d: %w", i, err)
+		}
+	}
+
+	return nil
+}
+
+func (repo LeaderboardstatRepo) UpdateGlobalScores(ctx context.Context, userProjectScores []leaderboardstat.UserProjectScore) error {
+	if len(userProjectScores) == 0 {
+		return nil
+	}
+
+	contributorTotals := make(map[types.ID]float64)
+
+	for _, score := range userProjectScores {
+		contributorTotals[score.ContributorID] += score.Score
+	}
+
+	batch := &pgx.Batch{}
+	query := `
+		INSERT INTO user_project_scores (contributor_id, project_id, score, timeframe, time_value, updated_at)
+		VALUES ($1, 0, $2, NULL, NULL, $3)
+		ON CONFLICT (contributor_id, project_id, timeframe, time_value) 
+		DO UPDATE SET score = user_project_scores.score + EXCLUDED.score,
+		              updated_at = EXCLUDED.updated_at
+	`
+
+	for contributorID, totalScore := range contributorTotals {
+		batch.Queue(query, contributorID, totalScore, time.Now())
+	}
+
+	results := repo.PostgreSQL.Pool.SendBatch(ctx, batch)
+	defer results.Close()
+
+	for i := 0; i < batch.Len(); i++ {
+		_, err := results.Exec()
+		if err != nil {
+			return fmt.Errorf("failed to update global score at index %d: %w", i, err)
 		}
 	}
 

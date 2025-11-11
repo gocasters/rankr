@@ -26,8 +26,8 @@ type Repository interface {
 	StoreDailyContributorScores(ctx context.Context, scores []DailyContributorScore) error
 
 	GetPendingDailyScores(ctx context.Context) ([]DailyContributorScore, error)
-	UpdateUserScores(ctx context.Context, userScores []UserScore) error
-	UpdateProjectScores(ctx context.Context, projectScores []ProjectScore) error
+	UpdateUserProjectScores(ctx context.Context, userProjectScores []UserProjectScore) error
+	UpdateGlobalScores(ctx context.Context, userProjectScores []UserProjectScore) error
 	MarkDailyScoresAsProcessed(ctx context.Context, scoreIDs []types.ID) error
 }
 
@@ -49,7 +49,7 @@ func NewService(repo Repository, validator Validator, cacheManger cachemanager.C
 	}
 }
 
-func (s *Service) CalculateDailyContributorScores(ctx context.Context) error {
+func (s *Service) GetDailyContributorScores(ctx context.Context) error {
 	log := logger.L()
 	log.Info("Starting daily contributor scores calculation")
 
@@ -57,9 +57,9 @@ func (s *Service) CalculateDailyContributorScores(ctx context.Context) error {
 		return fmt.Errorf("leaderboardscoring client is not initialized")
 	}
 
-	// Get daily leaderboard from leaderboardscoring service
+	// Get daily leaderboard from LeaderboardScoring service
 	getLeaderboardReq := &lbscoring.GetLeaderboardRequest{
-		Timeframe: "", //leaderboardscoring.Daily, // TODO - set proper timestamp
+		Timeframe: "Daily", // TODO - set proper timestamp
 		PageSize:  1000,
 		Offset:    0,
 	}
@@ -74,7 +74,6 @@ func (s *Service) CalculateDailyContributorScores(ctx context.Context) error {
 		slog.String("timeframe", string(leaderboardRes.Timeframe)),
 	)
 
-	// Process and store daily scores
 	var dailyScores []DailyContributorScore
 	calculatedAt := time.Now()
 
@@ -92,23 +91,22 @@ func (s *Service) CalculateDailyContributorScores(ctx context.Context) error {
 		dailyScore := DailyContributorScore{
 			ContributorID: contributorID,
 			UserID:        row.UserID,
-			DailyScore:    float64(row.Score), // TODO - define is score data type float or int
-			Rank:          row.Rank,
+			Score:         float64(row.Score), // TODO - define is score data type float or int
+			Rank:          row.Rank,           // TODO
 			Timeframe:     string(leaderboardRes.Timeframe),
 			CalculatedAt:  calculatedAt,
+			ProjectID:     1, // TODO add project_id to row response
 		}
 		dailyScores = append(dailyScores, dailyScore)
 	}
 
-	// Store the daily scores
 	if err := s.repository.StoreDailyContributorScores(ctx, dailyScores); err != nil {
 		return fmt.Errorf("failed to store daily contributor scores: %w", err)
 	}
 
-	// TODO- do calculations
-	go s.processDailyScoreCalculations(context.Background(), dailyScores)
+	go s.processDailyScoreCalculations(ctx, dailyScores)
 
-	// TODO - cache if it is needed
+	// TODO - cache current day scores in anther job
 	// TODO - cache key value pattern
 	//if err := s.updateCacheAfterDailyCalculation(ctx, dailyScores); err != nil {
 	//	log.Warn("Failed to update cache after daily calculation", slog.String("error", err.Error()))
@@ -144,23 +142,17 @@ func (s *Service) processDailyScoreCalculations(ctx context.Context, dailyScores
 
 	log.Info("Processing pending daily scores", slog.Int("count", len(pendingScores)))
 
-	// Calculate user total scores
-	userScores := s.calculateUserTotalScores(pendingScores)
-
-	// Update user scores
-	if err := s.repository.UpdateUserScores(ctx, userScores); err != nil {
-		return fmt.Errorf("failed to update user scores: %w", err)
-	}
-
-	// Calculate project scores
-	projectScores, err := s.calculateProjectScores(ctx, pendingScores)
+	userProjectScores, err := s.calculateUserProjectScores(ctx, pendingScores)
 	if err != nil {
 		return fmt.Errorf("failed to calculate project scores: %w", err)
 	}
 
-	// Update project scores
-	if err := s.repository.UpdateProjectScores(ctx, projectScores); err != nil {
+	if err := s.repository.UpdateUserProjectScores(ctx, userProjectScores); err != nil {
 		return fmt.Errorf("failed to update project scores: %w", err)
+	}
+
+	if err := s.repository.UpdateGlobalScores(ctx, userProjectScores); err != nil {
+		return fmt.Errorf("failed to update global scores: %w", err)
 	}
 
 	// Mark daily scores as processed
@@ -178,90 +170,57 @@ func (s *Service) processDailyScoreCalculations(ctx context.Context, dailyScores
 	}
 
 	log.Info("Successfully processed daily score calculations",
-		slog.Int("users_updated", len(userScores)),
-		slog.Int("projects_updated", len(projectScores)),
+		slog.Int("projects_updated", len(userProjectScores)),
 	)
 
 	return nil
 }
 
-func (s *Service) calculateUserTotalScores(dailyScores []DailyContributorScore) []UserScore {
-	userScoreMap := make(map[types.ID]float64)
-
-	for _, score := range dailyScores {
-		userScoreMap[score.ContributorID] += score.DailyScore
-	}
-
-	userScores := make([]UserScore, 0, len(userScoreMap))
-	for userID, totalScore := range userScoreMap {
-		userScores = append(userScores, UserScore{
-			UserID: userID,
-			Score:  totalScore,
-		})
-	}
-
-	return userScores
-}
-
-func (s *Service) calculateProjectScores(ctx context.Context, dailyScores []DailyContributorScore) ([]ProjectScore, error) {
+func (s *Service) calculateUserProjectScores(ctx context.Context, dailyScores []DailyContributorScore) ([]UserProjectScore, error) {
 	// TODO - Implement project mapping logic
-
-	//userProjects, err := s.getUserProjects(ctx, score.UserID)
-	//if err != nil {
-	//	return nil, fmt.Errorf("failed to get user projects: %w", err)
-	//}
 	sortedUserProjects := s.sortDailyScores(dailyScores)
 
-	// Create a map to store sums: userID -> projectID -> total score
-	userProjectSums := make(map[string]map[types.ID]float64)
+	// to store sums: userID -> projectID -> total score
+	userProjectSums := make(map[types.ID]map[types.ID]float64)
 
-	// Calculate sums
 	for _, score := range sortedUserProjects {
-		// Initialize user map if not exists
-		if userProjectSums[score.UserID] == nil {
-			userProjectSums[score.UserID] = make(map[types.ID]float64)
+		if userProjectSums[score.ContributorID] == nil {
+			userProjectSums[score.ContributorID] = make(map[types.ID]float64)
 		}
-		// Add score to the project total
-		userProjectSums[score.UserID][score.ProjectID] += score.DailyScore
+		userProjectSums[score.ContributorID][score.ProjectID] += score.Score
 	}
 
-	// Convert the map to ProjectScore slice
-	var projectScores []ProjectScore
-	for userID, projectMap := range userProjectSums {
+	var userProjectScores []UserProjectScore
+	for contributorID, projectMap := range userProjectSums {
 		for projectID, totalScore := range projectMap {
-			projectScores = append(projectScores, ProjectScore{
-				UserID:    userID, // TODO-  Convert string to types.ID if needed
-				ProjectID: projectID,
-				Score:     totalScore,
+			userProjectScores = append(userProjectScores, UserProjectScore{
+				ContributorID: contributorID, // TODO-  Convert string to types.ID if needed
+				ProjectID:     projectID,
+				Score:         totalScore,
+				Timeframe:     "daily",
+				TimeValue:     fmt.Sprintf("%d/%d/%d", time.Now().Year(), time.Now().Month(), time.Now().Day()),
 			})
 		}
 	}
 
-	return projectScores, nil
+	return userProjectScores, nil
 }
 
 func (s *Service) sortDailyScores(dailyScores []DailyContributorScore) []DailyContributorScore {
 	sorted := make([]DailyContributorScore, len(dailyScores))
 	copy(sorted, dailyScores)
 
-	// Sort by UserID (primary) and ProjectID (secondary)
 	sort.Slice(sorted, func(i, j int) bool {
-		// First compare by UserID
-		if sorted[i].UserID != sorted[j].UserID {
-			return sorted[i].UserID < sorted[j].UserID
+		if sorted[i].ContributorID != sorted[j].ContributorID {
+			return sorted[i].ContributorID < sorted[j].ContributorID
 		}
-		// If UserID is the same, compare by ProjectID
 		return sorted[i].ProjectID < sorted[j].ProjectID
 	})
 
 	return sorted
 }
 
-//func (s *Service) getUserProjects(ctx context.Context, userID string) ([]types.ID, error) {
-//	// TODO: Implement actual logic to get user's projects
-//	return []types.ID{types.ID(1), types.ID(2)}, nil
-//}
-
+// TODO - Implement UserID To ContributorID
 func (s *Service) mapUserIDToContributorID(ctx context.Context, userID string) (types.ID, error) {
 	return types.ID(1), nil
 }
@@ -278,11 +237,6 @@ func (s *Service) updateCacheAfterDailyCalculation(ctx context.Context, scores [
 
 	log.Info("Cache set successfully", slog.String(time.Now().String(), cacheKey))
 	return nil
-}
-
-func GetContributorScores(contributorID int, project string) ScoresListResponse {
-
-	return ScoresListResponse{}
 }
 
 func (s *Service) buildScoreHistory(records []ScoreRecord) map[types.ID][]ScoreEntry {

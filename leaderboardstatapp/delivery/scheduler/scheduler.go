@@ -99,7 +99,7 @@ func (s *Scheduler) dailyScoreCalculationTask(parentCtx context.Context) {
 	ctx, cancel := context.WithTimeout(parentCtx, timeout)
 	defer cancel()
 
-	if sErr := s.leaderboardStatSvc.CalculateDailyContributorScores(ctx); sErr != nil {
+	if sErr := s.leaderboardStatSvc.GetDailyContributorScores(ctx); sErr != nil {
 		log.Error("failed to run dailyScoreCalculationTask", slog.String("error", sErr.Error()))
 		return
 	}
