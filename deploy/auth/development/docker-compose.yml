@@ -55,4 +55,4 @@ services:
 networks:
   rankr-net:
     name: rankr-development-network
-    external: true
+    external: false
