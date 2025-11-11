@@ -18,6 +18,7 @@ import (
 )
 
 type Application struct {
+	ShutdownCtx  context.Context
 	Repo         auth.Repository
 	Srv          auth.Service
 	TokenService *tokenservice.AuthService
@@ -51,6 +52,7 @@ func Setup(
 	httpSrv := statHTTP.New(*httpSrvCore, httpHandler)
 
 	return Application{
+		ShutdownCtx:  ctx,
 		Repo:         repo,
 		Srv:          svc,
 		TokenService: tokenSvc,
