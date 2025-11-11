@@ -34,9 +34,13 @@ func migrate() {
 	}
 
 	if up {
-		mgr.Up()
+		if err := mgr.Up(); err != nil {
+			log.Fatalf("Failed to run migrations up: %v", err)
+		}
 	} else if down {
-		mgr.Down()
+		if err := mgr.Down(); err != nil {
+			log.Fatalf("Failed to run migrations down: %v", err)
+		}
 	} else {
 		log.Println("Please specify a migration direction with --up or --down")
 	}
