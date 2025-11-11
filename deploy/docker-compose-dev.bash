@@ -1,8 +1,9 @@
 #! /bin/bash
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$ROOT_DIR" || exit 1
-cp ./deploy/development/traefik/overrides/dynamic.contributor-middleware.yml ./deploy/development/traefik/dynamic/dynamic.yml || exit 1
+cd "$ROOT_DIR"
+
+cp ./deploy/development/traefik/overrides/dynamic.contributor-middleware.yml ./deploy/development/traefik/dynamic/dynamic.yml
 
 docker compose \
 --env-file ./deploy/.env \
