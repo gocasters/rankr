@@ -58,18 +58,12 @@ func serve() error {
 		mgr := migrator.New(cfg.PostgresDB, cfg.PathOfMigration)
 		if migrateUp {
 			svcLogger.Info("Running migrations up...")
-			if err := mgr.Up(); err != nil {
-				svcLogger.Error("migrations up failed", slog.Any("error", err))
-				return fmt.Errorf("migrations up failed: %w", err)
-			}
+			mgr.Up()
 			svcLogger.Info("Migrations up completed.")
 		}
 		if migrateDown {
 			svcLogger.Info("Running migrations down...")
-			if err := mgr.Down(); err != nil {
-				svcLogger.Error("migrations down failed", slog.Any("error", err))
-				return fmt.Errorf("migrations down failed: %w", err)
-			}
+			mgr.Down()
 			svcLogger.Info("Migrations down completed.")
 		}
 	}
