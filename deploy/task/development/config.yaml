@@ -1,8 +1,10 @@
+total_shutdown_timeout: 15s
+
 http_server:
   port: 5001
   cors:
     allow_origins: "*"
-  total_shutdown_timeout: 15s
+  shutdown_context_timeout: "10s"
 
 postgres_db:
   host: task-db
@@ -17,16 +19,28 @@ postgres_db:
   max_conn_idle_time: 600
   health_check_period: 30
 
-#grpc_client:
-#  Host: "rankr-app-service-1"
-#  port: 6003
-#  types: "tcp"
-#  shutdown_context_timeout: "10s"
-#
-#grpc_server:
-#  Host: "localhost"
-#  port: 6002
-#  types: "tcp"
+repository:
+  cache_enabled: false
+  cache_prefix: "task:"
+
+redis:
+  host: rankr-shared-redis
+  port: 6379
+
+# NATS Watermill configuration for consuming events
+watermill_nats:
+  url: "nats://rankr-shared-nats:4222"
+  client_id: "task_service"
+  use_jet_stream: true
+  max_reconnects: -1
+  reconnect_wait_time: 1s
+  queue_group: "task_consumer_group"
+  durable_name: "task_consumer_durable"
+  ack_wait_time: 30s
+  max_in_flight: 25
+
+# Stream name for consuming raw events (issue opened/closed)
+stream_name_raw_events: "rankr_raw_events"
 
 logger:
   level: "debug"
@@ -34,6 +48,5 @@ logger:
   use_local_time: true
   file_max_size_in_mb: 10
   file_max_age_in_days: 7
-
 
 path_of_migration: './taskapp/repository/migrations'

@@ -1,0 +1,9 @@
+postgres_db:
+  host: "127.0.0.1"
+  port: 5432
+  user: notifapp_admin
+  password: password123
+  db_name: notifications
+  ssl_mode: disable
+
+path_of_migration: ./notifapp/repository/migrations

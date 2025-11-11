@@ -1,3 +1,5 @@
 package types
 
-type UserClaim struct{}
+type UserClaim struct {
+	ID ID
+}
