@@ -2,6 +2,7 @@
 -- Rankr Microservices PostgreSQL Initialization Script
 -- ==================================================
 
+
 -- Load users and passwords from environment variables
 \set LEADERBOARDSTAT_USER :'LEADERBOARDSTAT_USER'
 \set LEADERBOARDSTAT_PASS :'LEADERBOARDSTAT_PASS'
@@ -21,139 +22,108 @@
 \echo '========================================='
 
 -- ==================================================
--- 1. Leaderboard Stat Service
+-- Create Users
 -- ==================================================
+
+-- 1. Leaderboard Stat User
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'LEADERBOARDSTAT_USER') THEN
-        EXECUTE format(
-            'CREATE USER %I WITH PASSWORD %L',
-            :'LEADERBOARDSTAT_USER',
-            :'LEADERBOARDSTAT_PASS'
-        );
-        RAISE NOTICE 'User % created', :'LEADERBOARDSTAT_USER';
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'leaderboardstat_user') THEN
+        CREATE USER leaderboardstat_user WITH PASSWORD 'leaderboardstat_pass';
+        RAISE NOTICE 'User leaderboardstat_user created';
 ELSE
-        RAISE NOTICE 'User % already exists', :'LEADERBOARDSTAT_USER';
+        RAISE NOTICE 'User leaderboardstat_user already exists';
 END IF;
 END
 $$;
 
-SELECT format(
-               'CREATE DATABASE leaderboardstat_db OWNER %I',
-               :'LEADERBOARDSTAT_USER'
-       ) WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'leaderboardstat_db') \gexec;
-
-GRANT ALL PRIVILEGES ON DATABASE leaderboardstat_db TO :'LEADERBOARDSTAT_USER';
-
-\echo 'leaderboardstat_db ready (owner: leaderboardstat_user)'
-
--- ==================================================
--- 2. Contributor Service
--- ==================================================
+-- 2. Contributor User
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'CONTRIBUTOR_USER') THEN
-        EXECUTE format(
-            'CREATE USER %I WITH PASSWORD %L',
-            :'CONTRIBUTOR_USER',
-            :'CONTRIBUTOR_PASS'
-        );
-        RAISE NOTICE 'User % created', :'CONTRIBUTOR_USER';
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'contributor_user') THEN
+        CREATE USER contributor_user WITH PASSWORD 'contributor_pass';
+        RAISE NOTICE 'User contributor_user created';
 ELSE
-        RAISE NOTICE 'User % already exists', :'CONTRIBUTOR_USER';
+        RAISE NOTICE 'User contributor_user already exists';
 END IF;
 END
 $$;
 
-SELECT format(
-               'CREATE DATABASE contributor_db OWNER %I',
-               :'CONTRIBUTOR_USER'
-       ) WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'contributor_db') \gexec;
-
-GRANT ALL PRIVILEGES ON DATABASE contributor_db TO :'CONTRIBUTOR_USER';
-
-\echo 'contributor_db ready (owner: contributor_user)'
-
--- ==================================================
--- 3. Project Service
--- ==================================================
+-- 3. Project User
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'PROJECT_USER') THEN
-        EXECUTE format(
-            'CREATE USER %I WITH PASSWORD %L',
-            :'PROJECT_USER',
-            :'PROJECT_PASS'
-        );
-        RAISE NOTICE 'User % created', :'PROJECT_USER';
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'project_user') THEN
+        CREATE USER project_user WITH PASSWORD 'project_pass';
+        RAISE NOTICE 'User project_user created';
 ELSE
-        RAISE NOTICE 'User % already exists', :'PROJECT_USER';
+        RAISE NOTICE 'User project_user already exists';
 END IF;
 END
 $$;
 
-SELECT format(
-               'CREATE DATABASE project_db OWNER %I',
-               :'PROJECT_USER'
-       ) WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'project_db') \gexec;
-
-GRANT ALL PRIVILEGES ON DATABASE project_db TO :'PROJECT_USER';
-
-\echo 'project_db ready (owner: project_user)'
-
--- ==================================================
--- 4. Webhook Service
--- ==================================================
+-- 4. Webhook User
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'WEBHOOK_USER') THEN
-        EXECUTE format(
-            'CREATE USER %I WITH PASSWORD %L',
-            :'WEBHOOK_USER',
-            :'WEBHOOK_PASS'
-        );
-        RAISE NOTICE 'User % created', :'WEBHOOK_USER';
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'webhook_user') THEN
+        CREATE USER webhook_user WITH PASSWORD 'webhook_pass';
+        RAISE NOTICE 'User webhook_user created';
 ELSE
-        RAISE NOTICE 'User % already exists', :'WEBHOOK_USER';
+        RAISE NOTICE 'User webhook_user already exists';
 END IF;
 END
 $$;
 
-SELECT format(
-               'CREATE DATABASE webhook_db OWNER %I',
-               :'WEBHOOK_USER'
-       ) WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'webhook_db') \gexec;
-
-GRANT ALL PRIVILEGES ON DATABASE webhook_db TO :'WEBHOOK_USER';
-
-\echo 'webhook_db ready (owner: webhook_user)'
-
--- ==================================================
--- 5. Leaderboard Scoring Service
--- ==================================================
+-- 5. Leaderboard Scoring User
 DO $$
 BEGIN
-    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = :'LEADERBOARDSCORING_USER') THEN
-        EXECUTE format(
-            'CREATE USER %I WITH PASSWORD %L',
-            :'LEADERBOARDSCORING_USER',
-            :'LEADERBOARDSCORING_PASS'
-        );
-        RAISE NOTICE 'User % created', :'LEADERBOARDSCORING_USER';
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'leaderboardscoring_user') THEN
+        CREATE USER leaderboardscoring_user WITH PASSWORD 'leaderboardscoring_pass';
+        RAISE NOTICE 'User leaderboardscoring_user created';
 ELSE
-        RAISE NOTICE 'User % already exists', :'LEADERBOARDSCORING_USER';
+        RAISE NOTICE 'User leaderboardscoring_user already exists';
 END IF;
 END
 $$;
 
-SELECT format(
-               'CREATE DATABASE leaderboardscoring_db OWNER %I',
-               :'LEADERBOARDSCORING_USER'
-       ) WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'leaderboardscoring_db') \gexec;
+\echo 'All users created successfully'
 
-GRANT ALL PRIVILEGES ON DATABASE leaderboardscoring_db TO :'LEADERBOARDSCORING_USER';
+-- ==================================================
+-- Create Databases (must be outside DO blocks)
+-- ==================================================
 
-\echo 'leaderboardscoring_db ready (owner: leaderboardscoring_user)'
+SELECT 'CREATE DATABASE leaderboardstat_db OWNER leaderboardstat_user'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'leaderboardstat_db')
+    \gexec
+
+SELECT 'CREATE DATABASE contributor_db OWNER contributor_user'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'contributor_db')
+    \gexec
+
+SELECT 'CREATE DATABASE project_db OWNER project_user'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'project_db')
+    \gexec
+
+SELECT 'CREATE DATABASE webhook_db OWNER webhook_user'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'webhook_db')
+    \gexec
+
+SELECT 'CREATE DATABASE leaderboardscoring_db OWNER leaderboardscoring_user'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'leaderboardscoring_db')
+    \gexec
+
+    \echo 'All databases created successfully'
+
+-- ==================================================
+-- Grant Privileges
+-- ==================================================
+
+GRANT ALL PRIVILEGES ON DATABASE leaderboardstat_db TO leaderboardstat_user;
+GRANT ALL PRIVILEGES ON DATABASE contributor_db TO contributor_user;
+GRANT ALL PRIVILEGES ON DATABASE project_db TO project_user;
+GRANT ALL PRIVILEGES ON DATABASE webhook_db TO webhook_user;
+GRANT ALL PRIVILEGES ON DATABASE leaderboardscoring_db TO leaderboardscoring_user;
+
+\echo 'All privileges granted successfully'
 
 -- ==================================================
 -- 6. Notification Service
@@ -195,4 +165,7 @@ GRANT ALL PRIVILEGES ON DATABASE notifications TO :'NOTIFAPP_USER';
 \echo '  - webhook_db               → webhook_user'
 \echo '  - leaderboardscoring_db    → leaderboardscoring_user'
 \echo '  - notifications            → notifapp_user'
+\echo '========================================='
+\echo 'SECURITY NOTE: Default passwords are used!'
+\echo 'Change passwords in production environment.'
 \echo '========================================='

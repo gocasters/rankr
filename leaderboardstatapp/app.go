@@ -3,7 +3,9 @@ package leaderboardstatapp
 import (
 	"context"
 	"fmt"
+	"github.com/gocasters/rankr/adapter/leaderboardscoring"
 	"github.com/gocasters/rankr/adapter/redis"
+	"github.com/gocasters/rankr/leaderboardstatapp/delivery/scheduler"
 	"github.com/gocasters/rankr/leaderboardstatapp/repository"
 	"github.com/gocasters/rankr/pkg/cachemanager"
 	"github.com/gocasters/rankr/pkg/database"
@@ -31,6 +33,7 @@ type Application struct {
 	Config                 Config
 	CacheManager           cachemanager.CacheManager
 	redis                  *redis.Adapter
+	Scheduler              scheduler.Scheduler
 }
 
 func Setup(
@@ -47,9 +50,21 @@ func Setup(
 	}
 	cache := cachemanager.NewCacheManager(redisAdapter)
 
+	// initial rpc server
+	rpcClient, err := grpc.NewClient(config.LeaderboardScoringRPC, statLogger)
+	if err != nil {
+		return Application{}, fmt.Errorf("failed to create RPC client: %w", err)
+	}
+
+	lbScoringClient, err := leaderboardscoring.New(rpcClient)
+	if err != nil {
+		return Application{}, fmt.Errorf("failed to create leaderboardscoring client: %w", err)
+	}
+
 	statRepo := repository.NewLeaderboardstatRepo(config.Repository, postgresConn)
 	statValidator := leaderboardstat.NewValidator(statRepo)
-	statSvc := leaderboardstat.NewService(statRepo, statValidator, *cache, nil)
+
+	statSvc := leaderboardstat.NewService(statRepo, statValidator, *cache, nil, lbScoringClient)
 	statHandler := statHTTP.NewHandler(statSvc)
 
 	httpServer, err := httpserver.New(config.HTTPServer)
@@ -58,7 +73,6 @@ func Setup(
 		return Application{}, err
 	}
 
-	// initial rpc server
 	rpcServer, gErr := grpc.NewServer(config.RPCServer)
 	if gErr != nil {
 		statLogger.Error("Failed to initialize gRPC server", slog.String("error", gErr.Error()))
@@ -66,6 +80,9 @@ func Setup(
 	}
 	statGrpcHandler := statGRPC.NewHandler(statSvc)
 	statGrpcServer := statGRPC.New(rpcServer, statGrpcHandler)
+
+	// Initialize scheduler
+	statScheduler := scheduler.New(&statSvc, config.SchedulerCfg)
 
 	return Application{
 		LeaderboardstatRepo:    statRepo,
@@ -79,6 +96,7 @@ func Setup(
 		Config:       config,
 		CacheManager: *cache,
 		redis:        redisAdapter,
+		Scheduler:    statScheduler,
 	}, nil
 }
 
@@ -89,6 +107,7 @@ func (app Application) Start() {
 	defer stop()
 
 	startServers(app, &wg)
+	app.startScheduler(ctx, &wg)
 	<-ctx.Done()
 
 	statLogger := logger.L()
@@ -106,6 +125,13 @@ func (app Application) Start() {
 
 	wg.Wait()
 	statLogger.Info("leaderboardstat_app stopped")
+}
+
+func (app Application) startScheduler(ctx context.Context, wg *sync.WaitGroup) {
+	wg.Add(1)
+	go func() {
+		app.Scheduler.Start(ctx, wg)
+	}()
 }
 
 func startServers(app Application, wg *sync.WaitGroup) {

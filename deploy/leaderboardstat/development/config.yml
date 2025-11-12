@@ -34,4 +34,17 @@ logger:
   use_local_time: true
   file_max_size_in_mb: 10
   file_max_age_in_days: 7
+
+leaderboard_scoring_rpc:
+  host: "localhost"                   # Host where leaderboardscoring service runs
+  port: 8090                          # Port from leaderboardscoring gRPC server
+  grpc_service_name: "leaderboardscoring.v1.LeaderboardScoringService"  # Service name from protobuf
+  max_attempts: 3                     # Retry attempts
+  initial_backoff: "1s"               # Initial backoff
+  max_backoff: "5s"                   # Maximum backoff
+  backoff_multiplier: 2.0             # Backoff multiplier
+  retryable_status_codes:             # Status codes to retry
+    - "UNAVAILABLE"
+    - "RESOURCE_EXHAUSTED"
+    - "INTERNAL"
   

@@ -21,6 +21,10 @@ cd deploy/leaderboardscoring/development
 docker compose -f docker-compose.no-service.yml up -d
 ```
 
+### Local Compose Stack
+
+Run `./deploy/docker-compose-dev.bash` to bring up the shared infrastructure and application services (defaults to `up -d`). This script automatically calls `deploy/setup-network.bash`, which creates the shared `rankr-development-network` if needed so every compose file that references it as an external network can start cleanly.
+
 ## 📋 Development Setup
 
 This project uses ASDF to manage tool versions

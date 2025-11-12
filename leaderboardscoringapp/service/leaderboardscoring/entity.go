@@ -73,6 +73,7 @@ const (
 	Yearly
 	Monthly
 	Weekly
+	Daily
 )
 
 var Timeframes = []Timeframe{
@@ -80,6 +81,7 @@ var Timeframes = []Timeframe{
 	Yearly,
 	Monthly,
 	Weekly,
+	Daily,
 }
 
 func (tf Timeframe) String() string {
@@ -92,6 +94,8 @@ func (tf Timeframe) String() string {
 		return "monthly"
 	case Weekly:
 		return "weekly"
+	case Daily:
+		return "daily"
 	default:
 		return "unknown"
 	}
@@ -110,7 +114,7 @@ type LeaderboardQuery struct {
 }
 
 type LeaderboardEntry struct {
-	Rank   uint64
+	Rank   int64
 	UserID string
 	Score  int64
 }
@@ -120,17 +124,19 @@ type LeaderboardQueryResult struct {
 }
 
 type ProcessedScoreEvent struct {
-	ID        uint64    `json:"id"`
+	ID        int64     `json:"id"`
 	UserID    string    `json:"user_id"`
 	EventName EventName `json:"event_name"`
 	Score     int64     `json:"score"`
 	Timestamp time.Time `json:"timestamp"`
 }
 
-type UserTotalScore struct {
-	ID                uint64
+type SnapshotRow struct {
+	ID                int64
+	Rank              int64
 	UserID            string
 	TotalScore        int64
+	LeaderboardKey    string
 	SnapshotTimestamp time.Time
 }
 

@@ -48,12 +48,8 @@ func (h Handler) GetLeaderboard(ctx context.Context, req *leaderboardscoringpb.G
 		)
 
 		switch {
-		case errors.Is(err, leaderboardscoring.ErrLeaderboardNotFound):
-			return nil, status.Error(codes.NotFound, "The requested leaderboard could not be found.")
-
 		case errors.Is(err, leaderboardscoring.ErrInvalidArguments):
 			return nil, status.Error(codes.InvalidArgument, "Invalid request parameters provided.")
-
 		default:
 			return nil, status.Error(codes.Internal, "An unexpected internal error occurred.")
 		}
@@ -68,7 +64,7 @@ func leaderboardResToProtobuf(leaderboardRes leaderboardscoring.GetLeaderboardRe
 	rows := make([]*leaderboardscoringpb.LeaderboardRow, 0, len(leaderboardRes.LeaderboardRows))
 	for _, r := range leaderboardRes.LeaderboardRows {
 		leaderboardRow := &leaderboardscoringpb.LeaderboardRow{
-			Rank:   r.Rank,
+			Rank:   uint64(r.Rank),
 			UserId: r.UserID,
 			Score:  uint64(r.Score),
 		}

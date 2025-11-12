@@ -26,6 +26,8 @@ func MapToHTTPStatusCode(err errmsg.ErrorResponse) int {
 		return http.StatusForbidden
 	case IntCodeRecordNotFound:
 		return http.StatusNotFound
+	case IntCodeNotFound:
+		return http.StatusNotFound
 	}
 	return http.StatusInternalServerError
 }

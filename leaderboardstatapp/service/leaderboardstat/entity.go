@@ -5,6 +5,26 @@ import (
 	"time"
 )
 
+type UserProjectScore struct {
+	ID            types.ID `json:"id"`
+	ContributorID types.ID `json:"contributor_id"`
+	ProjectID     types.ID `json:"project_id"`
+	Score         float64  `json:"score"`
+	Timeframe     string   `json:"timeframe"`
+	TimeValue     string   `json:"time-value"`
+}
+
+type DailyContributorScore struct {
+	ID            types.ID
+	ContributorID types.ID
+	UserID        string
+	Score         float64 //TODO - data type
+	ProjectID     types.ID
+	Rank          uint64
+	Timeframe     string
+	CalculatedAt  time.Time
+}
+
 type ScoreRecord struct {
 	ID            types.ID  `db:"id"`
 	ContributorID types.ID  `db:"contributor_id"`
@@ -33,4 +53,16 @@ type ContributorTotalStats struct {
 	GlobalRank    uint                 `koanf:"global_rank"`
 	TotalScore    float64              `koanf:"total_score"`
 	ProjectsScore map[types.ID]float64 `koanf:"project_score"`
+}
+
+type UserScore struct {
+	UserID types.ID
+	Score  float64
+}
+
+type ProjectScore struct {
+	ContributorID types.ID
+	UserID        string
+	ProjectID     types.ID
+	Score         float64
 }

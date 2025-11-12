@@ -47,13 +47,13 @@ func (db PostgreSQLRepository) AddProcessedScoreEvents(ctx context.Context, even
 	)
 }
 
-func (db PostgreSQLRepository) AddSnapshotTotalScores(ctx context.Context, snapshots []leaderboardscoring.UserTotalScore) error {
+func (db PostgreSQLRepository) AddSnapshot(ctx context.Context, snapshots []leaderboardscoring.SnapshotRow) error {
 	if len(snapshots) == 0 {
 		return nil
 	}
 
 	return db.retryOperation(ctx, func() error {
-		return db.insertBatchSnapshotTotalScores(ctx, snapshots)
+		return db.insertBatchSnapshot(ctx, snapshots)
 	})
 }
 
@@ -141,45 +141,13 @@ func (db PostgreSQLRepository) insertBatchProcessedScoreEvent(ctx context.Contex
 	return nil
 }
 
-// insertBatchSnapshotTotalScores inserts multiple user score snapshots using a three-step process
+// insertBatchSnapshot inserts multiple user score snapshots using a three-step process
 // to ensure idempotency and optimal performance.
-//
-// This method is designed for hourly snapshot operations where duplicate snapshots
-// (same user_id + snapshot_timestamp) should be silently ignored rather than causing errors.
-//
-// Example usage:
-//
-//	snapshots := []UserTotalScore{
-//	    {UserID: "user123", TotalScore: 1500, SnapshotTimestamp: time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)},
-//	    {UserID: "user456", TotalScore: 2300, SnapshotTimestamp: time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)},
-//	}
-//	err := repo.insertBatchUserTotalScores(ctx, snapshots)
-//
-// Process:
-//  1. Creates a temporary table to stage the incoming snapshots
-//  2. Uses PostgreSQL's COPY protocol for fast bulk insertion into temp table
-//  3. Inserts from temp table to final table with ON CONFLICT DO NOTHING
-//     - This ensures duplicates are ignored without causing transaction rollback
-//     - Preserves historical snapshots as separate rows (no updates)
-//
-// Idempotency guarantee:
-//   - First call:  INSERT snapshot (user1, score=100, timestamp=12:00) ✓ Success
-//   - Second call: INSERT snapshot (user1, score=100, timestamp=12:00) ✓ Ignored (DO NOTHING)
-//   - Third call:  INSERT snapshot (user1, score=150, timestamp=13:00) ✓ Success (new timestamp)
-//
-// Performance characteristics:
-//   - Leverages PostgreSQL's COPY protocol (10-100x faster than individual INSERTs)
-//   - Temp table approach avoids multiple round-trips to database
-//   - Suitable for batches of thousands of snapshots
-//
-// Thread safety:
-//   - Safe for concurrent calls due to transaction isolation
-//   - Each transaction gets its own temporary table (ON COMMIT DROP)
 //
 // Returns:
 //   - nil on success (including when all snapshots were duplicates)
 //   - error if database operation fails (connection, syntax, constraint violations other than duplicates)
-func (db PostgreSQLRepository) insertBatchSnapshotTotalScores(ctx context.Context, snapshots []leaderboardscoring.UserTotalScore) error {
+func (db PostgreSQLRepository) insertBatchSnapshot(ctx context.Context, snapshots []leaderboardscoring.SnapshotRow) error {
 	if len(snapshots) == 0 {
 		return nil
 	}
@@ -191,12 +159,12 @@ func (db PostgreSQLRepository) insertBatchSnapshotTotalScores(ctx context.Contex
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	// Step 1: Create temp table
-	// The temp table is automatically dropped at transaction end (ON COMMIT DROP)
-	// This ensures no leftover data and allows concurrent executions
 	_, err = tx.Exec(ctx, `
-        CREATE TEMP TABLE temp_user_snapshots (
+        CREATE TEMP TABLE temp_snapshot (
+            rank BIGINT NOT NULL,
             user_id VARCHAR(100) NOT NULL,
             total_score BIGINT NOT NULL,
+			leaderboard_key VARCHAR(250) NOT NULL,
             snapshot_timestamp TIMESTAMP NOT NULL
         ) ON COMMIT DROP
     `)
@@ -205,21 +173,21 @@ func (db PostgreSQLRepository) insertBatchSnapshotTotalScores(ctx context.Contex
 	}
 
 	// Step 2: Bulk insert to temp table using CopyFrom
-	// CopyFrom uses PostgreSQL's COPY protocol which is significantly faster
-	// than executing multiple INSERT statements
-	columns := []string{"user_id", "total_score", "snapshot_timestamp"}
+	columns := []string{"rank", "user_id", "total_score", "leaderboard_key", "snapshot_timestamp"}
 	rows := make([][]interface{}, len(snapshots))
 	for i, ss := range snapshots {
 		rows[i] = []interface{}{
+			ss.Rank,
 			ss.UserID,
 			ss.TotalScore,
+			ss.LeaderboardKey,
 			ss.SnapshotTimestamp,
 		}
 	}
 
 	_, err = tx.CopyFrom(
 		ctx,
-		pgx.Identifier{"temp_user_snapshots"},
+		pgx.Identifier{"temp_snapshot"},
 		columns,
 		pgx.CopyFromRows(rows),
 	)
@@ -228,14 +196,11 @@ func (db PostgreSQLRepository) insertBatchSnapshotTotalScores(ctx context.Contex
 	}
 
 	// Step 3: Insert only new snapshots (ignore duplicates)
-	// ON CONFLICT DO NOTHING ensures that if a snapshot with the same
-	// (user_id, snapshot_timestamp) already exists, it will be silently skipped
-	// This maintains idempotency - retrying the same operation won't cause errors
 	_, err = tx.Exec(ctx, `
-        INSERT INTO user_total_scores (user_id, total_score, snapshot_timestamp)
-        SELECT user_id, total_score, snapshot_timestamp
-        FROM temp_user_snapshots
-        ON CONFLICT (user_id, snapshot_timestamp) DO NOTHING
+        INSERT INTO snapshot (rank, user_id, total_score, leaderboard_key, snapshot_timestamp)
+        SELECT rank, user_id, total_score, leaderboard_key, snapshot_timestamp
+        FROM temp_snapshot
+        ON CONFLICT (user_id, leaderboard_key, snapshot_timestamp) DO NOTHING
     `)
 	if err != nil {
 		return fmt.Errorf("insert snapshots: %w", err)
@@ -279,7 +244,7 @@ func isRetryableError(err error) bool {
 				slog.String("message", pgErr.Message),
 			)
 			return true
-			
+
 		case statuscode.ErrTooManyConnections:
 			return true
 		}
