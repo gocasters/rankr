@@ -10,13 +10,13 @@ rpc_server:
 
 scheduler_cfg:
   snapshot_crontab: "0 */3 * * *"
-  snapshot_job_context_timeout: 5m
+  snapshot_job_context_timeout: 15m
 
 postgres_db:
   host: "shared-postgres"
   port: 5432
   user: "leaderboardscoring_user"
-  password: "leaderboardscoring_pass_123"
+  password: "secure_password_5"
   db_name: "leaderboardscoring_db"
   ssl_mode: "disable"
   max_conns: 10
@@ -87,6 +87,6 @@ batch_processor:
   tick_interval: 10s
   metrics_interval: 30s
 
-total_shutdown_timeout: 1m
+total_shutdown_timeout: 30m
 
 path_of_migration: "./leaderboardscoringapp/repository/database/migrations"

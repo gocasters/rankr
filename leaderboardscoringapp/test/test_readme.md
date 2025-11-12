@@ -93,7 +93,7 @@ go run ./cmd/leaderboardscoring/main.go serve --migrate-up
 Generate and publish events to NATS:
 
 ```bash
-go run ./leaderboardscoringapp/test/generateevent/main.go -count 100
+go run ./example/generate_event/main.go -count 100
 ```
 
 Options:

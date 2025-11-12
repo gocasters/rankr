@@ -92,7 +92,9 @@ func (s *Scheduler) snapshotLeaderboardTask(parentCtx context.Context) {
 	ctx, cancel := context.WithTimeout(parentCtx, s.cfg.SnapshotJobContextTimeout)
 	defer cancel()
 
-	if sErr := s.leaderboardSvc.CreateLeaderboardSnapshot(ctx); sErr != nil {
+	// TODO: Get ProjectIDs from ProjectApp service by gRPC call
+	var projectIDa = []string{"1", "2"}
+	if sErr := s.leaderboardSvc.LeaderboardSnapshot(ctx, projectIDa); sErr != nil {
 		log.Warn("can not successfully run snapshotLeaderboardTask", slog.String("error", sErr.Error()))
 		return
 	}

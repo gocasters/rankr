@@ -1,3 +1,22 @@
+// Package main provides a simple command-line tool for generating and publishing
+// random raw events into NATS JetStream.
+//
+// This utility is designed to feed test or demo data into the leaderboard scoring
+// service by simulating various repository events (issues, pull requests, commits, etc.).
+// It uses the `pkg/eventgenerator` package to create random event payloads and publishes
+// them to a specified NATS JetStream topic.
+//
+// Usage example:
+//
+//	go run ./cmd/eventgenerator/main.go --nats nats://localhost:4222 --count 50 --topic stream.raw.events
+//
+// Flags:
+//
+//	--nats     NATS server URL (default: nats://localhost:4222)
+//	--count    Number of random events to generate (default: 10)
+//	--topic    NATS topic name to publish events to (default: stream.raw.events)
+//
+// Each event is serialized using protobuf and sent as a Watermill message to JetStream.
 package main
 
 import (
@@ -34,8 +53,13 @@ func main() {
 	}
 	defer adapter.Close()
 
-	generator := eventgenerator.NewEventGenerator(1, "test-repo")
-	userIDs := []uint64{100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120}
+	generator := eventgenerator.NewEventGenerator(1, "test-repo1")
+	userIDs := []uint64{
+		100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110,
+		111, 112, 113, 114, 115, 116, 117, 118, 119, 120,
+		121, 122, 123, 124, 125, 126, 127, 128, 129, 130,
+		131, 132, 133, 134, 135, 136, 137, 138, 139, 140,
+	}
 	events := generator.GenerateRandomEvents(*count, userIDs)
 
 	log.Printf("Publishing %d events to topic: %s", len(events), *topic)
