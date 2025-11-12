@@ -6,6 +6,8 @@ import (
 	"github.com/gocasters/rankr/webhookapp/schedule/recovery"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -75,6 +77,140 @@ func (c *GitHubClient) ReattemptDelivery(webhookConfig recovery.WebhookConfig, d
 	if resp.StatusCode != http.StatusAccepted && resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("GitHub API error: %d - %s", resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
+type PullRequest struct {
+	ID           uint64     `json:"id"`
+	Number       int32      `json:"number"`
+	State        string     `json:"state"`
+	Title        string     `json:"title"`
+	Body         *string    `json:"body"`
+	User         User       `json:"user"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+	ClosedAt     *time.Time `json:"closed_at"`
+	MergedAt     *time.Time `json:"merged_at"`
+	Merged       bool       `json:"merged"`
+	Mergeable    *bool      `json:"mergeable"`
+	Head         GitRef     `json:"head"`
+	Base         GitRef     `json:"base"`
+	Labels       []Label    `json:"labels"`
+	Assignees    []User     `json:"assignees"`
+	MergedBy     *User      `json:"merged_by"`
+	Additions    int32      `json:"additions"`
+	Deletions    int32      `json:"deletions"`
+	ChangedFiles int32      `json:"changed_files"`
+	Commits      int32      `json:"commits"`
+}
+
+type User struct {
+	ID    uint64  `json:"id"`
+	Login string  `json:"login"`
+	Email *string `json:"email"`
+}
+
+type GitRef struct {
+	Ref  string     `json:"ref"`
+	SHA  string     `json:"sha"`
+	Repo Repository `json:"repo"`
+}
+
+type Repository struct {
+	ID       uint64 `json:"id"`
+	Name     string `json:"name"`
+	FullName string `json:"full_name"`
+}
+
+type Label struct {
+	Name string `json:"name"`
+}
+
+type Review struct {
+	ID          uint64    `json:"id"`
+	User        User      `json:"user"`
+	State       string    `json:"state"`
+	SubmittedAt time.Time `json:"submitted_at"`
+}
+
+func (c *GitHubClient) ListPullRequests(owner, repo, token string, page, perPage int) ([]*PullRequest, bool, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s/pulls?state=all&per_page=%d&page=%d&direction=asc&sort=created",
+		c.baseURL, owner, repo, perPage, page)
+
+	resp, err := c.doRequest("GET", url, nil, token)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to fetch PRs: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if err := c.checkRateLimit(resp); err != nil {
+		return nil, false, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, false, fmt.Errorf("GitHub API error: %d - %s", resp.StatusCode, string(body))
+	}
+
+	var prs []*PullRequest
+	if err := json.NewDecoder(resp.Body).Decode(&prs); err != nil {
+		return nil, false, fmt.Errorf("failed to decode PRs: %w", err)
+	}
+
+	linkHeader := resp.Header.Get("Link")
+	hasMore := strings.Contains(linkHeader, `rel="next"`)
+
+	return prs, hasMore, nil
+}
+
+func (c *GitHubClient) ListPRReviews(owner, repo string, prNumber int32, token string) ([]*Review, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%d/reviews",
+		c.baseURL, owner, repo, prNumber)
+
+	resp, err := c.doRequest("GET", url, nil, token)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch reviews: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if err := c.checkRateLimit(resp); err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("GitHub API error: %d - %s", resp.StatusCode, string(body))
+	}
+
+	var reviews []*Review
+	if err := json.NewDecoder(resp.Body).Decode(&reviews); err != nil {
+		return nil, fmt.Errorf("failed to decode reviews: %w", err)
+	}
+
+	return reviews, nil
+}
+
+func (c *GitHubClient) checkRateLimit(resp *http.Response) error {
+	remaining := resp.Header.Get("X-RateLimit-Remaining")
+	reset := resp.Header.Get("X-RateLimit-Reset")
+
+	if remaining == "0" {
+		var resetTime time.Time
+		if resetUnix := reset; resetUnix != "" {
+			unixTime, err := strconv.ParseInt(resetUnix, 10, 64)
+			if err == nil {
+				resetTime = time.Unix(unixTime, 0)
+			}
+		}
+
+		sleepDuration := time.Until(resetTime)
+		if sleepDuration > 0 {
+			fmt.Printf("Rate limit exhausted. Sleeping until %s (%s)\n",
+				resetTime.Format(time.RFC3339), sleepDuration.Round(time.Second))
+			time.Sleep(sleepDuration)
+		}
 	}
 
 	return nil

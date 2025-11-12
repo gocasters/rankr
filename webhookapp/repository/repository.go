@@ -390,3 +390,42 @@ func (repo *WebhookRepository) GetLostDeliveries(ctx context.Context, provider e
 
 	return missingDeliveries, nil
 }
+
+func (repo *WebhookRepository) SaveHistoricalEvent(
+	ctx context.Context,
+	event *eventpb.Event,
+	resourceType string,
+	resourceID int64,
+) error {
+	payload, err := proto.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("failed to marshal event: %w", err)
+	}
+
+	tag, err := repo.db.Exec(
+		ctx,
+		`INSERT INTO webhook_events
+		(provider, source, resource_type, resource_id, event_type, payload, received_at, delivery_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, NULL)
+		ON CONFLICT (provider, resource_type, resource_id, event_type)
+		WHERE source = 'historical'
+		DO NOTHING`,
+		event.Provider,
+		"historical",
+		resourceType,
+		resourceID,
+		event.EventName,
+		payload,
+		time.Now(),
+	)
+
+	if err != nil {
+		return err
+	}
+
+	if tag.RowsAffected() == 0 {
+		return ErrDuplicateEvent
+	}
+
+	return nil
+}
