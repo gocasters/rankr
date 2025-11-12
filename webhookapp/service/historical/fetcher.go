@@ -2,7 +2,10 @@ package historical
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/gocasters/rankr/adapter/webhook/github"
 	"github.com/gocasters/rankr/pkg/logger"
@@ -134,7 +137,19 @@ func (f *Fetcher) processPR(ctx context.Context, pr *github.PullRequest) error {
 	}
 
 	for _, event := range events {
-		if err := f.saveEvent(ctx, event, "pull_request", pr.Number); err != nil {
+		resourceType := "pull_request"
+		resourceID := int64(pr.Number)
+
+		if event.EventName == eventpb.EventName_EVENT_NAME_PULL_REQUEST_REVIEW_SUBMITTED {
+			resourceType = "pull_request_review"
+			reviewID, err := extractReviewIDFromEventID(event.Id)
+			if err != nil {
+				return fmt.Errorf("failed to extract review ID from event %s: %w", event.Id, err)
+			}
+			resourceID = reviewID
+		}
+
+		if err := f.saveEvent(ctx, event, resourceType, resourceID); err != nil {
 			return fmt.Errorf("failed to save event %s: %w", event.Id, err)
 		}
 	}
@@ -142,7 +157,15 @@ func (f *Fetcher) processPR(ctx context.Context, pr *github.PullRequest) error {
 	return nil
 }
 
-func (f *Fetcher) saveEvent(ctx context.Context, event *eventpb.Event, resourceType string, prNumber int32) error {
+func extractReviewIDFromEventID(eventID string) (int64, error) {
+	parts := strings.Split(eventID, "-")
+	if len(parts) < 5 || parts[3] != "review" {
+		return 0, fmt.Errorf("invalid review event ID format: %s", eventID)
+	}
+	return strconv.ParseInt(parts[4], 10, 64)
+}
+
+func (f *Fetcher) saveEvent(ctx context.Context, event *eventpb.Event, resourceType string, resourceID int64) error {
 	log := logger.L()
 
 	if f.config.DryRun {
@@ -150,15 +173,15 @@ func (f *Fetcher) saveEvent(ctx context.Context, event *eventpb.Event, resourceT
 			"event_id", event.Id,
 			"event_name", event.EventName,
 			"resource_type", resourceType,
-			"pr_number", prNumber)
+			"resource_id", resourceID)
 		return nil
 	}
 
-	if err := f.repo.SaveHistoricalEvent(ctx, event, resourceType, int64(prNumber)); err != nil {
-		if err == repository.ErrDuplicateEvent {
+	if err := f.repo.SaveHistoricalEvent(ctx, event, resourceType, resourceID); err != nil {
+		if errors.Is(err, repository.ErrDuplicateEvent) {
 			log.Debug("Event already exists, skipping",
 				"event_id", event.Id,
-				"pr_number", prNumber)
+				"resource_id", resourceID)
 			return nil
 		}
 		return err
@@ -167,7 +190,7 @@ func (f *Fetcher) saveEvent(ctx context.Context, event *eventpb.Event, resourceT
 	log.Debug("Saved historical event",
 		"event_id", event.Id,
 		"event_name", event.EventName,
-		"pr_number", prNumber)
+		"resource_id", resourceID)
 
 	return nil
 }
