@@ -155,6 +155,7 @@ install-buf-force:
 # ====================================================================================
 .PHONY: start-contributor-app-dev start-contributor-app-dev-log start-contributor-debug start-contributor-debug-log
 .PHONY: start-task-app-dev stop-contributor-debug start-project-app-dev start-project-app-dev-log
+.PHONY: start-auth-app-dev start-auth-app-dev-log
 
 start-contributor-app-dev:
 	./deploy/docker-compose-dev.bash --profile contributor up -d
@@ -186,6 +187,12 @@ start-project-app-dev:
 start-project-app-dev-log:
 	./deploy/docker-compose-dev.bash --profile project up
 
+start-auth-app-dev:
+	./deploy/docker-compose-dev.bash --profile auth up -d
+
+start-auth-app-dev-log:
+	./deploy/docker-compose-dev.bash --profile auth up
+
 # ====================================================================================
 # Help Target
 # ====================================================================================
@@ -205,4 +212,3 @@ help:
 	@echo "  proto-gen      - Generate Go code from protobuf files"
 	@echo "  proto-lint     - Lint protobuf files"
 	@echo "  ..."
-
