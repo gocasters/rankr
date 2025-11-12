@@ -10,15 +10,15 @@ import (
 
 func TestHistoricalEventIdempotencyKeys(t *testing.T) {
 	tests := []struct {
-		name             string
-		resourceType1    string
-		resourceID1      int64
-		eventType1       eventpb.EventName
-		resourceType2    string
-		resourceID2      int64
-		eventType2       eventpb.EventName
-		shouldConflict   bool
-		description      string
+		name           string
+		resourceType1  string
+		resourceID1    int64
+		eventType1     eventpb.EventName
+		resourceType2  string
+		resourceID2    int64
+		eventType2     eventpb.EventName
+		shouldConflict bool
+		description    string
 	}{
 		{
 			name:           "Same PR same event type should conflict",
