@@ -134,7 +134,7 @@ func (f *Fetcher) processPR(ctx context.Context, pr *github.PullRequest) error {
 	}
 
 	for _, event := range events {
-		if err := f.saveEvent(ctx, event, pr.Number); err != nil {
+		if err := f.saveEvent(ctx, event, "pull_request", pr.Number); err != nil {
 			return fmt.Errorf("failed to save event %s: %w", event.Id, err)
 		}
 	}
@@ -142,18 +142,19 @@ func (f *Fetcher) processPR(ctx context.Context, pr *github.PullRequest) error {
 	return nil
 }
 
-func (f *Fetcher) saveEvent(ctx context.Context, event *eventpb.Event, prNumber int32) error {
+func (f *Fetcher) saveEvent(ctx context.Context, event *eventpb.Event, resourceType string, prNumber int32) error {
 	log := logger.L()
 
 	if f.config.DryRun {
 		log.Info("[DRY RUN] Would save event",
 			"event_id", event.Id,
 			"event_name", event.EventName,
+			"resource_type", resourceType,
 			"pr_number", prNumber)
 		return nil
 	}
 
-	if err := f.repo.SaveHistoricalEvent(ctx, event, "pull_request", int64(prNumber)); err != nil {
+	if err := f.repo.SaveHistoricalEvent(ctx, event, resourceType, int64(prNumber)); err != nil {
 		if err == repository.ErrDuplicateEvent {
 			log.Debug("Event already exists, skipping",
 				"event_id", event.Id,

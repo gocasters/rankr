@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"strconv"
 	"testing"
 
 	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
@@ -115,7 +116,7 @@ func TestHistoricalEventIdempotencyKeys(t *testing.T) {
 }
 
 func createIdempotencyKey(provider eventpb.EventProvider, resourceType string, resourceID int64, eventType eventpb.EventName) string {
-	return string(rune(provider)) + "-" + resourceType + "-" + string(rune(resourceID)) + "-" + string(rune(eventType))
+	return strconv.Itoa(int(provider)) + "-" + resourceType + "-" + strconv.FormatInt(resourceID, 10) + "-" + strconv.Itoa(int(eventType))
 }
 
 func TestHistoricalEventPayloadPreservation(t *testing.T) {
@@ -207,6 +208,7 @@ func TestHistoricalEventDifferentProviders(t *testing.T) {
 	}
 
 	github := eventpb.EventProvider_EVENT_PROVIDER_GITHUB
+	unspecified := eventpb.EventProvider_EVENT_PROVIDER_UNSPECIFIED
 	resourceType := "pull_request"
 	resourceID := int64(42)
 	eventType := eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED
@@ -214,8 +216,17 @@ func TestHistoricalEventDifferentProviders(t *testing.T) {
 	assert.True(t, saveEvent(github, resourceType, resourceID, eventType),
 		"First save for GitHub should succeed")
 
+	assert.True(t, saveEvent(unspecified, resourceType, resourceID, eventType),
+		"Same event from different provider (UNSPECIFIED) should succeed")
+
 	assert.False(t, saveEvent(github, resourceType, resourceID, eventType),
 		"Duplicate for GitHub should be rejected")
+
+	assert.False(t, saveEvent(unspecified, resourceType, resourceID, eventType),
+		"Duplicate for UNSPECIFIED should be rejected")
+
+	assert.Equal(t, 2, len(saved),
+		"Should have 2 events: same resource from 2 different providers")
 }
 
 func TestHistoricalEventResourceTypeIsolation(t *testing.T) {

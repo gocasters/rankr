@@ -69,14 +69,35 @@ func (suite *WebhookRepositoryTestSuite) createTable() {
 	CREATE TABLE IF NOT EXISTS webhook_events (
 		id BIGSERIAL PRIMARY KEY,
 		provider smallint NOT NULL,
-		delivery_id TEXT NOT NULL,
+		delivery_id TEXT,
 		event_type smallint NOT NULL,
 		payload BYTEA NOT NULL,
 		received_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-		CONSTRAINT webhook_events_provider_delivery_id_unique UNIQUE (provider, delivery_id)
+		source VARCHAR(20) DEFAULT 'webhook',
+		resource_type VARCHAR(20),
+		resource_id BIGINT
 	)`
 	_, err := suite.db.Exec(suite.ctx, query)
 	require.NoError(suite.T(), err, "Failed to create test table")
+
+	_, err = suite.db.Exec(suite.ctx, "DROP INDEX IF EXISTS webhook_events_webhook_unique_idx")
+	require.NoError(suite.T(), err)
+	_, err = suite.db.Exec(suite.ctx, "DROP INDEX IF EXISTS webhook_events_historical_unique_idx")
+	require.NoError(suite.T(), err)
+
+	webhookIndexQuery := `
+	CREATE UNIQUE INDEX IF NOT EXISTS webhook_events_webhook_unique_idx
+	ON webhook_events(provider, delivery_id)
+	WHERE source = 'webhook' AND delivery_id IS NOT NULL`
+	_, err = suite.db.Exec(suite.ctx, webhookIndexQuery)
+	require.NoError(suite.T(), err, "Failed to create webhook unique index")
+
+	historicalIndexQuery := `
+	CREATE UNIQUE INDEX IF NOT EXISTS webhook_events_historical_unique_idx
+	ON webhook_events(provider, resource_type, resource_id, event_type)
+	WHERE source = 'historical'`
+	_, err = suite.db.Exec(suite.ctx, historicalIndexQuery)
+	require.NoError(suite.T(), err, "Failed to create historical unique index")
 }
 
 func (suite *WebhookRepositoryTestSuite) dropTable() {
