@@ -1,15 +1,28 @@
 services:
   shared-postgres:
     build:
-      context: ./deploy/infrastructure/postgresql/development
+      context: .
       dockerfile: Dockerfile
     container_name: rankr-shared-postgres
     env_file:
-      - ./deploy/infrastructure/postgresql/development/.env
+      - ./.env
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+      # Add all service user variables
+      LEADERBOARDSTAT_USER: ${LEADERBOARDSTAT_USER}
+      LEADERBOARDSTAT_PASS: ${LEADERBOARDSTAT_PASS}
+      CONTRIBUTOR_USER: ${CONTRIBUTOR_USER}
+      CONTRIBUTOR_PASS: ${CONTRIBUTOR_PASS}
+      PROJECT_USER: ${PROJECT_USER}
+      PROJECT_PASS: ${PROJECT_PASS}
+      WEBHOOK_USER: ${WEBHOOK_USER}
+      WEBHOOK_PASS: ${WEBHOOK_PASS}
+      LEADERBOARDSCORING_USER: ${LEADERBOARDSCORING_USER}
+      LEADERBOARDSCORING_PASS: ${LEADERBOARDSCORING_PASS}
+      NOTIFAPP_USER: ${NOTIFAPP_USER}
+      NOTIFAPP_PASS: ${NOTIFAPP_PASS}
     volumes:
       - rankr-shared-postgres-data:/var/lib/postgresql/data
     ports:

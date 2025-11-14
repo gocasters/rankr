@@ -6,10 +6,7 @@ services:
     image: rankr-leaderboardstat:development
     command: /bin/leaderboardstat serve --migrate-up
     networks:
-      - rankr-net
-    depends_on:
-      rankr-shared-postgres:
-        condition: service_healthy
+      - rankr-shared-development-network
     volumes:
       - ./:/home/app
     environment:
@@ -18,12 +15,11 @@ services:
       - GRPC_PORT=8090
     ports:
       - "6011:6011"
-      - "8090:8090"
+      - "8098:8090"
     restart: unless-stopped
 
 networks:
-  rankr-net:
-    name: rankr-development-network
+  rankr-shared-development-network:
     external: true
 
 volumes:

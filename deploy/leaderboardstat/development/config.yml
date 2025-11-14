@@ -17,7 +17,7 @@ postgres_db:
   host: "rankr-shared-postgres"
   port: 5432
   user: "leaderboardstat_user"
-  password: "leaderboard_pass_123"
+  password: "secure_password_1"
   db_name: "leaderboardstat_db"
   ssl_mode: "disable"
 

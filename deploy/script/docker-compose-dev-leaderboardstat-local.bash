@@ -22,6 +22,5 @@ fi
 docker compose \
   $ENV_FILE_OPTION \
   --project-directory . \
-  -f "$INFRASTRUCTURE_COMPOSE" \
   -f "$COMPOSE_FILE" \
   "$@"
