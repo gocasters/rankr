@@ -1,20 +1,24 @@
-ARG GO_IMAGE_NAME=golang
-ARG GO_IMAGE_VERSION=1.25-alpine3.21
+FROM golang:1.25-alpine AS builder
 
-FROM ${GO_IMAGE_NAME}:${GO_IMAGE_VERSION}
+WORKDIR /app
 
-WORKDIR /home/app
-
-# Install air for hot reloading and other tools
-RUN apk add --no-cache git && \
-    go install github.com/air-verse/air@latest
-
-# Copy go mod files
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy the rest of the application
 COPY . .
 
-# The actual command will be provided by docker-compose
-CMD ["air", "-c", ".air/.air.realtime.toml"]
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/main ./cmd/realtime/main.go
+
+
+FROM alpine:latest
+
+WORKDIR /app
+
+COPY --from=builder /app/main .
+
+COPY --from=builder /app/realtimeapp/repository/migrations ./realtimeapp/repository/migrations
+
+EXPOSE 8080
+
+CMD ["/app/main", "serve"]

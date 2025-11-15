@@ -1,17 +1,24 @@
-ARG GO_IMAGE_NAME
-ARG GO_IMAGE_VERSION
+FROM golang:1.25-alpine AS builder
 
-FROM ${GO_IMAGE_NAME}:${GO_IMAGE_VERSION}
-ENV GOPROXY=https://goproxy.io,direct
-
-# Set working directory
-WORKDIR /home/app
-
-RUN go install github.com/air-verse/air@v1.61.7
+WORKDIR /app
 
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
 
-CMD ["air", "-c", "/home/app/.air/.air.user.toml"]
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/main ./cmd/leaderboardstat/main.go
+
+
+FROM alpine:latest
+
+WORKDIR /app
+
+COPY --from=builder /app/main .
+
+COPY --from=builder /app/leaderboardstatapp/repository/migrations ./leaderboardstatapp/repository/migrations
+
+EXPOSE 8080
+
+CMD ["/app/main", "serve"]

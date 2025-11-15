@@ -1,26 +1,27 @@
 services:
-  userprofileapp:
+  userprofile-service:
     build:
       context: .
-      dockerfile: ./deploy/userprofile/development/Dockerfile
-      args:
-        GO_IMAGE_NAME: ${GO_IMAGE_NAME}
-        GO_IMAGE_VERSION: ${GO_IMAGE_VERSION}
-    container_name: userprofileapp
-    ports:
-      - "5005:5004"
+      dockerfile: Dockerfile
+    container_name: rankr-userprofile-service
     environment:
-      # gRPC clients
-      CONTRIBUTOR_SERVICE_HOST: "contributorapp"
-      CONTRIBUTOR_SERVICE_PORT: 6001
-      TASK_SERVICE_HOST: "taskapp"
-      TASK_SERVICE_PORT: 6002
-      LEADERBOARD_SERVICE_HOST: "leaderboardstatapp"
-      LEADERBOARD_SERVICE_PORT: 6011
-
-#    depends_on:
-#      - contributorapp
-#      - taskapp
-#     - leaderboardapp
+      DB_HOST: rankr-shared-postgres
+      DB_PORT: 5432
+      DB_USER: project_user
+      DB_PASSWORD: project_pass
+      DB_NAME: userprofiles
+    depends_on:
+      rankr-shared-postgres:
+        condition: service_healthy
+    networks:
+      - rankr-shared-development-network
     volumes:
-      - ./logs/userprofile:/home/app/logs/userprofile
+      - ./:/home/app
+    restart: unless-stopped
+
+networks:
+  rankr-shared-development-network:
+    external: true
+
+volumes:
+  project-data:

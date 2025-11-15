@@ -1,64 +1,27 @@
 services:
-  realtime-redis:
-    image: redis:8.0-M03-alpine3.21
-    restart: always
-    command: redis-server --loglevel warning --protected-mode no --save "" --appendonly no
-    environment:
-      - ALLOW_EMPTY_PASSWORD=yes
-    profiles:
-      - realtime
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  nats:
-    image: nats:2.10-alpine
-    restart: always
-    command: ["-js", "-m", "8222"]
-    ports:
-      - "4222:4222"
-      - "8222:8222"
-    profiles:
-      - realtime
-    healthcheck:
-      test: ["CMD", "nc", "-z", "localhost", "4222"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  realtime-service:
+  notification-service:
     build:
       context: .
-      dockerfile: ./deploy/realtime/development/Dockerfile
-      args:
-        GO_IMAGE_NAME: ${GO_IMAGE_NAME}
-        GO_IMAGE_VERSION: ${GO_IMAGE_VERSION}
-    image: ${SERVICE_NAME}-realtime:${GO_IMAGE_NAME}-${GO_IMAGE_VERSION}
-    command: /bin/sh -c "air -c /home/app/.air/.air.realtime.toml"
+      dockerfile: Dockerfile
+    container_name: rankr-notification-service
+    environment:
+      DB_HOST: rankr-shared-postgres
+      DB_PORT: 5432
+      DB_USER: project_user
+      DB_PASSWORD: project_pass
+      DB_NAME: notifications
     depends_on:
-      realtime-redis:
+      rankr-shared-postgres:
         condition: service_healthy
-      nats:
-        condition: service_healthy
+    networks:
+      - rankr-shared-development-network
     volumes:
       - ./:/home/app
-      - realtime-go-mod-cache:/go/pkg/mod
-    profiles:
-      - realtime
-    labels:
-      # routers for WebSocket and HTTP
-      - "traefik.enable=true"
-      - "traefik.http.routers.${SERVICE_NAME}_realtime.service=${SERVICE_NAME}_realtime"
-      - "traefik.http.routers.${SERVICE_NAME}_realtime.rule=Host(`${SERVICE_DOMAIN}`)&&PathPrefix(`/realtime`)"
-      - "traefik.http.routers.${SERVICE_NAME}_realtime.entrypoints=web"
-      - "traefik.http.services.${SERVICE_NAME}_realtime.loadbalancer.server.port=5009"
+    restart: unless-stopped
 
-      # middlewares
-      - "traefik.http.middlewares.${SERVICE_NAME}_strip_realtime.stripprefix.prefixes=/realtime"
-      - "traefik.http.routers.${SERVICE_NAME}_realtime.middlewares=${SERVICE_NAME}_strip_realtime"
+networks:
+  rankr-shared-development-network:
+    external: true
 
 volumes:
-  realtime-data:
-  realtime-go-mod-cache:
+  project-data:

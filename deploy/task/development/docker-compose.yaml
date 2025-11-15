@@ -1,36 +1,27 @@
 services:
-
-  task-db:
-    image: postgres:17.2-alpine
-    environment:
-      POSTGRES_DB: task_db
-      POSTGRES_USER: "task_admin"
-      POSTGRES_PASSWORD: "password123"
-    restart: always
-    profiles:
-      - task
-
   task-service:
     build:
       context: .
-      dockerfile: ./deploy/task/development/Dockerfile
-      args:
-        GO_IMAGE_NAME: ${GO_IMAGE_NAME}
-        GO_IMAGE_VERSION: ${GO_IMAGE_VERSION}
-    image: ${SERVICE_NAME}-task:${GO_IMAGE_NAME}-${GO_IMAGE_VERSION}
-    entrypoint:
-      - air
-      - "-c"
-      - /home/app/.air/.air.task.toml
+      dockerfile: Dockerfile
+    container_name: rankr-task-service
+    environment:
+      DB_HOST: rankr-shared-postgres
+      DB_PORT: 5432
+      DB_USER: project_user
+      DB_PASSWORD: project_pass
+      DB_NAME: tasks
+    depends_on:
+      rankr-shared-postgres:
+        condition: service_healthy
+    networks:
+      - rankr-shared-development-network
     volumes:
       - ./:/home/app
-    profiles:
-      - task
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.${SERVICE_NAME}_task.service=${SERVICE_NAME}_task"
-      - "traefik.http.routers.${SERVICE_NAME}_task.rule=Host(`${SERVICE_DOMAIN}`)&&PathPrefix(`/task`)"
-      - "traefik.http.routers.${SERVICE_NAME}_task.middlewares=${SERVICE_NAME}_strip_task"
-      - "traefik.http.routers.${SERVICE_NAME}_task.entrypoints=web"
-      - "traefik.http.services.${SERVICE_NAME}_task.loadbalancer.server.port=5001"
-      - "traefik.http.middlewares.${SERVICE_NAME}_strip_task.stripprefix.prefixes=/task"
+    restart: unless-stopped
+
+networks:
+  rankr-shared-development-network:
+    external: true
+
+volumes:
+  project-data:

@@ -1,50 +1,92 @@
-total_shutdown_timeout: "15s"
-path_of_migration: "./leaderboardstatapp/repository/migrations"
-
 http_server:
   host: ""
-  port: 6011
-  cors:
-    allow_origins: "*"
-  shutdown_context_timeout: "10s"
+  port: 8081
+  shutdown_context_timeout: 10s
 
 rpc_server:
-  host: "0.0.0.0"
-  port: 8090
+  host: ""
+  port: 8091
   network_type: "tcp"
 
+scheduler_cfg:
+  snapshot_crontab: "0 */3 * * *"
+  snapshot_job_context_timeout: 15m
+
 postgres_db:
-  host: "rankr-shared-postgres"
+  host: "shared-postgres"
   port: 5432
   user: "leaderboardstat_user"
-  password: "leaderboard_pass_123"
+  password: "secure_password_5"
   db_name: "leaderboardstat_db"
   ssl_mode: "disable"
+  max_conns: 10
+  min_conns: 2
+  max_conn_lifetime: 300 # in seconds
+  max_conn_idle_time: 60 # in seconds
+  health_check_period: 60 # in seconds
 
-  # pgx pool configs
-  min_conns: 1
-  max_conns: 20
-  max_conn_lifetime: 300
-  max_conn_idle_time: 60
-  health_check_period: 30
+redis:
+  host: "shared-redis"
+  port: 6379
+  password: ""
+  db: 0
+
+watermill_nats:
+  url: "nats://shared-nats:4222"
+  client_id: "leaderboardstat"
+  durable_name: "leaderboardstat-consumer"
+  queue_group: "event-group"
+
+  ack_wait_timeout: 5m
+  max_inflight: 10
+  connect_timeout: 30s
+  reconnect_wait: 5s
+  ping_interval: 30s
+  max_pings_out: 1
+
+  use_jetstream: true
 
 logger:
-  level: "debug"
-  file_path: "logs/leaderboardstat/service.log"
+  level: "debug" # Can be `debug`, `info`, `warn`, `error`
+  file_path: "logs/leaderboardstatapp/service.log"
   use_local_time: true
   file_max_size_in_mb: 10
   file_max_age_in_days: 7
 
-leaderboard_scoring_rpc:
-  host: "localhost"                   # Host where leaderboardscoring service runs
-  port: 8090                          # Port from leaderboardscoring gRPC server
-  grpc_service_name: "leaderboardscoring.v1.LeaderboardScoringService"  # Service name from protobuf
-  max_attempts: 3                     # Retry attempts
-  initial_backoff: "1s"               # Initial backoff
-  max_backoff: "5s"                   # Maximum backoff
-  backoff_multiplier: 2.0             # Backoff multiplier
-  retryable_status_codes:             # Status codes to retry
-    - "UNAVAILABLE"
-    - "RESOURCE_EXHAUSTED"
-    - "INTERNAL"
-  
+raw_event_consumer:
+  processed_key_ttl: 24h
+  lock_key_ttl: 5m
+  prefix_processed_key: "processed_events"
+  prefix_lock_key: "lock"
+
+database_retry:
+  max_retries: 3
+  retry_delay: 100ms
+
+nats_adapter:
+  url: "nats://shared-nats:4222"
+  max_reconnects: -1
+  reconnect_wait: 1s
+
+  # Stream settings
+  max_messages: 10000000
+  max_bytes: 10737418240
+  max_age: 24h
+  storage_type: "file" # "memory" → RAM
+  replicas: 1
+  retention_policy: "workqueue"
+
+pull_consumer:
+  durable_name: "batch-processor"
+  batch_size: 500
+  max_wait: 5s
+  max_deliver: 20
+  ack_wait: 1m
+
+batch_processor:
+  tick_interval: 10s
+  metrics_interval: 30s
+
+total_shutdown_timeout: 30m
+
+path_of_migration: "./leaderboardstatapp/repository/migrations"
