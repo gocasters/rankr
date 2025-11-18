@@ -19,6 +19,7 @@ COPY --from=builder /app/main .
 
 COPY --from=builder /app/authapp/repository/migrations ./authapp/repository/migrations
 
-EXPOSE 8080
+EXPOSE 8081
+EXPOSE 8091
 
 CMD ["/app/main", "serve"]

@@ -1,0 +1,37 @@
+# Git metadata
+.git
+.gitignore
+
+# Build artifacts
+bin
+build
+dist
+coverage
+tmp
+*.out
+*.log
+
+# Dependency caches
+node_modules
+vendor
+
+# Editor/OS files
+.DS_Store
+.idea/
+.vscode/
+
+# Environment files
+.env
+*.env
+*/.env
+**/*.env
+.deploy
+.deploy.env
+.deploy/*.env
+
+# Runtime logs
+logs
+/logs/*
+
+# Misc
+*.sqlite

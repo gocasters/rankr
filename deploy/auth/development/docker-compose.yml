@@ -7,13 +7,13 @@ services:
     container_name: auth-app
     volumes:
       - type: bind
-        source: ./config.yml # Mount the config file
+        source: ${PROJECT_ROOT:-.}/deploy/auth/development/config.yml # Set PROJECT_ROOT when running outside repo root
         target: /app/config.yml
         bind:
           create_host_path: false
     ports:
-      - "8081:8082" # HTTP port
-      - "8091:8092" # gRPC port
+      - "8081:8081" # HTTP port
+      - "8091:8091" # gRPC port
     networks:
       - rankr-shared-development-network
     environment:
@@ -27,6 +27,9 @@ services:
       - auth_NATS_URL=nats://shared-nats:4222
     command: [ "/app/main", "serve", "--migrate-up" ]
 
+# Shared network is created by `deploy/script/start_infrastructure.sh up-base`
+# or `make infra-up` before running this service.
 networks:
   rankr-shared-development-network:
     external: true
+    name: rankr-shared-development-network

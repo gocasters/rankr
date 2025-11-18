@@ -11,16 +11,18 @@ services:
       - "8096:8091" # gRPC port
     networks:
       - rankr-shared-development-network
+    env_file:
+      - ./.env.development
     environment:
       - CONFIG_PATH=/app/config.yml
-      - project_POSTGRES_DB_HOST=shared-postgres
-      - project_POSTGRES_DB_USER=project_user
-      - project_POSTGRES_DB_PASSWORD=project_pass
-      - project_POSTGRES_DB_NAME=project_db
-      - project_POSTGRES_DB_PORT=5432
-      - project_REDIS_HOST=shared-redis
-      - project_NATS_URL=nats://shared-nats:4222
-    command: [ "/app/main", "serve" ]
+      - project_POSTGRES_DB_HOST=${PROJECT_POSTGRES_DB_HOST}
+      - project_POSTGRES_DB_USER=${PROJECT_POSTGRES_DB_USER}
+      - project_POSTGRES_DB_PASSWORD=${PROJECT_POSTGRES_DB_PASSWORD}
+      - project_POSTGRES_DB_NAME=${PROJECT_POSTGRES_DB_NAME}
+      - project_POSTGRES_DB_PORT=${PROJECT_POSTGRES_DB_PORT}
+      - project_REDIS_HOST=${PROJECT_REDIS_HOST}
+      - project_NATS_URL=${PROJECT_NATS_URL}
+    command: [ "/app/main", "serve", "--migrate-up" ]
 networks:
   rankr-shared-development-network:
     external: true
