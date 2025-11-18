@@ -11,6 +11,8 @@ REDIS_PATH="$PROJECT_ROOT/deploy/infrastructure/redis/development/docker-compose
 NATS_PATH="$PROJECT_ROOT/deploy/infrastructure/nats/development/docker-compose.nats.yml"
 EMQX_PATH="$PROJECT_ROOT/deploy/infrastructure/emqx/development/docker-compose.emqx.yml"
 ENV_FILE="$PROJECT_ROOT/deploy/.env"
+ENV_TEMPLATE="$PROJECT_ROOT/deploy/.env.example"
+GITIGNORE_FILE="$PROJECT_ROOT/.gitignore"
 PROJECT_NAME="rankr-infra"
 POSTGRES_CONTAINER="rankr-shared-postgres"
 
@@ -80,25 +82,32 @@ function print_help() {
     echo "  help           Show this help message"
 }
 
+function ensure_env_gitignore() {
+    if [ -f "$GITIGNORE_FILE" ]; then
+        if ! grep -qxF ".env" "$GITIGNORE_FILE"; then
+            echo ".env" >> "$GITIGNORE_FILE"
+            echo "Appended .env to $GITIGNORE_FILE to avoid committing secrets."
+        fi
+    fi
+}
+
 function check_env_file() {
-    if [ ! -f "$ENV_FILE" ]; then
-        echo "Warning: .env file not found at $ENV_FILE"
-        echo "Creating a default .env file..."
+    ensure_env_gitignore
+
+    if [ -f "$ENV_FILE" ]; then
+        return
+    fi
+
+    echo "Warning: .env file not found at $ENV_FILE"
+    if [ -f "$ENV_TEMPLATE" ]; then
+        echo "Creating $ENV_FILE from template..."
         mkdir -p "$(dirname "$ENV_FILE")"
-        cat > "$ENV_FILE" << 'EOF'
-# PostgreSQL Configuration
-POSTGRES_USER=rankr
-POSTGRES_PASSWORD=rankr_password
-POSTGRES_DB=rankr
-
-# Redis Configuration
-REDIS_PASSWORD=redis_password
-
-# NATS Configuration
-NATS_USER=rankr
-NATS_PASSWORD=nats_password
-EOF
-        echo "Default .env file created at $ENV_FILE"
+        cp "$ENV_TEMPLATE" "$ENV_FILE"
+        echo "Local .env created from $ENV_TEMPLATE. Please review and update placeholder credentials."
+    else
+        echo "Template file $ENV_TEMPLATE is missing."
+        echo "Create $ENV_FILE manually before running this script."
+        exit 1
     fi
 }
 
