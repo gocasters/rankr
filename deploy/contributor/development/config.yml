@@ -1,11 +1,11 @@
 http_server:
   host: ""
-  port: 8081
+  port: 8083
   shutdown_context_timeout: 10s
 
 rpc_server:
   host: ""
-  port: 8091
+  port: 8093
   network_type: "tcp"
 
 grpc_client:

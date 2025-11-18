@@ -6,16 +6,17 @@ services:
     container_name: contributor-app
     volumes:
       - ./config.yml:/app/config.yml # Mount the config file
+      - ./logs:/app/logs # Persist contributor logs
     ports:
-      - "8084:8083" # HTTP port
-      - "8094:8093" # gRPC port
+      - "8083:8083" # HTTP port
+      - "8093:8093" # gRPC port
     networks:
       - rankr-shared-development-network
     environment:
       - CONFIG_PATH=/app/config.yml
       - contributor_POSTGRES_DB_HOST=shared-postgres
       - contributor_REDIS_HOST=shared-redis
-      - contributor_NATS_URL=nats://shared-nats:4223
+      - contributor_NATS_URL=nats://shared-nats:4222
     command: [ "/app/main", "serve", "--migrate-up" ]
 
 networks:

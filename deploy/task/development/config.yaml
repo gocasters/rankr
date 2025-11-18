@@ -15,9 +15,9 @@ scheduler_cfg:
 postgres_db:
   host: "shared-postgres"
   port: 5432
-  user: "task_user"
-  password: "task_pass"
-  db_name: "task_db"
+  user: "${task_POSTGRES_DB_USER}"
+  password: "${task_POSTGRES_DB_PASSWORD}"
+  db_name: "${task_POSTGRES_DB_NAME}"
   ssl_mode: "disable"
   max_conns: 10
   min_conns: 2

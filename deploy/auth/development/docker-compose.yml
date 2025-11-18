@@ -24,7 +24,7 @@ services:
       - auth_POSTGRES_DB_NAME=auth_db
       - auth_POSTGRES_DB_PORT=5432
       - auth_REDIS_HOST=shared-redis
-      - auth_NATS_URL=nats://shared-nats:4223
+      - auth_NATS_URL=nats://shared-nats:4222
     command: [ "/app/main", "serve", "--migrate-up" ]
 
 networks:

@@ -19,7 +19,7 @@ services:
       - leaderboardstat_POSTGRES_DB_NAME=leaderboardstat_db
       - leaderboardstat_POSTGRES_DB_PORT=5432
       - leaderboardstat_REDIS_HOST=shared-redis
-      - leaderboardstat_NATS_URL=nats://shared-nats:4223
+      - leaderboardstat_NATS_URL=nats://shared-nats:4222
     command: [ "/app/main", "serve", "--migrate-up" ]
 networks:
   rankr-shared-development-network:

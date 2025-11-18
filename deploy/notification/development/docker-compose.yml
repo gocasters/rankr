@@ -19,7 +19,7 @@ services:
       - notification_POSTGRES_DB_NAME=notification_db
       - notification_POSTGRES_DB_PORT=5432
       - notification_REDIS_HOST=shared-redis
-      - notification_NATS_URL=nats://shared-nats:4223
+      - notification_NATS_URL=nats://shared-nats:4222
     command: [ "/app/main", "serve" ]
 networks:
   rankr-shared-development-network:

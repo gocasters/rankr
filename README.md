@@ -16,10 +16,14 @@ make proto-setup
 # 3. Setup Go dependencies
 make mod-tidy
 
-# 4. Start shared infrastructure
+# 4. Prepare environment files
+cp deploy/infrastructure/postgresql/development/.env-example deploy/infrastructure/postgresql/development/.env
+cp deploy/task/development/.env.example deploy/task/development/.env
+
+# 5. Start shared infrastructure
 make infra-up
 
-# 5. Start the application services (in this order)
+# 6. Start the application services (in this order)
 make start-userprofile-app-dev
 make start-project-app-dev
 make start-realtime-app-dev

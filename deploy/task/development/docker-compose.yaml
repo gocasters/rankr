@@ -14,11 +14,11 @@ services:
       - rankr-shared-development-network
     environment:
       - CONFIG_PATH=/app/config.yaml
-      - task_POSTGRES_DB_HOST=shared-postgres
-      - task_POSTGRES_DB_USER=task_user
-      - task_POSTGRES_DB_PASSWORD=task_pass
-      - task_POSTGRES_DB_NAME=task_db
-      - task_POSTGRES_DB_PORT=5432
+      - task_POSTGRES_DB_HOST=${TASK_DB_HOST:-shared-postgres}
+      - task_POSTGRES_DB_USER=${TASK_DB_USER}
+      - task_POSTGRES_DB_PASSWORD=${TASK_DB_PASSWORD}
+      - task_POSTGRES_DB_NAME=${TASK_DB_NAME}
+      - task_POSTGRES_DB_PORT=${TASK_DB_PORT:-5432}
       - task_REDIS_HOST=shared-redis
       - task_NATS_URL=nats://shared-nats:4222
     command: [ "/app/main", "serve" ]

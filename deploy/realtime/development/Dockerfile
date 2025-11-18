@@ -17,9 +17,6 @@ WORKDIR /app
 
 COPY --from=builder /app/main .
 
-COPY --from=builder /app/realtimeapp/repository/database/migrations ./realtimeapp/repository/database/migrations
-
 EXPOSE 8080
 
 CMD ["/app/main", "serve"]
-

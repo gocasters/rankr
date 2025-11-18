@@ -19,7 +19,7 @@ services:
       - project_POSTGRES_DB_NAME=project_db
       - project_POSTGRES_DB_PORT=5432
       - project_REDIS_HOST=shared-redis
-      - project_NATS_URL=nats://shared-nats:4223
+      - project_NATS_URL=nats://shared-nats:4222
     command: [ "/app/main", "serve" ]
 networks:
   rankr-shared-development-network:

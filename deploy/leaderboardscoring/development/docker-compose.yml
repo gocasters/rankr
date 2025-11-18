@@ -16,7 +16,7 @@ services:
       - CONFIG_PATH=/app/config.yml
       - LEADERBOARDSCORING_POSTGRES_DB_HOST=shared-postgres
       - LEADERBOARDSCORING_REDIS_HOST=shared-redis
-      - LEADERBOARDSCORING_NATS_URL=nats://shared-nats:4223
+      - LEADERBOARDSCORING_NATS_URL=nats://shared-nats:4222
     command: [ "/app/main", "serve", "--migrate-up" ]
 
 networks:
