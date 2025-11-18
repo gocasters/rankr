@@ -1,27 +1,28 @@
 services:
-  task-service:
+  task-app:
     build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: rankr-task-service
-    environment:
-      DB_HOST: rankr-shared-postgres
-      DB_PORT: 5432
-      DB_USER: project_user
-      DB_PASSWORD: project_pass
-      DB_NAME: tasks
-    depends_on:
-      rankr-shared-postgres:
-        condition: service_healthy
+      context: ../../..
+      dockerfile: ./deploy/task/development/Dockerfile
+    container_name: task-app
+    volumes:
+      - type: bind
+        source: ./config.yaml
+        target: /app/config.yaml
+        bind:
+          create_host_path: false
     networks:
       - rankr-shared-development-network
-    volumes:
-      - ./:/home/app
-    restart: unless-stopped
+    environment:
+      - CONFIG_PATH=/app/config.yaml
+      - task_POSTGRES_DB_HOST=shared-postgres
+      - task_POSTGRES_DB_USER=task_user
+      - task_POSTGRES_DB_PASSWORD=task_pass
+      - task_POSTGRES_DB_NAME=task_db
+      - task_POSTGRES_DB_PORT=5432
+      - task_REDIS_HOST=shared-redis
+      - task_NATS_URL=nats://shared-nats:4222
+    command: [ "/app/main", "serve" ]
 
 networks:
   rankr-shared-development-network:
     external: true
-
-volumes:
-  project-data:

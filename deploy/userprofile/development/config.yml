@@ -1,29 +1,19 @@
 http_server:
   host: ""
-  port: 8084
+  port: 8081
   shutdown_context_timeout: 10s
 
 rpc_server:
   host: ""
-  port: 8094
+  port: 8091
   network_type: "tcp"
+
 
 scheduler_cfg:
   snapshot_crontab: "0 */3 * * *"
   snapshot_job_context_timeout: 15m
 
-postgres_db:
-  host: "shared-postgres"
-  port: 5432
-  user: "notification_user"
-  password: "secure_password_5"
-  db_name: "notification_db"
-  ssl_mode: "disable"
-  max_conns: 10
-  min_conns: 2
-  max_conn_lifetime: 300 # in seconds
-  max_conn_idle_time: 60 # in seconds
-  health_check_period: 60 # in seconds
+
 
 redis:
   host: "shared-redis"
@@ -31,24 +21,10 @@ redis:
   password: ""
   db: 0
 
-watermill_nats:
-  url: "nats://shared-nats:4222"
-  client_id: "notification"
-  durable_name: "notification-consumer"
-  queue_group: "event-group"
-
-  ack_wait_timeout: 5m
-  max_inflight: 10
-  connect_timeout: 30s
-  reconnect_wait: 5s
-  ping_interval: 30s
-  max_pings_out: 1
-
-  use_jetstream: true
 
 logger:
   level: "debug" # Can be `debug`, `info`, `warn`, `error`
-  file_path: "logs/notificationapp/service.log"
+  file_path: "logs/userprofileapp/service.log"
   use_local_time: true
   file_max_size_in_mb: 10
   file_max_age_in_days: 7
@@ -89,4 +65,17 @@ batch_processor:
 
 total_shutdown_timeout: 30m
 
-path_of_migration: "./notificationapp/repository/migrations"
+path_of_migration: "./userprofileapp/repository/migrations"
+
+postgres_db:
+  host: shared-postgres
+  port: 5432
+  user: userprofile_user
+  password: userprofile_pass
+  db_name: userprofile_db
+  ssl_mode: disable
+  max_conns: 25  
+  min_conns: 5  
+  max_conn_lifetime: 300
+  max_conn_idle_time: 60
+  health_check_period: 60

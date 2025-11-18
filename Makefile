@@ -1,10 +1,15 @@
+
 # --- Variables ---
+SHELL := /bin/bash
 BINARY_NAME ?= rankr
 BUILD_DIR ?= bin
 BUF_VERSION ?= v1.56.0
 DEFAULT_BRANCH ?= main
 PROTOC_GEN_GO_VERSION ?= v1.34.2
 PROTOC_GEN_GO_GRPC_VERSION ?= v1.5.1
+DOCKER_COMPOSE ?= docker compose
+INFRA_SCRIPT := ./deploy/script/start_infrastructure.sh
+SERVICES := auth contributor leaderboardstat leaderboardscoring notification project realtime task userprofile webhook argus
 
 # ====================================================================================
 # General Go Commands
@@ -105,7 +110,21 @@ proto-bsr-push-create:
 	@echo "Pushing protobuf module to BSR (create if not exists)..."
 	cd protobuf && buf push --create
 
-# ... other proto commands remain the same ...
+proto-bsr-info:
+	@echo "Getting BSR module info..."
+	cd protobuf && buf push --info
+
+proto-bsr-login:
+	@echo "Logging into BSR..."
+	buf registry login
+
+proto-bsr-whoami:
+	@echo "Checking BSR login status..."
+	buf registry whoami
+
+update-buf-version:
+	@echo "Updating Buf version to $(BUF_VERSION)..."
+	sed -i 's/version: .*/version: $(BUF_VERSION)/' protobuf/buf.yaml
 
 install-protoc-plugins:
 	@echo "Installing protoc plugins..."
@@ -125,12 +144,12 @@ install-protoc-plugins:
 install-buf:
 	@echo "Installing Buf $(BUF_VERSION)..."
 	@if command -v buf &> /dev/null && buf --version &> /dev/null; then \
-	   CURRENT_VERSION=$$(buf --version | sed 's/^v//'); \
-	   EXPECTED_VERSION=$$(echo "$(BUF_VERSION)" | sed 's/^v//'); \
-	   if [ "$$CURRENT_VERSION" = "$$EXPECTED_VERSION" ]; then \
+	   CURRENT_VERSION=$(buf --version | sed 's/^v//'); \
+	   EXPECTED_VERSION=$(echo "$(BUF_VERSION)" | sed 's/^v//'); \
+	   if [ "$CURRENT_VERSION" = "$EXPECTED_VERSION" ]; then \
 	      echo "Buf $(BUF_VERSION) is already installed"; \
 	   else \
-	      echo "Buf version mismatch. Expected $(BUF_VERSION), found $$CURRENT_VERSION. Reinstalling..."; \
+	      echo "Buf version mismatch. Expected $(BUF_VERSION), found $CURRENT_VERSION. Reinstalling..."; \
 	      $(MAKE) install-buf-force; \
 	   fi; \
 	else \
@@ -141,74 +160,183 @@ install-buf:
 install-buf-force:
 	@echo "Force installing Buf $(BUF_VERSION)..."
 	@if command -v curl &> /dev/null; then \
-	   curl -sSL "https://github.com/bufbuild/buf/releases/$(BUF_VERSION)/download/buf-$$(uname -s)-$$(uname -m)" -o /tmp/buf && \
+	   curl -sSL "https://github.com/bufbuild/buf/releases/$(BUF_VERSION)/download/buf-$(uname -s)-$(uname -m)" -o /tmp/buf && \
 	   chmod +x /tmp/buf && \
 	   sudo mv /tmp/buf /usr/local/bin/buf && \
 	   echo "Buf $(BUF_VERSION) installed successfully"; \
-	else \
+else \
 	   echo "curl not found. Please install Buf manually."; \
 	   exit 1; \
 	fi
 
 # ====================================================================================
-# Other Service Commands (Unchanged)
+# Infrastructure Commands
 # ====================================================================================
-.PHONY: start-contributor-app-dev start-contributor-app-dev-log start-contributor-debug start-contributor-debug-log
-.PHONY: start-task-app-dev stop-contributor-debug start-project-app-dev start-project-app-dev-log
-.PHONY: start-auth-app-dev start-auth-app-dev-log
+.PHONY: infra-up infra-down infra-logs
+.PHONY: infra-up-postgres infra-up-redis infra-up-nats infra-up-emqx
 
-start-contributor-app-dev:
-	./deploy/docker-compose-dev.bash --profile contributor up -d
+infra-up:
+	@echo "Starting shared infrastructure..."
+	bash $(INFRA_SCRIPT) up-all
 
-start-contributor-app-dev-log:
-	./deploy/docker-compose-dev.bash --profile contributor up
+infra-down:
+	@echo "Stopping shared infrastructure..."
+	bash $(INFRA_SCRIPT) down-all
 
-start-contributor-debug: ## Start user in debug mode (local)
-	./deploy/docker-compose-dev-user-local.bash up -d
+infra-logs:
+	@echo "Showing logs for infrastructure stack..."
+	bash $(INFRA_SCRIPT) logs-all
 
-start-contributor-debug-log: ## Start user in debug mode (local) with logs
-	./deploy/docker-compose-dev-user-local.bash up
+infra-up-postgres:
+	@echo "Starting infrastructure PostgreSQL..."
+	bash $(INFRA_SCRIPT) up-postgres
 
-start-task-app-dev:
-	./deploy/docker-compose-dev.bash --profile task up
+infra-up-redis:
+	@echo "Starting infrastructure Redis..."
+	bash $(INFRA_SCRIPT) up-redis
 
-stop-contributor-debug: ## Stop user debug mode (keep volumes)
-	docker compose \
-	--env-file ./deploy/.env \
-	--project-directory . \
-	--profile user-local \
-	-f ./deploy/rankr/development/traefik-compose.yml \
-	-f ./deploy/user/development/docker-compose.no-service.yaml \
-	down --remove-orphans
+infra-up-nats:
+	@echo "Starting infrastructure NATS..."
+	bash $(INFRA_SCRIPT) up-nats
 
-start-project-app-dev:
-	./deploy/docker-compose-dev.bash --profile project up -d
-
-start-project-app-dev-log:
-	./deploy/docker-compose-dev.bash --profile project up
-
-start-auth-app-dev:
-	./deploy/docker-compose-dev.bash --profile auth up -d
-
-start-auth-app-dev-log:
-	./deploy/docker-compose-dev.bash --profile auth up
+infra-up-emqx:
+	@echo "Starting infrastructure EMQX..."
+	bash $(INFRA_SCRIPT) up-emqx
 
 # ====================================================================================
-# Help Target
+# Service Commands
 # ====================================================================================
+.PHONY: $(SERVICES:%=start-%-app-dev) $(SERVICES:%=start-%-app-dev-log) $(SERVICES:%=stop-%-app-dev)
+
+define SERVICE_template
+start-$(1)-app-dev:
+	@echo "Starting $(1) service..."
+	cd deploy/$(1)/development && $(DOCKER_COMPOSE) up -d
+
+start-$(1)-app-dev-log:
+	@echo "Starting $(1) service with logs..."
+	cd deploy/$(1)/development && $(DOCKER_COMPOSE) up
+
+stop-$(1)-app-dev:
+	@echo "Stopping $(1) service..."
+	cd deploy/$(1)/development && $(DOCKER_COMPOSE) down
+endef
+
+$(foreach svc,$(SERVICES),$(eval $(call SERVICE_template,$(svc))))
+
+.PHONY: services-up services-down services-logs
+
+# All services commands
+services-up:
+	@echo "Starting all application services..."
+	@for svc in $(SERVICES); do \
+		$(MAKE) start-$$svc-app-dev; \
+	done
+	@echo "✅ All services are up!"
+
+services-down:
+	@echo "Stopping all application services..."
+	@for svc in $(SERVICES); do \
+		$(MAKE) stop-$$svc-app-dev; \
+	done
+	@echo "✅ All services stopped!"
+
+services-logs:
+	@echo "Showing all services logs..."
+	@trap 'for job in $$(jobs -p); do kill $$job 2>/dev/null || true; done' SIGINT SIGTERM EXIT; \
+	for svc in $(SERVICES); do \
+		( \
+			echo ""; \
+			echo ">>> $$svc logs"; \
+			cd deploy/$$svc/development && $(DOCKER_COMPOSE) logs -f \
+		) & \
+	done; \
+	wait
+
+# Complete startup (infrastructure + services)
+up:
+	$(MAKE) infra-up
+	@echo "Waiting for infrastructure to be ready..."
+	@sleep 10
+	@echo "Starting all services..."
+	$(MAKE) services-up
+	@echo "✅ All services are up!"
+
+# Complete shutdown
+down:
+	$(MAKE) services-down
+	$(MAKE) infra-down
+	@echo "✅ All services stopped!"
+
+# Show logs for everything
+logs:
+	@echo "Showing logs..."
+	$(MAKE) infra-logs
+
+# Restart everything
+restart: down
+	@sleep 2
+	$(MAKE) up
+
+# Show status of all containers
+status:
+	@echo "Container status:"
+	@docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "rankr|NAMES"
+
+# ====================================================================================
+# Help
+# ====================================================================================
+.PHONY: help
+
 help:
 	@echo "Available targets:"
+	@echo "  Infrastructure:"
+	@echo "    infra-up              - Start all infrastructure services"
+	@echo "    infra-down            - Stop all infrastructure services"
+	@echo "    infra-up-postgres     - Start PostgreSQL only"
+	@echo "    infra-up-redis        - Start Redis only"
+	@echo "    infra-up-nats         - Start NATS only"
+	@echo "    infra-up-emqx         - Start EMQX only"
+	@echo "    infra-logs            - Tail infrastructure logs"
 	@echo ""
-	@echo "General Go Commands:"
-	@echo "  start          - Build and run locally"
-	@echo "  test           - Run tests"
-	@echo "  mod-tidy       - Clean up dependencies"
-	@echo "  lint           - Run linters"
-	@echo "  install-linter - Install golangci-lint"
-	@echo "  build          - Compile binary"
-	@echo "  clean          - Remove build artifacts"
+	@echo "  Services ($(SERVICES)):"
+	@echo "    start-<service>-app-dev      - Start a single service (e.g. make start-auth-app-dev)"
+	@echo "    start-<service>-app-dev-log  - Start a service and attach logs"
+	@echo "    stop-<service>-app-dev       - Stop a single service"
+	@echo "    services-up                  - Start every service listed above"
+	@echo "    services-down                - Stop every service listed above"
+	@echo "    services-logs                - Tail logs for every service (Ctrl+C to stop)"
 	@echo ""
-	@echo "Protobuf targets (run 'make' to see all):"
-	@echo "  proto-gen      - Generate Go code from protobuf files"
-	@echo "  proto-lint     - Lint protobuf files"
-	@echo "  ..."
+	@echo "  Protobuf:"
+	@echo "    proto-setup           - Setup Buf for project"
+	@echo "    proto-setup-full      - Setup Buf and generate code"
+	@echo "    proto-gen             - Generate protobuf code"
+	@echo "    proto-lint            - Lint protobuf files"
+	@echo "    proto-breaking        - Check for breaking changes"
+	@echo "    proto-clean           - Clean generated protobuf files"
+	@echo "    proto-format          - Format protobuf files"
+	@echo "    proto-deps            - Update protobuf dependencies"
+	@echo "    proto-validate        - Validate protobuf files"
+	@echo ""
+	@echo "  Build & Development:"
+	@echo "    build                 - Build the binary"
+	@echo "    start                 - Run the binary"
+	@echo "    test                  - Run tests"
+	@echo "    clean                 - Clean build artifacts"
+	@echo "    mod-tidy              - Tidy go modules"
+	@echo "    lint                  - Run linter"
+	@echo "    install-linter        - Install linter"
+	@echo "    install-protoc-plugins - Install protoc plugins"
+	@echo "    install-buf           - Install Buf"
+	@echo ""
+	@echo "  Docker:"
+	@echo "    services-up           - Start all services"
+	@echo "    services-down         - Stop all services"
+	@echo "    services-logs         - Show logs for all services"
+	@echo ""
+	@echo "  Utilities:"
+	@echo "    up                    - Start infrastructure and services"
+	@echo "    down                  - Stop infrastructure and services"
+	@echo "    logs                  - Show logs"
+	@echo "    restart               - Restart everything"
+	@echo "    status                - Show container status"

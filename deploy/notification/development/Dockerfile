@@ -8,7 +8,7 @@ RUN go mod download
 COPY . .
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/main ./cmd/leaderboardstat/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/main ./cmd/notification/main.go
 
 
 FROM alpine:latest
@@ -17,7 +17,7 @@ WORKDIR /app
 
 COPY --from=builder /app/main .
 
-COPY --from=builder /app/leaderboardstatapp/repository/migrations ./leaderboardstatapp/repository/migrations
+COPY --from=builder /app/notifapp/repository/migrations ./notifapp/repository/migrations
 
 EXPOSE 8080
 

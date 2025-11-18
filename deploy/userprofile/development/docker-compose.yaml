@@ -1,27 +1,30 @@
 services:
-  userprofile-service:
+  userprofile-app:
     build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: rankr-userprofile-service
-    environment:
-      DB_HOST: rankr-shared-postgres
-      DB_PORT: 5432
-      DB_USER: project_user
-      DB_PASSWORD: project_pass
-      DB_NAME: userprofiles
-    depends_on:
-      rankr-shared-postgres:
-        condition: service_healthy
+      context: ../../.. # Build from the project root
+      dockerfile: ./deploy/userprofile/development/Dockerfile
+    container_name: userprofile-app
+    volumes:
+      - type: bind
+        source: ./config.yml # Config lives next to this compose file
+        target: /app/config.yml
+        bind:
+          create_host_path: false
+    ports:
+      - "8085:8081" # HTTP port
+      - "8095:8091" # gRPC port
     networks:
       - rankr-shared-development-network
-    volumes:
-      - ./:/home/app
-    restart: unless-stopped
-
+    environment:
+      - CONFIG_PATH=/app/config.yml
+      - userprofile_POSTGRES_DB_HOST=shared-postgres
+      - userprofile_POSTGRES_DB_USER=userprofile_user
+      - userprofile_POSTGRES_DB_PASSWORD=userprofile_pass
+      - userprofile_POSTGRES_DB_NAME=userprofile_db
+      - userprofile_POSTGRES_DB_PORT=5432
+      - userprofile_REDIS_HOST=shared-redis
+      - userprofile_NATS_URL=nats://shared-nats:4223
+    command: [ "/app/main", "serve" ]
 networks:
   rankr-shared-development-network:
     external: true
-
-volumes:
-  project-data:

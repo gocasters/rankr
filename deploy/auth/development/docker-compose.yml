@@ -6,15 +6,23 @@ services:
       dockerfile: ./deploy/auth/development/Dockerfile
     container_name: auth-app
     volumes:
-      - ./config.yml:/app/config.yml # Mount the config file
+      - type: bind
+        source: ./config.yml # Mount the config file
+        target: /app/config.yml
+        bind:
+          create_host_path: false
     ports:
-      - "8080:8082" # HTTP port
-      - "8090:8092" # gRPC port
+      - "8081:8082" # HTTP port
+      - "8091:8092" # gRPC port
     networks:
       - rankr-shared-development-network
     environment:
       - CONFIG_PATH=/app/config.yml
       - auth_POSTGRES_DB_HOST=shared-postgres
+      - auth_POSTGRES_DB_USER=auth_user
+      - auth_POSTGRES_DB_PASSWORD=auth_pass
+      - auth_POSTGRES_DB_NAME=auth_db
+      - auth_POSTGRES_DB_PORT=5432
       - auth_REDIS_HOST=shared-redis
       - auth_NATS_URL=nats://shared-nats:4223
     command: [ "/app/main", "serve", "--migrate-up" ]

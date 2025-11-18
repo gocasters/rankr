@@ -7,17 +7,20 @@ services:
     volumes:
       - ./config.yml:/app/config.yml # Mount the config file
     ports:
-      - "8080:8081" # HTTP port
-      - "8090:8091" # gRPC port
+      - "8088:8081" # HTTP port
+      - "8098:8091" # gRPC port
     networks:
       - rankr-shared-development-network
     environment:
       - CONFIG_PATH=/app/config.yml
       - leaderboardstat_POSTGRES_DB_HOST=shared-postgres
+      - leaderboardstat_POSTGRES_DB_USER=leaderboardstat_user
+      - leaderboardstat_POSTGRES_DB_PASSWORD=leaderboardstat_pass
+      - leaderboardstat_POSTGRES_DB_NAME=leaderboardstat_db
+      - leaderboardstat_POSTGRES_DB_PORT=5432
       - leaderboardstat_REDIS_HOST=shared-redis
       - leaderboardstat_NATS_URL=nats://shared-nats:4223
     command: [ "/app/main", "serve", "--migrate-up" ]
-
 networks:
   rankr-shared-development-network:
     external: true

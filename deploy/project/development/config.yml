@@ -15,9 +15,9 @@ scheduler_cfg:
 postgres_db:
   host: "shared-postgres"
   port: 5432
-  user: "userprofile_user"
-  password: "secure_password_5"
-  db_name: "userprofile_db"
+  user: "project_user"
+  password: "project_pass"
+  db_name: "project_db"
   ssl_mode: "disable"
   max_conns: 10
   min_conns: 2
@@ -33,8 +33,8 @@ redis:
 
 watermill_nats:
   url: "nats://shared-nats:4222"
-  client_id: "userprofile"
-  durable_name: "userprofile-consumer"
+  client_id: "project"
+  durable_name: "project-consumer"
   queue_group: "event-group"
 
   ack_wait_timeout: 5m
@@ -48,7 +48,7 @@ watermill_nats:
 
 logger:
   level: "debug" # Can be `debug`, `info`, `warn`, `error`
-  file_path: "logs/userprofileapp/service.log"
+  file_path: "logs/projectapp/service.log"
   use_local_time: true
   file_max_size_in_mb: 10
   file_max_age_in_days: 7
@@ -89,4 +89,4 @@ batch_processor:
 
 total_shutdown_timeout: 30m
 
-path_of_migration: "./userprofileapp/repository/migrations"
+path_of_migration: "./projectapp/repository/migrations"

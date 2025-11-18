@@ -16,7 +16,7 @@ postgres_db:
   host: "shared-postgres"
   port: 5432
   user: "task_user"
-  password: "secure_password_5"
+  password: "task_pass"
   db_name: "task_db"
   ssl_mode: "disable"
   max_conns: 10

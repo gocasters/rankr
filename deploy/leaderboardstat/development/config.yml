@@ -8,22 +8,38 @@ rpc_server:
   port: 8091
   network_type: "tcp"
 
+grpc_client:
+  contributor:
+    address: "contributor:8091"
+    grpc_service_name: "contributor"
+    timeout: 30s
+    max_retries: 3
+    retry_backoff: 100ms
+  
+  leaderboardscoring:
+    address: "leaderboardscoring:8091"
+    grpc_service_name: "leaderboardscoring"
+    timeout: 30s
+    max_retries: 3
+    retry_backoff: 100ms
+
+leaderboard_scoring_rpc:
+  host: "leaderboardscoring-app"
+  port: 8091
+  grpc_service_name: "leaderboardscoring.v1.LeaderboardScoringService"
+  max_attempts: 3
+  initial_backoff: 1s
+  max_backoff: 5s
+  backoff_multiplier: 1.5
+  retryable_status_codes:
+    - "UNAVAILABLE"
+    - "DEADLINE_EXCEEDED"
+
 scheduler_cfg:
   snapshot_crontab: "0 */3 * * *"
   snapshot_job_context_timeout: 15m
 
-postgres_db:
-  host: "shared-postgres"
-  port: 5432
-  user: "leaderboardstat_user"
-  password: "secure_password_5"
-  db_name: "leaderboardstat_db"
-  ssl_mode: "disable"
-  max_conns: 10
-  min_conns: 2
-  max_conn_lifetime: 300 # in seconds
-  max_conn_idle_time: 60 # in seconds
-  health_check_period: 60 # in seconds
+
 
 redis:
   host: "shared-redis"
@@ -90,3 +106,16 @@ batch_processor:
 total_shutdown_timeout: 30m
 
 path_of_migration: "./leaderboardstatapp/repository/migrations"
+
+postgres_db:
+  host: shared-postgres
+  port: 5432
+  user: leaderboardstat_user
+  password: leaderboardstat_pass
+  db_name: leaderboardstat_db
+  ssl_mode: disable
+  max_conns: 25  
+  min_conns: 5  
+  max_conn_lifetime: 300
+  max_conn_idle_time: 60
+  health_check_period: 60

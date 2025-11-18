@@ -1,27 +1,26 @@
 services:
-  notification-service:
+  project-app:
     build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: rankr-notification-service
-    environment:
-      DB_HOST: rankr-shared-postgres
-      DB_PORT: 5432
-      DB_USER: project_user
-      DB_PASSWORD: project_pass
-      DB_NAME: notifications
-    depends_on:
-      rankr-shared-postgres:
-        condition: service_healthy
+      context: ../../.. # Build from the project root
+      dockerfile: ./deploy/project/development/Dockerfile
+    container_name: project-app
+    volumes:
+      - ./config.yml:/app/config.yml # Mount the config file
+    ports:
+      - "8086:8081" # HTTP port
+      - "8096:8091" # gRPC port
     networks:
       - rankr-shared-development-network
-    volumes:
-      - ./:/home/app
-    restart: unless-stopped
-
+    environment:
+      - CONFIG_PATH=/app/config.yml
+      - project_POSTGRES_DB_HOST=shared-postgres
+      - project_POSTGRES_DB_USER=project_user
+      - project_POSTGRES_DB_PASSWORD=project_pass
+      - project_POSTGRES_DB_NAME=project_db
+      - project_POSTGRES_DB_PORT=5432
+      - project_REDIS_HOST=shared-redis
+      - project_NATS_URL=nats://shared-nats:4223
+    command: [ "/app/main", "serve" ]
 networks:
   rankr-shared-development-network:
     external: true
-
-volumes:
-  project-data:

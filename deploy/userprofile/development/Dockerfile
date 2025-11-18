@@ -17,7 +17,6 @@ WORKDIR /app
 
 COPY --from=builder /app/main .
 
-COPY --from=builder /app/userprofileapp/repository/migrations ./userprofileapp/repository/migrations
 
 EXPOSE 8080
 
