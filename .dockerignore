@@ -1,37 +1,51 @@
-# Git metadata
+# Version control & tooling
 .git
 .gitignore
+.github/
 
-# Build artifacts
-bin
-build
-dist
-coverage
-tmp
+# Build artifacts & caches
+bin/
+build/
+dist/
+tmp/
+coverage/
+coverage.*/
 *.out
 *.log
+logs/
+**/logs/
+cmd/*/temp/*
+.gocache/
+.gomodcache/
 
-# Dependency caches
-node_modules
-vendor
+# Third-party dependencies
+node_modules/
+vendor/
 
-# Editor/OS files
+# OS / editor noise
 .DS_Store
 .idea/
 .vscode/
+.history
+.cursor
 
-# Environment files
+# Environment & secrets
 .env
+.env.*
 *.env
 */.env
 **/*.env
+.envrc
+.envrc.*
 .deploy
 .deploy.env
 .deploy/*.env
+deploy/**/.env*
 
-# Runtime logs
-logs
-/logs/*
-
-# Misc
+# Misc binaries / artifacts
 *.sqlite
+*.db
+*.pid
+*.sock
+*.swp
+*.swo
