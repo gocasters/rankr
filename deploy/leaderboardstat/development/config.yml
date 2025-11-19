@@ -10,14 +10,14 @@ rpc_server:
 
 grpc_client:
   contributor:
-    address: "contributor:8091"
+    address: "contributor-app:8093"
     grpc_service_name: "contributor"
     timeout: 30s
     max_retries: 3
     retry_backoff: 100ms
   
   leaderboardscoring:
-    address: "leaderboardscoring:8091"
+    address: "leaderboardscoring-app:8091"
     grpc_service_name: "leaderboardscoring"
     timeout: 30s
     max_retries: 3

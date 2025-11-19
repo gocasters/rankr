@@ -16,15 +16,17 @@ services:
       - "8091:8091" # gRPC port
     networks:
       - rankr-shared-development-network
+    env_file:
+      - ./.env.development
     environment:
       - CONFIG_PATH=/app/config.yml
-      - auth_POSTGRES_DB_HOST=shared-postgres
-      - auth_POSTGRES_DB_USER=auth_user
-      - auth_POSTGRES_DB_PASSWORD=auth_pass
-      - auth_POSTGRES_DB_NAME=auth_db
-      - auth_POSTGRES_DB_PORT=5432
-      - auth_REDIS_HOST=shared-redis
-      - auth_NATS_URL=nats://shared-nats:4222
+      - auth_POSTGRES_DB_HOST=${AUTH_POSTGRES_DB_HOST}
+      - auth_POSTGRES_DB_USER=${AUTH_POSTGRES_DB_USER}
+      - auth_POSTGRES_DB_PASSWORD=${AUTH_POSTGRES_DB_PASSWORD}
+      - auth_POSTGRES_DB_NAME=${AUTH_POSTGRES_DB_NAME}
+      - auth_POSTGRES_DB_PORT=${AUTH_POSTGRES_DB_PORT}
+      - auth_REDIS_HOST=${AUTH_REDIS_HOST}
+      - auth_NATS_URL=${AUTH_NATS_URL}
     command: [ "/app/main", "serve", "--migrate-up" ]
 
 # Shared network is created by `deploy/script/start_infrastructure.sh up-base`

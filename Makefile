@@ -160,9 +160,12 @@ install-buf:
 install-buf-force:
 	@echo "Force installing Buf $(BUF_VERSION)..."
 	@if command -v curl &> /dev/null; then \
-	   curl -sSL "https://github.com/bufbuild/buf/releases/$(BUF_VERSION)/download/buf-$(uname -s)-$(uname -m)" -o /tmp/buf && \
-	   chmod +x /tmp/buf && \
-	   sudo mv /tmp/buf /usr/local/bin/buf && \
+	   ARCHIVE="/tmp/buf-$(BUF_VERSION).tar.gz"; \
+	   curl -sSL "https://github.com/bufbuild/buf/releases/download/v$(BUF_VERSION)/buf-$$(uname -s)-$$(uname -m).tar.gz" -o $$ARCHIVE && \
+	   tar -xzf $$ARCHIVE -C /tmp && \
+	   chmod +x /tmp/buf/bin/buf && \
+	   sudo mv /tmp/buf/bin/buf /usr/local/bin/buf && \
+	   rm -rf $$ARCHIVE /tmp/buf && \
 	   echo "Buf $(BUF_VERSION) installed successfully"; \
 else \
 	   echo "curl not found. Please install Buf manually."; \

@@ -3,6 +3,7 @@
 ## Prerequisites
 - Run `bash deploy/script/start_infrastructure.sh up-base` or `make infra-up` once to ensure the shared `rankr-shared-development-network` and external volumes exist.
 - Copy `deploy/auth/development/config.yml` to suit your environment before starting the container (the compose file binds it with `create_host_path: false`).
+- Copy `.env.development.example` to `.env.development` and override the database or messaging hosts if your infrastructure differs. The compose file automatically loads this env file.
 
 ## Running
 ```bash
