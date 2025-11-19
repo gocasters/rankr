@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/gocasters/rankr/pkg/logger"
 	"strings"
 	"time"
 
+	"github.com/gocasters/rankr/pkg/logger"
 	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"google.golang.org/protobuf/proto"
 )
@@ -52,11 +53,10 @@ func (repo WebhookRepository) Save(ctx context.Context, event *eventpb.Event) er
 		return fmt.Errorf("failed to marshal event: %w", err)
 	}
 
-	tag, err := repo.db.Exec(
+	_, err = repo.db.Exec(
 		ctx,
-		`INSERT INTO webhook_events (provider, delivery_id, event_type, payload, received_at)
-	 VALUES ($1, $2, $3, $4, $5)
-	 ON CONFLICT (provider, delivery_id) DO NOTHING`,
+		`INSERT INTO webhook_events (provider, delivery_id, event_type, payload, received_at, source)
+	 VALUES ($1, $2, $3, $4, $5, 'webhook')`,
 		event.Provider,
 		event.Id,
 		event.EventName,
@@ -65,10 +65,11 @@ func (repo WebhookRepository) Save(ctx context.Context, event *eventpb.Event) er
 	)
 
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return ErrDuplicateEvent
+		}
 		return err
-	}
-	if tag.RowsAffected() == 0 {
-		return ErrDuplicateEvent
 	}
 	return nil
 }
@@ -389,4 +390,40 @@ func (repo *WebhookRepository) GetLostDeliveries(ctx context.Context, provider e
 	}
 
 	return missingDeliveries, nil
+}
+
+func (repo *WebhookRepository) SaveHistoricalEvent(
+	ctx context.Context,
+	event *eventpb.Event,
+	resourceType string,
+	resourceID int64,
+) error {
+	payload, err := proto.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("failed to marshal event: %w", err)
+	}
+
+	_, err = repo.db.Exec(
+		ctx,
+		`INSERT INTO webhook_events
+		(provider, source, resource_type, resource_id, event_type, payload, received_at, delivery_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, NULL)`,
+		event.Provider,
+		"historical",
+		resourceType,
+		resourceID,
+		event.EventName,
+		payload,
+		time.Now(),
+	)
+
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return ErrDuplicateEvent
+		}
+		return err
+	}
+
+	return nil
 }
