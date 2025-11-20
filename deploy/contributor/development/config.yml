@@ -1,6 +1,6 @@
 http_server:
   host: ""
-  port: 8083
+  port: 8082
   shutdown_context_timeout: 10s
 
 rpc_server:
@@ -99,7 +99,7 @@ postgres_db:
   host: shared-postgres
   port: 5432
   user: contributor_user
-  password: contributor_pass
+  password: change_me_contributor
   db_name: contributor_db
   ssl_mode: disable
   max_conns: 25  

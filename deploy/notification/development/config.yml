@@ -99,7 +99,7 @@ postgres_db:
   host: shared-postgres
   port: 5432
   user: notification_user
-  password: notification_pass
+  password: change_me_notification
   db_name: notification_db
   ssl_mode: disable
   max_conns: 25  

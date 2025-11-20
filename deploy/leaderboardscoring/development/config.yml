@@ -99,7 +99,7 @@ postgres_db:
   host: shared-postgres
   port: 5432
   user: leaderboardscoring_user
-  password: leaderboardscoring_pass
+  password: change_me_leaderboardscoring
   db_name: leaderboardscoring_db
   ssl_mode: disable
   max_conns: 25  
