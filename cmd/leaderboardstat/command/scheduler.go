@@ -20,18 +20,20 @@ var schedulerCmd = &cobra.Command{
 }
 
 func runScheduler() {
-	leaderboardLogger := logger.L()
-	leaderboardLogger.Info("Running daily score calculation manually...")
+
 	cfg := loadAppConfig()
 
 	if err := logger.Init(cfg.Logger); err != nil {
-		leaderboardLogger.Error("failed to initialize logger: %v", err)
+		panic("failed to initialize logger: " + err.Error())
 	}
 	defer logger.Close()
 
+	leaderboardLogger := logger.L()
+	leaderboardLogger.Info("Running daily score calculation manually...")
 	databaseConn, err := database.Connect(cfg.PostgresDB)
 	if err != nil {
-		leaderboardLogger.Error("failed to connect to database: %v", err)
+		leaderboardLogger.Error("failed to connect to database", "error", err)
+		return
 	}
 	defer databaseConn.Close()
 
@@ -40,11 +42,13 @@ func runScheduler() {
 
 	app, err := leaderboardstatapp.Setup(ctx, cfg, databaseConn)
 	if err != nil {
-		leaderboardLogger.Error("setup failed: %v", err)
+		leaderboardLogger.Error("setup failed", "error", err)
+		return
 	}
 
 	if err := app.LeaderboardstatSrv.GetDailyContributorScores(ctx); err != nil {
-		leaderboardLogger.Error("daily calculation failed: %v", err)
+		leaderboardLogger.Error("daily calculation failed", "error", err)
+		return
 	}
 
 	leaderboardLogger.Info("Daily score calculation completed successfully!")

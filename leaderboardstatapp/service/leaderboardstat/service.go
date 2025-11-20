@@ -57,7 +57,7 @@ func (s *Service) GetDailyContributorScores(ctx context.Context) error {
 	}
 
 	var allDailyScores []DailyContributorScore
-	pageSize := int32(1000) // Adjust based on what the service can handle
+	pageSize := int32(1000) // TODO- Adjust based on what the service can handle
 	offset := int32(0)
 
 	for {
@@ -102,6 +102,7 @@ func (s *Service) GetDailyContributorScores(ctx context.Context) error {
 			dailyScores = append(dailyScores, dailyScore)
 		}
 
+		allDailyScores = append(allDailyScores, dailyScores...)
 		if len(leaderboardRes.LeaderboardRows) < int(pageSize) {
 			break
 		}
@@ -120,7 +121,7 @@ func (s *Service) GetDailyContributorScores(ctx context.Context) error {
 		return fmt.Errorf("failed to store daily contributor scores: %w", err)
 	}
 
-	go s.processDailyScoreCalculations(ctx, allDailyScores)
+	go s.processDailyScoreCalculations(ctx, nil) // , allDailyScores
 
 	// TODO - cache current day scores in anther job
 	// TODO - cache key value pattern
