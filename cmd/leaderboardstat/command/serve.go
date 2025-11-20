@@ -33,7 +33,7 @@ func init() {
 }
 
 func serve() {
-	fmt.Println("Starting leaderboardstat service........")
+	fmt.Println("Starting leaderboardstat service...")
 
 	cfg := loadAppConfig()
 

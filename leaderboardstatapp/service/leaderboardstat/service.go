@@ -56,63 +56,80 @@ func (s *Service) GetDailyContributorScores(ctx context.Context) error {
 		return fmt.Errorf("leaderboardscoring client is not initialized")
 	}
 
-	// Get daily leaderboard from LeaderboardScoring service
-	getLeaderboardReq := &lbscoring.GetLeaderboardRequest{
-		Timeframe: "Daily", // TODO - set proper timestamp
-		PageSize:  1000,
-		Offset:    0,
-	}
+	var allDailyScores []DailyContributorScore
+	pageSize := int32(1000) // Adjust based on what the service can handle
+	offset := int32(0)
 
-	leaderboardRes, err := s.lbScoringClient.GetLeaderboard(ctx, getLeaderboardReq)
-	if err != nil {
-		return fmt.Errorf("failed to get leaderboard data: %w", err)
-	}
+	for {
+		// Get daily leaderboard from LeaderboardScoring service
+		getLeaderboardReq := &lbscoring.GetLeaderboardRequest{
+			Timeframe: "daily", // TODO - set proper timestamp
+			PageSize:  pageSize,
+			Offset:    offset,
+		}
 
-	log.Info("Retrieved leaderboard data",
-		slog.Int("row_count", len(leaderboardRes.LeaderboardRows)),
-		slog.String("timeframe", string(leaderboardRes.Timeframe)),
-	)
-
-	var dailyScores []DailyContributorScore
-	calculatedAt := time.Now()
-
-	for _, row := range leaderboardRes.LeaderboardRows {
-		contributorID, err := s.mapUserIDToContributorID(ctx, row.UserID)
+		leaderboardRes, err := s.lbScoringClient.GetLeaderboard(ctx, getLeaderboardReq)
 		if err != nil {
-			log.Warn("Failed to map user ID to contributor ID",
-				slog.String("user_id", row.UserID),
-				slog.String("error", err.Error()),
-			)
-
-			continue
+			return fmt.Errorf("failed to get leaderboard data at offset %d: %w", offset, err)
 		}
 
-		dailyScore := DailyContributorScore{
-			ContributorID: contributorID,
-			UserID:        row.UserID,
-			Score:         float64(row.Score), // TODO - define is score data type float or int
-			Rank:          row.Rank,           // TODO
-			Timeframe:     string(leaderboardRes.Timeframe),
-			CalculatedAt:  calculatedAt,
-			ProjectID:     1, // TODO add project_id to row response
+		log.Info("Retrieved leaderboard data",
+			slog.Int("row_count", len(leaderboardRes.LeaderboardRows)),
+			slog.String("timeframe", string(leaderboardRes.Timeframe)),
+		)
+
+		var dailyScores []DailyContributorScore
+
+		for _, row := range leaderboardRes.LeaderboardRows {
+			contributorID, err := s.mapUserIDToContributorID(ctx, row.UserID)
+			if err != nil {
+				log.Warn("Failed to map user ID to contributor ID",
+					slog.String("user_id", row.UserID),
+					slog.String("error", err.Error()),
+				)
+
+				continue
+			}
+
+			dailyScore := DailyContributorScore{
+				ContributorID: contributorID,
+				UserID:        row.UserID,
+				Score:         float64(row.Score), // TODO - define is score data type float or int
+				Rank:          row.Rank,           // TODO
+				Timeframe:     string(leaderboardRes.Timeframe),
+				//ProjectID:     1, // TODO add project_id to row response
+			}
+			dailyScores = append(dailyScores, dailyScore)
 		}
-		dailyScores = append(dailyScores, dailyScore)
+
+		if len(leaderboardRes.LeaderboardRows) < int(pageSize) {
+			break
+		}
+
+		offset += pageSize
+
+		time.Sleep(100 * time.Millisecond)
 	}
 
-	if err := s.repository.StoreDailyContributorScores(ctx, dailyScores); err != nil {
+	if len(allDailyScores) == 0 {
+		log.Info("No leaderboard data found for daily calculation")
+		return nil
+	}
+
+	if err := s.repository.StoreDailyContributorScores(ctx, allDailyScores); err != nil {
 		return fmt.Errorf("failed to store daily contributor scores: %w", err)
 	}
 
-	go s.processDailyScoreCalculations(ctx, dailyScores)
+	go s.processDailyScoreCalculations(ctx, allDailyScores)
 
 	// TODO - cache current day scores in anther job
 	// TODO - cache key value pattern
-	//if err := s.updateCacheAfterDailyCalculation(ctx, dailyScores); err != nil {
+	//if err := s.updateCacheAfterDailyCalculation(ctx, allDailyScores); err != nil {
 	//	log.Warn("Failed to update cache after daily calculation", slog.String("error", err.Error()))
 	//}
 
 	log.Info("Successfully calculated and stored daily contributor scores",
-		slog.Int("processed_count", len(dailyScores)),
+		slog.Int("processed_count", len(allDailyScores)),
 	)
 
 	return nil
