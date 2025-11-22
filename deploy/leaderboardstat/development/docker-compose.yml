@@ -5,6 +5,7 @@ services:
       dockerfile: ./deploy/leaderboardstat/development/Dockerfile
     container_name: leaderboardstat-app
     volumes:
+      - ../../..:/app
       - ./config.yml:/app/config.yml # Mount the config file
     ports:
       - "8088:8081" # HTTP port
@@ -20,7 +21,7 @@ services:
       - leaderboardstat_POSTGRES_DB_PORT=5432
       - leaderboardstat_REDIS_HOST=shared-redis
       - leaderboardstat_NATS_URL=nats://shared-nats:4222
-    command: [ "/app/main", "serve", "--migrate-up" ]
+    entrypoint: [ "air", "-c", "/app/.air/.air.leaderboardstat.toml" ]
 networks:
   rankr-shared-development-network:
     external: true

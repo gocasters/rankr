@@ -5,6 +5,7 @@ services:
       dockerfile: ./deploy/userprofile/development/Dockerfile
     container_name: userprofile-app
     volumes:
+      - ../../..:/app
       - type: bind
         source: ./config.yml # Config lives next to this compose file
         target: /app/config.yml
@@ -24,7 +25,7 @@ services:
       - userprofile_POSTGRES_DB_PORT=5432
       - userprofile_REDIS_HOST=shared-redis
       - userprofile_NATS_URL=nats://shared-nats:4222
-    command: [ "/app/main", "serve" ]
+    entrypoint: [ "air", "-c", "/app/.air/.air.userprofile.toml" ]
 networks:
   rankr-shared-development-network:
     external: true

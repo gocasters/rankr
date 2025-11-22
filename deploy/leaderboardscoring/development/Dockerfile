@@ -5,19 +5,19 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
+RUN go install github.com/air-verse/air@latest
+
 COPY . .
 
-# Build the application
 RUN CGO_ENABLED=0 GOOS=linux go build -o /app/main ./cmd/leaderboardscoring/main.go
 
 
-FROM alpine:latest
+FROM golang:1.25-alpine
 
 WORKDIR /app
 
-COPY --from=builder /app/main .
-
-COPY --from=builder /app/leaderboardscoringapp/repository/migrations ./leaderboardscoringapp/repository/migrations
+COPY --from=builder /go/bin/air /usr/local/bin/air
+COPY --from=builder /app /app
 
 EXPOSE 8080
 

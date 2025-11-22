@@ -5,6 +5,7 @@ services:
       dockerfile: ./deploy/notification/development/Dockerfile
     container_name: notification-app
     volumes:
+      - ../../..:/app
       - ./config.yml:/app/config.yml # Mount the config file
     ports:
       - "8089:8081" # HTTP port
@@ -20,7 +21,7 @@ services:
       - notification_POSTGRES_DB_PORT=5432
       - notification_REDIS_HOST=shared-redis
       - notification_NATS_URL=nats://shared-nats:4222
-    command: [ "/app/main", "serve" ]
+    entrypoint: [ "air", "-c", "/app/.air/.air.notification.toml" ]
 networks:
   rankr-shared-development-network:
     external: true

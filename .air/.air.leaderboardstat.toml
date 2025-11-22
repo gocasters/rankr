@@ -1,10 +1,10 @@
 root = "."
-tmp_dir = "cmd/project/temp"
+tmp_dir = "cmd/leaderboardstat/temp"
 
 [build]
-  bin = "./cmd/project/temp/main"
+  bin = "./cmd/leaderboardstat/temp/main"
   args_bin = ["serve", "--migrate-up"]
-  cmd = "go build -buildvcs=false -o ./cmd/project/temp/main ./cmd/project/"
+  cmd = "go build -buildvcs=false -o ./cmd/leaderboardstat/temp/main ./cmd/leaderboardstat/"
   delay = 1000
   exclude_dir = ["vendor"]
   exclude_file = []

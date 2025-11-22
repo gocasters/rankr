@@ -5,6 +5,7 @@ services:
       dockerfile: ./deploy/project/development/Dockerfile
     container_name: project-app
     volumes:
+      - ../../..:/app
       - ./config.yml:/app/config.yml # Mount the config file
     ports:
       - "8086:8081" # HTTP port
@@ -22,7 +23,7 @@ services:
       - project_POSTGRES_DB_PORT=${PROJECT_POSTGRES_DB_PORT}
       - project_REDIS_HOST=${PROJECT_REDIS_HOST}
       - project_NATS_URL=${PROJECT_NATS_URL}
-    command: [ "/app/main", "serve", "--migrate-up" ]
+    entrypoint: [ "air", "-c", "/app/.air/.air.projects.toml" ]
 networks:
   rankr-shared-development-network:
     external: true

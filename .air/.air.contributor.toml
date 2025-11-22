@@ -3,7 +3,7 @@ tmp_dir = "cmd/contributor/temp"
 
 [build]
   bin = "./cmd/contributor/temp/main"
-  args_bin = ["serve"]
+  args_bin = ["serve", "--migrate-up"]
   cmd = "go build -buildvcs=false -o ./cmd/contributor/temp/main ./cmd/contributor/"
   delay = 1000
   exclude_dir = ["vendor"]

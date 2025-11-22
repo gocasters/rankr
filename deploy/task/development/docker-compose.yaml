@@ -5,6 +5,7 @@ services:
       dockerfile: ./deploy/task/development/Dockerfile
     container_name: task-app
     volumes:
+      - ../../..:/app
       - type: bind
         source: ./config.yaml
         target: /app/config.yaml
@@ -21,7 +22,7 @@ services:
       - task_POSTGRES_DB_PORT=${TASK_DB_PORT:-5432}
       - task_REDIS_HOST=shared-redis
       - task_NATS_URL=nats://shared-nats:4222
-    command: [ "/app/main", "serve" ]
+    entrypoint: [ "air", "-c", "/app/.air/.air.task.toml" ]
 
 networks:
   rankr-shared-development-network:

@@ -5,6 +5,7 @@ services:
       dockerfile: ./deploy/contributor/development/Dockerfile
     container_name: contributor-app
     volumes:
+      - ../../..:/app
       - ./config.yml:/app/config.yml # Mount the config file
       - ./logs:/app/logs # Persist contributor logs
     ports:
@@ -17,7 +18,7 @@ services:
       - contributor_POSTGRES_DB_HOST=shared-postgres
       - contributor_REDIS_HOST=shared-redis
       - contributor_NATS_URL=nats://shared-nats:4222
-    command: [ "/app/main", "serve", "--migrate-up" ]
+    entrypoint: [ "air", "-c", "/app/.air/.air.contributor.toml" ]
 
 networks:
   rankr-shared-development-network:

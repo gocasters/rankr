@@ -6,6 +6,7 @@ services:
       dockerfile: ./deploy/leaderboardscoring/development/Dockerfile
     container_name: leaderboardscoring-app
     volumes:
+      - ../../..:/app
       - ./config.yml:/app/config.yml # Mount the config file
     ports:
       - "8080:8081" # HTTP port (host 8080 -> container 8081)
@@ -17,7 +18,7 @@ services:
       - LEADERBOARDSCORING_POSTGRES_DB_HOST=shared-postgres
       - LEADERBOARDSCORING_REDIS_HOST=shared-redis
       - LEADERBOARDSCORING_NATS_URL=nats://shared-nats:4222
-    command: [ "/app/main", "serve", "--migrate-up" ]
+    entrypoint: [ "air", "-c", "/app/.air/.air.leaderboardscoring.toml" ]
 
 networks:
   rankr-shared-development-network:

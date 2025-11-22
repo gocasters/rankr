@@ -5,6 +5,7 @@ services:
       dockerfile: ./deploy/realtime/development/Dockerfile
     container_name: realtime-app
     volumes:
+      - ../../..:/app
       - ./config.yml:/app/config.yml
     ports:
       - "8087:8081"
@@ -20,7 +21,7 @@ services:
       - realtime_POSTGRES_DB_PORT=5432
       - realtime_REDIS_HOST=shared-redis
       - realtime_NATS_URL=nats://shared-nats:4222
-    command: [ "/app/main", "serve" ]
+    entrypoint: [ "air", "-c", "/app/.air/.air.realtime.toml" ]
 
 networks:
   rankr-shared-development-network:
