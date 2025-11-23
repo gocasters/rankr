@@ -93,7 +93,7 @@ batch_processor:
 
 total_shutdown_timeout: 30m
 
-path_of_migration: "./leaderboardscoringapp/repository/migrations"
+path_of_migration: "./leaderboardscoringapp/repository/database/migrations"
 
 postgres_db:
   host: shared-postgres

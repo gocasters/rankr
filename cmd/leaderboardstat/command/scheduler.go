@@ -2,8 +2,13 @@ package command
 
 import (
 	"context"
-	"github.com/gocasters/rankr/leaderboardstatapp"
+	"github.com/gocasters/rankr/adapter/leaderboardscoring"
+	"github.com/gocasters/rankr/adapter/redis"
+	"github.com/gocasters/rankr/leaderboardstatapp/repository"
+	"github.com/gocasters/rankr/leaderboardstatapp/service/leaderboardstat"
+	"github.com/gocasters/rankr/pkg/cachemanager"
 	"github.com/gocasters/rankr/pkg/database"
+	"github.com/gocasters/rankr/pkg/grpc"
 	"github.com/gocasters/rankr/pkg/logger"
 	"time"
 
@@ -20,7 +25,6 @@ var schedulerCmd = &cobra.Command{
 }
 
 func runScheduler() {
-
 	cfg := loadAppConfig()
 
 	if err := logger.Init(cfg.Logger); err != nil {
@@ -30,6 +34,7 @@ func runScheduler() {
 
 	leaderboardLogger := logger.L()
 	leaderboardLogger.Info("Running daily score calculation manually...")
+
 	databaseConn, err := database.Connect(cfg.PostgresDB)
 	if err != nil {
 		leaderboardLogger.Error("failed to connect to database", "error", err)
@@ -40,13 +45,32 @@ func runScheduler() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 
-	app, err := leaderboardstatapp.Setup(ctx, cfg, databaseConn)
+	// Create minimal service setup without servers
+	redisAdapter, err := redis.New(ctx, cfg.Redis)
 	if err != nil {
-		leaderboardLogger.Error("setup failed", "error", err)
+		leaderboardLogger.Error("failed to initialize Redis", "err", err)
+		return
+	}
+	cache := cachemanager.NewCacheManager(redisAdapter)
+
+	// Initialize gRPC client for leaderboardscoring
+	rpcClient, err := grpc.NewClient(cfg.LeaderboardScoringRPC, leaderboardLogger)
+	if err != nil {
+		leaderboardLogger.Error("failed to create RPC client", "error", err)
 		return
 	}
 
-	if err := app.LeaderboardstatSrv.GetDailyContributorScores(ctx); err != nil {
+	lbScoringClient, err := leaderboardscoring.New(rpcClient)
+	if err != nil {
+		leaderboardLogger.Error("failed to create leaderboardscoring client", "error", err)
+		return
+	}
+
+	statRepo := repository.NewLeaderboardstatRepo(cfg.Repository, databaseConn)
+	statValidator := leaderboardstat.NewValidator(statRepo)
+	statSvc := leaderboardstat.NewService(statRepo, statValidator, *cache, nil, lbScoringClient)
+
+	if err := statSvc.GetDailyContributorScores(ctx); err != nil {
 		leaderboardLogger.Error("daily calculation failed", "error", err)
 		return
 	}

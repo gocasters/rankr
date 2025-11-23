@@ -21,7 +21,7 @@ services:
     cpus: 2.0
 
   webhook-redis:
-    image: bitnami/redis:6.2
+    image: bitnamilegacy/redis:6.2
     container_name: webhook-redis
     restart: always
     ports:
