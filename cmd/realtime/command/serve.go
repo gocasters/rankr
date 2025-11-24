@@ -32,11 +32,11 @@ func serve() {
 
 	yamlPath := os.Getenv("CONFIG_PATH")
 	if yamlPath == "" {
-		yamlPath = filepath.Join(workingDir, "deploy", "realtime", "development", "config.yaml")
+		yamlPath = filepath.Join(workingDir, "deploy", "realtime", "development", "config.yml")
 	}
 
 	options := cfgloader.Options{
-		Prefix:       "realtime_",
+		Prefix:       "REALTIME_",
 		Delimiter:    ".",
 		Separator:    "__",
 		YamlFilePath: yamlPath,

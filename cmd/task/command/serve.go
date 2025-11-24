@@ -38,7 +38,7 @@ func serve() {
 
 	yamlPath := os.Getenv("CONFIG_PATH")
 	if yamlPath == "" {
-		yamlPath = filepath.Join(workingDir, "deploy", "task", "development", "config.yaml")
+		yamlPath = filepath.Join(workingDir, "deploy", "task", "development", "config.yml")
 	}
 
 	options := cfgloader.Options{

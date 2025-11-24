@@ -7,14 +7,14 @@ services:
     volumes:
       - ../../..:/app
       - type: bind
-        source: ./config.yaml
-        target: /app/config.yaml
+        source: ./config.yml
+        target: /app/config.yml
         bind:
           create_host_path: false
     networks:
       - rankr-shared-development-network
     environment:
-      - CONFIG_PATH=/app/config.yaml
+      - CONFIG_PATH=/app/config.yml
       - task_POSTGRES_DB_HOST=${TASK_DB_HOST:-shared-postgres}
       - task_POSTGRES_DB_USER=${TASK_DB_USER}
       - task_POSTGRES_DB_PASSWORD=${TASK_DB_PASSWORD}

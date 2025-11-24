@@ -23,7 +23,7 @@ func loadAppConfig() authapp.Config {
 			log.Fatalf("CONFIG_PATH not set, and failed to find project root: %v", err)
 		}
 		// Use the SAME config file as the 'serve' command.
-		yamlPath = filepath.Join(projectRoot, "deploy", "auth", "development", "config.local.yml")
+		yamlPath = filepath.Join(projectRoot, "deploy", "auth", "development", "config.yml")
 	}
 
 	log.Printf("Loading configuration from: %s", yamlPath)

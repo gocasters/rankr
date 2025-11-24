@@ -26,12 +26,11 @@ func loadAppConfig() notifapp.Config {
 
 	yamlPath := os.Getenv("CONFIG_PATH")
 	if yamlPath == "" {
-		yamlPath = filepath.Join(workingDir, "../../", "deploy", "notification", "development", "config.local.yaml") // for local
-		//yamlPath = filepath.Join(workingDir, "../../", "deploy", "notification", "development", "config.yaml") // for docker container
+		yamlPath = filepath.Join(workingDir, "deploy", "notification", "development", "config.yml")
 	}
 
 	options := config.Options{
-		Prefix:       "STAT_",
+		Prefix:       "NOTIF_",
 		Delimiter:    ".",
 		Separator:    "__",
 		YamlFilePath: yamlPath,

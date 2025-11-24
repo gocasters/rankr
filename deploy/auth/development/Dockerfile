@@ -1,25 +1,14 @@
-FROM golang:1.25-alpine AS builder
-
-WORKDIR /app
-
-COPY go.mod go.sum ./
-RUN go mod download
-
-RUN go install github.com/air-verse/air@latest
-
-COPY . .
-
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/main ./cmd/auth/main.go
-
-
 FROM golang:1.25-alpine
 
 WORKDIR /app
 
-COPY --from=builder /go/bin/air /usr/local/bin/air
-COPY --from=builder /app /app
+RUN go install github.com/air-verse/air@latest
 
-EXPOSE 8081
-EXPOSE 8091
+COPY go.mod go.sum ./
+RUN go mod download
 
-CMD ["/app/main", "serve"]
+COPY . .
+
+EXPOSE 8080 8081 8091
+
+CMD ["air", "-c", "/app/.air/.air.auth.toml"]

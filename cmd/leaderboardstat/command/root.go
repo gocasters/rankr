@@ -25,9 +25,9 @@ func loadAppConfig() leaderboardstatapp.Config {
 	}
 
 	yamlPath := os.Getenv("CONFIG_PATH")
+
 	if yamlPath == "" {
-		yamlPath = filepath.Join(workingDir, "deploy", "leaderboardstat", "development", "config.yml") //for docker container
-		//yamlPath = filepath.Join(workingDir, "deploy", "leaderboardstat", "development", "config.local.yml") // for local
+		yamlPath = filepath.Join(workingDir, "deploy", "leaderboardstat", "development", "config.yml")
 	}
 
 	options := config.Options{

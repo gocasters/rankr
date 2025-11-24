@@ -33,7 +33,7 @@ func migrate() {
 
 	yamlPath := os.Getenv("CONFIG_PATH")
 	if yamlPath == "" {
-		yamlPath = filepath.Join(workingDir, "deploy", "task", "development", "config.yaml")
+		yamlPath = filepath.Join(workingDir, "deploy", "task", "development", "config.yml")
 	}
 
 	// to run migrations when you want to run task service locally
