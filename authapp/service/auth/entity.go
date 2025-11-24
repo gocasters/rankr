@@ -31,3 +31,8 @@ type RolePermission struct {
 	PermissionID types.ID  `json:"permission_id"`
 	CreatedAt    time.Time `json:"created_at"`
 }
+
+type LoginRequest struct {
+	ContributorName   string `json:"contributor_name"`
+	Password          string `json:"password"`
+}
