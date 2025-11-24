@@ -9,6 +9,7 @@ import (
 
 	cfgloader "github.com/gocasters/rankr/pkg/config"
 	"github.com/gocasters/rankr/pkg/logger"
+	"github.com/gocasters/rankr/pkg/path"
 	"github.com/gocasters/rankr/realtimeapp"
 	"github.com/spf13/cobra"
 )
@@ -25,14 +26,19 @@ var serveCmd = &cobra.Command{
 func serve() {
 	var cfg realtimeapp.Config
 
-	workingDir, err := os.Getwd()
+	projectRoot, err := path.PathProjectRoot()
 	if err != nil {
-		log.Fatalf("Error getting current working directory: %v", err)
+		log.Fatalf("Error finding project root: %v", err)
 	}
 
 	yamlPath := os.Getenv("CONFIG_PATH")
 	if yamlPath == "" {
-		yamlPath = filepath.Join(workingDir, "deploy", "realtime", "development", "config.yaml")
+		defaultConfig := filepath.Join(projectRoot, "deploy", "realtime", "development", "config.yml")
+		if _, err := os.Stat(defaultConfig); err == nil {
+			yamlPath = defaultConfig
+		} else {
+			yamlPath = filepath.Join(projectRoot, "deploy", "realtime", "development", "config.local.yml")
+		}
 	}
 
 	options := cfgloader.Options{

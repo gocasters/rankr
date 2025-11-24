@@ -6,14 +6,13 @@ services:
     container_name: notification-app
     volumes:
       - ../../..:/app
-      - ./config.yml:/app/config.yml # Mount the config file
     ports:
       - "8089:8081" # HTTP port
       - "8099:8091" # gRPC port
     networks:
       - rankr-shared-development-network
     environment:
-      - CONFIG_PATH=/app/config.yml
+      - CONFIG_PATH=/app/deploy/notification/development/config.yml
       - notification_POSTGRES_DB_HOST=shared-postgres
       - notification_POSTGRES_DB_USER=notification_user
       - notification_POSTGRES_DB_PASSWORD=notification_pass

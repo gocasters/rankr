@@ -6,7 +6,6 @@ services:
     container_name: project-app
     volumes:
       - ../../..:/app
-      - ./config.yml:/app/config.yml # Mount the config file
     ports:
       - "8086:8081" # HTTP port
       - "8096:8091" # gRPC port
@@ -15,7 +14,7 @@ services:
     env_file:
       - ./.env.development
     environment:
-      - CONFIG_PATH=/app/config.yml
+      - CONFIG_PATH=/app/deploy/project/development/config.yml
       - project_POSTGRES_DB_HOST=${PROJECT_POSTGRES_DB_HOST}
       - project_POSTGRES_DB_USER=${PROJECT_POSTGRES_DB_USER}
       - project_POSTGRES_DB_PASSWORD=${PROJECT_POSTGRES_DB_PASSWORD}

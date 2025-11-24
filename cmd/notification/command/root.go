@@ -3,6 +3,7 @@ package command
 import (
 	"github.com/gocasters/rankr/notifapp"
 	"github.com/gocasters/rankr/pkg/config"
+	"github.com/gocasters/rankr/pkg/path"
 	"github.com/spf13/cobra"
 	"log"
 	"os"
@@ -19,15 +20,19 @@ the notification service, including migrations and server startup.`,
 func loadAppConfig() notifapp.Config {
 	var cfg notifapp.Config
 
-	workingDir, err := os.Getwd()
+	projectRoot, err := path.PathProjectRoot()
 	if err != nil {
-		log.Fatalf("Error getting working directory: %v", err)
+		log.Fatalf("Error finding project root: %v", err)
 	}
 
 	yamlPath := os.Getenv("CONFIG_PATH")
 	if yamlPath == "" {
-		yamlPath = filepath.Join(workingDir, "../../", "deploy", "notification", "development", "config.local.yaml") // for local
-		//yamlPath = filepath.Join(workingDir, "../../", "deploy", "notification", "development", "config.yaml") // for docker container
+		defaultConfig := filepath.Join(projectRoot, "deploy", "notification", "development", "config.yml")
+		if _, err := os.Stat(defaultConfig); err == nil {
+			yamlPath = defaultConfig
+		} else {
+			yamlPath = filepath.Join(projectRoot, "deploy", "notification", "development", "config.local.yml")
+		}
 	}
 
 	options := config.Options{

@@ -7,11 +7,6 @@ services:
     container_name: auth-app
     volumes:
       - ../../..:/app
-      - type: bind
-        source: ${PROJECT_ROOT:-.}/deploy/auth/development/config.yml # Set PROJECT_ROOT when running outside repo root
-        target: /app/config.yml
-        bind:
-          create_host_path: false
     ports:
       - "8081:8081" # HTTP port
       - "8091:8091" # gRPC port
@@ -20,14 +15,7 @@ services:
     env_file:
       - ./.env.development
     environment:
-      - CONFIG_PATH=/app/config.yml
-      - auth_POSTGRES_DB_HOST=${AUTH_POSTGRES_DB_HOST}
-      - auth_POSTGRES_DB_USER=${AUTH_POSTGRES_DB_USER}
-      - auth_POSTGRES_DB_PASSWORD=${AUTH_POSTGRES_DB_PASSWORD}
-      - auth_POSTGRES_DB_NAME=${AUTH_POSTGRES_DB_NAME}
-      - auth_POSTGRES_DB_PORT=${AUTH_POSTGRES_DB_PORT}
-      - auth_REDIS_HOST=${AUTH_REDIS_HOST}
-      - auth_NATS_URL=${AUTH_NATS_URL}
+      - CONFIG_PATH=/app/deploy/auth/development/config.yml
     entrypoint: [ "air", "-c", "/app/.air/.air.auth.toml" ]
 
 # Shared network is created by `deploy/script/start_infrastructure.sh up-base`

@@ -22,8 +22,13 @@ func loadAppConfig() leaderboardscoringapp.Config {
 		if err != nil {
 			log.Fatalf("CONFIG_PATH not set, and failed to find project root: %v", err)
 		}
-		// Use the SAME config file as the 'serve' command.
-		yamlPath = filepath.Join(projectRoot, "deploy", "leaderboardscoring", "development", "config.local.yml")
+
+		defaultConfig := filepath.Join(projectRoot, "deploy", "leaderboardscoring", "development", "config.yml")
+		if _, err := os.Stat(defaultConfig); err == nil {
+			yamlPath = defaultConfig
+		} else {
+			yamlPath = filepath.Join(projectRoot, "deploy", "leaderboardscoring", "development", "config.local.yml")
+		}
 	}
 
 	log.Printf("Loading configuration from: %s", yamlPath)

@@ -6,14 +6,13 @@ services:
     container_name: realtime-app
     volumes:
       - ../../..:/app
-      - ./config.yml:/app/config.yml
     ports:
       - "8087:8081"
       - "8097:8091"
     networks:
       - rankr-shared-development-network
     environment:
-      - CONFIG_PATH=/app/config.yml
+      - CONFIG_PATH=/app/deploy/realtime/development/config.yml
       - realtime_POSTGRES_DB_HOST=shared-postgres
       - realtime_POSTGRES_DB_USER=realtime_user
       - realtime_POSTGRES_DB_PASSWORD=realtime_pass

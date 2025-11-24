@@ -6,7 +6,6 @@ services:
     container_name: contributor-app
     volumes:
       - ../../..:/app
-      - ./config.yml:/app/config.yml # Mount the config file
       - ./logs:/app/logs # Persist contributor logs
     ports:
       - "8082:8083" # HTTP port
@@ -14,7 +13,7 @@ services:
     networks:
       - rankr-shared-development-network
     environment:
-      - CONFIG_PATH=/app/config.yml
+      - CONFIG_PATH=/app/deploy/contributor/development/config.yml
       - contributor_POSTGRES_DB_HOST=shared-postgres
       - contributor_REDIS_HOST=shared-redis
       - contributor_NATS_URL=nats://shared-nats:4222

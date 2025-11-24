@@ -6,18 +6,13 @@ services:
     container_name: userprofile-app
     volumes:
       - ../../..:/app
-      - type: bind
-        source: ./config.yml # Config lives next to this compose file
-        target: /app/config.yml
-        bind:
-          create_host_path: false
     ports:
       - "8085:8081" # HTTP port
       - "8095:8091" # gRPC port
     networks:
       - rankr-shared-development-network
     environment:
-      - CONFIG_PATH=/app/config.yml
+      - CONFIG_PATH=/app/deploy/userprofile/development/config.yml
       - userprofile_POSTGRES_DB_HOST=shared-postgres
       - userprofile_POSTGRES_DB_USER=userprofile_user
       - userprofile_POSTGRES_DB_PASSWORD=userprofile_pass

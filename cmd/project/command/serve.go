@@ -13,6 +13,7 @@ import (
 	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/gocasters/rankr/pkg/migrator"
+	"github.com/gocasters/rankr/pkg/path"
 	"github.com/gocasters/rankr/projectapp"
 	"github.com/spf13/cobra"
 )
@@ -32,14 +33,19 @@ var serveCmd = &cobra.Command{
 func serve() {
 	var cfg projectapp.Config
 
-	workingDir, err := os.Getwd()
+	projectRoot, err := path.PathProjectRoot()
 	if err != nil {
-		log.Fatalf("Error getting current working directory: %v", err)
+		log.Fatalf("Error finding project root: %v", err)
 	}
 
 	yamlPath := os.Getenv("CONFIG_PATH")
 	if yamlPath == "" {
-		yamlPath = filepath.Join(workingDir, "deploy", "project", "development", "config.yaml")
+		defaultConfig := filepath.Join(projectRoot, "deploy", "project", "development", "config.yml")
+		if _, err := os.Stat(defaultConfig); err == nil {
+			yamlPath = defaultConfig
+		} else {
+			yamlPath = filepath.Join(projectRoot, "deploy", "project", "development", "config.local.yml")
+		}
 	}
 
 	options := cfgloader.Options{
