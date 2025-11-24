@@ -39,6 +39,7 @@ deploy/auth/development/.env.development
 .cursor
 
 # logs
+tmp/
 logs
 /logs/*
 /log/*

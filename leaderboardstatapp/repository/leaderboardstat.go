@@ -150,7 +150,7 @@ func (repo LeaderboardstatRepo) StoreDailyContributorScores(ctx context.Context,
 
 func (repo LeaderboardstatRepo) GetPendingDailyScores(ctx context.Context) ([]leaderboardstat.DailyContributorScore, error) {
 	query := `
-		SELECT id, contributor_id, project_id, score, rank, earned_at
+		SELECT id, contributor_id, project_id, score, rank
 		FROM scores
 		WHERE status = 0
 	`
@@ -236,7 +236,7 @@ func (repo LeaderboardstatRepo) UpdateGlobalScores(ctx context.Context, scores [
 
 	query := `
 		INSERT INTO user_project_scores (contributor_id, project_id, score, timeframe, time_value, updated_at)
-		VALUES ($1, 0, $2, 'daily', 'global', $3)
+		VALUES ($1, 0, $2, 'global', null, $3)
 		ON CONFLICT (contributor_id, project_id, timeframe, time_value)
 		DO UPDATE SET 
 			score = user_project_scores.score + EXCLUDED.score,

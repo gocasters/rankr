@@ -9,7 +9,9 @@ import (
 	"github.com/gocasters/rankr/pkg/logger"
 	types "github.com/gocasters/rankr/type"
 	"log/slog"
+	"math/rand"
 	"sort"
+	"strconv"
 	"time"
 )
 
@@ -57,7 +59,7 @@ func (s *Service) GetDailyContributorScores(ctx context.Context) error {
 	}
 
 	var allDailyScores []DailyContributorScore
-	pageSize := int32(1000) // TODO- Adjust based on what the service can handle
+	pageSize := int32(10) // TODO- Adjust based on what the service can handle
 	offset := int32(0)
 
 	for {
@@ -81,7 +83,13 @@ func (s *Service) GetDailyContributorScores(ctx context.Context) error {
 		var dailyScores []DailyContributorScore
 
 		for _, row := range leaderboardRes.LeaderboardRows {
-			contributorID, err := s.mapUserIDToContributorID(ctx, row.UserID)
+			//contributorID, err := s.mapUserIDToContributorID(ctx, row.UserID)
+			log.Info("getLeaderboard row:",
+				slog.String("user_id:", row.UserID),
+				slog.String("score:", strconv.Itoa(int(row.Score))),
+				slog.String("rank:", strconv.Itoa(int(row.Rank))),
+			)
+			contributorID, err := strconv.Atoi(row.UserID)
 			if err != nil {
 				log.Warn("Failed to map user ID to contributor ID",
 					slog.String("user_id", row.UserID),
@@ -90,14 +98,14 @@ func (s *Service) GetDailyContributorScores(ctx context.Context) error {
 
 				continue
 			}
-
+			randPrjRand := rand.Intn(5)
 			dailyScore := DailyContributorScore{
-				ContributorID: contributorID,
+				ContributorID: types.ID(contributorID),
 				UserID:        row.UserID,
 				Score:         float64(row.Score), // TODO - define is score data type float or int
 				Rank:          row.Rank,           // TODO
 				Timeframe:     string(leaderboardRes.Timeframe),
-				//ProjectID:     1, // TODO add project_id to row response
+				ProjectID:     types.ID(randPrjRand), // TODO add project_id to row response
 			}
 			dailyScores = append(dailyScores, dailyScore)
 		}
@@ -121,8 +129,9 @@ func (s *Service) GetDailyContributorScores(ctx context.Context) error {
 		return fmt.Errorf("failed to store daily contributor scores: %w", err)
 	}
 
-	go s.processDailyScoreCalculations(ctx, nil) // , allDailyScores
-
+	if errProcess := s.processDailyScoreCalculations(ctx, nil); errProcess != nil { // , allDailyScores
+		return fmt.Errorf("failed to process daily score calculations: %w", errProcess)
+	}
 	// TODO - cache current day scores in anther job
 	// TODO - cache key value pattern
 	//if err := s.updateCacheAfterDailyCalculation(ctx, allDailyScores); err != nil {
@@ -189,9 +198,9 @@ func (s *Service) processDailyScoreCalculations(ctx context.Context, dailyScores
 		return fmt.Errorf("failed to mark daily scores as processed: %w", err)
 	}
 
-	if err := s.updateCacheAfterDailyCalculation(ctx, pendingScores); err != nil {
-		log.Warn("Failed to update cache after daily calculation", slog.String("error", err.Error()))
-	}
+	//if err := s.updateCacheAfterDailyCalculation(ctx, pendingScores); err != nil {
+	//	log.Warn("Failed to update cache after daily calculation", slog.String("error", err.Error()))
+	//}
 
 	log.Info("Successfully processed daily score calculations",
 		slog.Int("projects_updated", len(userProjectScores)),

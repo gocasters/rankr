@@ -56,7 +56,7 @@ func runScheduler() {
 	// Initialize gRPC client for leaderboardscoring
 	rpcClient, err := grpc.NewClient(cfg.LeaderboardScoringRPC, leaderboardLogger)
 	if err != nil {
-		leaderboardLogger.Error("failed to create RPC client", "error", err)
+		leaderboardLogger.Error("failed to create RPC client!", "error", err)
 		return
 	}
 

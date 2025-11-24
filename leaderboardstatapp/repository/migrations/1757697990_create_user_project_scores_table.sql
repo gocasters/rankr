@@ -2,14 +2,15 @@
     CREATE TABLE IF NOT EXISTS user_project_scores (
     id SERIAL PRIMARY KEY,
     contributor_id BIGINT NOT NULL,
-    project_id BIGINT NOT NULL,
+    project_id BIGINT NOT NULL DEFAULT 0,
     score DOUBLE PRECISION NOT NULL DEFAULT 0,
-    timeframe  CHAR(20)  NOT NULL CHECK (
+    timeframe  CHAR(20) NOT NULL CHECK (
        timeframe IN (
-           'daily',
-           'weekly',
-           'monthly',
-           'yearly'
+        'daily',
+        'weekly',
+        'monthly',
+        'yearly',
+        'global'
        )
     ),
     time_value CHAR(20),
