@@ -26,6 +26,7 @@ func loadAppConfig() leaderboardstatapp.Config {
 	}
 
 	yamlPath := os.Getenv("CONFIG_PATH")
+
 	if yamlPath == "" {
 		defaultConfig := filepath.Join(projectRoot, "deploy", "leaderboardstat", "development", "config.yml")
 		if _, err := os.Stat(defaultConfig); err == nil {

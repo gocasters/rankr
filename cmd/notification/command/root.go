@@ -36,7 +36,7 @@ func loadAppConfig() notifapp.Config {
 	}
 
 	options := config.Options{
-		Prefix:       "STAT_",
+		Prefix:       "NOTIF_",
 		Delimiter:    ".",
 		Separator:    "__",
 		YamlFilePath: yamlPath,

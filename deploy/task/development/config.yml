@@ -13,17 +13,17 @@ scheduler_cfg:
   snapshot_job_context_timeout: 15m
 
 postgres_db:
-  host: "shared-postgres"
+  host: shared-postgres
   port: 5432
-  user: "${task_POSTGRES_DB_USER}"
-  password: "${task_POSTGRES_DB_PASSWORD}"
-  db_name: "${task_POSTGRES_DB_NAME}"
-  ssl_mode: "disable"
-  max_conns: 10
-  min_conns: 2
-  max_conn_lifetime: 300 # in seconds
-  max_conn_idle_time: 60 # in seconds
-  health_check_period: 60 # in seconds
+  user: task_user
+  password: change_me_task
+  db_name: task_db
+  ssl_mode: disable
+  max_conns: 25
+  min_conns: 5
+  max_conn_lifetime: 300
+  max_conn_idle_time: 60
+  health_check_period: 60
 
 redis:
   host: "shared-redis"

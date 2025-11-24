@@ -1,12 +1,12 @@
 root = "."
-tmp_dir = "cmd/project/temp"
+tmp_dir = "tmp"
 
 [build]
-  bin = "./cmd/project/temp/main"
+  bin = "tmp/main"
   args_bin = ["serve", "--migrate-up"]
-  cmd = "go build -buildvcs=false -o ./cmd/project/temp/main ./cmd/project/"
+  cmd = "go build -buildvcs=false -o ./tmp/main ./cmd/project/"
   delay = 1000
-  exclude_dir = ["vendor"]
+  exclude_dir = ["vendor", "tmp"]
   exclude_file = []
   exclude_regex = []
   exclude_unchanged = false
@@ -18,7 +18,7 @@ tmp_dir = "cmd/project/temp"
   log = "build-errors.log"
   send_interrupt = false
   stop_on_error = true
-  poll = true
+  poll = false
   poll_interval = 1000
 
 [color]

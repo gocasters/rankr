@@ -42,7 +42,7 @@ func serve() {
 	}
 
 	options := cfgloader.Options{
-		Prefix:       "realtime_",
+		Prefix:       "REALTIME_",
 		Delimiter:    ".",
 		Separator:    "__",
 		YamlFilePath: yamlPath,

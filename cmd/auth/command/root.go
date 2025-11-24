@@ -22,7 +22,6 @@ func loadAppConfig() authapp.Config {
 		if err != nil {
 			log.Fatalf("CONFIG_PATH not set, and failed to find project root: %v", err)
 		}
-
 		defaultConfig := filepath.Join(projectRoot, "deploy", "auth", "development", "config.yml")
 		if _, err := os.Stat(defaultConfig); err == nil {
 			yamlPath = defaultConfig

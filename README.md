@@ -23,7 +23,10 @@ cp deploy/task/development/.env.example deploy/task/development/.env
 # 5. Start shared infrastructure
 make infra-up
 
-# 6. Start the application services (in this order)
+# 6. Start all Application Services
+make services-up
+
+# Or Start the Application Services (in this order)
 make start-userprofile-app-dev
 make start-project-app-dev
 make start-realtime-app-dev
