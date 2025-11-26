@@ -85,8 +85,12 @@ func (s Service) Login(ctx context.Context, req LoginRequest) (LoginResponse, er
 
 func passwordMatches(hashedOrPlain, provided string) bool {
 	// Try bcrypt compare first; fall back to plain comparison if hash is not bcrypt.
-	if err := bcrypt.CompareHashAndPassword([]byte(hashedOrPlain), []byte(provided)); err == nil {
+	err := bcrypt.CompareHashAndPassword([]byte(hashedOrPlain), []byte(provided))
+	if err == nil {
 		return true
+	}
+	if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+		return false
 	}
 	return hashedOrPlain == provided
 }
