@@ -32,7 +32,7 @@ redis:
   db: 0
 
 jwt:
-  secret: "${AUTH_JWT_SECRET:-dev-secret-please-change-in-production-min-32-chars}"
+  secret: "dev-32-char-placeholder-secret!!"
   token_duration: 1h
   refresh_token_duration: 168h
 
