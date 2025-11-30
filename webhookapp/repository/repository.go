@@ -18,50 +18,63 @@ import (
 var ErrDuplicateEvent = errors.New("duplicate webhook event")
 
 type ResourceInfo struct {
-	Type string
-	ID   int64
+	Type     string
+	ID       int64
+	StringID string
 }
 
 type HistoricalEventInput struct {
 	Event        *eventpb.Event
 	ResourceType string
-	ResourceID   int64
+	ResourceID   string
 }
 
-func BuildEventKey(provider eventpb.EventProvider, resourceType string, resourceID int64, eventType eventpb.EventName) string {
-	return fmt.Sprintf("%d-%s-%d-%d", provider, resourceType, resourceID, eventType)
+func BuildEventKey(provider eventpb.EventProvider, resourceType string, resourceID string, eventType eventpb.EventName) string {
+	return fmt.Sprintf("%d-%s-%s-%d", provider, resourceType, resourceID, eventType)
 }
 
 func ExtractResourceInfo(event *eventpb.Event) ResourceInfo {
 	switch event.EventName {
 	case eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED:
 		if payload := event.GetPrOpenedPayload(); payload != nil {
-			return ResourceInfo{Type: "pull_request", ID: int64(payload.PrNumber)}
+			id := int64(payload.PrNumber)
+			return ResourceInfo{Type: "pull_request", ID: id, StringID: fmt.Sprintf("%d", id)}
 		}
 	case eventpb.EventName_EVENT_NAME_PULL_REQUEST_CLOSED:
 		if payload := event.GetPrClosedPayload(); payload != nil {
-			return ResourceInfo{Type: "pull_request", ID: int64(payload.PrNumber)}
+			id := int64(payload.PrNumber)
+			return ResourceInfo{Type: "pull_request", ID: id, StringID: fmt.Sprintf("%d", id)}
 		}
 	case eventpb.EventName_EVENT_NAME_PULL_REQUEST_REVIEW_SUBMITTED:
 		if payload := event.GetPrReviewPayload(); payload != nil {
-			return ResourceInfo{Type: "pull_request_review", ID: int64(payload.PrId)*1000 + int64(payload.ReviewerUserId)}
+			return ResourceInfo{
+				Type:     "pull_request_review",
+				ID:       0,
+				StringID: fmt.Sprintf("%d:%d", payload.PrId, payload.ReviewerUserId),
+			}
 		}
 	case eventpb.EventName_EVENT_NAME_ISSUE_OPENED:
 		if payload := event.GetIssueOpenedPayload(); payload != nil {
-			return ResourceInfo{Type: "issue", ID: int64(payload.IssueNumber)}
+			id := int64(payload.IssueNumber)
+			return ResourceInfo{Type: "issue", ID: id, StringID: fmt.Sprintf("%d", id)}
 		}
 	case eventpb.EventName_EVENT_NAME_ISSUE_CLOSED:
 		if payload := event.GetIssueClosedPayload(); payload != nil {
-			return ResourceInfo{Type: "issue", ID: int64(payload.IssueNumber)}
+			id := int64(payload.IssueNumber)
+			return ResourceInfo{Type: "issue", ID: id, StringID: fmt.Sprintf("%d", id)}
 		}
 	case eventpb.EventName_EVENT_NAME_ISSUE_COMMENTED:
 		if payload := event.GetIssueCommentedPayload(); payload != nil {
-			return ResourceInfo{Type: "issue_comment", ID: int64(payload.IssueNumber)}
+			return ResourceInfo{
+				Type:     "issue_comment",
+				ID:       0,
+				StringID: fmt.Sprintf("%d:%d", payload.IssueId, payload.UserId),
+			}
 		}
 	case eventpb.EventName_EVENT_NAME_PUSHED:
-		return ResourceInfo{Type: "push", ID: 0}
+		return ResourceInfo{Type: "push", ID: 0, StringID: "0"}
 	}
-	return ResourceInfo{Type: "unknown", ID: 0}
+	return ResourceInfo{Type: "unknown", ID: 0, StringID: "0"}
 }
 
 type EventStats struct {
@@ -101,7 +114,7 @@ func (repo WebhookRepository) Save(ctx context.Context, event *eventpb.Event) er
 	}
 
 	resourceInfo := ExtractResourceInfo(event)
-	eventKey := BuildEventKey(event.Provider, resourceInfo.Type, resourceInfo.ID, event.EventName)
+	eventKey := BuildEventKey(event.Provider, resourceInfo.Type, resourceInfo.StringID, event.EventName)
 
 	result, err := repo.db.Exec(
 		ctx,
@@ -115,7 +128,7 @@ func (repo WebhookRepository) Save(ctx context.Context, event *eventpb.Event) er
 		payload,
 		time.Now(),
 		resourceInfo.Type,
-		resourceInfo.ID,
+		resourceInfo.StringID,
 		eventKey,
 	)
 
@@ -456,7 +469,7 @@ func (repo *WebhookRepository) SaveHistoricalEvent(
 	ctx context.Context,
 	event *eventpb.Event,
 	resourceType string,
-	resourceID int64,
+	resourceID string,
 ) error {
 	payload, err := proto.Marshal(event)
 	if err != nil {

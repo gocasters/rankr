@@ -3,8 +3,6 @@ package historical
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"strings"
 
 	"github.com/gocasters/rankr/adapter/webhook/github"
 	"github.com/gocasters/rankr/pkg/logger"
@@ -138,15 +136,13 @@ func (f *Fetcher) processPR(ctx context.Context, pr *github.PullRequest) error {
 	inputs := make([]repository.HistoricalEventInput, 0, len(events))
 	for _, event := range events {
 		resourceType := "pull_request"
-		resourceID := int64(pr.Number)
+		resourceID := fmt.Sprintf("%d", pr.Number)
 
 		if event.EventName == eventpb.EventName_EVENT_NAME_PULL_REQUEST_REVIEW_SUBMITTED {
 			resourceType = "pull_request_review"
-			reviewID, err := extractReviewIDFromEventID(event.Id)
-			if err != nil {
-				return fmt.Errorf("failed to extract review ID from event %s: %w", event.Id, err)
+			if payload := event.GetPrReviewPayload(); payload != nil {
+				resourceID = fmt.Sprintf("%d:%d", payload.PrId, payload.ReviewerUserId)
 			}
-			resourceID = reviewID
 		}
 
 		inputs = append(inputs, repository.HistoricalEventInput{
@@ -157,14 +153,6 @@ func (f *Fetcher) processPR(ctx context.Context, pr *github.PullRequest) error {
 	}
 
 	return f.saveEventsBulk(ctx, inputs)
-}
-
-func extractReviewIDFromEventID(eventID string) (int64, error) {
-	parts := strings.Split(eventID, "-")
-	if len(parts) < 5 || parts[3] != "review" {
-		return 0, fmt.Errorf("invalid review event ID format: %s", eventID)
-	}
-	return strconv.ParseInt(parts[4], 10, 64)
 }
 
 func (f *Fetcher) saveEventsBulk(ctx context.Context, inputs []repository.HistoricalEventInput) error {

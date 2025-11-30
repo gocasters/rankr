@@ -69,8 +69,8 @@ func (suite *HistoricalEventTestSuite) createTableWithMigration() {
 		payload BYTEA NOT NULL,
 		received_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 		source VARCHAR(20) DEFAULT 'webhook',
-		resource_type VARCHAR(20),
-		resource_id BIGINT,
+		resource_type VARCHAR(50),
+		resource_id TEXT,
 		event_key TEXT
 	)`
 	_, err := suite.db.Exec(suite.ctx, createTableQuery)
@@ -178,7 +178,7 @@ func (suite *HistoricalEventTestSuite) createHistoricalReviewEvent(prNumber int3
 func (suite *HistoricalEventTestSuite) TestSaveHistoricalEvent_FirstTime_Success() {
 	event := suite.createHistoricalPROpenedEvent(42)
 
-	err := suite.repo.SaveHistoricalEvent(suite.ctx, event, "pull_request", 42)
+	err := suite.repo.SaveHistoricalEvent(suite.ctx, event, "pull_request", "42")
 	assert.NoError(suite.T(), err)
 
 	count, err := suite.repo.CountEvents(suite.ctx)
@@ -187,7 +187,7 @@ func (suite *HistoricalEventTestSuite) TestSaveHistoricalEvent_FirstTime_Success
 
 	var source string
 	var resourceType string
-	var resourceID int64
+	var resourceID string
 	err = suite.db.QueryRow(suite.ctx,
 		"SELECT source, resource_type, resource_id FROM webhook_events WHERE event_type=$1",
 		eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED,
@@ -196,16 +196,16 @@ func (suite *HistoricalEventTestSuite) TestSaveHistoricalEvent_FirstTime_Success
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), "historical", source)
 	assert.Equal(suite.T(), "pull_request", resourceType)
-	assert.Equal(suite.T(), int64(42), resourceID)
+	assert.Equal(suite.T(), "42", resourceID)
 }
 
 func (suite *HistoricalEventTestSuite) TestSaveHistoricalEvent_Duplicate_Rejected() {
 	event := suite.createHistoricalPROpenedEvent(42)
 
-	err := suite.repo.SaveHistoricalEvent(suite.ctx, event, "pull_request", 42)
+	err := suite.repo.SaveHistoricalEvent(suite.ctx, event, "pull_request", "42")
 	require.NoError(suite.T(), err, "First save should succeed")
 
-	err = suite.repo.SaveHistoricalEvent(suite.ctx, event, "pull_request", 42)
+	err = suite.repo.SaveHistoricalEvent(suite.ctx, event, "pull_request", "42")
 	assert.Error(suite.T(), err, "Duplicate save should fail")
 	assert.Equal(suite.T(), ErrDuplicateEvent, err)
 
@@ -218,10 +218,10 @@ func (suite *HistoricalEventTestSuite) TestSaveHistoricalEvent_DifferentEventTyp
 	openedEvent := suite.createHistoricalPROpenedEvent(42)
 	closedEvent := suite.createHistoricalPRClosedEvent(42)
 
-	err := suite.repo.SaveHistoricalEvent(suite.ctx, openedEvent, "pull_request", 42)
+	err := suite.repo.SaveHistoricalEvent(suite.ctx, openedEvent, "pull_request", "42")
 	require.NoError(suite.T(), err, "Save opened event should succeed")
 
-	err = suite.repo.SaveHistoricalEvent(suite.ctx, closedEvent, "pull_request", 42)
+	err = suite.repo.SaveHistoricalEvent(suite.ctx, closedEvent, "pull_request", "42")
 	assert.NoError(suite.T(), err, "Save closed event should succeed (different event_type)")
 
 	count, err := suite.repo.CountEvents(suite.ctx)
@@ -233,10 +233,10 @@ func (suite *HistoricalEventTestSuite) TestSaveHistoricalEvent_DifferentPRs_Same
 	event1 := suite.createHistoricalPROpenedEvent(42)
 	event2 := suite.createHistoricalPROpenedEvent(43)
 
-	err := suite.repo.SaveHistoricalEvent(suite.ctx, event1, "pull_request", 42)
+	err := suite.repo.SaveHistoricalEvent(suite.ctx, event1, "pull_request", "42")
 	require.NoError(suite.T(), err)
 
-	err = suite.repo.SaveHistoricalEvent(suite.ctx, event2, "pull_request", 43)
+	err = suite.repo.SaveHistoricalEvent(suite.ctx, event2, "pull_request", "43")
 	assert.NoError(suite.T(), err, "Different PR numbers should be allowed")
 
 	count, err := suite.repo.CountEvents(suite.ctx)
@@ -247,10 +247,10 @@ func (suite *HistoricalEventTestSuite) TestSaveHistoricalEvent_DifferentPRs_Same
 func (suite *HistoricalEventTestSuite) TestSaveHistoricalEvent_ReviewEvents_Idempotency() {
 	review1 := suite.createHistoricalReviewEvent(42, 7890)
 
-	err := suite.repo.SaveHistoricalEvent(suite.ctx, review1, "pull_request_review", 7890)
+	err := suite.repo.SaveHistoricalEvent(suite.ctx, review1, "pull_request_review", "12345:2001")
 	require.NoError(suite.T(), err)
 
-	err = suite.repo.SaveHistoricalEvent(suite.ctx, review1, "pull_request_review", 7890)
+	err = suite.repo.SaveHistoricalEvent(suite.ctx, review1, "pull_request_review", "12345:2001")
 	assert.Error(suite.T(), err, "Duplicate review should be rejected")
 	assert.Equal(suite.T(), ErrDuplicateEvent, err)
 
@@ -283,7 +283,7 @@ func (suite *HistoricalEventTestSuite) TestWebhookAndHistoricalEvents_ShouldConf
 	require.NoError(suite.T(), err, "Webhook event should save successfully")
 
 	historicalEvent := suite.createHistoricalPROpenedEvent(42)
-	err = suite.repo.SaveHistoricalEvent(suite.ctx, historicalEvent, "pull_request", 42)
+	err = suite.repo.SaveHistoricalEvent(suite.ctx, historicalEvent, "pull_request", "42")
 	assert.Error(suite.T(), err, "Historical event with same PR should conflict with webhook event")
 	assert.Equal(suite.T(), ErrDuplicateEvent, err)
 
@@ -294,7 +294,7 @@ func (suite *HistoricalEventTestSuite) TestWebhookAndHistoricalEvents_ShouldConf
 
 func (suite *HistoricalEventTestSuite) TestHistoricalThenWebhook_ShouldConflict() {
 	historicalEvent := suite.createHistoricalPROpenedEvent(42)
-	err := suite.repo.SaveHistoricalEvent(suite.ctx, historicalEvent, "pull_request", 42)
+	err := suite.repo.SaveHistoricalEvent(suite.ctx, historicalEvent, "pull_request", "42")
 	require.NoError(suite.T(), err, "Historical event should save successfully")
 
 	webhookEvent := &eventpb.Event{
@@ -328,12 +328,12 @@ func (suite *HistoricalEventTestSuite) TestHistoricalThenWebhook_ShouldConflict(
 func (suite *HistoricalEventTestSuite) TestSaveHistoricalEvent_DeliveryIDIsNull() {
 	event := suite.createHistoricalPROpenedEvent(42)
 
-	err := suite.repo.SaveHistoricalEvent(suite.ctx, event, "pull_request", 42)
+	err := suite.repo.SaveHistoricalEvent(suite.ctx, event, "pull_request", "42")
 	require.NoError(suite.T(), err)
 
 	var deliveryID *string
 	err = suite.db.QueryRow(suite.ctx,
-		"SELECT delivery_id FROM webhook_events WHERE source='historical' AND resource_id=42",
+		"SELECT delivery_id FROM webhook_events WHERE source='historical' AND resource_id='42'",
 	).Scan(&deliveryID)
 
 	assert.NoError(suite.T(), err)
@@ -344,29 +344,29 @@ func (suite *HistoricalEventTestSuite) TestSaveHistoricalEvent_CompleteWorkflow(
 	prNumber := int32(100)
 
 	openedEvent := suite.createHistoricalPROpenedEvent(prNumber)
-	err := suite.repo.SaveHistoricalEvent(suite.ctx, openedEvent, "pull_request", int64(prNumber))
+	err := suite.repo.SaveHistoricalEvent(suite.ctx, openedEvent, "pull_request", "100")
 	require.NoError(suite.T(), err, "Save PR opened event")
 
 	review1 := suite.createHistoricalReviewEvent(prNumber, 7890)
-	err = suite.repo.SaveHistoricalEvent(suite.ctx, review1, "pull_request_review", 7890)
+	err = suite.repo.SaveHistoricalEvent(suite.ctx, review1, "pull_request_review", "12345:2001")
 	require.NoError(suite.T(), err, "Save first review")
 
 	review2 := suite.createHistoricalReviewEvent(prNumber, 7891)
-	err = suite.repo.SaveHistoricalEvent(suite.ctx, review2, "pull_request_review", 7891)
+	err = suite.repo.SaveHistoricalEvent(suite.ctx, review2, "pull_request_review", "12345:2002")
 	require.NoError(suite.T(), err, "Save second review")
 
 	closedEvent := suite.createHistoricalPRClosedEvent(prNumber)
-	err = suite.repo.SaveHistoricalEvent(suite.ctx, closedEvent, "pull_request", int64(prNumber))
+	err = suite.repo.SaveHistoricalEvent(suite.ctx, closedEvent, "pull_request", "100")
 	require.NoError(suite.T(), err, "Save PR closed event")
 
 	count, err := suite.repo.CountEvents(suite.ctx)
 	assert.NoError(suite.T(), err)
 	assert.Equal(suite.T(), int64(4), count, "Should have 4 events: opened + 2 reviews + closed")
 
-	err = suite.repo.SaveHistoricalEvent(suite.ctx, openedEvent, "pull_request", int64(prNumber))
+	err = suite.repo.SaveHistoricalEvent(suite.ctx, openedEvent, "pull_request", "100")
 	assert.Error(suite.T(), err, "Duplicate opened event should be rejected")
 
-	err = suite.repo.SaveHistoricalEvent(suite.ctx, review1, "pull_request_review", 7890)
+	err = suite.repo.SaveHistoricalEvent(suite.ctx, review1, "pull_request_review", "12345:2001")
 	assert.Error(suite.T(), err, "Duplicate review should be rejected")
 
 	count, err = suite.repo.CountEvents(suite.ctx)
@@ -381,7 +381,7 @@ func (suite *HistoricalEventTestSuite) TestSaveHistoricalEvent_ConcurrentSaves_N
 
 	for i := 0; i < 5; i++ {
 		go func() {
-			err := suite.repo.SaveHistoricalEvent(suite.ctx, event, "pull_request", 50)
+			err := suite.repo.SaveHistoricalEvent(suite.ctx, event, "pull_request", "50")
 			done <- err
 		}()
 	}
@@ -418,10 +418,10 @@ func (suite *HistoricalEventTestSuite) TestSaveHistoricalEvent_MultipleReposNoCo
 	event2.RepositoryName = "org2/repo2"
 	event2.Provider = eventpb.EventProvider_EVENT_PROVIDER_GITHUB
 
-	err := suite.repo.SaveHistoricalEvent(suite.ctx, event1, "pull_request", 42)
+	err := suite.repo.SaveHistoricalEvent(suite.ctx, event1, "pull_request", "42")
 	require.NoError(suite.T(), err)
 
-	err = suite.repo.SaveHistoricalEvent(suite.ctx, event2, "pull_request", 42)
+	err = suite.repo.SaveHistoricalEvent(suite.ctx, event2, "pull_request", "42")
 	assert.Error(suite.T(), err, "Same provider+resource_type+resource_id+event_type should conflict even with different repos")
 
 	count, err := suite.repo.CountEvents(suite.ctx)
