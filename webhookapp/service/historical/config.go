@@ -5,7 +5,6 @@ type Config struct {
 	Repo           string
 	Token          string
 	EventTypes     []string
-	DryRun         bool
 	BatchSize      int
 	IncludeReviews bool
 }

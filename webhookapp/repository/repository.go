@@ -17,6 +17,53 @@ import (
 
 var ErrDuplicateEvent = errors.New("duplicate webhook event")
 
+type ResourceInfo struct {
+	Type string
+	ID   int64
+}
+
+type HistoricalEventInput struct {
+	Event        *eventpb.Event
+	ResourceType string
+	ResourceID   int64
+}
+
+func BuildEventKey(provider eventpb.EventProvider, resourceType string, resourceID int64, eventType eventpb.EventName) string {
+	return fmt.Sprintf("%d-%s-%d-%d", provider, resourceType, resourceID, eventType)
+}
+
+func ExtractResourceInfo(event *eventpb.Event) ResourceInfo {
+	switch event.EventName {
+	case eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED:
+		if payload := event.GetPrOpenedPayload(); payload != nil {
+			return ResourceInfo{Type: "pull_request", ID: int64(payload.PrNumber)}
+		}
+	case eventpb.EventName_EVENT_NAME_PULL_REQUEST_CLOSED:
+		if payload := event.GetPrClosedPayload(); payload != nil {
+			return ResourceInfo{Type: "pull_request", ID: int64(payload.PrNumber)}
+		}
+	case eventpb.EventName_EVENT_NAME_PULL_REQUEST_REVIEW_SUBMITTED:
+		if payload := event.GetPrReviewPayload(); payload != nil {
+			return ResourceInfo{Type: "pull_request_review", ID: int64(payload.PrId)}
+		}
+	case eventpb.EventName_EVENT_NAME_ISSUE_OPENED:
+		if payload := event.GetIssueOpenedPayload(); payload != nil {
+			return ResourceInfo{Type: "issue", ID: int64(payload.IssueNumber)}
+		}
+	case eventpb.EventName_EVENT_NAME_ISSUE_CLOSED:
+		if payload := event.GetIssueClosedPayload(); payload != nil {
+			return ResourceInfo{Type: "issue", ID: int64(payload.IssueNumber)}
+		}
+	case eventpb.EventName_EVENT_NAME_ISSUE_COMMENTED:
+		if payload := event.GetIssueCommentedPayload(); payload != nil {
+			return ResourceInfo{Type: "issue_comment", ID: int64(payload.IssueNumber)}
+		}
+	case eventpb.EventName_EVENT_NAME_PUSHED:
+		return ResourceInfo{Type: "push", ID: 0}
+	}
+	return ResourceInfo{Type: "unknown", ID: 0}
+}
+
 type EventStats struct {
 	TotalEvents      int64            `json:"total_events"`
 	EventsByProvider map[int32]int64  `json:"events_by_provider"`
@@ -53,15 +100,23 @@ func (repo WebhookRepository) Save(ctx context.Context, event *eventpb.Event) er
 		return fmt.Errorf("failed to marshal event: %w", err)
 	}
 
-	_, err = repo.db.Exec(
+	resourceInfo := ExtractResourceInfo(event)
+	eventKey := BuildEventKey(event.Provider, resourceInfo.Type, resourceInfo.ID, event.EventName)
+
+	result, err := repo.db.Exec(
 		ctx,
-		`INSERT INTO webhook_events (provider, delivery_id, event_type, payload, received_at, source)
-	 VALUES ($1, $2, $3, $4, $5, 'webhook')`,
+		`INSERT INTO webhook_events (provider, delivery_id, event_type, payload, received_at, source, resource_type, resource_id, event_key)
+		 VALUES ($1, $2, $3, $4, $5, 'webhook', $6, $7, $8)
+		 ON CONFLICT (event_key) WHERE event_key IS NOT NULL
+		 DO NOTHING`,
 		event.Provider,
 		event.Id,
 		event.EventName,
 		payload,
 		time.Now(),
+		resourceInfo.Type,
+		resourceInfo.ID,
+		eventKey,
 	)
 
 	if err != nil {
@@ -71,6 +126,11 @@ func (repo WebhookRepository) Save(ctx context.Context, event *eventpb.Event) er
 		}
 		return err
 	}
+
+	if result.RowsAffected() == 0 {
+		return ErrDuplicateEvent
+	}
+
 	return nil
 }
 
@@ -403,11 +463,15 @@ func (repo *WebhookRepository) SaveHistoricalEvent(
 		return fmt.Errorf("failed to marshal event: %w", err)
 	}
 
-	_, err = repo.db.Exec(
+	eventKey := BuildEventKey(event.Provider, resourceType, resourceID, event.EventName)
+
+	result, err := repo.db.Exec(
 		ctx,
 		`INSERT INTO webhook_events
-		(provider, source, resource_type, resource_id, event_type, payload, received_at, delivery_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, NULL)`,
+		(provider, source, resource_type, resource_id, event_type, payload, received_at, delivery_id, event_key)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, NULL, $8)
+		ON CONFLICT (event_key) WHERE event_key IS NOT NULL
+		DO NOTHING`,
 		event.Provider,
 		"historical",
 		resourceType,
@@ -415,6 +479,7 @@ func (repo *WebhookRepository) SaveHistoricalEvent(
 		event.EventName,
 		payload,
 		time.Now(),
+		eventKey,
 	)
 
 	if err != nil {
@@ -425,5 +490,95 @@ func (repo *WebhookRepository) SaveHistoricalEvent(
 		return err
 	}
 
+	if result.RowsAffected() == 0 {
+		return ErrDuplicateEvent
+	}
+
 	return nil
+}
+
+type BulkInsertResult struct {
+	Inserted   int
+	Duplicates int
+}
+
+func (repo *WebhookRepository) SaveHistoricalEventsBulk(
+	ctx context.Context,
+	inputs []HistoricalEventInput,
+) (BulkInsertResult, error) {
+	bulkResult := BulkInsertResult{}
+
+	if len(inputs) == 0 {
+		return bulkResult, nil
+	}
+
+	tx, err := repo.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return bulkResult, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			logger.L().Warn("Rollback error", "error", err.Error())
+		}
+	}()
+
+	batch := &pgx.Batch{}
+
+	sqlQuery := `
+		INSERT INTO webhook_events
+		(provider, source, resource_type, resource_id, event_type, payload, received_at, delivery_id, event_key)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, NULL, $8)
+		ON CONFLICT (event_key) WHERE event_key IS NOT NULL
+		DO NOTHING`
+
+	for _, input := range inputs {
+		payload, err := proto.Marshal(input.Event)
+		if err != nil {
+			return bulkResult, fmt.Errorf("failed to marshal event %s: %w", input.Event.Id, err)
+		}
+
+		eventKey := BuildEventKey(input.Event.Provider, input.ResourceType, input.ResourceID, input.Event.EventName)
+
+		batch.Queue(sqlQuery,
+			input.Event.Provider,
+			"historical",
+			input.ResourceType,
+			input.ResourceID,
+			input.Event.EventName,
+			payload,
+			time.Now(),
+			eventKey,
+		)
+	}
+
+	results := tx.SendBatch(ctx, batch)
+
+	for i := 0; i < batch.Len(); i++ {
+		cmdTag, err := results.Exec()
+		if err != nil {
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+				bulkResult.Duplicates++
+				continue
+			}
+			results.Close()
+			return bulkResult, fmt.Errorf("failed to execute batch insert for event %d: %w", i, err)
+		}
+
+		if cmdTag.RowsAffected() > 0 {
+			bulkResult.Inserted++
+		} else {
+			bulkResult.Duplicates++
+		}
+	}
+
+	if err := results.Close(); err != nil {
+		return bulkResult, fmt.Errorf("failed to close batch results: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return bulkResult, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return bulkResult, nil
 }

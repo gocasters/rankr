@@ -70,28 +70,32 @@ func (suite *HistoricalEventTestSuite) createTableWithMigration() {
 		received_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 		source VARCHAR(20) DEFAULT 'webhook',
 		resource_type VARCHAR(20),
-		resource_id BIGINT
+		resource_id BIGINT,
+		event_key TEXT
 	)`
 	_, err := suite.db.Exec(suite.ctx, createTableQuery)
 	require.NoError(suite.T(), err, "Failed to create test table")
 
 	suite.db.Exec(suite.ctx, "DROP INDEX IF EXISTS webhook_events_webhook_unique_idx")
 	suite.db.Exec(suite.ctx, "DROP INDEX IF EXISTS webhook_events_historical_unique_idx")
+	suite.db.Exec(suite.ctx, "DROP INDEX IF EXISTS webhook_events_global_unique_idx")
+	suite.db.Exec(suite.ctx, "DROP INDEX IF EXISTS webhook_events_delivery_unique_idx")
+	suite.db.Exec(suite.ctx, "DROP INDEX IF EXISTS webhook_events_event_key_unique_idx")
 	suite.db.Exec(suite.ctx, "ALTER TABLE webhook_events DROP CONSTRAINT IF EXISTS webhook_events_provider_delivery_id_unique")
 
-	webhookIndexQuery := `
-	CREATE UNIQUE INDEX IF NOT EXISTS webhook_events_webhook_unique_idx
-	ON webhook_events(provider, delivery_id)
-	WHERE source = 'webhook' AND delivery_id IS NOT NULL`
-	_, err = suite.db.Exec(suite.ctx, webhookIndexQuery)
-	require.NoError(suite.T(), err, "Failed to create webhook unique index")
+	eventKeyIndexQuery := `
+	CREATE UNIQUE INDEX IF NOT EXISTS webhook_events_event_key_unique_idx
+	ON webhook_events(event_key)
+	WHERE event_key IS NOT NULL`
+	_, err = suite.db.Exec(suite.ctx, eventKeyIndexQuery)
+	require.NoError(suite.T(), err, "Failed to create event_key unique index")
 
-	historicalIndexQuery := `
-	CREATE UNIQUE INDEX IF NOT EXISTS webhook_events_historical_unique_idx
-	ON webhook_events(provider, resource_type, resource_id, event_type)
-	WHERE source = 'historical'`
-	_, err = suite.db.Exec(suite.ctx, historicalIndexQuery)
-	require.NoError(suite.T(), err, "Failed to create historical unique index")
+	deliveryIndexQuery := `
+	CREATE UNIQUE INDEX IF NOT EXISTS webhook_events_delivery_unique_idx
+	ON webhook_events(provider, delivery_id)
+	WHERE delivery_id IS NOT NULL`
+	_, err = suite.db.Exec(suite.ctx, deliveryIndexQuery)
+	require.NoError(suite.T(), err, "Failed to create delivery unique index")
 }
 
 func (suite *HistoricalEventTestSuite) dropTable() {
@@ -255,7 +259,7 @@ func (suite *HistoricalEventTestSuite) TestSaveHistoricalEvent_ReviewEvents_Idem
 	assert.Equal(suite.T(), int64(1), count)
 }
 
-func (suite *HistoricalEventTestSuite) TestWebhookAndHistoricalEvents_NoConflict() {
+func (suite *HistoricalEventTestSuite) TestWebhookAndHistoricalEvents_ShouldConflict() {
 	webhookEvent := &eventpb.Event{
 		Id:             "webhook-delivery-123",
 		EventName:      eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED,
@@ -280,20 +284,45 @@ func (suite *HistoricalEventTestSuite) TestWebhookAndHistoricalEvents_NoConflict
 
 	historicalEvent := suite.createHistoricalPROpenedEvent(42)
 	err = suite.repo.SaveHistoricalEvent(suite.ctx, historicalEvent, "pull_request", 42)
-	assert.NoError(suite.T(), err, "Historical event with same PR should not conflict with webhook event")
+	assert.Error(suite.T(), err, "Historical event with same PR should conflict with webhook event")
+	assert.Equal(suite.T(), ErrDuplicateEvent, err)
 
 	count, err := suite.repo.CountEvents(suite.ctx)
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), int64(2), count, "Should have both webhook and historical events")
+	assert.Equal(suite.T(), int64(1), count, "Should have only webhook event")
+}
 
-	var webhookCount, historicalCount int
-	err = suite.db.QueryRow(suite.ctx, "SELECT COUNT(*) FROM webhook_events WHERE source='webhook'").Scan(&webhookCount)
-	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), 1, webhookCount)
+func (suite *HistoricalEventTestSuite) TestHistoricalThenWebhook_ShouldConflict() {
+	historicalEvent := suite.createHistoricalPROpenedEvent(42)
+	err := suite.repo.SaveHistoricalEvent(suite.ctx, historicalEvent, "pull_request", 42)
+	require.NoError(suite.T(), err, "Historical event should save successfully")
 
-	err = suite.db.QueryRow(suite.ctx, "SELECT COUNT(*) FROM webhook_events WHERE source='historical'").Scan(&historicalCount)
+	webhookEvent := &eventpb.Event{
+		Id:             "webhook-delivery-123",
+		EventName:      eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED,
+		Time:           timestamppb.Now(),
+		RepositoryId:   999,
+		RepositoryName: "gocasters/rankr",
+		Provider:       eventpb.EventProvider_EVENT_PROVIDER_GITHUB,
+		Payload: &eventpb.Event_PrOpenedPayload{
+			PrOpenedPayload: &eventpb.PullRequestOpenedPayload{
+				UserId:       1001,
+				PrId:         12345,
+				PrNumber:     42,
+				Title:        "Webhook PR",
+				BranchName:   "feature/webhook",
+				TargetBranch: "main",
+			},
+		},
+	}
+
+	err = suite.repo.Save(suite.ctx, webhookEvent)
+	assert.Error(suite.T(), err, "Webhook event with same PR should conflict with historical event")
+	assert.Equal(suite.T(), ErrDuplicateEvent, err)
+
+	count, err := suite.repo.CountEvents(suite.ctx)
 	assert.NoError(suite.T(), err)
-	assert.Equal(suite.T(), 1, historicalCount)
+	assert.Equal(suite.T(), int64(1), count, "Should have only historical event")
 }
 
 func (suite *HistoricalEventTestSuite) TestSaveHistoricalEvent_DeliveryIDIsNull() {
