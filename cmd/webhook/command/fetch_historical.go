@@ -21,7 +21,6 @@ var (
 	repo           string
 	token          string
 	eventTypes     []string
-	dryRun         bool
 	batchSize      int
 	includeReviews bool
 )
@@ -30,34 +29,25 @@ var fetchHistoricalCmd = &cobra.Command{
 	Use:   "fetch-historical",
 	Short: "Fetch historical PRs/Issues from GitHub API",
 	Long: `Fetch historical events (PRs, Issues) from GitHub API for repositories
-that don't have webhook configured or need backfill of old data.
-
-This command fetches data from GitHub REST API and stores them in the
-webhook_events table without publishing to NATS.
-
-Example:
-  go run cmd/webhook/main.go fetch-historical \
-    --owner=gocasters \
-    --repo=rankr \
-    --token=$GITHUB_TOKEN \
-    --event-types=pr \
-    --dry-run=false`,
+that don't have webhook configured or need backfill of old data.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		runFetchHistorical()
 	},
+	Example: "go run cmd/webhook/main.go fetch-historical --owner=gocasters --repo=rankr --token=$GITHUB_TOKEN --event-types=pr",
 }
 
 func init() {
 	fetchHistoricalCmd.Flags().StringVar(&owner, "owner", "", "GitHub repository owner (required)")
 	fetchHistoricalCmd.Flags().StringVar(&repo, "repo", "", "GitHub repository name (required)")
-	fetchHistoricalCmd.Flags().StringVar(&token, "token", "", "GitHub PAT (or set GITHUB_TOKEN env) (required)")
+	fetchHistoricalCmd.Flags().StringVar(&token, "token", "", "GitHub PAT (required)")
+
 	fetchHistoricalCmd.Flags().StringSliceVar(&eventTypes, "event-types", []string{"pr"}, "Event types to fetch: pr, issue")
-	fetchHistoricalCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Simulate without saving to database")
 	fetchHistoricalCmd.Flags().IntVar(&batchSize, "batch-size", 100, "GitHub API results per page")
-	fetchHistoricalCmd.Flags().BoolVar(&includeReviews, "include-reviews", false, "Fetch PR reviews (more API calls)")
+	fetchHistoricalCmd.Flags().BoolVar(&includeReviews, "include-reviews", true, "Fetch PR reviews (more API calls)")
 
 	fetchHistoricalCmd.MarkFlagRequired("owner")
 	fetchHistoricalCmd.MarkFlagRequired("repo")
+	fetchHistoricalCmd.MarkFlagRequired("token")
 
 	RootCmd.AddCommand(fetchHistoricalCmd)
 }
@@ -119,7 +109,6 @@ func runFetchHistorical() {
 		Repo:           repo,
 		Token:          token,
 		EventTypes:     eventTypes,
-		DryRun:         dryRun,
 		BatchSize:      batchSize,
 		IncludeReviews: includeReviews,
 	}
