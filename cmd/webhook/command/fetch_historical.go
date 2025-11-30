@@ -39,7 +39,8 @@ that don't have webhook configured or need backfill of old data.`,
 func init() {
 	fetchHistoricalCmd.Flags().StringVar(&owner, "owner", "", "GitHub repository owner (required)")
 	fetchHistoricalCmd.Flags().StringVar(&repo, "repo", "", "GitHub repository name (required)")
-	fetchHistoricalCmd.Flags().StringVar(&token, "token", "", "GitHub PAT (or set GITHUB_TOKEN env) (required)")
+	fetchHistoricalCmd.Flags().StringVar(&token, "token", "", "GitHub PAT (required)")
+
 	fetchHistoricalCmd.Flags().StringSliceVar(&eventTypes, "event-types", []string{"pr"}, "Event types to fetch: pr, issue")
 	fetchHistoricalCmd.Flags().IntVar(&batchSize, "batch-size", 100, "GitHub API results per page")
 	fetchHistoricalCmd.Flags().BoolVar(&includeReviews, "include-reviews", true, "Fetch PR reviews (more API calls)")

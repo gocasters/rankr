@@ -44,7 +44,7 @@ func ExtractResourceInfo(event *eventpb.Event) ResourceInfo {
 		}
 	case eventpb.EventName_EVENT_NAME_PULL_REQUEST_REVIEW_SUBMITTED:
 		if payload := event.GetPrReviewPayload(); payload != nil {
-			return ResourceInfo{Type: "pull_request_review", ID: int64(payload.PrId)}
+			return ResourceInfo{Type: "pull_request_review", ID: int64(payload.PrId)*1000 + int64(payload.ReviewerUserId)}
 		}
 	case eventpb.EventName_EVENT_NAME_ISSUE_OPENED:
 		if payload := event.GetIssueOpenedPayload(); payload != nil {
