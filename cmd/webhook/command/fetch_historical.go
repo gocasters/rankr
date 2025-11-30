@@ -29,16 +29,11 @@ var fetchHistoricalCmd = &cobra.Command{
 	Use:   "fetch-historical",
 	Short: "Fetch historical PRs/Issues from GitHub API",
 	Long: `Fetch historical events (PRs, Issues) from GitHub API for repositories
-that don't have webhook configured or need backfill of old data.
-Example:
-  go run cmd/webhook/main.go fetch-historical \
-    --owner=gocasters \
-    --repo=rankr \
-    --token=$GITHUB_TOKEN \
-    --event-types=pr`,
+that don't have webhook configured or need backfill of old data.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		runFetchHistorical()
 	},
+	Example: "go run cmd/webhook/main.go fetch-historical --owner=gocasters --repo=rankr --token=$GITHUB_TOKEN --event-types=pr",
 }
 
 func init() {
@@ -47,7 +42,7 @@ func init() {
 	fetchHistoricalCmd.Flags().StringVar(&token, "token", "", "GitHub PAT (or set GITHUB_TOKEN env) (required)")
 	fetchHistoricalCmd.Flags().StringSliceVar(&eventTypes, "event-types", []string{"pr"}, "Event types to fetch: pr, issue")
 	fetchHistoricalCmd.Flags().IntVar(&batchSize, "batch-size", 100, "GitHub API results per page")
-	fetchHistoricalCmd.Flags().BoolVar(&includeReviews, "include-reviews", false, "Fetch PR reviews (more API calls)")
+	fetchHistoricalCmd.Flags().BoolVar(&includeReviews, "include-reviews", true, "Fetch PR reviews (more API calls)")
 
 	fetchHistoricalCmd.MarkFlagRequired("owner")
 	fetchHistoricalCmd.MarkFlagRequired("repo")
