@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS scores (
     id SERIAL PRIMARY KEY,
     contributor_id BIGINT NOT NULL,
     project_id BIGINT NOT NULL,
-    activity VARCHAR(50) NOT NULL,
+    activity VARCHAR(50),
     score DECIMAL(10, 2) NOT NULL,
     rank INT,
     earned_at  TIMESTAMPTZ,

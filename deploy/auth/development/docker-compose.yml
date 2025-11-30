@@ -1,58 +1,26 @@
 services:
-  auth-service:
+  # The main application service
+  auth-app:
     build:
-      context: .
+      context: ../../.. # Build from the project root
       dockerfile: ./deploy/auth/development/Dockerfile
-    image: rankr-auth:development
-    command: /bin/auth serve --migrate-up
-    networks:
-      - rankr-net
-    depends_on:
-      auth-db:
-        condition: service_healthy
-      auth-redis:
-        condition: service_healthy
+    container_name: auth-app
     volumes:
-      - ./:/home/app
-    environment:
-      - CONFIG_PATH=/home/app/deploy/auth/development/config.yml
-      - GRPC_NETWORK_TYPE=tcp
-      - GRPC_PORT=8090
+      - ../../..:/app
     ports:
-      - "5009:5009" # HTTP
-      - "8090:8090" # gRPC
-    restart: unless-stopped
-
-  auth-db:
-    image: postgres:15
-    container_name: auth-db
-    environment:
-       POSTGRES_USER: ${POSTGRES_USER:-auth_admin}
-       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password123}
-       POSTGRES_DB: ${POSTGRES_DB:-auth_db}
-    ports:
-      - "5432:5432"
+      - "8081:8081" # HTTP port
+      - "8091:8091" # gRPC port
     networks:
-      - rankr-net
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U auth_admin -d auth_db"]
-      interval: 5s
-      retries: 5
+      - rankr-shared-development-network
+    env_file:
+      - ./.env.development
+    environment:
+      - CONFIG_PATH=/app/deploy/auth/development/config.yml
+    entrypoint: [ "air", "-c", "/app/.air/.air.auth.toml" ]
 
-  auth-redis:
-    image: redis:7
-    container_name: auth-redis
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-password1999}"]
-    ports:
-      - "6379:6379"
-    networks:
-      - rankr-net
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "password1999", "ping"]
-      interval: 5s
-      retries: 5
-
+# Shared network is created by `deploy/script/start_infrastructure.sh up-base`
+# or `make infra-up` before running this service.
 networks:
-  rankr-net:
-    name: rankr-development-network
+  rankr-shared-development-network:
     external: true
+    name: rankr-shared-development-network

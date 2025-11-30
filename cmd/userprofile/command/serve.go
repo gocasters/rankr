@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gocasters/rankr/pkg/config"
 	"github.com/gocasters/rankr/pkg/logger"
+	"github.com/gocasters/rankr/pkg/path"
 	"github.com/gocasters/rankr/userprofileapp"
 	"github.com/spf13/cobra"
 	"log"
@@ -59,15 +60,19 @@ func serve() {
 func loadAppConfig() userprofileapp.Config {
 	var cfg userprofileapp.Config
 
-	workDir, err := os.Getwd()
+	projectRoot, err := path.PathProjectRoot()
 	if err != nil {
-		log.Fatalf("error getting working directory: %v", err)
+		log.Fatalf("error finding project root: %v", err)
 	}
 
 	yamlPath := os.Getenv("CONFIG_PATH")
 	if yamlPath == "" {
-		// yamlPath = filepath.Join(workDir, "deploy", "userprofile", "development", "config.yaml") // for docker container
-		yamlPath = filepath.Join(workDir, "../../", "deploy", "userprofile", "development", "config.local.yaml") // for local
+		defaultConfig := filepath.Join(projectRoot, "deploy", "userprofile", "development", "config.yml")
+		if _, err := os.Stat(defaultConfig); err == nil {
+			yamlPath = defaultConfig
+		} else {
+			yamlPath = filepath.Join(projectRoot, "deploy", "userprofile", "development", "config.local.yml")
+		}
 	}
 
 	log.Printf("Loading user profile service config from: %s", yamlPath)

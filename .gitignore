@@ -27,6 +27,8 @@ go.work.sum
 
 # env file
 .env
+deploy/project/development/.env.development
+deploy/auth/development/.env.development
 
 # Editor/IDE
 
@@ -37,11 +39,10 @@ go.work.sum
 .cursor
 
 # logs
+tmp/
 logs
 /logs/*
 /log/*
 /cmd/*/temp/*
 /deploy/development/traefik/logs/access.log
 deploy/development/traefik/logs/traefik.log
-
-

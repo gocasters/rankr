@@ -1,40 +1,44 @@
 http_server:
-  host: "0.0.0.0"
-  port: 5009
+  host: ""
+  port: 8081
   shutdown_context_timeout: 10s
 
 rpc_server:
   host: ""
-  port: 8090
+  port: 8091
   network_type: "tcp"
+
+grpc_client:
+  contributor:
+    address: "contributor-app:8093"
+    grpc_service_name: "contributor"
+    timeout: 30s
+    max_retries: 3
+    retry_backoff: 100ms
+  
+  leaderboardscoring:
+    address: "leaderboardscoring-app:8091"
+    grpc_service_name: "leaderboardscoring"
+    timeout: 30s
+    max_retries: 3
+    retry_backoff: 100ms
 
 scheduler_cfg:
   snapshot_crontab: "0 */3 * * *"
-  snapshot_job_context_timeout: 5m
+  snapshot_job_context_timeout: 15m
 
-postgres_db:
-  host: "auth-db"
-  port: 5432
-  user: "auth_admin"
-  password: "password123"
-  db_name: "auth_db"
-  ssl_mode: "disable"
-  max_conns: 10
-  min_conns: 2
-  max_conn_lifetime: 300 # in seconds
-  max_conn_idle_time: 60 # in seconds
-  health_check_period: 60 # in seconds
+
 
 redis:
-  host: "auth-redis"
+  host: "shared-redis"
   port: 6379
-  password: "password1999"
+  password: ""
   db: 0
 
 watermill_nats:
-  url: "nats://auth-nats:4222"
-  client_id: "auth-scoring"
-  durable_name: "auth-scoring-consumer"
+  url: "nats://shared-nats:4222"
+  client_id: "auth"
+  durable_name: "auth-consumer"
   queue_group: "event-group"
 
   ack_wait_timeout: 5m
@@ -64,7 +68,7 @@ database_retry:
   retry_delay: 100ms
 
 nats_adapter:
-  url: "nats://auth-nats:4222"
+  url: "nats://shared-nats:4222"
   max_reconnects: -1
   reconnect_wait: 1s
 
@@ -87,6 +91,19 @@ batch_processor:
   tick_interval: 10s
   metrics_interval: 30s
 
-total_shutdown_timeout: 1m
+total_shutdown_timeout: 30m
 
 path_of_migration: "./authapp/repository/migrations"
+
+postgres_db:
+  host: shared-postgres
+  port: 5432
+  user: auth_user
+  password: change_me_auth
+  db_name: auth_db
+  ssl_mode: disable
+  max_conns: 25  
+  min_conns: 5  
+  max_conn_lifetime: 300
+  max_conn_idle_time: 60
+  health_check_period: 60

@@ -1,66 +1,28 @@
 services:
-  project-db:
-    image: postgres:17.2-alpine
-    environment:
-      - 'POSTGRES_DB=project_db'
-      - 'POSTGRES_USER=project_admin'
-      - 'POSTGRES_PASSWORD=password123'
-    restart: always
-    profiles:
-      - project
-    ports:
-      - "5432:5432"
-    volumes:
-      - project-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U project_admin -d project_db"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  project-service:
+  project-app:
     build:
-      context: .
+      context: ../../.. # Build from the project root
       dockerfile: ./deploy/project/development/Dockerfile
-      args:
-        GO_IMAGE_NAME: ${GO_IMAGE_NAME}
-        GO_IMAGE_VERSION: ${GO_IMAGE_VERSION}
-    image: ${SERVICE_NAME}-project:${GO_IMAGE_NAME}-${GO_IMAGE_VERSION}
-    command: /bin/sh -c "go run cmd/project/main.go migrate --up && air -c /home/app/.air/.air.project.toml"
-    depends_on:
-      project-db:
-        condition: service_healthy
+    container_name: project-app
     volumes:
-      - ./:/home/app
-      - project-go-mod-cache:/go/pkg/mod
-    profiles:
-      - project
-    labels:
-      # routers with authentication
-      - "traefik.enable=true"
-      - "traefik.http.routers.${SERVICE_NAME}_project.service=${SERVICE_NAME}_project"
-      - "traefik.http.routers.${SERVICE_NAME}_project.rule=Host(`${SERVICE_DOMAIN}`)&&PathPrefix(`/projects`)"
-      - "traefik.http.routers.${SERVICE_NAME}_project.entrypoints=web"
-      - "traefik.http.services.${SERVICE_NAME}_project.loadbalancer.server.port=5001"
-
-      # routers without authentication
-      - "traefik.http.routers.${SERVICE_NAME}_project_no_auth.service=${SERVICE_NAME}_project"
-      - "traefik.http.routers.${SERVICE_NAME}_project_no_auth.rule=Host(`${SERVICE_DOMAIN}`)&&(
-          PathPrefix(`/projects/v1/health-check`)||
-          PathPrefix(`/projects/v1/customers/signup`)||
-          PathPrefix(`/projects/v1/customers/login`)||
-          PathPrefix(`/projects/v1/customers/verify/otp`)||
-          PathPrefix(`/projects/v1/owners/signup`)||
-          PathPrefix(`/projects/v1/owners/login`)||
-          PathPrefix(`/projects/v1/owners/verify/otp`)
-          )"
-      - "traefik.http.routers.${SERVICE_NAME}_project_no_auth.entrypoints=web"
-      - "traefik.http.routers.${SERVICE_NAME}_project_no_auth.middlewares=${SERVICE_NAME}_strip_project"
-
-      # middlewares
-      - "traefik.http.middlewares.${SERVICE_NAME}_strip_project.stripprefix.prefixes=/projects"
-      - "traefik.http.routers.${SERVICE_NAME}_project.middlewares=beehive_auth@file,${SERVICE_NAME}_strip_project"
-
-volumes:
-  project-data:
-  project-go-mod-cache:
+      - ../../..:/app
+    ports:
+      - "8086:8081" # HTTP port
+      - "8096:8091" # gRPC port
+    networks:
+      - rankr-shared-development-network
+    env_file:
+      - ./.env.development
+    environment:
+      - CONFIG_PATH=/app/deploy/project/development/config.yml
+      - project_POSTGRES_DB_HOST=${PROJECT_POSTGRES_DB_HOST}
+      - project_POSTGRES_DB_USER=${PROJECT_POSTGRES_DB_USER}
+      - project_POSTGRES_DB_PASSWORD=${PROJECT_POSTGRES_DB_PASSWORD}
+      - project_POSTGRES_DB_NAME=${PROJECT_POSTGRES_DB_NAME}
+      - project_POSTGRES_DB_PORT=${PROJECT_POSTGRES_DB_PORT}
+      - project_REDIS_HOST=${PROJECT_REDIS_HOST}
+      - project_NATS_URL=${PROJECT_NATS_URL}
+    entrypoint: [ "air", "-c", "/app/.air/.air.projects.toml" ]
+networks:
+  rankr-shared-development-network:
+    external: true

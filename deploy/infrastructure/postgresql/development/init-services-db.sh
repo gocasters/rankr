@@ -12,6 +12,14 @@ WEBHOOK_USER=${WEBHOOK_USER:-webhook_user}
 WEBHOOK_PASS=${WEBHOOK_PASS:-webhook_pass}
 LEADERBOARDSCORING_USER=${LEADERBOARDSCORING_USER:-leaderboardscoring_user}
 LEADERBOARDSCORING_PASS=${LEADERBOARDSCORING_PASS:-leaderboardscoring_pass}
+AUTH_USER=${AUTH_USER:-auth_user}
+AUTH_PASS=${AUTH_PASS:-auth_pass}
+NOTIFAPP_USER=${NOTIFAPP_USER:-notification_user}
+NOTIFAPP_PASS=${NOTIFAPP_PASS:-notification_pass}
+REALTIME_USER=${REALTIME_USER:-realtime_user}
+REALTIME_PASS=${REALTIME_PASS:-realtime_pass}
+TASK_USER=${TASK_USER:-task_user}
+TASK_PASS=${TASK_PASS:-task_pass}
 
 echo "========================================="
 echo "Initializing Rankr microservice databases..."
@@ -30,10 +38,11 @@ create_service_db() {
         DO \$\$
         BEGIN
             IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '$user') THEN
-                CREATE USER $user WITH PASSWORD '$pass';
+                EXECUTE format('CREATE USER %I WITH PASSWORD %L', '$user', '$pass');
                 RAISE NOTICE 'User $user created';
             ELSE
-                RAISE NOTICE 'User $user already exists';
+                EXECUTE format('ALTER USER %I WITH PASSWORD %L', '$user', '$pass');
+                RAISE NOTICE 'User $user already existed, password refreshed';
             END IF;
         END
         \$\$;
@@ -56,6 +65,10 @@ create_service_db "$CONTRIBUTOR_USER" "$CONTRIBUTOR_PASS" "contributor_db"
 create_service_db "$PROJECT_USER" "$PROJECT_PASS" "project_db"
 create_service_db "$WEBHOOK_USER" "$WEBHOOK_PASS" "webhook_db"
 create_service_db "$LEADERBOARDSCORING_USER" "$LEADERBOARDSCORING_PASS" "leaderboardscoring_db"
+create_service_db "$AUTH_USER" "$AUTH_PASS" "auth_db"
+create_service_db "$NOTIFAPP_USER" "$NOTIFAPP_PASS" "notification_db"
+create_service_db "$REALTIME_USER" "$REALTIME_PASS" "realtime_db"
+create_service_db "$TASK_USER" "$TASK_PASS" "task_db"
 
 echo "========================================="
 echo "Database initialization completed!"
@@ -66,4 +79,8 @@ echo "  - contributor_db           → $CONTRIBUTOR_USER"
 echo "  - project_db               → $PROJECT_USER"
 echo "  - webhook_db               → $WEBHOOK_USER"
 echo "  - leaderboardscoring_db    → $LEADERBOARDSCORING_USER"
+echo "  - auth_db                  → $AUTH_USER"
+echo "  - notification_db          → $NOTIFAPP_USER"
+echo "  - realtime_db              → $REALTIME_USER"
+echo "  - task_db                  → $TASK_USER"
 echo "========================================="

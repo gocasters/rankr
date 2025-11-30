@@ -1,23 +1,24 @@
 root = "."
-tmp_dir = "cmd/task/temp"
+tmp_dir = "tmp"
 
 [build]
-  bin = "./cmd/task/temp/main"
-  cmd = "go build -o ./cmd/task/temp/main ./cmd/task/"
+  bin = "tmp/main"
+  args_bin = ["serve", "--migrate-up"]
+  cmd = "go build -o ./tmp/main ./cmd/task/"
   delay = 1000
-  exclude_dir = ["vendor"]
+  exclude_dir = ["vendor", "tmp"]
   exclude_file = []
   exclude_regex = []
   exclude_unchanged = false
   follow_symlink = false
-  full_bin = "./cmd/task/temp/main serve"
+  full_bin = ""
   include_dir = []
   include_ext = ["go"]
   kill_delay = "0s"
   log = "build-errors.log"
   send_interrupt = false
   stop_on_error = true
-  poll = true
+  poll = false
   poll_interval = 1000
 
 [color]

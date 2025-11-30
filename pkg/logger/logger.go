@@ -40,7 +40,7 @@ func resolveLogPath(cfg Config) (string, error) {
 
 		workingDir, err := os.Getwd()
 		if err != nil {
-			return "", fmt.Errorf("error getting current working directory: %w", err)
+			return "", fmt.Errorf("error finding project root: %w", err)
 		}
 
 		logPath = filepath.Join(workingDir, cleanPath)
