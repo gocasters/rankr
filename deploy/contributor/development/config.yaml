@@ -71,5 +71,17 @@ rabbitmq:
   username: guest
   password: guest
 
+middleware:
+  file_size: 10*1024*1024
+  file_type :
+    - "csv"
+    - "xlsx"
+
+dashboard_validate:
+  http_file_type:
+    - "text/csv; charset=utf-8"
+    - "application/zip"
+
+
 debug:
   force_accept_otp: 11111

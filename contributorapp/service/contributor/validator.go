@@ -19,12 +19,10 @@ const (
 type ValidatorContributorRepository interface {
 }
 
-type Validator struct {
-	repo ValidatorContributorRepository
-}
+type Validator struct{}
 
-func NewValidator(repo ValidatorContributorRepository) Validator {
-	return Validator{repo: repo}
+func NewValidator() Validator {
+	return Validator{}
 }
 
 func (v Validator) ValidateCreateContributorRequest(ctx context.Context, req CreateContributorRequest) error {
