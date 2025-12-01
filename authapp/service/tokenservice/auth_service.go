@@ -1,17 +1,35 @@
 package tokenservice
 
+import "time"
+
 type AuthService struct {
-	jwtManager *JWTManager
+	accessManager  *JWTManager
+	refreshManager *JWTManager
 }
 
-func NewAuthService(jwtManager *JWTManager) *AuthService {
-	return &AuthService{jwtManager: jwtManager}
+func NewAuthService(secret string, accessDuration, refreshDuration time.Duration) *AuthService {
+	return &AuthService{
+		accessManager:  NewJWTManager(secret, accessDuration),
+		refreshManager: NewJWTManager(secret, refreshDuration),
+	}
 }
 
 func (s *AuthService) IssueToken(userID, role string) (string, error) {
-	return s.jwtManager.Generate(userID, role)
+	return s.accessManager.Generate(userID, role)
+}
+
+func (s *AuthService) IssueTokens(userID, role string) (string, string, error) {
+	access, err := s.accessManager.Generate(userID, role)
+	if err != nil {
+		return "", "", err
+	}
+	refresh, err := s.refreshManager.Generate(userID, role)
+	if err != nil {
+		return "", "", err
+	}
+	return access, refresh, nil
 }
 
 func (s *AuthService) VerifyToken(token string) (*UserClaims, error) {
-	return s.jwtManager.Verify(token)
+	return s.accessManager.Verify(token)
 }

@@ -17,6 +17,7 @@ type Validator interface {
 	ValidateAddPermissionRequest(req AddPermissionRequest) error
 	ValidateRemovePermissionRequest(req RemovePermissionRequest) error
 	ValidateID(id types.ID) error
+	ValidateLoginRequest(req LoginRequest) error
 }
 
 type validator struct {
@@ -89,6 +90,13 @@ func (v validator) ValidateRemovePermissionRequest(req RemovePermissionRequest) 
 	return validation.ValidateStruct(&req,
 		validation.Field(&req.RoleID, validation.By(v.validateIDValue)),
 		validation.Field(&req.PermissionID, validation.By(v.validateIDValue)),
+	)
+}
+
+func (v validator) ValidateLoginRequest(req LoginRequest) error {
+	return validation.ValidateStruct(&req,
+		validation.Field(&req.Password, validation.Required),
+		validation.Field(&req.ContributorName, validation.Required),
 	)
 }
 
