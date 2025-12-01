@@ -45,7 +45,7 @@ func Setup(
 	cache := cachemanager.NewCacheManager(redisAdapter)
 
 	contributorRepo := repository.NewContributorRepo(config.Repository, postgresConn, logger)
-	contributorValidator := contributor.NewValidator(contributorRepo)
+	contributorValidator := contributor.NewValidator()
 	contributorSvc := contributor.NewService(contributorRepo, *cache, contributorValidator)
 
 	contributorHandler := http.NewHandler(contributorSvc, logger)
