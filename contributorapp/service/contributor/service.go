@@ -12,7 +12,7 @@ type Repository interface {
 	GetContributorByID(ctx context.Context, id types.ID) (*Contributor, error)
 	CreateContributor(ctx context.Context, contributor Contributor) (*Contributor, error)
 	UpdateProfileContributor(ctx context.Context, contributor Contributor) (*Contributor, error)
-	GetContributorByGitHubUsername(ctx context.Context, githubUsername string) (bool, error)
+	GetContributorByGitHubUsername(ctx context.Context, githubUsername string) (int64, bool, error)
 }
 
 type Service struct {
@@ -122,17 +122,17 @@ func (s Service) UpdateProfile(ctx context.Context, req UpdateProfileRequest) (U
 	}, nil
 }
 
-func (s Service) GetContributorByGithubUsername(ctx context.Context, githubUsername string) (bool, error) {
+func (s Service) GetContributorByGithubUsername(ctx context.Context, githubUsername string) (int64, bool, error) {
 
-	exists, err := s.repository.GetContributorByGitHubUsername(ctx, githubUsername)
+	id, exists, err := s.repository.GetContributorByGitHubUsername(ctx, githubUsername)
 	if err != nil {
 		logger.L().Error("contributor-get-by-id", "error", err)
-		return false, err
+		return 0, false, err
 	}
 
 	if !exists {
-		return false, nil
+		return 0, false, nil
 	}
 
-	return true, nil
+	return id, true, nil
 }

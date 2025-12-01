@@ -3,6 +3,7 @@ package dashboard
 import (
 	"context"
 	"github.com/gocasters/rankr/contributorapp/service/contributor"
+	types "github.com/gocasters/rankr/type"
 )
 
 type ContributorAdapter struct {
@@ -14,7 +15,7 @@ func NewContributorAdapter(contrSvc contributor.Service) ContributorAdapter {
 }
 
 func (c ContributorAdapter) Upsert(ctx context.Context, contri contributor.Contributor) error {
-	exists, err := c.contributorSvc.GetContributorByGithubUsername(ctx, contri.GitHubUsername)
+	id, exists, err := c.contributorSvc.GetContributorByGithubUsername(ctx, contri.GitHubUsername)
 	if err != nil {
 		return err
 	}
@@ -39,6 +40,7 @@ func (c ContributorAdapter) Upsert(ctx context.Context, contri contributor.Contr
 
 	var updateContributor contributor.UpdateProfileRequest
 
+	updateContributor.ID = types.ID(id)
 	updateContributor.GitHubID = contri.GitHubID
 	updateContributor.GitHubUsername = contri.GitHubUsername
 	updateContributor.DisplayName = contri.DisplayName

@@ -66,7 +66,7 @@ var (
 	DisplayName    ColumnName = "display_name"
 	ProfileImage   ColumnName = "profile_image"
 	Bio            ColumnName = "bio"
-	PrivacyMode    ColumnName = "privacy_name"
+	PrivacyMode    ColumnName = "privacy_mode"
 )
 
 func (c ColumnName) String() string {

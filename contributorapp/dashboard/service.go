@@ -70,9 +70,7 @@ func (s Service) ImportJob(ctx context.Context, req ImportJobRequest) (ImportJob
 	job.ID = jobID
 	job.Status = Processing
 
-	ext := req.FileType
-
-	switch ext {
+	switch req.FileType {
 	case XLSX:
 		s.fileProcessor = XLSXProcess{}
 	case CSV:
@@ -81,7 +79,7 @@ func (s Service) ImportJob(ctx context.Context, req ImportJobRequest) (ImportJob
 	default:
 		return ImportJobResponse{}, errmsg.ErrorResponse{
 			Message:         "invalid input",
-			Errors:          map[string]interface{}{"error": fmt.Sprintf("unsupported file extension %s: ", ext)},
+			Errors:          map[string]interface{}{"error": fmt.Sprintf("unsupported file extension %s: ", req.FileType)},
 			InternalErrCode: statuscode.IntCodeInvalidParam,
 		}
 	}

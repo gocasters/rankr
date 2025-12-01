@@ -52,7 +52,7 @@ func (c CSVProcess) Process(file multipart.File, fileName string) (ProcessResult
 
 	records, rErr := reader.ReadAll()
 	if rErr != nil {
-		return ProcessResult{}, fmt.Errorf("failed to read file %s: %w", fileName, err)
+		return ProcessResult{}, fmt.Errorf("failed to read file %s: %w", fileName, rErr)
 	}
 
 	if len(records) < 2 {
@@ -74,21 +74,25 @@ type XLSXProcess struct{}
 
 func (x XLSXProcess) Process(file multipart.File, fileName string) (ProcessResult, error) {
 
-	tmpFile, err := saveTempFile(file)
+	tmpFile, tmpPath, err := saveTempFile(file)
 	if err != nil {
 		return ProcessResult{}, fmt.Errorf("failed to create temp file: %w", err)
 	}
-	defer tmpFile.Close()
+
+	defer func() {
+		tmpFile.Close()
+		os.Remove(tmpPath)
+	}()
 
 	f, oErr := excelize.OpenReader(tmpFile)
 	if oErr != nil {
-		return ProcessResult{}, fmt.Errorf("failed to read xlsx file: %w", err)
+		return ProcessResult{}, fmt.Errorf("failed to read xlsx file: %w", oErr)
 	}
 
 	sheet := f.GetSheetName(0)
 	rows, getErr := f.GetRows(sheet)
 	if getErr != nil {
-		return ProcessResult{}, fmt.Errorf("failed to read rows: %w", err)
+		return ProcessResult{}, fmt.Errorf("failed to read rows: %w", getErr)
 	}
 
 	if len(rows) < 2 {
@@ -106,23 +110,25 @@ func (x XLSXProcess) Process(file multipart.File, fileName string) (ProcessResul
 	return processRows(dataRows, columnIndex), nil
 }
 
-func saveTempFile(src multipart.File) (*os.File, error) {
+func saveTempFile(src multipart.File) (*os.File, string, error) {
 	tmp, err := os.CreateTemp("", "upload-*.xlsx")
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
+
+	tmpPath := tmp.Name()
 
 	_, err = io.Copy(tmp, src)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	_, err = tmp.Seek(0, 0)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	return tmp, nil
+	return tmp, tmpPath, nil
 }
 
 func processRows(rows [][]string, colIdx map[string]int) ProcessResult {
