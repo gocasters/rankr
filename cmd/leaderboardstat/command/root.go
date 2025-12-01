@@ -3,6 +3,7 @@ package command
 import (
 	"github.com/gocasters/rankr/leaderboardstatapp"
 	"github.com/gocasters/rankr/pkg/config"
+	"github.com/gocasters/rankr/pkg/path"
 	"github.com/spf13/cobra"
 	"log"
 	"os"
@@ -19,15 +20,20 @@ the leaderboardstat service, including migrations and server startup.`,
 func loadAppConfig() leaderboardstatapp.Config {
 	var cfg leaderboardstatapp.Config
 
-	workingDir, err := os.Getwd()
+	projectRoot, err := path.PathProjectRoot()
 	if err != nil {
-		log.Fatalf("Error getting working directory: %v", err)
+		log.Fatalf("Error finding project root: %v", err)
 	}
 
 	yamlPath := os.Getenv("CONFIG_PATH")
+
 	if yamlPath == "" {
-		yamlPath = filepath.Join(workingDir, "deploy", "leaderboardstat", "development", "config.yml") //for docker container
-		//yamlPath = filepath.Join(workingDir, "deploy", "leaderboardstat", "development", "config.local.yml") // for local
+		defaultConfig := filepath.Join(projectRoot, "deploy", "leaderboardstat", "development", "config.yml")
+		if _, err := os.Stat(defaultConfig); err == nil {
+			yamlPath = defaultConfig
+		} else {
+			yamlPath = filepath.Join(projectRoot, "deploy", "leaderboardstat", "development", "config.local.yml")
+		}
 	}
 
 	options := config.Options{

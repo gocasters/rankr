@@ -11,16 +11,32 @@ import (
 	"time"
 )
 
+const defaultMaxRateLimitSleep = 30 * time.Minute
+
 type GitHubClient struct {
-	httpClient *http.Client
-	baseURL    string
+	httpClient        *http.Client
+	baseURL           string
+	maxRateLimitSleep time.Duration
 }
 
-func NewGitHubClient() *GitHubClient {
-	return &GitHubClient{
-		httpClient: &http.Client{Timeout: 30 * time.Second},
-		baseURL:    "https://api.github.com",
+type ClientOption func(*GitHubClient)
+
+func WithMaxRateLimitSleep(d time.Duration) ClientOption {
+	return func(c *GitHubClient) {
+		c.maxRateLimitSleep = d
 	}
+}
+
+func NewGitHubClient(opts ...ClientOption) *GitHubClient {
+	c := &GitHubClient{
+		httpClient:        &http.Client{Timeout: 30 * time.Second},
+		baseURL:           "https://api.github.com",
+		maxRateLimitSleep: defaultMaxRateLimitSleep,
+	}
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c
 }
 
 func (c *GitHubClient) doRequest(method, url string, body io.Reader, token string) (*http.Response, error) {
@@ -34,6 +50,67 @@ func (c *GitHubClient) doRequest(method, url string, body io.Reader, token strin
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 
 	return c.httpClient.Do(req)
+}
+
+func (c *GitHubClient) doRequestWithRateLimit(method, url string, bodyFn func() io.Reader, token string) (*http.Response, error) {
+	for {
+		var body io.Reader
+		if bodyFn != nil {
+			body = bodyFn()
+		}
+
+		resp, err := c.doRequest(method, url, body, token)
+		if err != nil {
+			return nil, err
+		}
+
+		if resp.StatusCode != http.StatusForbidden && resp.StatusCode != http.StatusTooManyRequests {
+			return resp, nil
+		}
+
+		remaining := resp.Header.Get("X-RateLimit-Remaining")
+		if remaining != "0" {
+			return resp, nil
+		}
+
+		resetHeader := resp.Header.Get("X-RateLimit-Reset")
+		if resetHeader == "" {
+			return resp, nil
+		}
+
+		unixTime, parseErr := strconv.ParseInt(resetHeader, 10, 64)
+		if parseErr != nil {
+			return resp, nil
+		}
+
+		resetTime := time.Unix(unixTime, 0)
+		timeUntilReset := time.Until(resetTime)
+		if timeUntilReset <= 0 {
+			return resp, nil
+		}
+
+		resp.Body.Close()
+
+		sleepDuration := timeUntilReset
+		capped := false
+		if sleepDuration > c.maxRateLimitSleep {
+			sleepDuration = c.maxRateLimitSleep
+			capped = true
+		}
+
+		if capped {
+			fmt.Printf("Rate limit hit. Sleeping for %s (capped, %s remaining until reset at %s)\n",
+				sleepDuration.Round(time.Second),
+				timeUntilReset.Round(time.Second),
+				resetTime.Format(time.RFC3339))
+		} else {
+			fmt.Printf("Rate limit hit. Sleeping until %s (%s)\n",
+				resetTime.Format(time.RFC3339),
+				sleepDuration.Round(time.Second))
+		}
+
+		time.Sleep(sleepDuration)
+	}
 }
 
 func (c *GitHubClient) GetDeliveries(webhookConfig recovery.WebhookConfig, page int, perPage int) ([]recovery.WebhookDelivery, error) {
@@ -139,15 +216,11 @@ func (c *GitHubClient) ListPullRequests(owner, repo, token string, page, perPage
 	url := fmt.Sprintf("%s/repos/%s/%s/pulls?state=all&per_page=%d&page=%d&direction=asc&sort=created",
 		c.baseURL, owner, repo, perPage, page)
 
-	resp, err := c.doRequest("GET", url, nil, token)
+	resp, err := c.doRequestWithRateLimit("GET", url, nil, token)
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to fetch PRs: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if err := c.checkRateLimit(resp); err != nil {
-		return nil, false, err
-	}
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -169,15 +242,11 @@ func (c *GitHubClient) ListPRReviews(owner, repo string, prNumber int32, token s
 	url := fmt.Sprintf("%s/repos/%s/%s/pulls/%d/reviews",
 		c.baseURL, owner, repo, prNumber)
 
-	resp, err := c.doRequest("GET", url, nil, token)
+	resp, err := c.doRequestWithRateLimit("GET", url, nil, token)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch reviews: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if err := c.checkRateLimit(resp); err != nil {
-		return nil, err
-	}
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -190,28 +259,4 @@ func (c *GitHubClient) ListPRReviews(owner, repo string, prNumber int32, token s
 	}
 
 	return reviews, nil
-}
-
-func (c *GitHubClient) checkRateLimit(resp *http.Response) error {
-	remaining := resp.Header.Get("X-RateLimit-Remaining")
-	reset := resp.Header.Get("X-RateLimit-Reset")
-
-	if remaining == "0" {
-		var resetTime time.Time
-		if resetUnix := reset; resetUnix != "" {
-			unixTime, err := strconv.ParseInt(resetUnix, 10, 64)
-			if err == nil {
-				resetTime = time.Unix(unixTime, 0)
-			}
-		}
-
-		sleepDuration := time.Until(resetTime)
-		if sleepDuration > 0 {
-			fmt.Printf("Rate limit exhausted. Sleeping until %s (%s)\n",
-				resetTime.Format(time.RFC3339), sleepDuration.Round(time.Second))
-			time.Sleep(sleepDuration)
-		}
-	}
-
-	return nil
 }

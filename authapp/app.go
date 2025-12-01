@@ -8,11 +8,13 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/gocasters/rankr/adapter/contributor"
 	statHTTP "github.com/gocasters/rankr/authapp/delivery/http"
 	"github.com/gocasters/rankr/authapp/repository"
 	"github.com/gocasters/rankr/authapp/service/auth"
 	"github.com/gocasters/rankr/authapp/service/tokenservice"
 	"github.com/gocasters/rankr/pkg/database"
+	"github.com/gocasters/rankr/pkg/grpc"
 	"github.com/gocasters/rankr/pkg/httpserver"
 	"github.com/gocasters/rankr/pkg/logger"
 )
@@ -22,6 +24,7 @@ type Application struct {
 	Repo         auth.Repository
 	Srv          auth.Service
 	TokenService *tokenservice.AuthService
+	Contributor  *contributor.Client
 	Handler      statHTTP.Handler
 	HTTPServer   statHTTP.Server
 	Config       Config
@@ -37,17 +40,25 @@ func Setup(
 
 	repo := repository.NewRepository(postgresConn)
 	validator := auth.NewValidator(repo)
-	svc := auth.NewService(repo, validator)
 
-	jwtManager := tokenservice.NewJWTManager(config.JWT.Secret, config.JWT.TokenDuration)
-	tokenSvc := tokenservice.NewAuthService(jwtManager)
+	tokenSvc := tokenservice.NewAuthService(config.JWT.Secret, config.JWT.TokenDuration, config.JWT.RefreshTokenDuration)
 
+	rpcClient, err := grpc.NewClient(config.ContributorRPC, log)
+	if err != nil {
+		log.Error("failed to initialize contributor RPC client", slog.Any("error", err))
+		return Application{}, err
+	}
+	contributorClient, err := contributor.New(rpcClient)
+	if err != nil {
+		log.Error("failed to initialize contributor client", slog.Any("error", err))
+		return Application{}, err
+	}
+	svc := auth.NewService(repo, validator, contributorClient, tokenSvc)
 	httpSrvCore, err := httpserver.New(config.HTTPServer)
 	if err != nil {
 		log.Error("failed to initialize HTTP server", slog.Any("error", err))
 		return Application{}, err
 	}
-
 	httpHandler := statHTTP.NewHandler(svc, tokenSvc)
 	httpSrv := statHTTP.New(*httpSrvCore, httpHandler)
 
@@ -56,6 +67,7 @@ func Setup(
 		Repo:         repo,
 		Srv:          svc,
 		TokenService: tokenSvc,
+		Contributor:  contributorClient,
 		Handler:      httpHandler,
 		HTTPServer:   httpSrv,
 		Config:       config,
@@ -141,4 +153,8 @@ func (app Application) shutdownHTTPServer(parentCtx context.Context, wg *sync.Wa
 	}
 
 	log.Info("HTTP server shut down successfully")
+
+	if app.Contributor != nil {
+		app.Contributor.Close()
+	}
 }

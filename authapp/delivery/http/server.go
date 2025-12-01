@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-
 	"github.com/gocasters/rankr/pkg/httpserver"
 )
 

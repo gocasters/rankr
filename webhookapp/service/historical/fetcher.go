@@ -2,10 +2,7 @@ package historical
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"strconv"
-	"strings"
 
 	"github.com/gocasters/rankr/adapter/webhook/github"
 	"github.com/gocasters/rankr/pkg/logger"
@@ -17,15 +14,16 @@ import (
 type Fetcher struct {
 	config       Config
 	githubClient *github.GitHubClient
-	repo         repository.WebhookRepository
+	repo         *repository.WebhookRepository
 	progress     *ProgressTracker
 }
 
 func NewFetcher(cfg Config, githubClient *github.GitHubClient, db *pgxpool.Pool) *Fetcher {
+	repo := repository.NewWebhookRepository(db)
 	return &Fetcher{
 		config:       cfg,
 		githubClient: githubClient,
-		repo:         repository.NewWebhookRepository(db),
+		repo:         &repo,
 		progress:     NewProgressTracker(),
 	}
 }
@@ -36,8 +34,7 @@ func (f *Fetcher) Run(ctx context.Context) error {
 	log.Info("Starting historical fetch",
 		"owner", f.config.Owner,
 		"repo", f.config.Repo,
-		"event_types", f.config.EventTypes,
-		"dry_run", f.config.DryRun)
+		"event_types", f.config.EventTypes)
 
 	f.progress.Start()
 
@@ -136,61 +133,43 @@ func (f *Fetcher) processPR(ctx context.Context, pr *github.PullRequest) error {
 		}
 	}
 
+	inputs := make([]repository.HistoricalEventInput, 0, len(events))
 	for _, event := range events {
 		resourceType := "pull_request"
-		resourceID := int64(pr.Number)
+		resourceID := fmt.Sprintf("%d", pr.Number)
 
 		if event.EventName == eventpb.EventName_EVENT_NAME_PULL_REQUEST_REVIEW_SUBMITTED {
 			resourceType = "pull_request_review"
-			reviewID, err := extractReviewIDFromEventID(event.Id)
-			if err != nil {
-				return fmt.Errorf("failed to extract review ID from event %s: %w", event.Id, err)
+			if payload := event.GetPrReviewPayload(); payload != nil {
+				resourceID = fmt.Sprintf("%d:%d", payload.PrId, payload.ReviewerUserId)
 			}
-			resourceID = reviewID
 		}
 
-		if err := f.saveEvent(ctx, event, resourceType, resourceID); err != nil {
-			return fmt.Errorf("failed to save event %s: %w", event.Id, err)
-		}
+		inputs = append(inputs, repository.HistoricalEventInput{
+			Event:        event,
+			ResourceType: resourceType,
+			ResourceID:   resourceID,
+		})
 	}
 
-	return nil
+	return f.saveEventsBulk(ctx, inputs)
 }
 
-func extractReviewIDFromEventID(eventID string) (int64, error) {
-	parts := strings.Split(eventID, "-")
-	if len(parts) < 5 || parts[3] != "review" {
-		return 0, fmt.Errorf("invalid review event ID format: %s", eventID)
-	}
-	return strconv.ParseInt(parts[4], 10, 64)
-}
-
-func (f *Fetcher) saveEvent(ctx context.Context, event *eventpb.Event, resourceType string, resourceID int64) error {
+func (f *Fetcher) saveEventsBulk(ctx context.Context, inputs []repository.HistoricalEventInput) error {
 	log := logger.L()
 
-	if f.config.DryRun {
-		log.Info("[DRY RUN] Would save event",
-			"event_id", event.Id,
-			"event_name", event.EventName,
-			"resource_type", resourceType,
-			"resource_id", resourceID)
+	if len(inputs) == 0 {
 		return nil
 	}
 
-	if err := f.repo.SaveHistoricalEvent(ctx, event, resourceType, resourceID); err != nil {
-		if errors.Is(err, repository.ErrDuplicateEvent) {
-			log.Debug("Event already exists, skipping",
-				"event_id", event.Id,
-				"resource_id", resourceID)
-			return nil
-		}
+	result, err := f.repo.SaveHistoricalEventsBulk(ctx, inputs)
+	if err != nil {
 		return err
 	}
 
-	log.Debug("Saved historical event",
-		"event_id", event.Id,
-		"event_name", event.EventName,
-		"resource_id", resourceID)
+	log.Debug("Bulk saved historical events",
+		"inserted", result.Inserted,
+		"duplicates", result.Duplicates)
 
 	return nil
 }

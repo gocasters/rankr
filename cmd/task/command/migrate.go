@@ -8,6 +8,7 @@ import (
 
 	cfgloader "github.com/gocasters/rankr/pkg/config"
 	"github.com/gocasters/rankr/pkg/migrator"
+	"github.com/gocasters/rankr/pkg/path"
 	"github.com/spf13/cobra"
 )
 
@@ -26,19 +27,24 @@ var migrateCmd = &cobra.Command{
 func migrate() {
 	var cfg taskapp.Config
 
-	workingDir, err := os.Getwd()
+	projectRoot, err := path.PathProjectRoot()
 	if err != nil {
-		log.Fatalf("Error getting working directory: %v", err)
+		log.Fatalf("Error finding project root: %v", err)
 	}
 
 	yamlPath := os.Getenv("CONFIG_PATH")
 	if yamlPath == "" {
-		yamlPath = filepath.Join(workingDir, "deploy", "task", "development", "config.yaml")
+		defaultConfig := filepath.Join(projectRoot, "deploy", "task", "development", "config.yml")
+		if _, err := os.Stat(defaultConfig); err == nil {
+			yamlPath = defaultConfig
+		} else {
+			yamlPath = filepath.Join(projectRoot, "deploy", "task", "development", "config.local.yml")
+		}
 	}
 
 	// to run migrations when you want to run task service locally
-	if path := os.Getenv("DBCONFIG_OVERRIDE_PATH"); path != "" {
-		yamlPath = path
+	if overridePath := os.Getenv("DBCONFIG_OVERRIDE_PATH"); overridePath != "" {
+		yamlPath = overridePath
 		log.Printf("Using override config: %s", yamlPath)
 	} else {
 		log.Printf("Using default config: %s", yamlPath)

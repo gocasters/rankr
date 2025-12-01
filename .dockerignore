@@ -1,0 +1,51 @@
+# Version control & tooling
+.git
+.gitignore
+.github/
+
+# Build artifacts & caches
+bin/
+build/
+dist/
+tmp/
+coverage/
+coverage.*/
+*.out
+*.log
+logs/
+**/logs/
+cmd/*/temp/*
+.gocache/
+.gomodcache/
+
+# Third-party dependencies
+node_modules/
+vendor/
+
+# OS / editor noise
+.DS_Store
+.idea/
+.vscode/
+.history
+.cursor
+
+# Environment & secrets
+.env
+.env.*
+*.env
+*/.env
+**/*.env
+.envrc
+.envrc.*
+.deploy
+.deploy.env
+.deploy/*.env
+deploy/**/.env*
+
+# Misc binaries / artifacts
+*.sqlite
+*.db
+*.pid
+*.sock
+*.swp
+*.swo

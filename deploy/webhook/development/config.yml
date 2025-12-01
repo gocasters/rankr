@@ -1,0 +1,69 @@
+shutdown_ctx_timeout: "5s"
+total_shutdown_timeout: "10s"
+http_server:
+  host: ""
+  port: 8090
+  shutdown_context_timeout: "5s"
+
+logger:
+  level: "debug"
+  file_path: "logs/webhook/service.log"
+  use_local_time: true
+  file_max_size_in_mb: 10
+  file_max_age_in_days: 7
+
+nats:
+  url: nats://supersecret@localhost:4222
+  connect_timeout: "30s"
+  reconnect_wait: "1s"
+  retry_on_failed_connect: true
+  jet_stream_enabled: true
+  stream:
+    name: "EVENTS_STREAM"
+    subjects:
+      - "github.*"
+
+postgres_db:
+  host: "localhost"
+  port: 5436
+  user: "webhook_admin"
+  password: "password123"
+  db_name: "webhook_db"
+  ssl_mode: "disable"
+  max_conns: 100
+  min_conns: 2
+  max_conn_lifetime: 3600
+  max_conn_idle_time: 300
+  health_check_period: 30
+
+path_of_migration: "./webhookapp/repository/migrations"
+
+redis:
+  host: "localhost"
+  port: 6389
+  password: ""
+  db: 0
+
+recovery_config:
+  recovery_lost_deliveries_interval_in_seconds: 300
+  batch_size: 50
+  delivery_per_page: 100
+  webhooks:
+    - repo: "my-repo-1"
+      owner: "user1"
+      hook_id: "hook123"
+      token: "token123"
+    - repo: "my-repo-2"
+      owner: "user2"
+      hook_id: "hook456"
+      token: "token456"
+    - repo: "my-repo-3"
+      owner: "org1"
+      hook_id: "hook789"
+      token: "token789"
+
+bulk_insert_config:
+  bulk_insert_interval_in_seconds: 5
+
+insert_queue_name: "webhook_insert_event"
+insert_batch_size: 30

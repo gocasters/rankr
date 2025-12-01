@@ -1,30 +1,26 @@
 services:
-  leaderboardstat-service:
+  leaderboardstat-app:
     build:
-      context: .
+      context: ../../.. # Build from the project root
       dockerfile: ./deploy/leaderboardstat/development/Dockerfile
-    image: rankr-leaderboardstat:development
-    command: /bin/leaderboardstat serve --migrate-up
-    networks:
-      - rankr-net
-    depends_on:
-      rankr-shared-postgres:
-        condition: service_healthy
+    container_name: leaderboardstat-app
     volumes:
-      - ./:/home/app
-    environment:
-      - CONFIG_PATH=/home/app/deploy/leaderboardstat/development/config.yml
-      - GRPC_NETWORK_TYPE=tcp
-      - GRPC_PORT=8090
+      - ../../..:/app
     ports:
-      - "6011:6011"
-      - "8090:8090"
-    restart: unless-stopped
-
+      - "8088:8081" # HTTP port
+      - "8098:8091" # gRPC port
+    networks:
+      - rankr-shared-development-network
+    environment:
+      - CONFIG_PATH=/app/deploy/leaderboardstat/development/config.yml
+      - leaderboardstat_POSTGRES_DB_HOST=shared-postgres
+      - leaderboardstat_POSTGRES_DB_USER=leaderboardstat_user
+      - leaderboardstat_POSTGRES_DB_PASSWORD=leaderboardstat_pass
+      - leaderboardstat_POSTGRES_DB_NAME=leaderboardstat_db
+      - leaderboardstat_POSTGRES_DB_PORT=5432
+      - leaderboardstat_REDIS_HOST=shared-redis
+      - leaderboardstat_NATS_URL=nats://shared-nats:4222
+    entrypoint: [ "air", "-c", "/app/.air/.air.leaderboardstat.toml" ]
 networks:
-  rankr-net:
-    name: rankr-development-network
+  rankr-shared-development-network:
     external: true
-
-volumes:
-  leaderboardstat-data:

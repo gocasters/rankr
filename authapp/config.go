@@ -5,6 +5,7 @@ import (
 
 	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/pkg/database"
+	"github.com/gocasters/rankr/pkg/grpc"
 	"github.com/gocasters/rankr/pkg/httpserver"
 	"github.com/gocasters/rankr/pkg/logger"
 )
@@ -15,11 +16,13 @@ type Config struct {
 	Redis                redis.Config      `koanf:"redis"`
 	Logger               logger.Config     `koanf:"logger"`
 	JWT                  JWTConfig         `koanf:"jwt"`
+	ContributorRPC       grpc.ClientConfig `koanf:"contributor_rpc"`
 	TotalShutdownTimeout time.Duration     `koanf:"total_shutdown_timeout"`
 	PathOfMigration      string            `koanf:"path_of_migration"`
 }
 
 type JWTConfig struct {
-	Secret        string        `koanf:"secret"`
-	TokenDuration time.Duration `koanf:"token_duration"`
+	Secret               string        `koanf:"secret"`
+	TokenDuration        time.Duration `koanf:"token_duration"`
+	RefreshTokenDuration time.Duration `koanf:"refresh_token_duration"`
 }

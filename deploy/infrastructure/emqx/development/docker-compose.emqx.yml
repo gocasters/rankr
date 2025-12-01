@@ -12,10 +12,11 @@ services:
       - rankr-shared-development-network
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:18083/" ]
-      interval: 20s
+      test: ["CMD", "emqx", "ctl", "status"]
+      interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 3
+      start_period: 30s
 
 networks:
   rankr-shared-development-network:

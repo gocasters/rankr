@@ -2,6 +2,7 @@ package contributorapp
 
 import (
 	"github.com/gocasters/rankr/adapter/redis"
+	"github.com/gocasters/rankr/contributorapp/dashboard"
 	"github.com/gocasters/rankr/contributorapp/delivery/adminhttp/middleware"
 	"github.com/gocasters/rankr/contributorapp/repository"
 	"github.com/gocasters/rankr/pkg/database"

@@ -16,9 +16,26 @@ make proto-setup
 # 3. Setup Go dependencies
 make mod-tidy
 
-# 4. Start development environment
-cd deploy/leaderboardscoring/development
-docker compose -f docker-compose.no-service.yml up -d
+# 4. Prepare environment files
+cp deploy/infrastructure/postgresql/development/.env-example deploy/infrastructure/postgresql/development/.env
+cp deploy/task/development/.env.example deploy/task/development/.env
+
+# 5. Start shared infrastructure
+make infra-up
+
+# 6. Start all Application Services
+make services-up
+
+# Or Start the Application Services (in this order)
+make start-userprofile-app-dev
+make start-project-app-dev
+make start-realtime-app-dev
+make start-auth-app-dev
+make start-leaderboardscoring-app-dev
+make start-contributor-app-dev
+make start-notification-app-dev
+make start-leaderboardstat-app-dev
+make start-task-app-dev
 ```
 
 ### Local Compose Stack

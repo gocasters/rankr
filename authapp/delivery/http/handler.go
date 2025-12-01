@@ -26,17 +26,18 @@ func NewHandler(authSrv auth.Service, tokenSrv *tokenservice.AuthService) Handle
 	}
 }
 
-type LoginRequest struct {
-	GitHubUsername string `json:"github_username"`
-	Password       string `json:"password"`
-}
-
 func (h Handler) login(c echo.Context) error {
-	var req LoginRequest
+	var req auth.LoginRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, echo.Map{"error": "invalid request body"})
 	}
-	return c.JSON(http.StatusNotImplemented, echo.Map{"error": "login endpoint is not implemented yet"})
+
+	res, err := h.authService.Login(c.Request().Context(), req)
+	if err != nil {
+		return h.handleError(c, err)
+	}
+
+	return c.JSON(http.StatusOK, res)
 }
 
 func (h Handler) verifyToken(c echo.Context) error {

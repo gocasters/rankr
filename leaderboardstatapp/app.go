@@ -53,7 +53,7 @@ func Setup(
 	// initial rpc server
 	rpcClient, err := grpc.NewClient(config.LeaderboardScoringRPC, statLogger)
 	if err != nil {
-		return Application{}, fmt.Errorf("failed to create RPC client: %w", err)
+		return Application{}, fmt.Errorf("failed to create RPC client!!: %w", err)
 	}
 
 	lbScoringClient, err := leaderboardscoring.New(rpcClient)

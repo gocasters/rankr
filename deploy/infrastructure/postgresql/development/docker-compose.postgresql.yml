@@ -1,11 +1,11 @@
 services:
   shared-postgres:
     build:
-      context: ./deploy/infrastructure/postgresql/development
+      context: .
       dockerfile: Dockerfile
     container_name: rankr-shared-postgres
     env_file:
-      - ./deploy/infrastructure/postgresql/development/.env
+      - ../../../../deploy/.env
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}

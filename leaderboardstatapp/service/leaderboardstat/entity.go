@@ -20,9 +20,8 @@ type DailyContributorScore struct {
 	UserID        string
 	Score         float64 //TODO - data type
 	ProjectID     types.ID
-	Rank          uint64
+	Rank          int64
 	Timeframe     string
-	CalculatedAt  time.Time
 }
 
 type ScoreRecord struct {

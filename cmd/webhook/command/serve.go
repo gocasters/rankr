@@ -64,7 +64,12 @@ func serve() {
 
 	yamlPath := os.Getenv("CONFIG_PATH")
 	if yamlPath == "" {
-		yamlPath = filepath.Join(projectRoot, "deploy", "webhook", "development", "config.local.yml")
+		defaultConfig := filepath.Join(projectRoot, "deploy", "webhook", "development", "config.yml")
+		if _, err := os.Stat(defaultConfig); err == nil {
+			yamlPath = defaultConfig
+		} else {
+			yamlPath = filepath.Join(projectRoot, "deploy", "webhook", "development", "config.local.yml")
+		}
 	}
 
 	options := config.Options{

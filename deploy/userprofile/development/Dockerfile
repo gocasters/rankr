@@ -1,25 +1,25 @@
-# ===== Base Image =====
-ARG GO_IMAGE_NAME
-ARG GO_IMAGE_VERSION
-FROM ${GO_IMAGE_NAME}:${GO_IMAGE_VERSION}
+FROM golang:1.25-alpine AS builder
 
-# ===== Environment =====
-ENV GOPROXY=https://goproxy.io,direct
-ENV PATH=$PATH:/go/bin
+WORKDIR /app
 
-# ===== Working Directory =====
-WORKDIR /home/app
-
-# ===== Install Air =====
-RUN go install github.com/air-verse/air@latest
-
-# ===== Dependencies =====
 COPY go.mod go.sum ./
 RUN go mod download
 
-# ===== Copy Source Code =====
+RUN go install github.com/air-verse/air@latest
+
 COPY . .
 
-# ===== CMD: Start Hot Reload =====
-CMD ["air", "-c", "/home/app/.air/.air.userprofile.toml"]
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/main ./cmd/userprofile/main.go
 
+
+FROM golang:1.25-alpine
+
+WORKDIR /app
+
+COPY --from=builder /go/bin/air /usr/local/bin/air
+COPY --from=builder /app /app
+
+
+EXPOSE 8080
+
+CMD ["/app/main", "serve"]
