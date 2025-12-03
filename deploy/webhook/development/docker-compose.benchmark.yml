@@ -2,16 +2,16 @@ services:
   webhook-db:
     image: postgres:17.2-alpine
     environment:
-      POSTGRES_DB: webhook_db
-      POSTGRES_USER: "webhook_admin"
-      POSTGRES_PASSWORD: "password123"
+      POSTGRES_DB: ${BENCHMARK_DB_NAME:-webhook_db}
+      POSTGRES_USER: ${BENCHMARK_DB_USER:-webhook_admin}
+      POSTGRES_PASSWORD: ${BENCHMARK_DB_PASS:-benchmark_secret}
     restart: always
     volumes:
       - webhook-data:/var/lib/postgresql/data
     ports:
       - "5436:5432"
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U webhook_admin -d webhook_db" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${BENCHMARK_DB_USER:-webhook_admin} -d ${BENCHMARK_DB_NAME:-webhook_db}" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -50,16 +50,16 @@ services:
       - webhook-redis
     environment:
       REDIS_ADDR: webhook-redis:6379
-      POSTGRES_URL: postgres://webhook_admin:password123@webhook-db:5432/webhook_db
-      INSERT_COUNT: 1000
-      INSERT_RATE: 1000
+      POSTGRES_URL: postgres://${BENCHMARK_DB_USER:-webhook_admin}:${BENCHMARK_DB_PASS:-benchmark_secret}@webhook-db:5432/${BENCHMARK_DB_NAME:-webhook_db}
+      INSERT_COUNT: ${BENCHMARK_INSERT_COUNT:-1000}
+      INSERT_RATE: ${BENCHMARK_INSERT_RATE:-1000}
 
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter
     container_name: postgres-exporter
     restart: always
     environment:
-      DATA_SOURCE_NAME: "postgresql://webhook_admin:password123@webhook-db:5432/webhook_db?sslmode=disable"
+      DATA_SOURCE_NAME: "postgresql://${BENCHMARK_DB_USER:-webhook_admin}:${BENCHMARK_DB_PASS:-benchmark_secret}@webhook-db:5432/${BENCHMARK_DB_NAME:-webhook_db}?sslmode=disable"
     ports:
       - "9187:9187"
     networks:
@@ -100,7 +100,7 @@ services:
     ports:
       - "3100:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_SECURITY_ADMIN_PASSWORD=${BENCHMARK_GRAFANA_PASS:-admin123}
     volumes:
       - grafana-data:/var/lib/grafana
       - ./grafana/provisioning:/etc/grafana/provisioning
@@ -115,7 +115,7 @@ services:
     command:
       - "-js"
       - "--auth"
-      - "supersecret"
+      - "${BENCHMARK_NATS_AUTH:-supersecret}"
     ports:
       - "4222:4222"
     ulimits:
