@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package project.v1;
+
+option go_package = "protobuf/golang/projectpb";
+
+// Request for fetching a project by VCS repository information.
+message GetProjectByRepoRequest {
+  string repo_provider = 1;  // e.g., "GITHUB", "GITLAB"
+  string repo_id = 2;         // External repository ID from VCS provider
+}
+
+// Response containing project information.
+message GetProjectByRepoResponse {
+  string project_id = 1;      // Internal Rankr project ID
+  string slug = 2;            // Project slug
+  string name = 3;            // Project name
+  string repo_provider = 4;   // VCS provider
+  string git_repo_id = 5;     // External repository ID
+}
+
+service ProjectService {
+  rpc GetProjectByRepo(GetProjectByRepoRequest) returns (GetProjectByRepoResponse);
+}

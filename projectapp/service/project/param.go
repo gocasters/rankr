@@ -75,3 +75,16 @@ type DeleteProjectInput struct {
 type DeleteProjectResponse struct {
 	ID string `json:"id"`
 }
+
+type GetProjectByVCSRepoRequest struct {
+	Provider constant.VcsProvider `json:"provider"`
+	RepoID   string               `json:"repo_id"`
+}
+
+type GetProjectByVCSRepoResponse struct {
+	ID           string                `json:"id"`
+	Slug         string                `json:"slug"`
+	Name         string                `json:"name"`
+	RepoProvider *constant.VcsProvider `json:"repo_provider,omitempty"`
+	GitRepoID    *string               `json:"git_repo_id,omitempty"`
+}
