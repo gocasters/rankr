@@ -8,6 +8,7 @@ import (
 	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/contributorapp/service/contributor"
 	"github.com/gocasters/rankr/pkg/database"
+	"github.com/gocasters/rankr/projectapp/constant"
 	types "github.com/gocasters/rankr/type"
 	"github.com/jackc/pgx/v5"
 	"log/slog"
@@ -135,4 +136,54 @@ func (repo ContributorRepo) UpdateProfileContributor(ctx context.Context, contri
 	}
 
 	return &updated, nil
+}
+
+func (repo ContributorRepo) GetContributorsByVCS(ctx context.Context, provider constant.VcsProvider, usernames []string) ([]contributor.Contributor, error) {
+	if len(usernames) == 0 {
+		return []contributor.Contributor{}, nil
+	}
+
+	// For now, we only support GitHub
+	// In the future, we can add support for GitLab, Bitbucket, etc.
+	query := `
+		SELECT id, github_id, github_username, email, is_verified, two_factor_enabled,
+		       privacy_mode, display_name, profile_image, bio, created_at, updated_at
+		FROM contributors
+		WHERE github_username = ANY($1)
+	`
+
+	rows, err := repo.PostgresSQL.Pool.Query(ctx, query, usernames)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query contributors by VCS usernames: %w", err)
+	}
+	defer rows.Close()
+
+	var contributors []contributor.Contributor
+	for rows.Next() {
+		var contrib contributor.Contributor
+		err := rows.Scan(
+			&contrib.ID,
+			&contrib.GitHubID,
+			&contrib.GitHubUsername,
+			&contrib.Email,
+			&contrib.IsVerified,
+			&contrib.TwoFactor,
+			&contrib.PrivacyMode,
+			&contrib.DisplayName,
+			&contrib.ProfileImage,
+			&contrib.Bio,
+			&contrib.CreatedAt,
+			&contrib.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan contributor row: %w", err)
+		}
+		contributors = append(contributors, contrib)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating contributor rows: %w", err)
+	}
+
+	return contributors, nil
 }

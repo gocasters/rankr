@@ -14,6 +14,26 @@ message GetContributorResponse {
   string password = 2;
 }
 
+// Request for fetching multiple contributors by VCS provider and usernames.
+message GetContributorsByRepoRequest {
+  string repo_provider = 1;  // e.g., "GITHUB", "GITLAB"
+  repeated string usernames = 2;  // VCS usernames to lookup
+}
+
+// Mapping of a single contributor's VCS info to internal ID.
+message ContributorMapping {
+  uint64 contributor_id = 1;  // Internal Rankr ID
+  string vcs_username = 2;     // GitHub/GitLab username
+  uint64 vcs_user_id = 3;      // GitHub/GitLab user ID (if available)
+}
+
+// Response containing multiple contributor mappings.
+message GetContributorsByRepoResponse {
+  string repo_provider = 1;
+  repeated ContributorMapping contributors = 2;
+}
+
 service ContributorService {
   rpc GetContributor(GetContributorRequest) returns (GetContributorResponse);
+  rpc GetContributorsByRepo(GetContributorsByRepoRequest) returns (GetContributorsByRepoResponse);
 }

@@ -5,6 +5,7 @@ import (
 	"github.com/gocasters/rankr/pkg/cachemanager"
 	errmsg "github.com/gocasters/rankr/pkg/err_msg"
 	"github.com/gocasters/rankr/pkg/logger"
+	"github.com/gocasters/rankr/projectapp/constant"
 	"github.com/gocasters/rankr/type"
 )
 
@@ -12,6 +13,7 @@ type Repository interface {
 	GetContributorByID(ctx context.Context, id types.ID) (*Contributor, error)
 	CreateContributor(ctx context.Context, contributor Contributor) (*Contributor, error)
 	UpdateProfileContributor(ctx context.Context, contributor Contributor) (*Contributor, error)
+	GetContributorsByVCS(ctx context.Context, provider constant.VcsProvider, usernames []string) ([]Contributor, error)
 }
 
 type Service struct {
@@ -118,5 +120,32 @@ func (s Service) UpdateProfile(ctx context.Context, req UpdateProfileRequest) (U
 		PrivacyMode:    resContributor.PrivacyMode,
 		CreatedAt:      resContributor.CreatedAt,
 		UpdatedAt:      resContributor.UpdatedAt,
+	}, nil
+}
+
+func (s Service) GetContributorsByVCS(ctx context.Context, req GetContributorsByVCSRequest) (GetContributorsByVCSResponse, error) {
+	contributors, err := s.repository.GetContributorsByVCS(ctx, req.Provider, req.Usernames)
+	if err != nil {
+		logger.L().Error("contributor_get_by_vcs", "error", err, "provider", req.Provider, "usernames", req.Usernames)
+		return GetContributorsByVCSResponse{}, errmsg.ErrorResponse{
+			Message: err.Error(),
+			Errors: map[string]interface{}{
+				"contributor_get_by_vcs": err.Error(),
+			},
+		}
+	}
+
+	mappings := make([]ContributorVCSMapping, 0, len(contributors))
+	for _, contrib := range contributors {
+		mappings = append(mappings, ContributorVCSMapping{
+			ContributorID: contrib.ID,
+			VCSUsername:   contrib.GitHubUsername,
+			VCSUserID:     contrib.GitHubID,
+		})
+	}
+
+	return GetContributorsByVCSResponse{
+		Provider:     req.Provider,
+		Contributors: mappings,
 	}, nil
 }

@@ -36,6 +36,13 @@ const (
 		WHERE slug = $1;
 	`
 
+	sqlProjectByVCSRepo = `
+		SELECT id, name, slug, description, design_reference_url, git_repo_id, repo_provider, status, created_at, updated_at, archived_at
+		FROM projects
+		WHERE repo_provider = $1 AND git_repo_id = $2
+		LIMIT 1;
+	`
+
 	sqlProjectList = `
 		SELECT id, name, slug, description, design_reference_url, git_repo_id, repo_provider, status, created_at, updated_at, archived_at
 		FROM projects
@@ -90,6 +97,20 @@ func (r *ProjectRepository) FindBySlug(ctx context.Context, slug string) (*proje
 	var p project.ProjectEntity
 	err := r.database.Pool.
 		QueryRow(ctx, sqlProjectBySlug, slug).
+		Scan(&p.ID, &p.Name, &p.Slug, &p.Description, &p.DesignReferenceURL, &p.GitRepoID, &p.RepoProvider, &p.Status, &p.CreatedAt, &p.UpdatedAt, &p.ArchivedAt)
+	if err != nil {
+		if isNoRows(err) {
+			return nil, constant.ErrNotFound
+		}
+		return nil, err
+	}
+	return &p, nil
+}
+
+func (r *ProjectRepository) FindByVCSRepo(ctx context.Context, provider constant.VcsProvider, repoID string) (*project.ProjectEntity, error) {
+	var p project.ProjectEntity
+	err := r.database.Pool.
+		QueryRow(ctx, sqlProjectByVCSRepo, provider, repoID).
 		Scan(&p.ID, &p.Name, &p.Slug, &p.Description, &p.DesignReferenceURL, &p.GitRepoID, &p.RepoProvider, &p.Status, &p.CreatedAt, &p.UpdatedAt, &p.ArchivedAt)
 	if err != nil {
 		if isNoRows(err) {

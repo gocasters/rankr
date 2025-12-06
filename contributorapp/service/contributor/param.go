@@ -1,6 +1,7 @@
 package contributor
 
 import (
+	"github.com/gocasters/rankr/projectapp/constant"
 	"github.com/gocasters/rankr/type"
 	"time"
 )
@@ -49,4 +50,20 @@ type UpdateProfileResponse struct {
 	PrivacyMode    PrivacyMode `json:"privacy_mode"`
 	CreatedAt      time.Time   `json:"created_at"`
 	UpdatedAt      time.Time   `json:"updated_at"`
+}
+
+type GetContributorsByVCSRequest struct {
+	Provider  constant.VcsProvider `json:"provider"`
+	Usernames []string             `json:"usernames"`
+}
+
+type ContributorVCSMapping struct {
+	ContributorID int64  `json:"contributor_id"`
+	VCSUsername   string `json:"vcs_username"`
+	VCSUserID     int64  `json:"vcs_user_id"`
+}
+
+type GetContributorsByVCSResponse struct {
+	Provider     constant.VcsProvider    `json:"provider"`
+	Contributors []ContributorVCSMapping `json:"contributors"`
 }

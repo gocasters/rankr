@@ -13,9 +13,11 @@ import (
 	"github.com/gocasters/rankr/pkg/cachemanager"
 
 	"github.com/gocasters/rankr/adapter/redis"
+	contributorGRPC "github.com/gocasters/rankr/contributorapp/delivery/grpc"
 	"github.com/gocasters/rankr/contributorapp/delivery/http"
 	"github.com/gocasters/rankr/contributorapp/repository"
 	"github.com/gocasters/rankr/pkg/database"
+	"github.com/gocasters/rankr/pkg/grpc"
 	"github.com/gocasters/rankr/pkg/httpserver"
 )
 
@@ -24,6 +26,7 @@ type Application struct {
 	ContributorSrv     contributor.Service
 	ContributorHandler http.Handler
 	HTTPServer         http.Server
+	GRPCServer         contributorGRPC.Server
 	Config             Config
 	Logger             *slog.Logger
 	Redis              *redis.Adapter
@@ -55,6 +58,16 @@ func Setup(
 		logger.Error("failed to initialize HTTP server", "err", err)
 		return Application{}, err
 	}
+
+	rpcServer, err := grpc.NewServer(config.RPCServer)
+	if err != nil {
+		logger.Error("failed to initialize gRPC server", "err", err)
+		return Application{}, err
+	}
+
+	contributorGrpcHandler := contributorGRPC.NewHandler(&contributorSvc)
+	contributorGrpcServer := contributorGRPC.New(rpcServer, contributorGrpcHandler)
+
 	return Application{
 		ContributorRepo:    contributorRepo,
 		ContributorSrv:     contributorSvc,
@@ -64,6 +77,7 @@ func Setup(
 			contributorHandler,
 			logger,
 		),
+		GRPCServer:   contributorGrpcServer,
 		Config:       config,
 		Logger:       logger,
 		Redis:        redisAdapter,
@@ -101,9 +115,19 @@ func startServers(app Application, wg *sync.WaitGroup) {
 		defer wg.Done()
 		app.Logger.Info(fmt.Sprintf("✅ HTTP server started on %d", app.Config.HTTPServer.Port))
 		if err := app.HTTPServer.Serve(); err != nil {
-			app.Logger.Error(fmt.Sprintf("error in HTTP server on %d", app.Config.HTTPServer.Port), err)
+			app.Logger.Error(fmt.Sprintf("error in HTTP server on %d", app.Config.HTTPServer.Port), slog.String("error", err.Error()))
 		}
 		app.Logger.Info(fmt.Sprintf("HTTP server stopped %d", app.Config.HTTPServer.Port))
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		app.Logger.Info(fmt.Sprintf("✅ gRPC server starting on port %d", app.Config.RPCServer.Port))
+		if err := app.GRPCServer.Serve(); err != nil {
+			app.Logger.Error("gRPC server failed", slog.String("error", err.Error()))
+		}
+		app.Logger.Info("gRPC server stopped")
 	}()
 }
 
@@ -114,8 +138,9 @@ func (app Application) shutdownServers(ctx context.Context) bool {
 	parentCtx := context.Background()
 	go func() {
 		var shutdownWg sync.WaitGroup
-		shutdownWg.Add(1)
+		shutdownWg.Add(2)
 		go app.shutdownHTTPServer(parentCtx, &shutdownWg)
+		go app.shutdownGRPCServer(parentCtx, &shutdownWg)
 
 		shutdownWg.Wait()
 		close(shutdownDone)
@@ -143,4 +168,13 @@ func (app Application) shutdownHTTPServer(parentCtx context.Context, wg *sync.Wa
 
 	app.Logger.Info("HTTP server shut down successfully.")
 
+}
+
+func (app Application) shutdownGRPCServer(parentCtx context.Context, wg *sync.WaitGroup) {
+	app.Logger.Info(fmt.Sprintf("Starting graceful shutdown for gRPC server on port %d", app.Config.RPCServer.Port))
+
+	defer wg.Done()
+	app.GRPCServer.Stop()
+
+	app.Logger.Info("gRPC server shut down successfully.")
 }
