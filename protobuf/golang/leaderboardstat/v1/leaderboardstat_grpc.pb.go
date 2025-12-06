@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             (unknown)
-// source: leaderboardstat/leaderboardstat.proto
+// source: leaderboardstat/v1/leaderboardstat.proto
 
 package leaderboardstatv1
 
@@ -26,7 +26,7 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type LeaderboardStatServiceClient interface {
-	GetContributorStats(ctx context.Context, in *GetContributorStatsRequest, opts ...grpc.CallOption) (*ContributorStatResponse, error)
+	GetContributorStats(ctx context.Context, in *GetContributorStatsRequest, opts ...grpc.CallOption) (*GetContributorStatsResponse, error)
 }
 
 type leaderboardStatServiceClient struct {
@@ -37,9 +37,9 @@ func NewLeaderboardStatServiceClient(cc grpc.ClientConnInterface) LeaderboardSta
 	return &leaderboardStatServiceClient{cc}
 }
 
-func (c *leaderboardStatServiceClient) GetContributorStats(ctx context.Context, in *GetContributorStatsRequest, opts ...grpc.CallOption) (*ContributorStatResponse, error) {
+func (c *leaderboardStatServiceClient) GetContributorStats(ctx context.Context, in *GetContributorStatsRequest, opts ...grpc.CallOption) (*GetContributorStatsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ContributorStatResponse)
+	out := new(GetContributorStatsResponse)
 	err := c.cc.Invoke(ctx, LeaderboardStatService_GetContributorStats_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func (c *leaderboardStatServiceClient) GetContributorStats(ctx context.Context, 
 // All implementations must embed UnimplementedLeaderboardStatServiceServer
 // for forward compatibility.
 type LeaderboardStatServiceServer interface {
-	GetContributorStats(context.Context, *GetContributorStatsRequest) (*ContributorStatResponse, error)
+	GetContributorStats(context.Context, *GetContributorStatsRequest) (*GetContributorStatsResponse, error)
 	mustEmbedUnimplementedLeaderboardStatServiceServer()
 }
 
@@ -62,7 +62,7 @@ type LeaderboardStatServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedLeaderboardStatServiceServer struct{}
 
-func (UnimplementedLeaderboardStatServiceServer) GetContributorStats(context.Context, *GetContributorStatsRequest) (*ContributorStatResponse, error) {
+func (UnimplementedLeaderboardStatServiceServer) GetContributorStats(context.Context, *GetContributorStatsRequest) (*GetContributorStatsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetContributorStats not implemented")
 }
 func (UnimplementedLeaderboardStatServiceServer) mustEmbedUnimplementedLeaderboardStatServiceServer() {
@@ -118,5 +118,5 @@ var LeaderboardStatService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "leaderboardstat/leaderboardstat.proto",
+	Metadata: "leaderboardstat/v1/leaderboardstat.proto",
 }

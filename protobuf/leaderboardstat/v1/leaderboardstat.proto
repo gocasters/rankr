@@ -1,10 +1,10 @@
 syntax = "proto3";
 import "google/protobuf/timestamp.proto";
-package leaderboardstat;
+package leaderboardstat.v1;
 
 option go_package = "protobuf/golang/leaderboardstat";
 
-message ContributorStatResponse {
+message GetContributorStatsResponse {
   uint64 contributor_id = 1;
   uint64 global_rank = 2;
   double total_score = 3;
@@ -22,10 +22,10 @@ message ScoreEntry {
   google.protobuf.Timestamp earned_at = 3;
 }
 
-message ContributorStatRequest{
+message GetContributorStatsRequest{
   uint64 contributor_id = 1;
 }
 
 service LeaderboardStatService{
-  rpc GetContributorStats(ContributorStatRequest) returns (ContributorStatResponse);
+  rpc GetContributorStats(GetContributorStatsRequest) returns (GetContributorStatsResponse);
 }

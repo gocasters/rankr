@@ -498,7 +498,7 @@ type PullRequestOpenedPayload struct {
 	BranchName   string   `protobuf:"bytes,5,opt,name=branch_name,json=branchName,proto3" json:"branch_name,omitempty"`
 	TargetBranch string   `protobuf:"bytes,6,opt,name=target_branch,json=targetBranch,proto3" json:"target_branch,omitempty"`
 	Labels       []string `protobuf:"bytes,7,rep,name=labels,proto3" json:"labels,omitempty"`
-	//  google.protobuf.Timestamp deadline = 8;
+	// google.protobuf.Timestamp deadline = 8;
 	Assignees []uint64 `protobuf:"varint,9,rep,packed,name=assignees,proto3" json:"assignees,omitempty"`
 }
 
@@ -605,12 +605,12 @@ type PullRequestClosedPayload struct {
 	Deletions    int32         `protobuf:"varint,8,opt,name=deletions,proto3" json:"deletions,omitempty"`
 	FilesChanged int32         `protobuf:"varint,9,opt,name=files_changed,json=filesChanged,proto3" json:"files_changed,omitempty"`
 	CommitsCount int32         `protobuf:"varint,10,opt,name=commits_count,json=commitsCount,proto3" json:"commits_count,omitempty"`
-	//  google.protobuf.Timestamp deadline = 11;
-	//  bool met_deadline = 12;
+	// google.protobuf.Timestamp deadline = 11;
+	// bool met_deadline = 12;
 	Labels       []string `protobuf:"bytes,13,rep,name=labels,proto3" json:"labels,omitempty"`
 	TargetBranch string   `protobuf:"bytes,14,opt,name=target_branch,json=targetBranch,proto3" json:"target_branch,omitempty"`
-	//  bool is_documentation = 15;
-	//  repeated string documentation_types = 16;  // ["README", "API Documentation", etc.]
+	// bool is_documentation = 15;
+	// repeated string documentation_types = 16;  // ["README", "API Documentation", etc.]
 	Assignees []uint64 `protobuf:"varint,17,rep,packed,name=assignees,proto3" json:"assignees,omitempty"`
 }
 
