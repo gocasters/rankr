@@ -60,3 +60,28 @@ func (h Handler) GetProjectByRepo(ctx context.Context, req *projectpb.GetProject
 		GitRepoId:    gitRepoID,
 	}, nil
 }
+
+func (h Handler) ListProjects(ctx context.Context, req *projectpb.ListProjectsRequest) (*projectpb.ListProjectsResponse, error) {
+	log := logger.L()
+	log.Info("gRPC ListProjects request received", slog.Any("request", req))
+
+	serviceResp, err := h.projectSvc.ListProjects(ctx)
+	if err != nil {
+		log.Error("failed to list projects", slog.String("error", err.Error()))
+		return nil, status.Error(codes.Internal, "failed to retrieve projects")
+	}
+
+	projects := make([]*projectpb.ProjectItem, 0, len(serviceResp.Projects))
+	for _, p := range serviceResp.Projects {
+		projects = append(projects, &projectpb.ProjectItem{
+			ProjectId: p.ID,
+			Slug:      p.Slug,
+			Name:      p.Name,
+		})
+	}
+
+	return &projectpb.ListProjectsResponse{
+		Projects:   projects,
+		TotalCount: int32(len(projects)),
+	}, nil
+}

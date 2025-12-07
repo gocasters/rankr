@@ -19,6 +19,26 @@ message GetProjectByRepoResponse {
   string git_repo_id = 5;     // External repository ID
 }
 
+// Request for listing all projects.
+message ListProjectsRequest {
+  int32 page_size = 1;        // Number of items per page (0 = all)
+  int32 offset = 2;           // Offset for pagination
+}
+
+// Single project item in list response.
+message ProjectItem {
+  string project_id = 1;      // Internal Rankr project ID
+  string slug = 2;            // Project slug
+  string name = 3;            // Project name
+}
+
+// Response containing list of projects.
+message ListProjectsResponse {
+  repeated ProjectItem projects = 1;
+  int32 total_count = 2;      // Total number of projects
+}
+
 service ProjectService {
   rpc GetProjectByRepo(GetProjectByRepoRequest) returns (GetProjectByRepoResponse);
+  rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse);
 }
