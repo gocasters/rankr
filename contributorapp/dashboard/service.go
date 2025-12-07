@@ -3,7 +3,6 @@ package dashboard
 import (
 	"context"
 	"fmt"
-	"github.com/gocasters/rankr/contributorapp/service/contributor"
 	errmsg "github.com/gocasters/rankr/pkg/err_msg"
 	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/gocasters/rankr/pkg/statuscode"
@@ -26,24 +25,20 @@ type JobRepository interface {
 	UpdateJob(ctx context.Context, job Job) error
 }
 
-type ContributorRepo interface {
-	Upsert(ctx context.Context, contributor contributor.Contributor) error
-}
-
 type FailJobRepository interface {
 	Create(ctx context.Context, failRecord FailRecord) error
 }
 
 type Service struct {
-	validation         Validate
-	jobRepo            JobRepository
-	failJobRepo        FailJobRepository
-	fileProcessor      FileProcessor
-	contributorAdapter ContributorRepo
+	validation     Validate
+	jobRepo        JobRepository
+	failJobRepo    FailJobRepository
+	fileProcessor  FileProcessor
+	contributorSvc ContributorAdapter
 }
 
-func NewService(validate Validate, repo JobRepository, fileProcessor FileProcessor, contAdapter ContributorRepo) Service {
-	return Service{validation: validate, jobRepo: repo, contributorAdapter: contAdapter}
+func NewService(validate Validate, repo JobRepository, contAdapter ContributorAdapter) Service {
+	return Service{validation: validate, jobRepo: repo, contributorSvc: contAdapter}
 }
 
 func (s Service) ImportJob(ctx context.Context, req ImportJobRequest) (ImportJobResponse, error) {
@@ -95,7 +90,7 @@ func (s Service) ImportJob(ctx context.Context, req ImportJobRequest) (ImportJob
 
 	if processFile.SuccessRecords != nil {
 		for _, r := range processFile.SuccessRecords {
-			err := s.contributorAdapter.Upsert(ctx, r.mapContributorRecordToContributor())
+			err := s.contributorSvc.UpsertContributor(ctx, r)
 			if err != nil {
 				processFile.FailRecords = append(processFile.FailRecords, FailRecord{
 					RecordNumber: r.RowNumber,

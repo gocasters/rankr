@@ -5,6 +5,7 @@ import (
 	"github.com/gocasters/rankr/pkg/cachemanager"
 	errmsg "github.com/gocasters/rankr/pkg/err_msg"
 	"github.com/gocasters/rankr/pkg/logger"
+	"github.com/gocasters/rankr/pkg/statuscode"
 	"github.com/gocasters/rankr/type"
 )
 
@@ -135,4 +136,62 @@ func (s Service) GetContributorByGithubUsername(ctx context.Context, githubUsern
 	}
 
 	return id, true, nil
+}
+
+func (s Service) Upsert(ctx context.Context, req UpsertContributorRequest) (UpsertContributorResponse, error) {
+	if err := s.validator.ValidateUpsertContributorRequest(req); err != nil {
+		return UpsertContributorResponse{}, err
+	}
+
+	id, exists, err := s.GetContributorByGithubUsername(ctx, req.GitHubUsername)
+	if err != nil {
+		return UpsertContributorResponse{}, errmsg.ErrorResponse{
+			Message:         "failed to get contributor",
+			Errors:          map[string]interface{}{"error": err.Error()},
+			InternalErrCode: statuscode.IntCodeUnExpected,
+		}
+	}
+
+	if !exists {
+		var reqRequest CreateContributorRequest
+
+		reqRequest.GitHubUsername = req.GitHubUsername
+		reqRequest.GitHubID = req.GitHubID
+		reqRequest.PrivacyMode = req.PrivacyMode
+		reqRequest.Bio = req.Bio
+		reqRequest.ProfileImage = req.ProfileImage
+		reqRequest.DisplayName = req.DisplayName
+
+		resCreate, err := s.CreateContributor(ctx, reqRequest)
+		if err != nil {
+			return UpsertContributorResponse{}, errmsg.ErrorResponse{
+				Message:         "failed to create contributor",
+				Errors:          map[string]interface{}{"error": err.Error()},
+				InternalErrCode: statuscode.IntCodeUnExpected,
+			}
+		}
+
+		return UpsertContributorResponse{ID: resCreate.ID, IsNew: true}, nil
+	}
+
+	var upRequest UpdateProfileRequest
+
+	upRequest.ID = types.ID(id)
+	upRequest.GitHubID = req.GitHubID
+	upRequest.GitHubUsername = req.GitHubUsername
+	upRequest.DisplayName = req.DisplayName
+	upRequest.Bio = req.Bio
+	upRequest.PrivacyMode = req.PrivacyMode
+	upRequest.ProfileImage = req.ProfileImage
+
+	_, err = s.UpdateProfile(ctx, upRequest)
+	if err != nil {
+		return UpsertContributorResponse{}, errmsg.ErrorResponse{
+			Message:         "failed to update contributor",
+			Errors:          map[string]interface{}{"error": err.Error()},
+			InternalErrCode: statuscode.IntCodeUnExpected,
+		}
+	}
+
+	return UpsertContributorResponse{ID: types.ID(upRequest.ID), IsNew: false}, nil
 }

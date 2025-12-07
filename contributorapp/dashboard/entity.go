@@ -41,8 +41,8 @@ type ContributorRecord struct {
 	PrivacyMode    string
 }
 
-func (c ContributorRecord) mapContributorRecordToContributor() contributor.Contributor {
-	return contributor.Contributor{
+func (c ContributorRecord) mapContributorRecordToUpsertRequest() contributor.UpsertContributorRequest {
+	return contributor.UpsertContributorRequest{
 		GitHubID:       c.GithubID,
 		GitHubUsername: c.GithubUsername,
 		DisplayName:    c.DisplayName,

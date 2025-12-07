@@ -3,6 +3,7 @@ package contributor
 import (
 	"context"
 	"errors"
+	"github.com/gocasters/rankr/pkg/validator"
 	types "github.com/gocasters/rankr/type"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
@@ -64,6 +65,15 @@ func checkID(value interface{}) error {
 
 	if err := val.Validate(); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (v Validator) ValidateUpsertContributorRequest(req UpsertContributorRequest) error {
+	if err := validation.ValidateStruct(&req,
+		validation.Field(&req.GitHubUsername, validation.Required.Error(ErrValidationRequired))); err != nil {
+		return validator.NewError(err, validator.Flat, "invalid request")
 	}
 
 	return nil
