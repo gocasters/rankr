@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package project.v1;
 
-option go_package = "protobuf/golang/projectpb";
+option go_package = "github.com/gocasters/rankr/protobuf/golang/project/v1;projectpb";
 
 // Request for fetching a project by VCS repository information.
 message GetProjectByRepoRequest {
