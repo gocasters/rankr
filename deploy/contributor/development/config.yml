@@ -107,3 +107,19 @@ postgres_db:
   max_conn_lifetime: 300
   max_conn_idle_time: 60
   health_check_period: 60
+
+
+middleware:
+  # 10MB in bytes
+  file_size: 10485760
+  file_type :
+    - "csv"
+    - "xlsx"
+
+dashboard_validate:
+  http_file_type:
+    - "text/csv; charset=utf-8"
+    - "application/zip"
+
+dashboard_config:
+  storage_path: "/contributorapp/uploads/import_contributors/"

@@ -50,3 +50,17 @@ type UpdateProfileResponse struct {
 	CreatedAt      time.Time   `json:"created_at"`
 	UpdatedAt      time.Time   `json:"updated_at"`
 }
+
+type UpsertContributorRequest struct {
+	GitHubID       int64       `json:"github_id"`
+	GitHubUsername string      `json:"github_username,omitempty"`
+	DisplayName    string      `json:"display_name,omitempty"`
+	ProfileImage   string      `json:"profile_image,omitempty"`
+	Bio            string      `json:"bio,omitempty"`
+	PrivacyMode    PrivacyMode `json:"privacy_mode,omitempty"`
+}
+
+type UpsertContributorResponse struct {
+	ID    types.ID
+	IsNew bool
+}

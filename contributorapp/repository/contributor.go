@@ -136,3 +136,20 @@ func (repo ContributorRepo) UpdateProfileContributor(ctx context.Context, contri
 
 	return &updated, nil
 }
+
+func (repo ContributorRepo) GetContributorByGitHubUsername(ctx context.Context, githubUsername string) (int64, bool, error) {
+	query := `SELECT github_username FROM contributors WHERE github_username=$1 RETURNING id;`
+
+	var id int64
+
+	err := repo.PostgresSQL.Pool.QueryRow(ctx, query, githubUsername).Scan(&id)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, false, nil
+		}
+
+		return 0, false, fmt.Errorf("failed to check contributor by github_username: %w", err)
+	}
+
+	return id, true, nil
+}
