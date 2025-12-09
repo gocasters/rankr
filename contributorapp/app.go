@@ -112,7 +112,7 @@ func startServers(app Application, wg *sync.WaitGroup) {
 		defer wg.Done()
 		app.Logger.Info(fmt.Sprintf("HTTP server started on %d", app.Config.HTTPServer.Port))
 		if err := app.HTTPServer.Serve(); err != nil {
-			app.Logger.Error(fmt.Sprintf("error in HTTP server on %d", app.Config.HTTPServer.Port), err)
+			app.Logger.Error(fmt.Sprintf("error in HTTP server on %d", app.Config.HTTPServer.Port), slog.String("error", err.Error()))
 		}
 		app.Logger.Info(fmt.Sprintf("HTTP server stopped %d", app.Config.HTTPServer.Port))
 	}()
@@ -121,7 +121,7 @@ func startServers(app Application, wg *sync.WaitGroup) {
 		defer wg.Done()
 		app.Logger.Info(fmt.Sprintf("gRPC server started on %d", app.Config.GRPCServer.Port))
 		if err := app.GRPCServer.Serve(); err != nil {
-			app.Logger.Error(fmt.Sprintf("error in gRPC server on %d", app.Config.GRPCServer.Port), err)
+			app.Logger.Error(fmt.Sprintf("error in gRPC server on %d", app.Config.GRPCServer.Port), slog.String("error", err.Error()))
 		}
 		app.Logger.Info(fmt.Sprintf("gRPC server stopped %d", app.Config.GRPCServer.Port))
 	}()

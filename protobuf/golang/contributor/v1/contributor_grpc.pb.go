@@ -19,6 +19,7 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
+	ContributorService_GetContributor_FullMethodName       = "/contributor.v1.ContributorService/GetContributor"
 	ContributorService_GetContributorsByVCS_FullMethodName = "/contributor.v1.ContributorService/GetContributorsByVCS"
 )
 
@@ -26,6 +27,8 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ContributorServiceClient interface {
+	// Get contributor credentials by GitHub username (for authentication).
+	GetContributor(ctx context.Context, in *GetContributorRequest, opts ...grpc.CallOption) (*GetContributorResponse, error)
 	// Lookup contributors by VCS provider and usernames.
 	// Used by webhook service to map VCS users to internal contributor IDs.
 	GetContributorsByVCS(ctx context.Context, in *GetContributorsByVCSRequest, opts ...grpc.CallOption) (*GetContributorsByVCSResponse, error)
@@ -37,6 +40,16 @@ type contributorServiceClient struct {
 
 func NewContributorServiceClient(cc grpc.ClientConnInterface) ContributorServiceClient {
 	return &contributorServiceClient{cc}
+}
+
+func (c *contributorServiceClient) GetContributor(ctx context.Context, in *GetContributorRequest, opts ...grpc.CallOption) (*GetContributorResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetContributorResponse)
+	err := c.cc.Invoke(ctx, ContributorService_GetContributor_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func (c *contributorServiceClient) GetContributorsByVCS(ctx context.Context, in *GetContributorsByVCSRequest, opts ...grpc.CallOption) (*GetContributorsByVCSResponse, error) {
@@ -53,6 +66,8 @@ func (c *contributorServiceClient) GetContributorsByVCS(ctx context.Context, in 
 // All implementations must embed UnimplementedContributorServiceServer
 // for forward compatibility.
 type ContributorServiceServer interface {
+	// Get contributor credentials by GitHub username (for authentication).
+	GetContributor(context.Context, *GetContributorRequest) (*GetContributorResponse, error)
 	// Lookup contributors by VCS provider and usernames.
 	// Used by webhook service to map VCS users to internal contributor IDs.
 	GetContributorsByVCS(context.Context, *GetContributorsByVCSRequest) (*GetContributorsByVCSResponse, error)
@@ -66,6 +81,9 @@ type ContributorServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedContributorServiceServer struct{}
 
+func (UnimplementedContributorServiceServer) GetContributor(context.Context, *GetContributorRequest) (*GetContributorResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetContributor not implemented")
+}
 func (UnimplementedContributorServiceServer) GetContributorsByVCS(context.Context, *GetContributorsByVCSRequest) (*GetContributorsByVCSResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetContributorsByVCS not implemented")
 }
@@ -88,6 +106,24 @@ func RegisterContributorServiceServer(s grpc.ServiceRegistrar, srv ContributorSe
 		t.testEmbeddedByValue()
 	}
 	s.RegisterService(&ContributorService_ServiceDesc, srv)
+}
+
+func _ContributorService_GetContributor_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetContributorRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContributorServiceServer).GetContributor(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContributorService_GetContributor_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContributorServiceServer).GetContributor(ctx, req.(*GetContributorRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _ContributorService_GetContributorsByVCS_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -115,6 +151,10 @@ var ContributorService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "contributor.v1.ContributorService",
 	HandlerType: (*ContributorServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "GetContributor",
+			Handler:    _ContributorService_GetContributor_Handler,
+		},
 		{
 			MethodName: "GetContributorsByVCS",
 			Handler:    _ContributorService_GetContributorsByVCS_Handler,
