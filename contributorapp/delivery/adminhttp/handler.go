@@ -45,7 +45,7 @@ func (h Handler) importContributors(c echo.Context) error {
 
 	fileType, _ := c.Get("FileType").(string)
 
-	res, err := h.service.ImportJob(c.Request().Context(), dashboard.ImportJobRequest{
+	res, err := h.service.ImportContributor(c.Request().Context(), dashboard.ImportContributorRequest{
 		File:     srcFile,
 		FileName: fileHeader.Filename,
 		FileType: fileType,

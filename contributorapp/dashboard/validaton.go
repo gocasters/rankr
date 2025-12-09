@@ -21,7 +21,7 @@ func NewValidate(cfg Config) Validate {
 	return Validate{config: cfg}
 }
 
-func (v Validate) ImportJobRequestValidate(req ImportJobRequest) error {
+func (v Validate) ImportJobRequestValidate(req ImportContributorRequest) error {
 
 	if err := validation.ValidateStruct(&req,
 		validation.Field(&req.File, validation.Required, validation.By(v.validateFile)),

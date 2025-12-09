@@ -6,14 +6,22 @@ import (
 )
 
 type Job struct {
-	ID           uint
-	TotalRecords int
-	SuccessCount int
-	FailCount    int
-	FileName     string
-	Status       JobStatus
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID             uint
+	TotalRecords   int
+	SuccessCount   int
+	FailCount      int
+	IdempotencyKey string
+	FileName       string
+	FilePath       string
+	Status         JobStatus
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type IdempotencyRequest struct {
+	ID             uint
+	JobID          uint
+	IdempotencyKey string
 }
 
 type FailJob struct {
