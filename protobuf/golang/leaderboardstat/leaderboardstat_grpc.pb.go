@@ -23,6 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type LeaderboardStatServiceClient interface {
 	GetContributorStats(ctx context.Context, in *ContributorStatRequest, opts ...grpc.CallOption) (*ContributorStatResponse, error)
+	GrtPublicLeaderboard(ctx context.Context, in *GetPublicLeaderboardRequest, opts ...grpc.CallOption) (*GetPublicLeaderboardResponse, error)
 }
 
 type leaderboardStatServiceClient struct {
@@ -42,11 +43,21 @@ func (c *leaderboardStatServiceClient) GetContributorStats(ctx context.Context, 
 	return out, nil
 }
 
+func (c *leaderboardStatServiceClient) GrtPublicLeaderboard(ctx context.Context, in *GetPublicLeaderboardRequest, opts ...grpc.CallOption) (*GetPublicLeaderboardResponse, error) {
+	out := new(GetPublicLeaderboardResponse)
+	err := c.cc.Invoke(ctx, "/leaderboardstat.LeaderboardStatService/GrtPublicLeaderboard", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LeaderboardStatServiceServer is the server API for LeaderboardStatService service.
 // All implementations must embed UnimplementedLeaderboardStatServiceServer
 // for forward compatibility
 type LeaderboardStatServiceServer interface {
 	GetContributorStats(context.Context, *ContributorStatRequest) (*ContributorStatResponse, error)
+	GrtPublicLeaderboard(context.Context, *GetPublicLeaderboardRequest) (*GetPublicLeaderboardResponse, error)
 	mustEmbedUnimplementedLeaderboardStatServiceServer()
 }
 
@@ -56,6 +67,9 @@ type UnimplementedLeaderboardStatServiceServer struct {
 
 func (UnimplementedLeaderboardStatServiceServer) GetContributorStats(context.Context, *ContributorStatRequest) (*ContributorStatResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetContributorStats not implemented")
+}
+func (UnimplementedLeaderboardStatServiceServer) GrtPublicLeaderboard(context.Context, *GetPublicLeaderboardRequest) (*GetPublicLeaderboardResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GrtPublicLeaderboard not implemented")
 }
 func (UnimplementedLeaderboardStatServiceServer) mustEmbedUnimplementedLeaderboardStatServiceServer() {
 }
@@ -89,6 +103,24 @@ func _LeaderboardStatService_GetContributorStats_Handler(srv interface{}, ctx co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _LeaderboardStatService_GrtPublicLeaderboard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPublicLeaderboardRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LeaderboardStatServiceServer).GrtPublicLeaderboard(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/leaderboardstat.LeaderboardStatService/GrtPublicLeaderboard",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LeaderboardStatServiceServer).GrtPublicLeaderboard(ctx, req.(*GetPublicLeaderboardRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // LeaderboardStatService_ServiceDesc is the grpc.ServiceDesc for LeaderboardStatService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -99,6 +131,10 @@ var LeaderboardStatService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetContributorStats",
 			Handler:    _LeaderboardStatService_GetContributorStats_Handler,
+		},
+		{
+			MethodName: "GrtPublicLeaderboard",
+			Handler:    _LeaderboardStatService_GrtPublicLeaderboard_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

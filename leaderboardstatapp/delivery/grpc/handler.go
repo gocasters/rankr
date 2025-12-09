@@ -67,6 +67,36 @@ func transformScoreEntries(entries []leaderboardstat.ScoreEntry) []*leaderboards
 	return pbEntries
 }
 
+func (h Handler) GrtPublicLeaderboard(ctx context.Context, req *leaderboardstatpb.GetPublicLeaderboardRequest) (*leaderboardstatpb.GetPublicLeaderboardResponse, error) {
+	projectId := req.GetProjectId()
+	pageSize := req.GetPageSize()
+	offset := req.GetOffset()
+	log := logger.L()
+	log.Info("gRPC GetPublicLeaderboard request received", slog.Any("request", req))
+
+	scoreList, err := h.leaderboardStatSvc.GetPublicLeaderboard(ctx, types.ID(projectId), pageSize, offset)
+	if err != nil {
+		log.Error("GetPublicLeaderboard error", "error", err)
+	}
+
+	items := make([]*leaderboardstatpb.PublicLeaderboardRow, 0, len(scoreList.UsersScore))
+	for _, us := range scoreList.UsersScore {
+		item := &leaderboardstatpb.PublicLeaderboardRow{
+			UserId: uint64(us.ContributorID),
+			Rank:   us.Rank,
+			Score:  us.Score,
+		}
+		items = append(items, item)
+	}
+
+	response := &leaderboardstatpb.GetPublicLeaderboardResponse{
+		ProjectId: projectId,
+		Rows:      items,
+	}
+
+	return response, nil
+}
+
 /*
 func (h Handler) GetContributorTotalStats(ctx context.Context, req *leaderboardstatpb.ContributorStatRequest) (*leaderboardstatpb.ContributorStatResponse, error) {
 	stats, err := h.leaderboardStatSvc.GetContributorTotalStats(ctx, types.ID(req.GetContributorId()))

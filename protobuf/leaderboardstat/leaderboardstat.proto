@@ -26,6 +26,25 @@ message ContributorStatRequest{
   uint64 contributor_id = 1;
 }
 
+//PublicLeaderboard
+message GetPublicLeaderboardRequest{
+  uint64 project_id = 1;
+  int32 page_size = 2;
+  int32 offset = 3;
+}
+
+message GetPublicLeaderboardResponse{
+  uint64 project_id = 1;
+  repeated PublicLeaderboardRow rows = 2;
+}
+
+message PublicLeaderboardRow {
+  uint64 user_id = 1;
+  uint64 rank = 2;
+  double score = 3;
+}
+
 service LeaderboardStatService{
   rpc GetContributorStats(ContributorStatRequest) returns (ContributorStatResponse);
+  rpc GrtPublicLeaderboard(GetPublicLeaderboardRequest) returns (GetPublicLeaderboardResponse);
 }

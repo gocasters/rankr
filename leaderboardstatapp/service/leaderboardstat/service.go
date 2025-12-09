@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"github.com/gocasters/rankr/adapter/leaderboardscoring"
 	lbscoring "github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
+
 	"github.com/gocasters/rankr/pkg/cachemanager"
 	"github.com/gocasters/rankr/pkg/logger"
 	types "github.com/gocasters/rankr/type"
+
 	"log/slog"
 	"math/rand"
 	"sort"
@@ -32,12 +34,18 @@ type Repository interface {
 	MarkDailyScoresAsProcessed(ctx context.Context, scoreIDs []types.ID) error
 }
 
+type RedisLeaderboardRepository interface {
+	GetPublicLeaderboardPaginated(ctx context.Context, projectID types.ID, page int32, pageSize int32) ([]UserScoreEntry, int64, error)
+	SetPublicLeaderboard(ctx context.Context, projectID types.ID, userScores map[int]float64, ttl time.Duration) error
+}
+
 type Service struct {
 	repository            Repository
 	validator             Validator
 	cacheManager          cachemanager.CacheManager
 	leaderboardScoringRPC LeaderboardScoringRPC
 	lbScoringClient       *leaderboardscoring.Client
+	redisLeaderboardRepo  RedisLeaderboardRepository
 }
 
 func NewService(repo Repository, validator Validator, cacheManger cachemanager.CacheManager, rpc LeaderboardScoringRPC, lbClient *leaderboardscoring.Client) Service {
@@ -375,4 +383,121 @@ func convertProtoProjectsScore(protoScores map[uint64]float64) map[types.ID]floa
 		projectsScore[types.ID(projectID)] = score
 	}
 	return projectsScore
+}
+
+func (s *Service) GetPublicLeaderboard(ctx context.Context, projectID types.ID, pageSize int32, page int32) (ProjectScoreList, error) {
+	log := logger.L()
+	log.Info("GetPublicLeaderboard called")
+
+	userScoreEntries, total, err := s.redisLeaderboardRepo.GetPublicLeaderboardPaginated(ctx, projectID, page, pageSize)
+	if err != nil {
+		log.Error("Failed to get public leaderboard",
+			slog.String("project_id", string(projectID)),
+			slog.String("error", err.Error()))
+		return ProjectScoreList{}, fmt.Errorf("failed to get leaderboard: %w", err)
+	}
+
+	var userScoreList []UserScore
+	startRank := (page-1)*pageSize + 1
+
+	for i, entry := range userScoreEntries {
+		userScoreList = append(userScoreList, UserScore{
+			ContributorID: types.ID(entry.UserID),
+			Score:         entry.Score,
+			Rank:          uint64(startRank + int32(i)),
+		})
+	}
+
+	totalPages := int32(0)
+	if total > 0 {
+		totalPages = int32((total + int64(pageSize) - 1) / int64(pageSize))
+	}
+
+	return ProjectScoreList{
+		ProjectID:  projectID,
+		UsersScore: userScoreList,
+		Total:      uint64(total),
+		Page:       page,
+		PageSize:   pageSize,
+		TotalPages: totalPages,
+	}, nil
+}
+
+func (s *Service) SetPublicLeaderboard(ctx context.Context) error {
+	log := logger.L()
+	log.Info("Starting SetPublicLeaderboard")
+
+	if s.lbScoringClient == nil {
+		return fmt.Errorf("leaderboardscoring client is not initialized")
+	}
+
+	ttl := 3 * time.Minute
+	projects := []int{1, 2, 3, 4, 5, 6} // TODO - get from ProjectAPP
+
+	for _, projectID := range projects {
+		log.Info("Updating public leaderboard for project",
+			slog.Int("project_id", projectID))
+
+		projectIDStr := strconv.Itoa(projectID)
+
+		userScores := make(map[int]float64)
+
+		pageSize := int32(100)
+		offset := int32(0)
+
+		for {
+			getLeaderboardReq := &lbscoring.GetLeaderboardRequest{
+				Timeframe: "daily",
+				ProjectID: &projectIDStr,
+				PageSize:  pageSize,
+				Offset:    offset,
+			}
+
+			leaderboardRes, err := s.lbScoringClient.GetLeaderboard(ctx, getLeaderboardReq)
+			if err != nil {
+				log.Error("Failed to get leaderboard data for project",
+					slog.Int("project_id", projectID),
+					slog.String("error", err.Error()))
+				return fmt.Errorf("failed to get leaderboard data for project %d: %w", projectID, err)
+			}
+
+			for _, row := range leaderboardRes.LeaderboardRows {
+				contributorID, err := strconv.Atoi(row.UserID)
+				if err != nil {
+					log.Warn("Failed to convert user ID",
+						slog.String("user_id", row.UserID))
+					continue
+				}
+
+				userScores[contributorID] = float64(row.Score)
+			}
+
+			if len(leaderboardRes.LeaderboardRows) < int(pageSize) {
+				break
+			}
+
+			offset += pageSize
+		}
+
+		if len(userScores) > 0 {
+			err := s.redisLeaderboardRepo.SetPublicLeaderboard(ctx, types.ID(projectID), userScores, ttl)
+			if err != nil {
+				log.Error("Failed to set public leaderboard in Redis",
+					slog.Int("project_id", projectID),
+					slog.String("error", err.Error()))
+				continue
+			}
+
+			log.Info("Updated public leaderboard for project",
+				slog.Int("project_id", projectID),
+				slog.Int("total_contributors", len(userScores)),
+				slog.String("ttl", ttl.String()))
+		} else {
+			log.Warn("No scores found for project",
+				slog.Int("project_id", projectID))
+		}
+	}
+
+	log.Info("Public leaderboard updated successfully")
+	return nil
 }
