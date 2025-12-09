@@ -1,9 +1,9 @@
 postgres_db:
   driver: postgres
   host: localhost
-  port: 5432
-  user: contributor_admin
-  password: password123
+  port: 5439
+  user: contributor_user
+  password: change_me_contributor
   db_name: contributor_db
   ssl_mode: disable
 

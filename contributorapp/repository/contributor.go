@@ -136,3 +136,50 @@ func (repo ContributorRepo) UpdateProfileContributor(ctx context.Context, contri
 
 	return &updated, nil
 }
+
+func (repo ContributorRepo) FindByVCSUsernames(ctx context.Context, provider contributor.VcsProvider, usernames []string) ([]*contributor.Contributor, error) {
+	if len(usernames) == 0 {
+		return []*contributor.Contributor{}, nil
+	}
+
+	query := `
+		SELECT id, github_id, github_username, COALESCE(email, ''), is_verified, two_factor_enabled,
+		       privacy_mode, COALESCE(display_name, ''), COALESCE(profile_image, ''), COALESCE(bio, ''), created_at
+		FROM contributors
+		WHERE github_username = ANY($1)
+	`
+
+	rows, err := repo.PostgresSQL.Pool.Query(ctx, query, usernames)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find contributors by usernames: %w", err)
+	}
+	defer rows.Close()
+
+	var contributors []*contributor.Contributor
+	for rows.Next() {
+		var c contributor.Contributor
+		err := rows.Scan(
+			&c.ID,
+			&c.GitHubID,
+			&c.GitHubUsername,
+			&c.Email,
+			&c.IsVerified,
+			&c.TwoFactor,
+			&c.PrivacyMode,
+			&c.DisplayName,
+			&c.ProfileImage,
+			&c.Bio,
+			&c.CreatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan contributor: %w", err)
+		}
+		contributors = append(contributors, &c)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating contributors: %w", err)
+	}
+
+	return contributors, nil
+}
