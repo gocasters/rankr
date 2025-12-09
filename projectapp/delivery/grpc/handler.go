@@ -28,6 +28,10 @@ func (h Handler) GetProjectByRepo(ctx context.Context, req *projectpb.GetProject
 	log := logger.L()
 	log.Info("gRPC GetProjectByRepo request received", slog.Any("request", req))
 
+	if !constant.IsValidVcsProvider(req.RepoProvider) {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid repo_provider: %s", req.RepoProvider)
+	}
+
 	serviceReq := project.GetProjectByVCSRepoRequest{
 		Provider: constant.VcsProvider(req.RepoProvider),
 		RepoID:   req.RepoId,
@@ -65,7 +69,12 @@ func (h Handler) ListProjects(ctx context.Context, req *projectpb.ListProjectsRe
 	log := logger.L()
 	log.Info("gRPC ListProjects request received", slog.Any("request", req))
 
-	serviceResp, err := h.projectSvc.ListProjects(ctx)
+	serviceInput := project.ListProjectsInput{
+		PageSize: req.PageSize,
+		Offset:   req.Offset,
+	}
+
+	serviceResp, err := h.projectSvc.ListProjects(ctx, serviceInput)
 	if err != nil {
 		log.Error("failed to list projects", slog.String("error", err.Error()))
 		return nil, status.Error(codes.Internal, "failed to retrieve projects")
@@ -82,6 +91,6 @@ func (h Handler) ListProjects(ctx context.Context, req *projectpb.ListProjectsRe
 
 	return &projectpb.ListProjectsResponse{
 		Projects:   projects,
-		TotalCount: int32(len(projects)),
+		TotalCount: serviceResp.TotalCount,
 	}, nil
 }

@@ -62,10 +62,19 @@ type GetProjectByIDResponse struct {
 	ArchivedAt         *time.Time             `json:"archivedAt,omitempty"`
 }
 
-type ListProjectsInput struct{}
+type ListProjectsInput struct {
+	PageSize int32 `json:"page_size"`
+	Offset   int32 `json:"offset"`
+}
+
+const (
+	DefaultPageSize = 50
+	MaxPageSize     = 100
+)
 
 type ListProjectsResponse struct {
-	Projects []GetProjectByIDResponse `json:"projects"`
+	Projects   []GetProjectByIDResponse `json:"projects"`
+	TotalCount int32                    `json:"total_count"`
 }
 
 type DeleteProjectInput struct {

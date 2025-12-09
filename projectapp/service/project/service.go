@@ -2,7 +2,6 @@ package project
 
 import (
 	"context"
-	"log"
 	"log/slog"
 	"strings"
 	"time"
@@ -15,7 +14,8 @@ type Repository interface {
 	Create(ctx context.Context, project *ProjectEntity) error
 	FindByID(ctx context.Context, id string) (*ProjectEntity, error)
 	FindBySlug(ctx context.Context, slug string) (*ProjectEntity, error)
-	List(ctx context.Context) ([]*ProjectEntity, error)
+	List(ctx context.Context, limit, offset int32) ([]*ProjectEntity, error)
+	Count(ctx context.Context) (int32, error)
 	Update(ctx context.Context, project *ProjectEntity) error
 	Delete(ctx context.Context, id string) error
 	FindByVCSRepo(ctx context.Context, provider constant.VcsProvider, repoID string) (*ProjectEntity, error)
@@ -95,18 +95,33 @@ func (s Service) GetProject(ctx context.Context, id string) (*GetProjectByIDResp
 	}, nil
 }
 
-func (s Service) ListProjects(ctx context.Context) (ListProjectsResponse, error) {
-	projects, err := s.projectRepo.List(ctx)
+func (s Service) ListProjects(ctx context.Context, input ListProjectsInput) (ListProjectsResponse, error) {
+	pageSize := input.PageSize
+	if pageSize <= 0 {
+		pageSize = DefaultPageSize
+	}
+	if pageSize > MaxPageSize {
+		pageSize = MaxPageSize
+	}
+
+	offset := input.Offset
+	if offset < 0 {
+		offset = 0
+	}
+
+	projects, err := s.projectRepo.List(ctx, pageSize, offset)
 	if err != nil {
 		return ListProjectsResponse{}, err
 	}
 
-	log.Printf("Retrieved %d projects", len(projects))
-
-	log.Printf("Projects: %+v", projects)
+	totalCount, err := s.projectRepo.Count(ctx)
+	if err != nil {
+		return ListProjectsResponse{}, err
+	}
 
 	response := ListProjectsResponse{
-		Projects: make([]GetProjectByIDResponse, len(projects)),
+		Projects:   make([]GetProjectByIDResponse, len(projects)),
+		TotalCount: totalCount,
 	}
 
 	for i, p := range projects {

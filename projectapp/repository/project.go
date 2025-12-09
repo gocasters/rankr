@@ -46,8 +46,11 @@ const (
 	sqlProjectList = `
 		SELECT id, name, slug, description, design_reference_url, git_repo_id, repo_provider, status, created_at, updated_at, archived_at
 		FROM projects
-		ORDER BY created_at DESC;
+		ORDER BY created_at DESC
+		LIMIT $1 OFFSET $2;
 	`
+
+	sqlProjectCount = `SELECT COUNT(*) FROM projects;`
 
 	sqlProjectUpdate = `
 		UPDATE projects
@@ -121,8 +124,8 @@ func (r *ProjectRepository) FindByVCSRepo(ctx context.Context, provider constant
 	return &p, nil
 }
 
-func (r *ProjectRepository) List(ctx context.Context) ([]*project.ProjectEntity, error) {
-	rows, err := r.database.Pool.Query(ctx, sqlProjectList)
+func (r *ProjectRepository) List(ctx context.Context, limit, offset int32) ([]*project.ProjectEntity, error) {
+	rows, err := r.database.Pool.Query(ctx, sqlProjectList, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -140,6 +143,15 @@ func (r *ProjectRepository) List(ctx context.Context) ([]*project.ProjectEntity,
 		return nil, rows.Err()
 	}
 	return out, nil
+}
+
+func (r *ProjectRepository) Count(ctx context.Context) (int32, error) {
+	var count int32
+	err := r.database.Pool.QueryRow(ctx, sqlProjectCount).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 func (r *ProjectRepository) Update(ctx context.Context, p *project.ProjectEntity) error {

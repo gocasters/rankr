@@ -62,7 +62,15 @@ func (h Handler) GetProjectById(ctx echo.Context) error {
 }
 
 func (h Handler) listProjects(ctx echo.Context) error {
-	projects, err := h.projectService.ListProjects(ctx.Request().Context())
+	var input project.ListProjectsInput
+	if err := echo.QueryParamsBinder(ctx).
+		Int32("page_size", &input.PageSize).
+		Int32("offset", &input.Offset).
+		BindError(); err != nil {
+		return ctx.JSON(400, echo.Map{"error": "invalid pagination parameters"})
+	}
+
+	projects, err := h.projectService.ListProjects(ctx.Request().Context(), input)
 	if err != nil {
 		h.logger.Error("failed to list projects", slog.Any("error", err))
 		return ctx.JSON(500, echo.Map{"error": "failed to list projects"})
