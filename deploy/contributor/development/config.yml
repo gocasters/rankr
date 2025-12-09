@@ -99,7 +99,7 @@ postgres_db:
   host: shared-postgres
   port: 5432
   user: contributor_user
-  password: change_me_contributor
+  password: contributor_pass
   db_name: contributor_db
   ssl_mode: disable
   max_conns: 25  

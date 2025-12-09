@@ -1,0 +1,61 @@
+package grpc
+
+import (
+	appgrpc "github.com/gocasters/rankr/pkg/grpc"
+	"github.com/gocasters/rankr/pkg/logger"
+	contributorpb "github.com/gocasters/rankr/protobuf/golang/contributor/v1"
+	"log/slog"
+)
+
+type Server struct {
+	server  *appgrpc.RPCServer
+	handler Handler
+}
+
+func New(server *appgrpc.RPCServer, handler Handler) Server {
+	return Server{
+		server:  server,
+		handler: handler,
+	}
+}
+
+func (s *Server) Serve() error {
+	log := logger.L()
+
+	contributorpb.RegisterContributorServiceServer(s.server.Server, &s.handler)
+
+	log.Info(
+		"contributor gRPC server started...",
+		slog.String("address", s.server.Listener.Addr().String()),
+	)
+
+	if err := s.server.Server.Serve(s.server.Listener); err != nil {
+		log.Error(
+			"error in contributor gRPC server",
+			slog.String("error", err.Error()),
+			slog.String("address", s.server.Listener.Addr().String()),
+		)
+		return err
+	}
+
+	log.Info(
+		"contributor gRPC server stopped",
+		slog.String("address", s.server.Listener.Addr().String()),
+	)
+	return nil
+}
+
+func (s *Server) Stop() {
+	if s.server != nil {
+		log := logger.L()
+		log.Info(
+			"shutting down contributor gRPC server",
+			slog.String("address", s.server.Listener.Addr().String()),
+		)
+		s.server.Stop()
+		log.Info(
+			"contributor gRPC server shutdown completed",
+			slog.String("address", s.server.Listener.Addr().String()),
+		)
+	}
+}
