@@ -392,14 +392,17 @@ func (s *Service) GetPublicLeaderboard(ctx context.Context, projectID types.ID, 
 	userScoreEntries, total, err := s.redisLeaderboardRepo.GetPublicLeaderboardPaginated(ctx, projectID, page, pageSize)
 	if err != nil {
 		log.Error("Failed to get public leaderboard",
-			slog.String("project_id", string(projectID)),
+			slog.Uint64("project_id", uint64(projectID)),
 			slog.String("error", err.Error()))
 		return ProjectScoreList{}, fmt.Errorf("failed to get leaderboard: %w", err)
 	}
 
-	var userScoreList []UserScore
+	if page < 1 {
+		page = 1
+	}
 	startRank := (page-1)*pageSize + 1
 
+	var userScoreList []UserScore
 	for i, entry := range userScoreEntries {
 		userScoreList = append(userScoreList, UserScore{
 			ContributorID: types.ID(entry.UserID),

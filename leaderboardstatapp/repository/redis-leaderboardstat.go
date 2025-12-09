@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"fmt"
+	"github.com/gocasters/rankr/leaderboardstatapp/service/leaderboardstat"
 	types "github.com/gocasters/rankr/type"
 	"strconv"
 	"time"
@@ -22,12 +23,7 @@ func NewRedisLeaderboardRepository(client *redis.Client) *RedisLeaderboardReposi
 	}
 }
 
-type UserScoreEntry struct {
-	UserID int     `json:"user_id"`
-	Score  float64 `json:"score"`
-}
-
-func (r *RedisLeaderboardRepository) GetPublicLeaderboardPaginated(ctx context.Context, projectID types.ID, page, pageSize int32) ([]UserScoreEntry, int64, error) {
+func (r *RedisLeaderboardRepository) GetPublicLeaderboardPaginated(ctx context.Context, projectID types.ID, page, pageSize int32) ([]leaderboardstat.UserScoreEntry, int64, error) {
 	cacheKey := fmt.Sprintf("public_leaderboard:project:%d", projectID)
 
 	start := (page - 1) * pageSize
@@ -43,7 +39,7 @@ func (r *RedisLeaderboardRepository) GetPublicLeaderboardPaginated(ctx context.C
 		return nil, 0, fmt.Errorf("failed to get leaderboard range: %w", err)
 	}
 
-	userScores := make([]UserScoreEntry, 0, len(results))
+	userScores := make([]leaderboardstat.UserScoreEntry, 0, len(results))
 	for _, result := range results {
 		userID, ok := result.Member.(string)
 		if !ok {
@@ -55,7 +51,7 @@ func (r *RedisLeaderboardRepository) GetPublicLeaderboardPaginated(ctx context.C
 			continue
 		}
 
-		userScores = append(userScores, UserScoreEntry{
+		userScores = append(userScores, leaderboardstat.UserScoreEntry{
 			UserID: uid,
 			Score:  result.Score,
 		})

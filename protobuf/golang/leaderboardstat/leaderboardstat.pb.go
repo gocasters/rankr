@@ -264,7 +264,7 @@ type GetPublicLeaderboardRequest struct {
 	unknownFields protoimpl.UnknownFields
 
 	ProjectId uint64 `protobuf:"varint,1,opt,name=project_id,json=projectId,proto3" json:"project_id,omitempty"`
-	PageSize  int32  `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"` // How many rows to return.
+	PageSize  int32  `protobuf:"varint,2,opt,name=page_size,json=pageSize,proto3" json:"page_size,omitempty"`
 	Offset    int32  `protobuf:"varint,3,opt,name=offset,proto3" json:"offset,omitempty"`
 }
 
@@ -524,7 +524,7 @@ var file_protobuf_leaderboardstat_leaderboardstat_proto_rawDesc = []byte{
 	0x62, 0x75, 0x74, 0x6f, 0x72, 0x53, 0x74, 0x61, 0x74, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74,
 	0x1a, 0x28, 0x2e, 0x6c, 0x65, 0x61, 0x64, 0x65, 0x72, 0x62, 0x6f, 0x61, 0x72, 0x64, 0x73, 0x74,
 	0x61, 0x74, 0x2e, 0x43, 0x6f, 0x6e, 0x74, 0x72, 0x69, 0x62, 0x75, 0x74, 0x6f, 0x72, 0x53, 0x74,
-	0x61, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x73, 0x0a, 0x14, 0x47, 0x72,
+	0x61, 0x74, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x73, 0x0a, 0x14, 0x47, 0x65,
 	0x74, 0x50, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x4c, 0x65, 0x61, 0x64, 0x65, 0x72, 0x62, 0x6f, 0x61,
 	0x72, 0x64, 0x12, 0x2c, 0x2e, 0x6c, 0x65, 0x61, 0x64, 0x65, 0x72, 0x62, 0x6f, 0x61, 0x72, 0x64,
 	0x73, 0x74, 0x61, 0x74, 0x2e, 0x47, 0x65, 0x74, 0x50, 0x75, 0x62, 0x6c, 0x69, 0x63, 0x4c, 0x65,
@@ -570,9 +570,9 @@ var file_protobuf_leaderboardstat_leaderboardstat_proto_depIdxs = []int32{
 	6, // 4: leaderboardstat.GetPublicLeaderboardResponse.rows:type_name -> leaderboardstat.PublicLeaderboardRow
 	1, // 5: leaderboardstat.ContributorStatResponse.ScoreHistoryEntry.value:type_name -> leaderboardstat.ProjectScoreHistory
 	3, // 6: leaderboardstat.LeaderboardStatService.GetContributorStats:input_type -> leaderboardstat.ContributorStatRequest
-	4, // 7: leaderboardstat.LeaderboardStatService.GrtPublicLeaderboard:input_type -> leaderboardstat.GetPublicLeaderboardRequest
+	4, // 7: leaderboardstat.LeaderboardStatService.GetPublicLeaderboard:input_type -> leaderboardstat.GetPublicLeaderboardRequest
 	0, // 8: leaderboardstat.LeaderboardStatService.GetContributorStats:output_type -> leaderboardstat.ContributorStatResponse
-	5, // 9: leaderboardstat.LeaderboardStatService.GrtPublicLeaderboard:output_type -> leaderboardstat.GetPublicLeaderboardResponse
+	5, // 9: leaderboardstat.LeaderboardStatService.GetPublicLeaderboard:output_type -> leaderboardstat.GetPublicLeaderboardResponse
 	8, // [8:10] is the sub-list for method output_type
 	6, // [6:8] is the sub-list for method input_type
 	6, // [6:6] is the sub-list for extension type_name

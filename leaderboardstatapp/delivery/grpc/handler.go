@@ -7,6 +7,8 @@ import (
 	"github.com/gocasters/rankr/pkg/slice"
 	leaderboardstatpb "github.com/gocasters/rankr/protobuf/golang/leaderboardstat"
 	types "github.com/gocasters/rankr/type"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"log/slog"
 )
@@ -67,7 +69,7 @@ func transformScoreEntries(entries []leaderboardstat.ScoreEntry) []*leaderboards
 	return pbEntries
 }
 
-func (h Handler) GrtPublicLeaderboard(ctx context.Context, req *leaderboardstatpb.GetPublicLeaderboardRequest) (*leaderboardstatpb.GetPublicLeaderboardResponse, error) {
+func (h Handler) GetPublicLeaderboard(ctx context.Context, req *leaderboardstatpb.GetPublicLeaderboardRequest) (*leaderboardstatpb.GetPublicLeaderboardResponse, error) {
 	projectId := req.GetProjectId()
 	pageSize := req.GetPageSize()
 	offset := req.GetOffset()
@@ -76,7 +78,7 @@ func (h Handler) GrtPublicLeaderboard(ctx context.Context, req *leaderboardstatp
 
 	scoreList, err := h.leaderboardStatSvc.GetPublicLeaderboard(ctx, types.ID(projectId), pageSize, offset)
 	if err != nil {
-		log.Error("GetPublicLeaderboard error", "error", err)
+		return nil, status.Errorf(codes.Internal, "failed to get public leaderboard: %v", err)
 	}
 
 	items := make([]*leaderboardstatpb.PublicLeaderboardRow, 0, len(scoreList.UsersScore))

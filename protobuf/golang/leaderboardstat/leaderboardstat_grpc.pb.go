@@ -23,7 +23,7 @@ const _ = grpc.SupportPackageIsVersion7
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type LeaderboardStatServiceClient interface {
 	GetContributorStats(ctx context.Context, in *ContributorStatRequest, opts ...grpc.CallOption) (*ContributorStatResponse, error)
-	GrtPublicLeaderboard(ctx context.Context, in *GetPublicLeaderboardRequest, opts ...grpc.CallOption) (*GetPublicLeaderboardResponse, error)
+	GetPublicLeaderboard(ctx context.Context, in *GetPublicLeaderboardRequest, opts ...grpc.CallOption) (*GetPublicLeaderboardResponse, error)
 }
 
 type leaderboardStatServiceClient struct {
@@ -43,9 +43,9 @@ func (c *leaderboardStatServiceClient) GetContributorStats(ctx context.Context, 
 	return out, nil
 }
 
-func (c *leaderboardStatServiceClient) GrtPublicLeaderboard(ctx context.Context, in *GetPublicLeaderboardRequest, opts ...grpc.CallOption) (*GetPublicLeaderboardResponse, error) {
+func (c *leaderboardStatServiceClient) GetPublicLeaderboard(ctx context.Context, in *GetPublicLeaderboardRequest, opts ...grpc.CallOption) (*GetPublicLeaderboardResponse, error) {
 	out := new(GetPublicLeaderboardResponse)
-	err := c.cc.Invoke(ctx, "/leaderboardstat.LeaderboardStatService/GrtPublicLeaderboard", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/leaderboardstat.LeaderboardStatService/GetPublicLeaderboard", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func (c *leaderboardStatServiceClient) GrtPublicLeaderboard(ctx context.Context,
 // for forward compatibility
 type LeaderboardStatServiceServer interface {
 	GetContributorStats(context.Context, *ContributorStatRequest) (*ContributorStatResponse, error)
-	GrtPublicLeaderboard(context.Context, *GetPublicLeaderboardRequest) (*GetPublicLeaderboardResponse, error)
+	GetPublicLeaderboard(context.Context, *GetPublicLeaderboardRequest) (*GetPublicLeaderboardResponse, error)
 	mustEmbedUnimplementedLeaderboardStatServiceServer()
 }
 
@@ -68,8 +68,8 @@ type UnimplementedLeaderboardStatServiceServer struct {
 func (UnimplementedLeaderboardStatServiceServer) GetContributorStats(context.Context, *ContributorStatRequest) (*ContributorStatResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetContributorStats not implemented")
 }
-func (UnimplementedLeaderboardStatServiceServer) GrtPublicLeaderboard(context.Context, *GetPublicLeaderboardRequest) (*GetPublicLeaderboardResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GrtPublicLeaderboard not implemented")
+func (UnimplementedLeaderboardStatServiceServer) GetPublicLeaderboard(context.Context, *GetPublicLeaderboardRequest) (*GetPublicLeaderboardResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPublicLeaderboard not implemented")
 }
 func (UnimplementedLeaderboardStatServiceServer) mustEmbedUnimplementedLeaderboardStatServiceServer() {
 }
@@ -103,20 +103,20 @@ func _LeaderboardStatService_GetContributorStats_Handler(srv interface{}, ctx co
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LeaderboardStatService_GrtPublicLeaderboard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _LeaderboardStatService_GetPublicLeaderboard_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetPublicLeaderboardRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LeaderboardStatServiceServer).GrtPublicLeaderboard(ctx, in)
+		return srv.(LeaderboardStatServiceServer).GetPublicLeaderboard(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/leaderboardstat.LeaderboardStatService/GrtPublicLeaderboard",
+		FullMethod: "/leaderboardstat.LeaderboardStatService/GetPublicLeaderboard",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LeaderboardStatServiceServer).GrtPublicLeaderboard(ctx, req.(*GetPublicLeaderboardRequest))
+		return srv.(LeaderboardStatServiceServer).GetPublicLeaderboard(ctx, req.(*GetPublicLeaderboardRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -133,8 +133,8 @@ var LeaderboardStatService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _LeaderboardStatService_GetContributorStats_Handler,
 		},
 		{
-			MethodName: "GrtPublicLeaderboard",
-			Handler:    _LeaderboardStatService_GrtPublicLeaderboard_Handler,
+			MethodName: "GetPublicLeaderboard",
+			Handler:    _LeaderboardStatService_GetPublicLeaderboard_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

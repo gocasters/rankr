@@ -46,5 +46,5 @@ message PublicLeaderboardRow {
 
 service LeaderboardStatService{
   rpc GetContributorStats(ContributorStatRequest) returns (ContributorStatResponse);
-  rpc GrtPublicLeaderboard(GetPublicLeaderboardRequest) returns (GetPublicLeaderboardResponse);
+  rpc GetPublicLeaderboard(GetPublicLeaderboardRequest) returns (GetPublicLeaderboardResponse);
 }
