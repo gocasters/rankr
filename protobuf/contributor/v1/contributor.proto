@@ -2,18 +2,43 @@ syntax = "proto3";
 
 package contributor.v1;
 
-option go_package = "protobuf/golang/contributorpb";
+option go_package = "github.com/gocasters/rankr/protobuf/golang/contributor/v1;contributorpb";
 
-// Request for fetching credentials by GitHub username.
+// Request for fetching credentials by GitHub username (for authentication).
 message GetContributorRequest {
   string github_username = 1;
 }
 
+// Response with contributor credentials (for authentication).
 message GetContributorResponse {
   int64 contributor_id = 1;
   string password = 2;
 }
 
+// Request for fetching contributors by VCS provider and usernames.
+message GetContributorsByVCSRequest {
+  string vcs_provider = 1;           // e.g., "GITHUB", "GITLAB", "BITBUCKET"
+  repeated string usernames = 2;     // VCS usernames to lookup
+}
+
+// Mapping of a single contributor's VCS info to internal ID.
+message ContributorMapping {
+  int64 contributor_id = 1;          // Internal Rankr contributor ID
+  string vcs_username = 2;           // VCS username (GitHub/GitLab/etc)
+  int64 vcs_user_id = 3;             // VCS user ID (if available)
+}
+
+// Response containing multiple contributor mappings.
+message GetContributorsByVCSResponse {
+  string vcs_provider = 1;
+  repeated ContributorMapping contributors = 2;
+}
+
 service ContributorService {
+  // Get contributor credentials by GitHub username (for authentication).
   rpc GetContributor(GetContributorRequest) returns (GetContributorResponse);
+
+  // Lookup contributors by VCS provider and usernames.
+  // Used by webhook service to map VCS users to internal contributor IDs.
+  rpc GetContributorsByVCS(GetContributorsByVCSRequest) returns (GetContributorsByVCSResponse);
 }
