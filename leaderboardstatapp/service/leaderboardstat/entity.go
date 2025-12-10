@@ -54,14 +54,22 @@ type ContributorTotalStats struct {
 	ProjectsScore map[types.ID]float64 `koanf:"project_score"`
 }
 
-type UserScore struct {
-	UserID types.ID
-	Score  float64
+type ProjectScoreList struct {
+	ProjectID  types.ID    `koanf:"project_id"`
+	UsersScore []UserScore `koanf:"user_scores"`
+	Total      uint64      `koanf:"total"`
+	Page       int32       `koanf:"page"`
+	PageSize   int32       `koanf:"page_size"`
+	TotalPages int32       `koanf:"total_pages"`
 }
 
-type ProjectScore struct {
-	ContributorID types.ID
-	UserID        string
-	ProjectID     types.ID
-	Score         float64
+type UserScore struct {
+	ContributorID types.ID `koanf:"contributor_id"`
+	Score         float64  `koanf:"score"`
+	Rank          uint64   `koanf:"rank"`
+}
+
+type UserScoreEntry struct {
+	UserID int     `json:"user_id"`
+	Score  float64 `json:"score"`
 }
