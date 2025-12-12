@@ -125,8 +125,7 @@ func (s *Service) ProcessBatch(ctx context.Context) error {
 
 		msg := message.NewMessage(watermill.NewUUID(), payload)
 
-		// todo add helper to get each event topic and replace with ev.EventName
-		if err := s.publisher.Publish(string(ev.EventName), msg); err != nil {
+		if err := s.publisher.Publish("rankr_raw_events", msg); err != nil {
 			return fmt.Errorf("failed to publish event. eventname: %s, error: %w",
 				ev.EventName, err)
 		}
