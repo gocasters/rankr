@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ThreeDotsLabs/watermill"
 	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -33,8 +34,9 @@ func (s *Service) HandlePullRequestEvent(provider eventpb.EventProvider, action 
 }
 
 func (s *Service) publishPullRequestOpened(req PullRequestOpenedRequest, provider eventpb.EventProvider, deliveryUID string) error {
+	_ = deliveryUID
 	ev := &eventpb.Event{
-		Id:             deliveryUID,
+		Id:             watermill.NewUUID(),
 		EventName:      eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED,
 		Provider:       provider,
 		Time:           timestamppb.New(req.PullRequest.CreatedAt),
@@ -60,12 +62,13 @@ func (s *Service) publishPullRequestOpened(req PullRequestOpenedRequest, provide
 }
 
 func (s *Service) publishPullRequestClosed(req PullRequestClosedRequest, provider eventpb.EventProvider, deliveryUID string) error {
+	_ = deliveryUID
 	t := timestamppb.New(time.Time{}) // it is the "zero time" to be distinguishable
 	if req.PullRequest.ClosedAt != nil {
 		t = timestamppb.New(*req.PullRequest.ClosedAt)
 	}
 	ev := &eventpb.Event{
-		Id:             deliveryUID,
+		Id:             watermill.NewUUID(),
 		EventName:      eventpb.EventName_EVENT_NAME_PULL_REQUEST_CLOSED,
 		Provider:       provider,
 		Time:           t,

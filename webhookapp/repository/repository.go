@@ -317,15 +317,15 @@ func (repo *WebhookRepository) BulkInsertPostgresSQL(ctx context.Context, events
 		}
 	}()
 
-	// Create a new batch for this operation
 	batch := &pgx.Batch{}
 	eventMap := make([]*eventpb.Event, 0, len(events))
 
 	sqlQuery := `
-		INSERT INTO webhook_events 
-		(provider, delivery_id, event_type, payload, received_at)
-		VALUES ($1, $2, $3, $4, $5)
-		ON CONFLICT (provider, delivery_id) DO NOTHING
+		INSERT INTO webhook_events
+		(provider, delivery_id, event_type, payload, received_at, source, resource_type, resource_id, event_key)
+		VALUES ($1, $2, $3, $4, $5, 'webhook', $6, $7, $8)
+		ON CONFLICT (event_key) WHERE event_key IS NOT NULL
+		DO NOTHING
 	`
 
 	for i, raw := range events {
@@ -336,20 +336,32 @@ func (repo *WebhookRepository) BulkInsertPostgresSQL(ctx context.Context, events
 			continue
 		}
 
-		// Convert enum values to strings
+		payload, err := proto.Marshal(&event)
+		if err != nil {
+			logger.L().Warn("Failed to marshal event for storage, skipping",
+				"index", i, "error", err.Error())
+			continue
+		}
+
+		resourceInfo := ExtractResourceInfo(&event)
+		eventKey := BuildEventKey(event.Provider, resourceInfo.Type, resourceInfo.StringID, event.EventName)
 
 		logger.L().Debug("Adding event to batch",
 			"index", i,
 			"provider", event.Provider,
 			"delivery_id", event.Id,
-			"event_type", event.EventName)
+			"event_type", event.EventName,
+			"event_key", eventKey)
 
 		batch.Queue(sqlQuery,
 			event.Provider,
 			event.Id,
 			event.EventName,
-			event.Payload,
+			payload,
 			time.Now(),
+			resourceInfo.Type,
+			resourceInfo.StringID,
+			eventKey,
 		)
 
 		eventMap = append(eventMap, &event)
