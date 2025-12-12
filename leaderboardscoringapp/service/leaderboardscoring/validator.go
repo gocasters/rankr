@@ -2,8 +2,8 @@ package leaderboardscoring
 
 import (
 	"fmt"
+
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/go-ozzo/ozzo-validation/v4/is"
 )
 
 type Validator struct{}
@@ -17,7 +17,7 @@ func (v Validator) ValidateEvent(event *EventRequest) error {
 
 	// TODO: This validation needs to be completed for all event attributes.
 	return validation.ValidateStruct(event,
-		validation.Field(&event.ID, validation.Required, is.UUID),
+		validation.Field(&event.ID, validation.Required, validation.Length(1, 255)),
 		validation.Field(&event.UserID, validation.Required),
 		validation.Field(&event.EventName, validation.Required, validation.In(
 			PullRequestOpened.String(),
