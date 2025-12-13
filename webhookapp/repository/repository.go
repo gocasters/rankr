@@ -317,15 +317,15 @@ func (repo *WebhookRepository) BulkInsertPostgresSQL(ctx context.Context, events
 		}
 	}()
 
-	// Create a new batch for this operation
 	batch := &pgx.Batch{}
 	eventMap := make([]*eventpb.Event, 0, len(events))
 
 	sqlQuery := `
-		INSERT INTO webhook_events 
-		(provider, delivery_id, event_type, payload, received_at)
-		VALUES ($1, $2, $3, $4, $5)
-		ON CONFLICT (provider, delivery_id) DO NOTHING
+		INSERT INTO webhook_events
+		(provider, delivery_id, event_type, payload, received_at, source, resource_type, resource_id, event_key)
+		VALUES ($1, $2, $3, $4, $5, 'webhook', $6, $7, $8)
+		ON CONFLICT (event_key) WHERE event_key IS NOT NULL
+		DO NOTHING
 	`
 
 	for i, raw := range events {
@@ -336,20 +336,32 @@ func (repo *WebhookRepository) BulkInsertPostgresSQL(ctx context.Context, events
 			continue
 		}
 
-		// Convert enum values to strings
+		payload, err := proto.Marshal(&event)
+		if err != nil {
+			logger.L().Warn("Failed to marshal event for storage, skipping",
+				"index", i, "error", err.Error())
+			continue
+		}
+
+		resourceInfo := ExtractResourceInfo(&event)
+		eventKey := BuildEventKey(event.Provider, resourceInfo.Type, resourceInfo.StringID, event.EventName)
 
 		logger.L().Debug("Adding event to batch",
 			"index", i,
 			"provider", event.Provider,
 			"delivery_id", event.Id,
-			"event_type", event.EventName)
+			"event_type", event.EventName,
+			"event_key", eventKey)
 
 		batch.Queue(sqlQuery,
 			event.Provider,
 			event.Id,
 			event.EventName,
-			event.Payload,
+			payload,
 			time.Now(),
+			resourceInfo.Type,
+			resourceInfo.StringID,
+			eventKey,
 		)
 
 		eventMap = append(eventMap, &event)
@@ -518,16 +530,16 @@ type BulkInsertResult struct {
 func (repo *WebhookRepository) SaveHistoricalEventsBulk(
 	ctx context.Context,
 	inputs []HistoricalEventInput,
-) (BulkInsertResult, error) {
+) ([]HistoricalEventInput, BulkInsertResult, error) {
 	bulkResult := BulkInsertResult{}
 
 	if len(inputs) == 0 {
-		return bulkResult, nil
+		return nil, bulkResult, nil
 	}
 
 	tx, err := repo.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		return bulkResult, fmt.Errorf("failed to begin transaction: %w", err)
+		return nil, bulkResult, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer func() {
 		if err := tx.Rollback(ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
@@ -547,7 +559,7 @@ func (repo *WebhookRepository) SaveHistoricalEventsBulk(
 	for _, input := range inputs {
 		payload, err := proto.Marshal(input.Event)
 		if err != nil {
-			return bulkResult, fmt.Errorf("failed to marshal event %s: %w", input.Event.Id, err)
+			return nil, bulkResult, fmt.Errorf("failed to marshal event %s: %w", input.Event.Id, err)
 		}
 
 		eventKey := BuildEventKey(input.Event.Provider, input.ResourceType, input.ResourceID, input.Event.EventName)
@@ -566,6 +578,7 @@ func (repo *WebhookRepository) SaveHistoricalEventsBulk(
 
 	results := tx.SendBatch(ctx, batch)
 
+	var inserted []HistoricalEventInput
 	for i := 0; i < batch.Len(); i++ {
 		cmdTag, err := results.Exec()
 		if err != nil {
@@ -575,23 +588,24 @@ func (repo *WebhookRepository) SaveHistoricalEventsBulk(
 				continue
 			}
 			results.Close()
-			return bulkResult, fmt.Errorf("failed to execute batch insert for event %d: %w", i, err)
+			return nil, bulkResult, fmt.Errorf("failed to execute batch insert for event %d: %w", i, err)
 		}
 
 		if cmdTag.RowsAffected() > 0 {
 			bulkResult.Inserted++
+			inserted = append(inserted, inputs[i])
 		} else {
 			bulkResult.Duplicates++
 		}
 	}
 
 	if err := results.Close(); err != nil {
-		return bulkResult, fmt.Errorf("failed to close batch results: %w", err)
+		return nil, bulkResult, fmt.Errorf("failed to close batch results: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return bulkResult, fmt.Errorf("failed to commit transaction: %w", err)
+		return nil, bulkResult, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	return bulkResult, nil
+	return inserted, bulkResult, nil
 }

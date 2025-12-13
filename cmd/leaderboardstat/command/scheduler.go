@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 	"github.com/gocasters/rankr/adapter/leaderboardscoring"
+	"github.com/gocasters/rankr/adapter/project"
 	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/leaderboardstatapp/repository"
 	"github.com/gocasters/rankr/leaderboardstatapp/service/leaderboardstat"
@@ -66,16 +67,29 @@ func runScheduler() {
 		return
 	}
 
-	statRepo := repository.NewLeaderboardstatRepo(cfg.Repository, databaseConn)
-	statValidator := leaderboardstat.NewValidator(statRepo)
-	statSvc := leaderboardstat.NewService(statRepo, statValidator, *cache, nil, lbScoringClient)
-
-	if err := statSvc.GetDailyContributorScores(ctx); err != nil {
-		leaderboardLogger.Error("daily calculation failed", "error", err)
+	projectRPCClient, err := grpc.NewClient(cfg.ProjectRPC, leaderboardLogger)
+	if err != nil {
+		leaderboardLogger.Error("failed to create project RPC client", "error", err)
 		return
 	}
 
-	leaderboardLogger.Info("Daily score calculation completed successfully!")
+	projectClient, err := project.New(projectRPCClient)
+	if err != nil {
+		leaderboardLogger.Error("failed to create project client", "error", err)
+		return
+	}
+
+	statRepo := repository.NewLeaderboardstatRepo(cfg.Repository, databaseConn)
+	statValidator := leaderboardstat.NewValidator(statRepo)
+	redisLeaderboardRepo := repository.NewRedisLeaderboardRepository(redisAdapter.Client())
+	statSvc := leaderboardstat.NewService(statRepo, statValidator, *cache, redisLeaderboardRepo, lbScoringClient, projectClient)
+
+	if err := statSvc.SetPublicLeaderboard(ctx); err != nil {
+		leaderboardLogger.Error("SetPublicLeaderboard failed", "error", err)
+		return
+	}
+
+	leaderboardLogger.Info("SetPublicLeaderboard completed successfully!")
 }
 
 func init() {

@@ -82,10 +82,20 @@ func (h Handler) ListProjects(ctx context.Context, req *projectpb.ListProjectsRe
 
 	projects := make([]*projectpb.ProjectItem, 0, len(serviceResp.Projects))
 	for _, p := range serviceResp.Projects {
+		gitRepoID := ""
+		if p.GitRepoID != nil {
+			gitRepoID = *p.GitRepoID
+		}
+		repoProvider := ""
+		if p.RepoProvider != nil {
+			repoProvider = string(*p.RepoProvider)
+		}
 		projects = append(projects, &projectpb.ProjectItem{
-			ProjectId: p.ID,
-			Slug:      p.Slug,
-			Name:      p.Name,
+			ProjectId:    p.ID,
+			Slug:         p.Slug,
+			Name:         p.Name,
+			RepoProvider: repoProvider,
+			GitRepoId:    gitRepoID,
 		})
 	}
 
