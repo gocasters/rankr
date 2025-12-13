@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill-nats/v2/pkg/nats"
 	"github.com/gocasters/rankr/adapter/webhook/github"
 	"github.com/gocasters/rankr/pkg/config"
 	"github.com/gocasters/rankr/pkg/database"
@@ -13,6 +15,7 @@ import (
 	"github.com/gocasters/rankr/pkg/path"
 	"github.com/gocasters/rankr/webhookapp"
 	"github.com/gocasters/rankr/webhookapp/service/historical"
+	nc "github.com/nats-io/nats.go"
 	"github.com/spf13/cobra"
 )
 
@@ -102,6 +105,27 @@ func runFetchHistorical() {
 	}
 	defer databaseConn.Close()
 
+	publisher, err := nats.NewPublisher(
+		nats.PublisherConfig{
+			URL: cfg.NATSConfig.URL,
+			JetStream: nats.JetStreamConfig{
+				Disabled: !cfg.NATSConfig.JetStreamEnabled,
+			},
+			NatsOptions: []nc.Option{
+				nc.Timeout(cfg.NATSConfig.ConnectTimeout),
+				nc.ReconnectWait(cfg.NATSConfig.ReconnectWait),
+			},
+		},
+		watermill.NewStdLogger(false, false),
+	)
+	if err != nil {
+		lbLogger.Error("Failed to create NATS publisher", "error", err)
+		return
+	}
+	defer publisher.Close()
+
+	lbLogger.Info("NATS publisher created successfully", "url", cfg.NATSConfig.URL)
+
 	githubClient := github.NewGitHubClient()
 
 	fetcherCfg := historical.Config{
@@ -113,7 +137,7 @@ func runFetchHistorical() {
 		IncludeReviews: includeReviews,
 	}
 
-	fetcher := historical.NewFetcher(fetcherCfg, githubClient, databaseConn.Pool)
+	fetcher := historical.NewFetcher(fetcherCfg, githubClient, databaseConn.Pool, publisher)
 
 	ctx := context.Background()
 	if err := fetcher.Run(ctx); err != nil {

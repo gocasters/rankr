@@ -4,11 +4,14 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ThreeDotsLabs/watermill"
+	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/gocasters/rankr/adapter/webhook/github"
 	"github.com/gocasters/rankr/pkg/logger"
 	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 	"github.com/gocasters/rankr/webhookapp/repository"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"google.golang.org/protobuf/proto"
 )
 
 type Fetcher struct {
@@ -16,15 +19,17 @@ type Fetcher struct {
 	githubClient *github.GitHubClient
 	repo         *repository.WebhookRepository
 	progress     *ProgressTracker
+	publisher    message.Publisher
 }
 
-func NewFetcher(cfg Config, githubClient *github.GitHubClient, db *pgxpool.Pool) *Fetcher {
+func NewFetcher(cfg Config, githubClient *github.GitHubClient, db *pgxpool.Pool, publisher message.Publisher) *Fetcher {
 	repo := repository.NewWebhookRepository(db)
 	return &Fetcher{
 		config:       cfg,
 		githubClient: githubClient,
 		repo:         &repo,
 		progress:     NewProgressTracker(),
+		publisher:    publisher,
 	}
 }
 
@@ -170,6 +175,23 @@ func (f *Fetcher) saveEventsBulk(ctx context.Context, inputs []repository.Histor
 	log.Debug("Bulk saved historical events",
 		"inserted", result.Inserted,
 		"duplicates", result.Duplicates)
+
+	if f.publisher != nil && result.Inserted > 0 {
+		for _, input := range inputs {
+			payload, err := proto.Marshal(input.Event)
+			if err != nil {
+				log.Error("Failed to marshal event for publishing", "error", err)
+				continue
+			}
+
+			msg := message.NewMessage(watermill.NewUUID(), payload)
+			if err := f.publisher.Publish("rankr_raw_events", msg); err != nil {
+				log.Error("Failed to publish event to NATS", "error", err)
+				continue
+			}
+		}
+		log.Debug("Published events to NATS", "count", result.Inserted)
+	}
 
 	return nil
 }
