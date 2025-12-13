@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/gocasters/rankr/adapter/leaderboardscoring"
+	"github.com/gocasters/rankr/adapter/project"
 	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/leaderboardstatapp/delivery/scheduler"
 	"github.com/gocasters/rankr/leaderboardstatapp/repository"
@@ -61,10 +62,21 @@ func Setup(
 		return Application{}, fmt.Errorf("failed to create leaderboardscoring client: %w", err)
 	}
 
+	projectRPCClient, err := grpc.NewClient(config.ProjectRPC, statLogger)
+	if err != nil {
+		return Application{}, fmt.Errorf("failed to create project RPC client: %w", err)
+	}
+
+	projectClient, err := project.New(projectRPCClient)
+	if err != nil {
+		return Application{}, fmt.Errorf("failed to create project client: %w", err)
+	}
+
 	statRepo := repository.NewLeaderboardstatRepo(config.Repository, postgresConn)
 	statValidator := leaderboardstat.NewValidator(statRepo)
+	redisLeaderboardRepo := repository.NewRedisLeaderboardRepository(redisAdapter.Client())
 
-	statSvc := leaderboardstat.NewService(statRepo, statValidator, *cache, nil, lbScoringClient)
+	statSvc := leaderboardstat.NewService(statRepo, statValidator, *cache, redisLeaderboardRepo, lbScoringClient, projectClient)
 	statHandler := statHTTP.NewHandler(statSvc)
 
 	httpServer, err := httpserver.New(config.HTTPServer)
