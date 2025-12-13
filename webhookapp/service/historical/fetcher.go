@@ -167,7 +167,7 @@ func (f *Fetcher) saveEventsBulk(ctx context.Context, inputs []repository.Histor
 		return nil
 	}
 
-	result, err := f.repo.SaveHistoricalEventsBulk(ctx, inputs)
+	inserted, result, err := f.repo.SaveHistoricalEventsBulk(ctx, inputs)
 	if err != nil {
 		return err
 	}
@@ -176,8 +176,8 @@ func (f *Fetcher) saveEventsBulk(ctx context.Context, inputs []repository.Histor
 		"inserted", result.Inserted,
 		"duplicates", result.Duplicates)
 
-	if f.publisher != nil && result.Inserted > 0 {
-		for _, input := range inputs {
+	if f.publisher != nil && len(inserted) > 0 {
+		for _, input := range inserted {
 			payload, err := proto.Marshal(input.Event)
 			if err != nil {
 				log.Error("Failed to marshal event for publishing", "error", err)
@@ -190,7 +190,7 @@ func (f *Fetcher) saveEventsBulk(ctx context.Context, inputs []repository.Histor
 				continue
 			}
 		}
-		log.Debug("Published events to NATS", "count", result.Inserted)
+		log.Debug("Published events to NATS", "count", len(inserted))
 	}
 
 	return nil

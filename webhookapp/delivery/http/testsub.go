@@ -53,7 +53,7 @@ func (s *Server) TestSubscribe(c echo.Context) error {
 		return err
 	}
 
-	marshaler := &wnats.GobMarshaler{}
+	marshaler := &wnats.NATSMarshaler{}
 	for _, msg := range msgs {
 		wmMsg, err := marshaler.Unmarshal(msg)
 		if err != nil {
