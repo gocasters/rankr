@@ -46,7 +46,7 @@ contributor_rpc:
   grpc_service_name: "contributor.v1.ContributorService"
   max_attempts: 3
   initial_backoff: 1s
-  max_backoff: 5s
+  max_backoff: 30s
   backoff_multiplier: 2
   retryable_status_codes: ["UNAVAILABLE"]
 
