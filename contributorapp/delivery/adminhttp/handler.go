@@ -2,7 +2,6 @@ package adminhttp
 
 import (
 	"fmt"
-	"github.com/gocasters/rankr/contributorapp/dashboard"
 	errmsg "github.com/gocasters/rankr/pkg/err_msg"
 	"github.com/gocasters/rankr/pkg/statuscode"
 	"github.com/gocasters/rankr/pkg/validator"
@@ -12,10 +11,10 @@ import (
 )
 
 type Handler struct {
-	service dashboard.Service
+	service job.Service
 }
 
-func NewHandler(svc dashboard.Service) Handler {
+func NewHandler(svc job.Service) Handler {
 	return Handler{service: svc}
 }
 
@@ -45,7 +44,7 @@ func (h Handler) importContributors(c echo.Context) error {
 
 	fileType, _ := c.Get("FileType").(string)
 
-	res, err := h.service.ImportContributor(c.Request().Context(), dashboard.ImportContributorRequest{
+	res, err := h.service.ImportContributor(c.Request().Context(), job.ImportContributorRequest{
 		File:     srcFile,
 		FileName: fileHeader.Filename,
 		FileType: fileType,

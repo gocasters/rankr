@@ -1,7 +1,8 @@
-package dashboard
+package job
 
 import (
 	"github.com/gocasters/rankr/contributorapp/service/contributor"
+	"strconv"
 	"time"
 )
 
@@ -24,6 +25,12 @@ type IdempotencyRequest struct {
 	IdempotencyKey string
 }
 
+type ProduceJob struct {
+	Key      string
+	JobID    uint
+	FilePath string
+}
+
 type FailJob struct {
 	ID    uint
 	JobID uint
@@ -33,10 +40,12 @@ type FailJob struct {
 type JobStatus string
 
 var (
-	Pending    JobStatus = "pending"
-	Success    JobStatus = "success"
-	Failed     JobStatus = "failed"
-	Processing JobStatus = "processing"
+	Pending        JobStatus = "pending"
+	PendingToQueue JobStatus = "pending to queue"
+	Success        JobStatus = "success"
+	Failed         JobStatus = "failed"
+	PartialSuccess JobStatus = "partial success"
+	Processing     JobStatus = "processing"
 )
 
 type ContributorRecord struct {
@@ -58,6 +67,19 @@ func (c ContributorRecord) mapContributorRecordToUpsertRequest() contributor.Ups
 		Bio:            c.Bio,
 		PrivacyMode:    contributor.PrivacyMode(c.PrivacyMode),
 	}
+}
+
+func (c ContributorRecord) mapToSlice() []string {
+	s := make([]string, 0)
+	idStr := strconv.Itoa(int(c.GithubID))
+	s = append(s, idStr)
+	s = append(s, c.GithubUsername)
+	s = append(s, c.DisplayName)
+	s = append(s, c.ProfileImage)
+	s = append(s, c.Bio)
+	s = append(s, string(c.PrivacyMode))
+
+	return s
 }
 
 type FailRecord struct {

@@ -116,10 +116,15 @@ middleware:
     - "csv"
     - "xlsx"
 
-dashboard_validate:
+job_validate:
   http_file_type:
     - "text/csv; charset=utf-8"
     - "application/zip"
 
-dashboard_config:
+job_config:
   storage_path: "/contributorapp/uploads/import_contributors/"
+  stream_key: queue:jobs
+  csv_file: .csv
+  xlsx_file: .xlsx
+  worker_count: 4
+  buffer_size: 50
