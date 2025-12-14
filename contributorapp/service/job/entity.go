@@ -21,7 +21,6 @@ type Job struct {
 }
 
 type ProduceJob struct {
-	Key      string
 	JobID    uint
 	FilePath string
 }

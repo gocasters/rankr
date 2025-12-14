@@ -35,7 +35,7 @@ type Repository interface {
 	UpdateJob(ctx context.Context, job Job) error
 }
 
-type Broker interface {
+type Publisher interface {
 	Publish(ctx context.Context, pj ProduceJob) error
 }
 
@@ -45,7 +45,6 @@ type FailRepository interface {
 
 type ConfigJob struct {
 	StoragePath string `koanf:"storage_path"`
-	StreamKey   string `koanf:"stream_key"`
 	CsvFile     string `koanf:"csv_file"`
 	XlsxFile    string `koanf:"xlsx_file"`
 	WorkerCount int    `koanf:"worker_count"`
@@ -55,16 +54,16 @@ type ConfigJob struct {
 type Service struct {
 	config             ConfigJob
 	jobRepo            Repository
-	broker             Broker
+	publisher          Publisher
 	contributorAdapter ContributorAdapter
 	fileProcessor      FileProcessor
 	failRepo           FailRepository
 }
 
 func NewService(cfg ConfigJob,
-	repo Repository, broker Broker, contributorAdapter ContributorAdapter, failRecord FailRepository) Service {
+	repo Repository, pub Publisher, contributorAdapter ContributorAdapter, failRecord FailRepository) Service {
 	return Service{config: cfg, jobRepo: repo,
-		broker: broker, contributorAdapter: contributorAdapter, failRepo: failRecord}
+		publisher: pub, contributorAdapter: contributorAdapter, failRepo: failRecord}
 }
 
 func (s Service) CreateImportJob(ctx context.Context, req contributor.ImportContributorRequest) (contributor.ImportContributorResponse, error) {
@@ -147,8 +146,7 @@ func (s Service) CreateImportJob(ctx context.Context, req contributor.ImportCont
 
 	job.ID = jobID
 
-	if err := s.broker.Publish(ctx, ProduceJob{Key: s.config.StreamKey,
-		JobID: job.ID, FilePath: job.FilePath}); err != nil {
+	if err := s.publisher.Publish(ctx, ProduceJob{JobID: job.ID, FilePath: job.FilePath}); err != nil {
 		_ = s.jobRepo.UpdateStatus(ctx, job.ID, PendingToQueue)
 		return contributor.ImportContributorResponse{
 			JobID:   job.ID,

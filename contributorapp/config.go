@@ -2,7 +2,7 @@ package contributorapp
 
 import (
 	"github.com/gocasters/rankr/adapter/redis"
-	"github.com/gocasters/rankr/contributorapp/delivery/adminhttp/middleware"
+	middleware2 "github.com/gocasters/rankr/contributorapp/delivery/http/middleware"
 	"github.com/gocasters/rankr/contributorapp/repository"
 	"github.com/gocasters/rankr/contributorapp/service/contributor"
 	"github.com/gocasters/rankr/contributorapp/service/job"
@@ -20,7 +20,8 @@ type Config struct {
 	Logger               logger.Config              `koanf:"logger" json:"logger,omitempty"`
 	TotalShutdownTimeout time.Duration              `koanf:"total_shutdown_timeout" json:"totalShutdownTimeout,omitempty"`
 	PathOfMigration      string                     `koanf:"path_of_migration" json:"pathOfMigration,omitempty"`
-	Middleware           middleware.Config          `koanf:"middleware" json:"middleware"`
-	Job                  job.ConfigJob              `koanf:"job_config" json:"job"`
-	Validation           contributor.ValidateConfig `koanf:"validate_config" json:"validation"`
+	Middleware           middleware2.Config         `koanf:"middleware" json:"middleware"`
+	Job                  job.ConfigJob              `koanf:"job" json:"job"`
+	Validation           contributor.ValidateConfig `koanf:"validate" json:"validation"`
+	Broker               repository.BrokerConfig    `koanf:"broker" json:"broker"`
 }

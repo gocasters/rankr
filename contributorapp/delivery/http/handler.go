@@ -3,6 +3,7 @@ package http
 import (
 	"fmt"
 	"github.com/gocasters/rankr/contributorapp/service/contributor"
+	"github.com/gocasters/rankr/contributorapp/service/job"
 	errmsg "github.com/gocasters/rankr/pkg/err_msg"
 	"github.com/gocasters/rankr/pkg/statuscode"
 	"github.com/gocasters/rankr/pkg/validator"
@@ -15,12 +16,14 @@ import (
 
 type Handler struct {
 	ContributorService contributor.Service
+	JobService         job.Service
 	Logger             *slog.Logger
 }
 
-func NewHandler(contributorSrv contributor.Service, logger *slog.Logger) Handler {
+func NewHandler(contributorSrv contributor.Service, jobSvc job.Service, logger *slog.Logger) Handler {
 	return Handler{
 		ContributorService: contributorSrv,
+		JobService:         jobSvc,
 		Logger:             logger,
 	}
 }
@@ -125,7 +128,7 @@ func (h Handler) uploadFile(c echo.Context) error {
 
 	fileType, _ := c.Get("FileType").(string)
 
-	res, err := h.ContributorService.CreateJob(c.Request().Context(), contributor.ImportContributorRequest{
+	res, err := h.JobService.CreateImportJob(c.Request().Context(), contributor.ImportContributorRequest{
 		File:     srcFile,
 		FileName: fileHeader.Filename,
 		FileType: fileType,

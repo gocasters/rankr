@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	middleware2 "github.com/gocasters/rankr/contributorapp/delivery/http/middleware"
+	"github.com/gocasters/rankr/contributorapp/service/job"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -49,7 +50,14 @@ func Setup(
 	contributorValidator := contributor.NewValidator(config.Validation)
 	contributorSvc := contributor.NewService(contributorRepo, *cache, contributorValidator)
 
-	contributorHandler := http.NewHandler(contributorSvc, logger)
+	jobRepo := repository.NewJobRepository(postgresConn)
+	failRecordRepo := repository.NewFailRecordRepository(postgresConn)
+	broker := repository.NewBroker(config.Broker, redisAdapter)
+	contributorAdapter := job.NewContributorAdapter(contributorSvc)
+
+	jobSvc := job.NewService(config.Job, jobRepo, broker, contributorAdapter, failRecordRepo)
+
+	contributorHandler := http.NewHandler(contributorSvc, jobSvc, logger)
 
 	httpServer, err := httpserver.New(config.HTTPServer)
 	if err != nil {
