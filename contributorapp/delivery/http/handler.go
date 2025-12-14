@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fmt"
 	"github.com/gocasters/rankr/contributorapp/service/contributor"
 	errmsg "github.com/gocasters/rankr/pkg/err_msg"
 	"github.com/gocasters/rankr/pkg/statuscode"
@@ -96,4 +97,55 @@ func (h Handler) updateProfile(c echo.Context) error {
 	return c.JSON(http.StatusOK, echo.Map{
 		"data": res,
 	})
+}
+
+func (h Handler) uploadFile(c echo.Context) error {
+	claim := c.Get("Authorization").(*types.UserClaim)
+	if claim.Role.String() != types.Admin.String() {
+		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+			"error": "unauthorized",
+		})
+	}
+
+	fileHeader, err := c.FormFile("file")
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"message": "fail to get file",
+			"error":   err.Error(),
+		})
+	}
+
+	srcFile, err := fileHeader.Open()
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"error": fmt.Sprintf("failed to open file: %v", err),
+		})
+	}
+	defer srcFile.Close()
+
+	fileType, _ := c.Get("FileType").(string)
+
+	res, err := h.ContributorService.CreateJob(c.Request().Context(), contributor.ImportContributorRequest{
+		File:     srcFile,
+		FileName: fileHeader.Filename,
+		FileType: fileType,
+	})
+	if err != nil {
+		if vEer, ok := err.(validator.Error); ok {
+			return c.JSON(vEer.StatusCode(), map[string]interface{}{
+				"message": vEer.Err,
+				"errors":  vEer.Fields,
+			})
+		}
+
+		if eRes, ok := err.(errmsg.ErrorResponse); ok {
+			return c.JSON(statuscode.MapToHTTPStatusCode(eRes), eRes)
+		}
+
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"error": err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusCreated, res)
 }

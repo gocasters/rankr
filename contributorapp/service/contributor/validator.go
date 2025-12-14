@@ -3,8 +3,12 @@ package contributor
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/gocasters/rankr/pkg/validator"
 	types "github.com/gocasters/rankr/type"
+	"mime/multipart"
+	"net/http"
+	"strings"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
@@ -17,13 +21,19 @@ const (
 	ErrValidationInvalidIDType = "ID must be uint64"
 )
 
+type ValidateConfig struct {
+	HttpFileType []string `koanf:"http_file_type"`
+}
+
 type ValidatorContributorRepository interface {
 }
 
-type Validator struct{}
+type Validator struct {
+	config ValidateConfig
+}
 
-func NewValidator() Validator {
-	return Validator{}
+func NewValidator(cfg ValidateConfig) Validator {
+	return Validator{config: cfg}
 }
 
 func (v Validator) ValidateCreateContributorRequest(ctx context.Context, req CreateContributorRequest) error {
@@ -77,4 +87,47 @@ func (v Validator) ValidateUpsertContributorRequest(req UpsertContributorRequest
 	}
 
 	return nil
+}
+
+func (v Validator) ImportJobRequestValidate(req ImportContributorRequest) error {
+
+	if err := validation.ValidateStruct(&req,
+		validation.Field(&req.File, validation.Required, validation.By(v.validateFile)),
+		validation.Field(&req.FileName, validation.Required),
+	); err != nil {
+		return validator.NewError(err, validator.Flat, "invalid request")
+	}
+
+	return nil
+}
+
+func (v Validator) validateFile(value interface{}) error {
+	file, ok := value.(multipart.File)
+	if !ok {
+		return fmt.Errorf("invalid file type")
+	}
+
+	if file == nil {
+		return fmt.Errorf("file missing")
+	}
+
+	buffer := make([]byte, 512)
+	_, err := file.Read(buffer)
+	if err != nil {
+		return fmt.Errorf("cannot read uploaded file")
+	}
+
+	if _, err := file.Seek(0, 0); err != nil {
+		return fmt.Errorf("failed to reset file pointer")
+	}
+
+	mime := http.DetectContentType(buffer)
+
+	for _, m := range v.config.HttpFileType {
+		if strings.HasPrefix(mime, m) {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("invalid MIME file type: %s", mime)
 }

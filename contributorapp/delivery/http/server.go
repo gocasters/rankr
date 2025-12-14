@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	"github.com/gocasters/rankr/contributorapp/delivery/http/middleware"
 	"github.com/gocasters/rankr/pkg/httpserver"
 	"log/slog"
 )
@@ -10,13 +11,15 @@ type Server struct {
 	HTTPServer httpserver.Server
 	Handler    Handler
 	logger     *slog.Logger
+	Middleware middleware.Middleware
 }
 
-func New(server httpserver.Server, handler Handler, logger *slog.Logger) Server {
+func New(server httpserver.Server, handler Handler, logger *slog.Logger, mid middleware.Middleware) Server {
 	return Server{
 		HTTPServer: server,
 		Handler:    handler,
 		logger:     logger,
+		Middleware: mid,
 	}
 }
 
@@ -39,4 +42,6 @@ func (s Server) RegisterRoutes() {
 	v1.GET("/profile/:id", s.Handler.getProfile)
 	v1.POST("/create", s.Handler.createContributor)
 	v1.PUT("/update", s.Handler.updateProfile)
+
+	v1.POST("/upload", s.Handler.uploadFile, s.Middleware.CheckFile)
 }

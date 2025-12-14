@@ -2,6 +2,7 @@ package contributor
 
 import (
 	"github.com/gocasters/rankr/type"
+	"mime/multipart"
 	"time"
 )
 
@@ -63,4 +64,16 @@ type UpsertContributorRequest struct {
 type UpsertContributorResponse struct {
 	ID    types.ID
 	IsNew bool
+}
+
+type ImportContributorRequest struct {
+	File           multipart.File `json:"file"`
+	FileName       string         `json:"file_name"`
+	FileType       string         `json:"file_type"`
+	IdempotencyKey string         `json:"idempotency_key"`
+}
+
+type ImportContributorResponse struct {
+	JobID   uint   `json:"job_id"`
+	Message string `json:"message"`
 }

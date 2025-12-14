@@ -12,17 +12,12 @@ type Job struct {
 	SuccessCount   int
 	FailCount      int
 	IdempotencyKey string
+	FileHash       string
 	FileName       string
 	FilePath       string
-	Status         JobStatus
+	Status         Status
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
-}
-
-type IdempotencyRequest struct {
-	ID             uint
-	JobID          uint
-	IdempotencyKey string
 }
 
 type ProduceJob struct {
@@ -31,21 +26,15 @@ type ProduceJob struct {
 	FilePath string
 }
 
-type FailJob struct {
-	ID    uint
-	JobID uint
-	FailRecord
-}
-
-type JobStatus string
+type Status string
 
 var (
-	Pending        JobStatus = "pending"
-	PendingToQueue JobStatus = "pending to queue"
-	Success        JobStatus = "success"
-	Failed         JobStatus = "failed"
-	PartialSuccess JobStatus = "partial success"
-	Processing     JobStatus = "processing"
+	Pending        Status = "pending"
+	PendingToQueue Status = "pending_to_queue"
+	Success        Status = "success"
+	Failed         Status = "failed"
+	PartialSuccess Status = "partial_success"
+	Processing     Status = "processing"
 )
 
 type ContributorRecord struct {
@@ -83,6 +72,7 @@ func (c ContributorRecord) mapToSlice() []string {
 }
 
 type FailRecord struct {
+	ID           uint
 	RecordNumber int
 	Reason       string
 	RawData      []string

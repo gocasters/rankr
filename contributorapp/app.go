@@ -3,6 +3,7 @@ package contributorapp
 import (
 	"context"
 	"fmt"
+	middleware2 "github.com/gocasters/rankr/contributorapp/delivery/http/middleware"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -45,7 +46,7 @@ func Setup(
 	cache := cachemanager.NewCacheManager(redisAdapter)
 
 	contributorRepo := repository.NewContributorRepo(config.Repository, postgresConn, logger)
-	contributorValidator := contributor.NewValidator()
+	contributorValidator := contributor.NewValidator(config.Validation)
 	contributorSvc := contributor.NewService(contributorRepo, *cache, contributorValidator)
 
 	contributorHandler := http.NewHandler(contributorSvc, logger)
@@ -55,6 +56,8 @@ func Setup(
 		logger.Error("failed to initialize HTTP server", "err", err)
 		return Application{}, err
 	}
+
+	middleware := middleware2.New(config.Middleware)
 	return Application{
 		ContributorRepo:    contributorRepo,
 		ContributorSrv:     contributorSvc,
@@ -63,6 +66,7 @@ func Setup(
 			*httpServer,
 			contributorHandler,
 			logger,
+			middleware,
 		),
 		Config:       config,
 		Logger:       logger,

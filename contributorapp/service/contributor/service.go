@@ -16,8 +16,13 @@ type Repository interface {
 	GetContributorByGitHubUsername(ctx context.Context, githubUsername string) (int64, bool, error)
 }
 
+type JobRepo interface {
+	CreateImportJob(ctx context.Context, req ImportContributorRequest) (ImportContributorResponse, error)
+}
+
 type Service struct {
 	repository     Repository
+	jobRepo        JobRepo
 	validator      Validator
 	CacheManager   cachemanager.CacheManager
 	forceAcceptOtp int
@@ -25,11 +30,13 @@ type Service struct {
 
 func NewService(
 	repo Repository,
+	jobRepo JobRepo,
 	cm cachemanager.CacheManager,
 	validator Validator,
 ) Service {
 	return Service{
 		repository:   repo,
+		jobRepo:      jobRepo,
 		validator:    validator,
 		CacheManager: cm,
 	}
@@ -194,4 +201,12 @@ func (s Service) Upsert(ctx context.Context, req UpsertContributorRequest) (Upse
 	}
 
 	return UpsertContributorResponse{ID: types.ID(upRequest.ID), IsNew: false}, nil
+}
+
+func (s Service) CreateJob(ctx context.Context, req ImportContributorRequest) (ImportContributorResponse, error) {
+	if err := s.validator.ImportJobRequestValidate(req); err != nil {
+		return ImportContributorResponse{}, err
+	}
+
+	return s.jobRepo.CreateImportJob(ctx, req)
 }

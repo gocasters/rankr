@@ -4,7 +4,9 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"github.com/gocasters/rankr/contributorapp/service/contributor"
 	errmsg "github.com/gocasters/rankr/pkg/err_msg"
 	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/gocasters/rankr/pkg/statuscode"
@@ -15,6 +17,8 @@ import (
 	"time"
 )
 
+var ErrJobNotExists = errors.New("job not exists")
+
 type FileProcessor interface {
 	Process(file *os.File) (ProcessResult, error)
 }
@@ -24,8 +28,8 @@ type Repository interface {
 	GetJobByIdempotencyKey(ctx context.Context, key string) (*Job, error)
 	GetJobByFileHash(ctx context.Context, fileHash string) (*Job, error)
 	GetJobByID(ctx context.Context, ID uint) (Job, error)
-	UpdateStatus(ctx context.Context, jobID uint, status JobStatus) error
-	GetFilePathByJobID(ctx context.Context, jobID uint) (string, error)
+	UpdateStatus(ctx context.Context, jobID uint, status Status) error
+	UpdateJob(ctx context.Context, job Job) error
 }
 
 type Broker interface {
@@ -33,10 +37,6 @@ type Broker interface {
 }
 
 type FailRepository interface {
-	InsertRecord(ctx context.Context, payload FailRecord) error
-}
-
-type FailJobRepository interface {
 	Create(ctx context.Context, failRecord FailRecord) error
 }
 
@@ -50,7 +50,6 @@ type ConfigJob struct {
 }
 
 type Service struct {
-	validation         Validate
 	config             ConfigJob
 	jobRepo            Repository
 	broker             Broker
@@ -59,26 +58,33 @@ type Service struct {
 	failRepo           FailRepository
 }
 
-func NewService(validate Validate, cfg ConfigJob,
+func NewService(cfg ConfigJob,
 	repo Repository, broker Broker, contributorAdapter ContributorAdapter, failRecord FailRepository) Service {
-	return Service{validation: validate, config: cfg, jobRepo: repo,
+	return Service{config: cfg, jobRepo: repo,
 		broker: broker, contributorAdapter: contributorAdapter, failRepo: failRecord}
 }
 
-func (s Service) CreateJob(ctx context.Context, req ImportContributorRequest) (ImportContributorResponse, error) {
-	if err := s.validation.validateFile(req); err != nil {
-		return ImportContributorResponse{}, err
-	}
+func (s Service) CreateImportJob(ctx context.Context, req contributor.ImportContributorRequest) (contributor.ImportContributorResponse, error) {
 
 	j, err := s.jobRepo.GetJobByIdempotencyKey(ctx, req.IdempotencyKey)
 	if j != nil {
-		return ImportContributorResponse{JobID: j.ID, Message: "The file with this idempotency key exists"}, nil
+		return contributor.ImportContributorResponse{JobID: j.ID, Message: "The file with this idempotency key exists"}, nil
+	}
+
+	if err != nil {
+		if !errors.Is(err, ErrJobNotExists) {
+			return contributor.ImportContributorResponse{}, errmsg.ErrorResponse{
+				Message:         "failed to get job by idempotency key",
+				Errors:          map[string]interface{}{"error": err.Error()},
+				InternalErrCode: statuscode.IntCodeUnExpected,
+			}
+		}
 	}
 
 	savePath := filepath.Join(s.config.StoragePath, fmt.Sprintf("%d_%s", time.Now().UnixNano(), req.FileName))
 	dst, err := os.Create(savePath)
 	if err != nil {
-		return ImportContributorResponse{}, errmsg.ErrorResponse{
+		return contributor.ImportContributorResponse{}, errmsg.ErrorResponse{
 			Message:         "failed save file",
 			Errors:          map[string]interface{}{"error": err.Error()},
 			InternalErrCode: statuscode.IntCodeUnExpected,
@@ -98,27 +104,30 @@ func (s Service) CreateJob(ctx context.Context, req ImportContributorRequest) (I
 	hashed := sha256.New()
 	writer := io.MultiWriter(dst, hashed)
 	if _, err := io.Copy(writer, req.File); err != nil {
-		return ImportContributorResponse{}, err
+		return contributor.ImportContributorResponse{}, err
 	}
 	fileHash := hex.EncodeToString(hashed.Sum(nil))
 
 	existsJob, err := s.jobRepo.GetJobByFileHash(ctx, fileHash)
 	if err != nil {
-		return ImportContributorResponse{}, errmsg.ErrorResponse{
-			Message:         "failed get file hash",
-			Errors:          map[string]interface{}{"error db": err.Error()},
-			InternalErrCode: statuscode.IntCodeUnExpected,
+		if !errors.Is(err, ErrJobNotExists) {
+			return contributor.ImportContributorResponse{}, errmsg.ErrorResponse{
+				Message:         "failed get file hash",
+				Errors:          map[string]interface{}{"error db": err.Error()},
+				InternalErrCode: statuscode.IntCodeUnExpected,
+			}
 		}
 	}
 
 	if existsJob != nil {
-		return ImportContributorResponse{JobID: existsJob.ID, Message: "file already exists"}, nil
+		return contributor.ImportContributorResponse{JobID: existsJob.ID, Message: "file already exists"}, nil
 	}
 
 	job := Job{
 		FileName:       req.FileName,
 		FilePath:       savePath,
 		IdempotencyKey: req.IdempotencyKey,
+		FileHash:       fileHash,
 		Status:         Pending,
 		CreatedAt:      time.Now(),
 	}
@@ -126,7 +135,7 @@ func (s Service) CreateJob(ctx context.Context, req ImportContributorRequest) (I
 	jobID, err := s.jobRepo.CreateJob(ctx, job)
 	if err != nil {
 		logger.L().Error("failed create job", "error", err.Error())
-		return ImportContributorResponse{}, errmsg.ErrorResponse{
+		return contributor.ImportContributorResponse{}, errmsg.ErrorResponse{
 			Message:         "failed to create job",
 			Errors:          map[string]interface{}{"error db": err.Error()},
 			InternalErrCode: statuscode.IntCodeUnExpected,
@@ -138,7 +147,7 @@ func (s Service) CreateJob(ctx context.Context, req ImportContributorRequest) (I
 	if err := s.broker.Publish(ctx, ProduceJob{Key: s.config.StreamKey,
 		JobID: job.ID, FilePath: job.FilePath}); err != nil {
 		_ = s.jobRepo.UpdateStatus(ctx, job.ID, PendingToQueue)
-		return ImportContributorResponse{
+		return contributor.ImportContributorResponse{
 			JobID:   job.ID,
 			Message: "job saved and will be queued shortly",
 		}, nil
@@ -146,25 +155,27 @@ func (s Service) CreateJob(ctx context.Context, req ImportContributorRequest) (I
 
 	successSaveFile = true
 
-	return ImportContributorResponse{JobID: job.ID, Message: "file received"}, nil
+	return contributor.ImportContributorResponse{JobID: job.ID, Message: "file received"}, nil
 }
-
 func (s Service) ProcessJob(ctx context.Context, jobID uint) (ProcessResult, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+	defer cancel()
+
 	job, err := s.jobRepo.GetJobByID(ctx, jobID)
 	if err != nil {
-		return ProcessResult{}, err
+		return ProcessResult{}, fmt.Errorf("failed to get job by id: %w", err)
 	}
 
 	if job.Status != Pending {
-		return ProcessResult{}, fmt.Errorf("invalid job status. job status is %s", job.Status)
+		return ProcessResult{}, fmt.Errorf("invalid job status: %s", job.Status)
 	}
 
-	filePath, err := s.jobRepo.GetFilePathByJobID(ctx, jobID)
-	if err != nil {
-		return ProcessResult{}, err
+	job.Status = Processing
+	if err := s.jobRepo.UpdateStatus(ctx, job.ID, Processing); err != nil {
+		return ProcessResult{}, fmt.Errorf("update job status to processing: %w", err)
 	}
 
-	ext := strings.ToLower(filepath.Ext(filePath))
+	ext := strings.ToLower(filepath.Ext(job.FilePath))
 	var processor FileProcessor
 	switch ext {
 	case s.config.CsvFile:
@@ -172,55 +183,49 @@ func (s Service) ProcessJob(ctx context.Context, jobID uint) (ProcessResult, err
 	case s.config.XlsxFile:
 		processor = XLSXProcess{s.config.WorkerCount, s.config.BufferSize}
 	default:
+		job.Status = Failed
+		_ = s.jobRepo.UpdateJob(ctx, job)
 		return ProcessResult{}, fmt.Errorf("unsupported file extension: %s", ext)
 	}
 
-	file, err := os.Open(filePath)
+	file, err := os.Open(job.FilePath)
 	if err != nil {
-		return ProcessResult{}, err
+		job.Status = Failed
+		_ = s.jobRepo.UpdateJob(ctx, job)
+		return ProcessResult{}, fmt.Errorf("open file: %w", err)
 	}
 	defer file.Close()
 
 	pResult, err := processor.Process(file)
 	if err != nil {
-		return ProcessResult{}, err
+		job.Status = Failed
+		_ = s.jobRepo.UpdateJob(ctx, job)
+		return ProcessResult{}, fmt.Errorf("process file: %w", err)
 	}
 
-	job.Status = Processing
-	if err := s.jobRepo.UpdateStatus(ctx, jobID, Processing); err != nil {
-		return ProcessResult{}, err
-	}
+	successCount, failCount := 0, 0
 
-	var successCount int
-	var failCount int
 	for _, record := range pResult.SuccessRecords {
 		if err := s.contributorAdapter.UpsertContributor(ctx, record); err != nil {
-			inErr := s.failRepo.InsertRecord(ctx, FailRecord{
+			cErr := s.failRepo.Create(ctx, FailRecord{
 				RecordNumber: record.RowNumber,
 				Reason:       err.Error(),
 				RawData:      record.mapToSlice(),
 			})
-			if inErr != nil {
-				logger.L().Error("failed to insert fail record", "row", record.RowNumber, "error", inErr.Error())
+			if cErr != nil {
+				logger.L().Error("failed to insert fail record", "row", record.RowNumber, "error", cErr.Error())
 			}
-
-			failCount += 1
-
+			failCount++
 			continue
 		}
 		successCount++
 	}
 
 	for _, record := range pResult.FailRecords {
-		if err := s.failRepo.InsertRecord(ctx, record); err != nil {
-			logger.L().Error("failed fail record to repo",
-				"row", record.RecordNumber, "error", err.Error())
-
-			continue
-
+		if err := s.failRepo.Create(ctx, record); err != nil {
+			logger.L().Error("failed to insert fail record", "row", record.RecordNumber, "error", err.Error())
 		}
-
-		failCount += 1
+		failCount++
 	}
 
 	finalStatus := Failed
@@ -230,9 +235,15 @@ func (s Service) ProcessJob(ctx context.Context, jobID uint) (ProcessResult, err
 		finalStatus = Success
 	}
 
-	if err := s.jobRepo.UpdateStatus(ctx, jobID, finalStatus); err != nil {
-		logger.L().Error("failed update final job status", "error", err.Error())
-		return ProcessResult{}, err
+	job.Status = finalStatus
+	job.SuccessCount = successCount
+	job.FailCount = failCount
+	job.TotalRecords = pResult.Total
+	job.UpdatedAt = time.Now()
+
+	if err := s.jobRepo.UpdateJob(ctx, job); err != nil {
+		logger.L().Error("failed to update final job", "jobID", jobID, "error", err.Error())
+		return ProcessResult{}, fmt.Errorf("update final job: %w", err)
 	}
 
 	return ProcessResult{Total: pResult.Total, Success: successCount, Fail: failCount}, nil
