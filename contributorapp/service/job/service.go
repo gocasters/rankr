@@ -17,7 +17,10 @@ import (
 	"time"
 )
 
-var ErrJobNotExists = errors.New("job not exists")
+var (
+	ErrFailRecordNotFound = errors.New("fail record not found")
+	ErrJobNotExists       = errors.New("job not exists")
+)
 
 type FileProcessor interface {
 	Process(file *os.File) (ProcessResult, error)
@@ -157,6 +160,7 @@ func (s Service) CreateImportJob(ctx context.Context, req contributor.ImportCont
 
 	return contributor.ImportContributorResponse{JobID: job.ID, Message: "file received"}, nil
 }
+
 func (s Service) ProcessJob(ctx context.Context, jobID uint) (ProcessResult, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
@@ -208,9 +212,11 @@ func (s Service) ProcessJob(ctx context.Context, jobID uint) (ProcessResult, err
 	for _, record := range pResult.SuccessRecords {
 		if err := s.contributorAdapter.UpsertContributor(ctx, record); err != nil {
 			cErr := s.failRepo.Create(ctx, FailRecord{
+				JobID:        jobID,
 				RecordNumber: record.RowNumber,
 				Reason:       err.Error(),
 				RawData:      record.mapToSlice(),
+				RetryCount:   0,
 			})
 			if cErr != nil {
 				logger.L().Error("failed to insert fail record", "row", record.RowNumber, "error", cErr.Error())
@@ -222,6 +228,8 @@ func (s Service) ProcessJob(ctx context.Context, jobID uint) (ProcessResult, err
 	}
 
 	for _, record := range pResult.FailRecords {
+		record.JobID = jobID
+		record.RetryCount = 0
 		if err := s.failRepo.Create(ctx, record); err != nil {
 			logger.L().Error("failed to insert fail record", "row", record.RecordNumber, "error", err.Error())
 		}

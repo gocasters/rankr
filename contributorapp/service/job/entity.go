@@ -73,9 +73,14 @@ func (c ContributorRecord) mapToSlice() []string {
 
 type FailRecord struct {
 	ID           uint
+	JobID        uint
 	RecordNumber int
 	Reason       string
 	RawData      []string
+	RetryCount   int
+	LastError    *string
+	CreatedAt    time.Time
+	UpdatedAt    *time.Time
 }
 
 type ColumnName string
