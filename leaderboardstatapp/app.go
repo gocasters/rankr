@@ -35,6 +35,8 @@ type Application struct {
 	CacheManager           cachemanager.CacheManager
 	redis                  *redis.Adapter
 	Scheduler              scheduler.Scheduler
+	scoringRPCClient       *grpc.RPCClient
+	projectRPCClient       *grpc.RPCClient
 }
 
 func Setup(
@@ -52,23 +54,27 @@ func Setup(
 	cache := cachemanager.NewCacheManager(redisAdapter)
 
 	// initial rpc server
-	rpcClient, err := grpc.NewClient(config.LeaderboardScoringRPC, statLogger)
+	scoringRPCClient, err := grpc.NewClient(config.LeaderboardScoringRPC, statLogger)
 	if err != nil {
 		return Application{}, fmt.Errorf("failed to create RPC client!!: %w", err)
 	}
 
-	lbScoringClient, err := leaderboardscoring.New(rpcClient)
+	lbScoringClient, err := leaderboardscoring.New(scoringRPCClient)
 	if err != nil {
+		scoringRPCClient.Close()
 		return Application{}, fmt.Errorf("failed to create leaderboardscoring client: %w", err)
 	}
 
 	projectRPCClient, err := grpc.NewClient(config.ProjectRPC, statLogger)
 	if err != nil {
+		scoringRPCClient.Close()
 		return Application{}, fmt.Errorf("failed to create project RPC client: %w", err)
 	}
 
 	projectClient, err := project.New(projectRPCClient)
 	if err != nil {
+		scoringRPCClient.Close()
+		projectRPCClient.Close()
 		return Application{}, fmt.Errorf("failed to create project client: %w", err)
 	}
 
@@ -82,12 +88,16 @@ func Setup(
 	httpServer, err := httpserver.New(config.HTTPServer)
 	if err != nil {
 		statLogger.Error("failed to initialize HTTP server", slog.Any("error", err))
+		scoringRPCClient.Close()
+		projectRPCClient.Close()
 		return Application{}, err
 	}
 
 	rpcServer, gErr := grpc.NewServer(config.RPCServer)
 	if gErr != nil {
 		statLogger.Error("Failed to initialize gRPC server", slog.String("error", gErr.Error()))
+		scoringRPCClient.Close()
+		projectRPCClient.Close()
 		return Application{}, gErr
 	}
 	statGrpcHandler := statGRPC.NewHandler(statSvc)
@@ -104,11 +114,13 @@ func Setup(
 			*httpServer,
 			statHandler,
 		),
-		GRPCServer:   statGrpcServer,
-		Config:       config,
-		CacheManager: *cache,
-		redis:        redisAdapter,
-		Scheduler:    statScheduler,
+		GRPCServer:       statGrpcServer,
+		Config:           config,
+		CacheManager:     *cache,
+		redis:            redisAdapter,
+		Scheduler:        statScheduler,
+		scoringRPCClient: scoringRPCClient,
+		projectRPCClient: projectRPCClient,
 	}, nil
 }
 
@@ -183,6 +195,9 @@ func (app Application) shutdownServers(ctx context.Context) bool {
 		go app.shutdownGRPCServer(ctx, &shutdownWg)
 
 		shutdownWg.Wait()
+
+		app.closeRPCClients()
+
 		close(shutdownDone)
 		statLogger.Info("All servers have been shut down successfully.")
 
@@ -193,6 +208,20 @@ func (app Application) shutdownServers(ctx context.Context) bool {
 		return true
 	case <-ctx.Done():
 		return false
+	}
+}
+
+func (app Application) closeRPCClients() {
+	statLogger := logger.L()
+
+	if app.scoringRPCClient != nil {
+		app.scoringRPCClient.Close()
+		statLogger.Info("Scoring RPC client closed")
+	}
+
+	if app.projectRPCClient != nil {
+		app.projectRPCClient.Close()
+		statLogger.Info("Project RPC client closed")
 	}
 }
 

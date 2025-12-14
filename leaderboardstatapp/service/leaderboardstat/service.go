@@ -436,25 +436,45 @@ func (s *Service) SetPublicLeaderboard(ctx context.Context) error {
 		return fmt.Errorf("project client is not initialized")
 	}
 
-	projectsRes, err := s.projectClient.ListProjects(ctx, &project.ListProjectsRequest{
-		PageSize: 100,
-		Offset:   0,
-	})
-	if err != nil {
-		log.Error("Failed to fetch projects from project service", slog.String("error", err.Error()))
-		return fmt.Errorf("failed to fetch projects: %w", err)
+	var allProjects []project.ProjectItem
+	projectPageSize := int32(100)
+	projectOffset := int32(0)
+
+	for {
+		projectsRes, err := s.projectClient.ListProjects(ctx, &project.ListProjectsRequest{
+			PageSize: projectPageSize,
+			Offset:   projectOffset,
+		})
+		if err != nil {
+			log.Error("Failed to fetch projects from project service",
+				slog.Int("offset", int(projectOffset)),
+				slog.String("error", err.Error()))
+			return fmt.Errorf("failed to fetch projects at offset %d: %w", projectOffset, err)
+		}
+
+		if len(projectsRes.Projects) == 0 {
+			break
+		}
+
+		allProjects = append(allProjects, projectsRes.Projects...)
+
+		if int32(len(projectsRes.Projects)) < projectPageSize {
+			break
+		}
+
+		projectOffset += projectPageSize
 	}
 
-	if len(projectsRes.Projects) == 0 {
+	if len(allProjects) == 0 {
 		log.Warn("No projects found in project service")
 		return nil
 	}
 
-	log.Info("Fetched projects from project service", slog.Int("count", len(projectsRes.Projects)))
+	log.Info("Fetched projects from project service", slog.Int("count", len(allProjects)))
 
 	ttl := 3 * time.Minute
 
-	for _, proj := range projectsRes.Projects {
+	for _, proj := range allProjects {
 		if proj.GitRepoID == "" {
 			log.Warn("Project has no git_repo_id, skipping",
 				slog.String("project_id", proj.ProjectID),

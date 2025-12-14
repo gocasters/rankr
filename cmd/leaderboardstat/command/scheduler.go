@@ -60,6 +60,7 @@ func runScheduler() {
 		leaderboardLogger.Error("failed to create RPC client!", "error", err)
 		return
 	}
+	defer rpcClient.Close()
 
 	lbScoringClient, err := leaderboardscoring.New(rpcClient)
 	if err != nil {
@@ -72,6 +73,7 @@ func runScheduler() {
 		leaderboardLogger.Error("failed to create project RPC client", "error", err)
 		return
 	}
+	defer projectRPCClient.Close()
 
 	projectClient, err := project.New(projectRPCClient)
 	if err != nil {

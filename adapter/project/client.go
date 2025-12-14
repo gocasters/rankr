@@ -42,6 +42,10 @@ type ListProjectsResponse struct {
 }
 
 func (c *Client) ListProjects(ctx context.Context, req *ListProjectsRequest) (*ListProjectsResponse, error) {
+	if req == nil {
+		return nil, fmt.Errorf("ListProjects: request cannot be nil")
+	}
+
 	pbReq := &projectpb.ListProjectsRequest{
 		PageSize: req.PageSize,
 		Offset:   req.Offset,
@@ -83,6 +87,10 @@ type GetProjectByRepoResponse struct {
 }
 
 func (c *Client) GetProjectByRepo(ctx context.Context, req *GetProjectByRepoRequest) (*GetProjectByRepoResponse, error) {
+	if req == nil {
+		return nil, fmt.Errorf("GetProjectByRepo: request cannot be nil")
+	}
+
 	pbReq := &projectpb.GetProjectByRepoRequest{
 		RepoProvider: req.RepoProvider,
 		RepoId:       req.RepoID,
