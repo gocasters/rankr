@@ -25,9 +25,9 @@ nats:
 
 postgres_db:
   host: "localhost"
-  port: 5436
-  user: "webhook_admin"
-  password: "password123"
+  port: 5439
+  user: "webhook_user"
+  password: "webhook_pass"
   db_name: "webhook_db"
   ssl_mode: "disable"
   max_conns: 100

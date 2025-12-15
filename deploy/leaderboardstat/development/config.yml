@@ -37,7 +37,7 @@ leaderboard_scoring_rpc:
 
 project_rpc:
   host: "project-app"
-  port: 8092
+  port: 8094
   grpc_service_name: "project.v1.ProjectService"
   max_attempts: 3
   initial_backoff: 1s
@@ -126,7 +126,7 @@ postgres_db:
   host: shared-postgres
   port: 5432
   user: leaderboardstat_user
-  password: change_me_stat
+  password: leaderboardstat_pass
   db_name: leaderboardstat_db
   ssl_mode: disable
   max_conns: 25  

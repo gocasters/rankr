@@ -3,6 +3,7 @@ package leaderboardstat
 import (
 	"context"
 	"fmt"
+
 	"github.com/gocasters/rankr/adapter/leaderboardscoring"
 	"github.com/gocasters/rankr/adapter/project"
 	lbscoring "github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
@@ -387,16 +388,16 @@ func (s *Service) GetPublicLeaderboard(ctx context.Context, projectID types.ID, 
 	log := logger.L()
 	log.Info("GetPublicLeaderboard called")
 
+	if page < 1 {
+		page = 1
+	}
+
 	userScoreEntries, total, err := s.redisLeaderboardRepo.GetPublicLeaderboardPaginated(ctx, projectID, page, pageSize)
 	if err != nil {
 		log.Error("Failed to get public leaderboard",
 			slog.Uint64("project_id", uint64(projectID)),
 			slog.String("error", err.Error()))
 		return ProjectScoreList{}, fmt.Errorf("failed to get leaderboard: %w", err)
-	}
-
-	if page < 1 {
-		page = 1
 	}
 	startRank := (page-1)*pageSize + 1
 
@@ -494,7 +495,7 @@ func (s *Service) SetPublicLeaderboard(ctx context.Context) error {
 
 		for {
 			getLeaderboardReq := &lbscoring.GetLeaderboardRequest{
-				Timeframe: "daily",
+				Timeframe: "all_time",
 				ProjectID: &proj.GitRepoID,
 				PageSize:  pageSize,
 				Offset:    offset,

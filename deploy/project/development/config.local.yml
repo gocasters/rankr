@@ -16,7 +16,7 @@ postgres_db:
   host: "localhost"
   port: 5439
   user: "project_user"
-  password: "change_me_project"
+  password: "project_pass"
   db_name: "project_db"
   ssl_mode: "disable"
   max_conns: 10
