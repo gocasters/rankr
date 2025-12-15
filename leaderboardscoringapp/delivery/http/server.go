@@ -2,21 +2,19 @@ package http
 
 import (
 	"context"
-	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
+
 	"github.com/gocasters/rankr/pkg/httpserver"
 )
 
 type Server struct {
-	LeaderboardscoringSvc *leaderboardscoring.Service
-	HTTPServer            *httpserver.Server
-	Handler               Handler
+	HTTPServer *httpserver.Server
+	Handler    Handler
 }
 
-func New(server *httpserver.Server, leaderboardscoringSvc *leaderboardscoring.Service) Server {
+func New(server *httpserver.Server) Server {
 	return Server{
-		LeaderboardscoringSvc: leaderboardscoringSvc,
-		HTTPServer:            server,
-		Handler:               NewHandler(leaderboardscoringSvc),
+		HTTPServer: server,
+		Handler:    NewHandler(),
 	}
 }
 
@@ -35,10 +33,5 @@ func (s Server) stop(ctx context.Context) error {
 
 func (s Server) RegisterRoutes() {
 	v1 := s.HTTPServer.GetRouter().Group("/v1")
-
 	v1.GET("/health-check", s.healthCheck)
-
-	leaderboardGroup := v1.Group("/leaderboard")
-
-	leaderboardGroup.GET("/public", s.Handler.GetLeaderboard)
 }
