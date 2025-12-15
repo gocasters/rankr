@@ -12,11 +12,11 @@ type Server struct {
 	Handler               Handler
 }
 
-func New(server *httpserver.Server, handler Handler, leaderboardscoringSvc *leaderboardscoring.Service) Server {
+func New(server *httpserver.Server, leaderboardscoringSvc *leaderboardscoring.Service) Server {
 	return Server{
 		LeaderboardscoringSvc: leaderboardscoringSvc,
 		HTTPServer:            server,
-		Handler:               handler,
+		Handler:               NewHandler(leaderboardscoringSvc),
 	}
 }
 
