@@ -195,6 +195,7 @@ func (s Service) Upsert(ctx context.Context, req UpsertContributorRequest) (Upse
 	}
 
 	return UpsertContributorResponse{ID: types.ID(upRequest.ID), IsNew: false}, nil
+
 }
 
 func (s Service) GetContributorsByVCS(ctx context.Context, req GetContributorsByVCSRequest) (GetContributorsByVCSResponse, error) {
