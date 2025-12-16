@@ -3,6 +3,7 @@ package job
 import (
 	"context"
 	"github.com/gocasters/rankr/contributorapp/service/contributor"
+	"github.com/gocasters/rankr/pkg/validator"
 )
 
 type ContributorRepo interface {
@@ -20,7 +21,11 @@ func NewContributorAdapter(contrSvc ContributorRepo) ContributorAdapter {
 func (c ContributorAdapter) UpsertContributor(ctx context.Context, req ContributorRecord) error {
 	_, err := c.contributorSvc.Upsert(ctx, req.mapContributorRecordToUpsertRequest())
 	if err != nil {
-		return err
+		if vErr, ok := err.(validator.Error); ok {
+			return RecordErr{ErrType: ErrTypeValidation, err: vErr}
+		}
+
+		return RecordErr{err: err, ErrType: ErrTypeUnexpect}
 	}
 
 	return nil

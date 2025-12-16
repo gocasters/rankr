@@ -76,7 +76,8 @@ type FailRecord struct {
 	Reason       string
 	RawData      []string
 	RetryCount   int
-	LastError    *string
+	LastError    string
+	ErrType      RecordErrType
 	CreatedAt    time.Time
 	UpdatedAt    *time.Time
 }

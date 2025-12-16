@@ -172,22 +172,22 @@ func (s Service) CreateImportJob(ctx context.Context, req ImportContributorReque
 	return ImportContributorResponse{JobID: job.ID, Message: "file received"}, nil
 }
 
-func (s Service) ProcessJob(ctx context.Context, jobID uint) (ProcessResult, error) {
+func (s Service) ProcessJob(ctx context.Context, jobID uint) error {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
 	job, err := s.jobRepo.GetJobByID(ctx, jobID)
 	if err != nil {
-		return ProcessResult{}, fmt.Errorf("failed to get job by id: %w", err)
+		return fmt.Errorf("failed to get job by id: %w", err)
 	}
 
 	if job.Status != Pending {
-		return ProcessResult{}, fmt.Errorf("invalid job status: %s", job.Status)
+		return fmt.Errorf("invalid job status: %s", job.Status)
 	}
 
 	job.Status = Processing
 	if err := s.jobRepo.UpdateStatus(ctx, job.ID, Processing); err != nil {
-		return ProcessResult{}, fmt.Errorf("update job status to processing: %w", err)
+		return fmt.Errorf("update job status to processing: %w", err)
 	}
 
 	ext := strings.ToLower(filepath.Ext(job.FilePath))
@@ -200,14 +200,14 @@ func (s Service) ProcessJob(ctx context.Context, jobID uint) (ProcessResult, err
 	default:
 		job.Status = Failed
 		_ = s.jobRepo.UpdateJob(ctx, job)
-		return ProcessResult{}, fmt.Errorf("unsupported file extension: %s", ext)
+		return fmt.Errorf("unsupported file extension: %s", ext)
 	}
 
 	file, err := os.Open(job.FilePath)
 	if err != nil {
 		job.Status = Failed
 		_ = s.jobRepo.UpdateJob(ctx, job)
-		return ProcessResult{}, fmt.Errorf("open file: %w", err)
+		return fmt.Errorf("open file: %w", err)
 	}
 	defer file.Close()
 
@@ -215,23 +215,28 @@ func (s Service) ProcessJob(ctx context.Context, jobID uint) (ProcessResult, err
 	if err != nil {
 		job.Status = Failed
 		_ = s.jobRepo.UpdateJob(ctx, job)
-		return ProcessResult{}, fmt.Errorf("process file: %w", err)
+		return fmt.Errorf("process file: %w", err)
 	}
 
 	successCount, failCount := 0, 0
 
 	for _, record := range pResult.SuccessRecords {
 		if err := s.contributorAdapter.UpsertContributor(ctx, record); err != nil {
-			cErr := s.failRepo.Create(ctx, FailRecord{
-				JobID:        jobID,
-				RecordNumber: record.RowNumber,
-				Reason:       err.Error(),
-				RawData:      record.mapToSlice(),
-				RetryCount:   0,
-			})
-			if cErr != nil {
-				logger.L().Error("failed to insert fail record", "row", record.RowNumber, "error", cErr.Error())
+			if aErr, ok := err.(RecordErr); ok {
+				cErr := s.failRepo.Create(ctx, FailRecord{
+					JobID:        jobID,
+					RecordNumber: record.RowNumber,
+					Reason:       err.Error(),
+					RawData:      record.mapToSlice(),
+					RetryCount:   0,
+					LastError:    aErr.Error(),
+					ErrType:      aErr.ErrType,
+				})
+				if cErr != nil {
+					logger.L().Error("failed to insert fail record", "row", record.RowNumber, "error", cErr.Error())
+				}
 			}
+
 			failCount++
 			continue
 		}
@@ -240,7 +245,6 @@ func (s Service) ProcessJob(ctx context.Context, jobID uint) (ProcessResult, err
 
 	for _, record := range pResult.FailRecords {
 		record.JobID = jobID
-		record.RetryCount = 0
 		if err := s.failRepo.Create(ctx, record); err != nil {
 			logger.L().Error("failed to insert fail record", "row", record.RecordNumber, "error", err.Error())
 		}
@@ -262,8 +266,8 @@ func (s Service) ProcessJob(ctx context.Context, jobID uint) (ProcessResult, err
 
 	if err := s.jobRepo.UpdateJob(ctx, job); err != nil {
 		logger.L().Error("failed to update final job", "jobID", jobID, "error", err.Error())
-		return ProcessResult{}, fmt.Errorf("update final job: %w", err)
+		return fmt.Errorf("update final job: %w", err)
 	}
 
-	return ProcessResult{Total: pResult.Total, Success: successCount, Fail: failCount}, nil
+	return nil
 }

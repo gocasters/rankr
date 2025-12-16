@@ -118,7 +118,13 @@ func processRows(rows [][]string, colIdx map[string]int, workers, buffer int) Pr
 			for r := range rowChan {
 				id, err := strconv.Atoi(r.data[colIdx[GithubID.String()]])
 				if err != nil {
-					failChan <- FailRecord{RecordNumber: r.rowNumber, Reason: fmt.Sprintf("invalid github id: %v", err), RawData: r.data}
+					failChan <- FailRecord{
+						RecordNumber: r.rowNumber,
+						Reason:       fmt.Sprintf("invalid github id: %v", err),
+						RawData:      r.data,
+						LastError:    err.Error(),
+						ErrType:      ErrTypeValidation,
+					}
 					continue
 				}
 				var cr ContributorRecord
