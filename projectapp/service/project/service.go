@@ -2,7 +2,6 @@ package project
 
 import (
 	"context"
-	"log"
 	"log/slog"
 	"strings"
 	"time"
@@ -15,9 +14,11 @@ type Repository interface {
 	Create(ctx context.Context, project *ProjectEntity) error
 	FindByID(ctx context.Context, id string) (*ProjectEntity, error)
 	FindBySlug(ctx context.Context, slug string) (*ProjectEntity, error)
-	List(ctx context.Context) ([]*ProjectEntity, error)
+	List(ctx context.Context, limit, offset int32) ([]*ProjectEntity, error)
+	Count(ctx context.Context) (int32, error)
 	Update(ctx context.Context, project *ProjectEntity) error
 	Delete(ctx context.Context, id string) error
+	FindByVCSRepo(ctx context.Context, provider constant.VcsProvider, repoID string) (*ProjectEntity, error)
 }
 
 type Service struct {
@@ -94,18 +95,33 @@ func (s Service) GetProject(ctx context.Context, id string) (*GetProjectByIDResp
 	}, nil
 }
 
-func (s Service) ListProjects(ctx context.Context) (ListProjectsResponse, error) {
-	projects, err := s.projectRepo.List(ctx)
+func (s Service) ListProjects(ctx context.Context, input ListProjectsInput) (ListProjectsResponse, error) {
+	pageSize := input.PageSize
+	if pageSize <= 0 {
+		pageSize = DefaultPageSize
+	}
+	if pageSize > MaxPageSize {
+		pageSize = MaxPageSize
+	}
+
+	offset := input.Offset
+	if offset < 0 {
+		offset = 0
+	}
+
+	projects, err := s.projectRepo.List(ctx, pageSize, offset)
 	if err != nil {
 		return ListProjectsResponse{}, err
 	}
 
-	log.Printf("Retrieved %d projects", len(projects))
-
-	log.Printf("Projects: %+v", projects)
+	totalCount, err := s.projectRepo.Count(ctx)
+	if err != nil {
+		return ListProjectsResponse{}, err
+	}
 
 	response := ListProjectsResponse{
-		Projects: make([]GetProjectByIDResponse, len(projects)),
+		Projects:   make([]GetProjectByIDResponse, len(projects)),
+		TotalCount: totalCount,
 	}
 
 	for i, p := range projects {
@@ -180,6 +196,22 @@ func (s Service) UpdateProject(ctx context.Context, input UpdateProjectInput) (U
 
 func (s Service) DeleteProject(ctx context.Context, id string) error {
 	return s.projectRepo.Delete(ctx, id)
+}
+
+func (s Service) GetProjectByVCSRepo(ctx context.Context, req GetProjectByVCSRepoRequest) (*GetProjectByVCSRepoResponse, error) {
+	project, err := s.projectRepo.FindByVCSRepo(ctx, req.Provider, req.RepoID)
+	if err != nil {
+		s.logger.Error("failed to get project by VCS repo", "error", err, "provider", req.Provider, "repo_id", req.RepoID)
+		return nil, err
+	}
+
+	return &GetProjectByVCSRepoResponse{
+		ID:           project.ID,
+		Slug:         project.Slug,
+		Name:         project.Name,
+		RepoProvider: project.RepoProvider,
+		GitRepoID:    project.GitRepoID,
+	}, nil
 }
 
 func stringsTrim(s string) string {

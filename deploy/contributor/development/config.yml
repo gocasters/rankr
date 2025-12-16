@@ -122,7 +122,7 @@ validate:
     - "application/zip"
 
 job:
-  storage_path: "/contributorapp/uploads/import_contributors/"
+  storage_path: "./uploads/import_contributors/"
   csv_file: .csv
   xlsx_file: .xlsx
   worker_count: 4

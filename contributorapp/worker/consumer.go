@@ -7,6 +7,7 @@ import (
 	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/google/uuid"
 	"sync"
+	"time"
 )
 
 type Config struct {
@@ -63,6 +64,12 @@ func (p Pool) Start(ctx context.Context) {
 			msgs, err := p.consumer.Consume(ctx, consumerName)
 			if err != nil {
 				logger.L().Error("consumer error", "error", err.Error())
+				time.Sleep(time.Second)
+				continue
+			}
+
+			if len(msgs) == 0 {
+				time.Sleep(100 * time.Millisecond) // avoid spinning when queue is empty
 				continue
 			}
 

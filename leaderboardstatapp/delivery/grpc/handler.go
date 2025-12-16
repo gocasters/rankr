@@ -7,6 +7,8 @@ import (
 	"github.com/gocasters/rankr/pkg/slice"
 	leaderboardstatpb "github.com/gocasters/rankr/protobuf/golang/leaderboardstat"
 	types "github.com/gocasters/rankr/type"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"log/slog"
 )
@@ -65,6 +67,36 @@ func transformScoreEntries(entries []leaderboardstat.ScoreEntry) []*leaderboards
 	}
 
 	return pbEntries
+}
+
+func (h Handler) GetPublicLeaderboard(ctx context.Context, req *leaderboardstatpb.GetPublicLeaderboardRequest) (*leaderboardstatpb.GetPublicLeaderboardResponse, error) {
+	projectId := req.GetProjectId()
+	pageSize := req.GetPageSize()
+	offset := req.GetOffset()
+	log := logger.L()
+	log.Info("gRPC GetPublicLeaderboard request received", slog.Any("request", req))
+
+	scoreList, err := h.leaderboardStatSvc.GetPublicLeaderboard(ctx, types.ID(projectId), pageSize, offset)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get public leaderboard: %v", err)
+	}
+
+	items := make([]*leaderboardstatpb.PublicLeaderboardRow, 0, len(scoreList.UsersScore))
+	for _, us := range scoreList.UsersScore {
+		item := &leaderboardstatpb.PublicLeaderboardRow{
+			UserId: uint64(us.ContributorID),
+			Rank:   us.Rank,
+			Score:  us.Score,
+		}
+		items = append(items, item)
+	}
+
+	response := &leaderboardstatpb.GetPublicLeaderboardResponse{
+		ProjectId: projectId,
+		Rows:      items,
+	}
+
+	return response, nil
 }
 
 /*

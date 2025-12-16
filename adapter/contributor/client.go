@@ -19,9 +19,15 @@ type Credentials struct {
 	Password string
 }
 
+type Mapping struct {
+	ContributorID types.ID
+	VcsUsername   string
+	VcsUserID     int64
+}
+
 func New(rpcClient *grpc.RPCClient) (*Client, error) {
 	if rpcClient == nil || rpcClient.Conn == nil {
-		return nil, fmt.Errorf("grpc RPC client no initialized (nil connection)")
+		return nil, fmt.Errorf("grpc RPC client not initialized (nil connection)")
 	}
 
 	return &Client{
@@ -53,4 +59,30 @@ func (c *Client) GetCredentialsByGitHubUsername(ctx context.Context, githubUsern
 		ID:       types.ID(res.ContributorId),
 		Password: res.Password,
 	}, nil
+}
+
+func (c *Client) GetContributorsByVCS(ctx context.Context, vcsProvider string, usernames []string) ([]Mapping, error) {
+	req := &contributorpb.GetContributorsByVCSRequest{
+		VcsProvider: vcsProvider,
+		Usernames:   usernames,
+	}
+
+	res, err := c.contributorService.GetContributorsByVCS(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+	if res == nil {
+		return nil, fmt.Errorf("empty contributor response")
+	}
+
+	mappings := make([]Mapping, 0, len(res.Contributors))
+	for _, c := range res.Contributors {
+		mappings = append(mappings, Mapping{
+			ContributorID: types.ID(c.ContributorId),
+			VcsUsername:   c.VcsUsername,
+			VcsUserID:     c.VcsUserId,
+		})
+	}
+
+	return mappings, nil
 }

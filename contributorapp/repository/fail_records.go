@@ -26,9 +26,11 @@ func (r FailRecordRepository) Create(ctx context.Context, fr job.FailRecord) err
 			reason,
 			raw_data,
 			retry_count,
+		    last_error,
+		    error_type,
 			created_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6);
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8);
 	`
 
 	rawData, err := json.Marshal(fr.RawData)
@@ -42,6 +44,8 @@ func (r FailRecordRepository) Create(ctx context.Context, fr job.FailRecord) err
 		fr.Reason,
 		rawData,
 		fr.RetryCount,
+		fr.LastError,
+		fr.ErrType,
 		time.Now(),
 	)
 
@@ -85,6 +89,7 @@ func (r FailRecordRepository) GetByJobID(ctx context.Context, jobID uint) ([]job
 			raw_data,
 			retry_count,
 			last_error,
+			error_type,
 			created_at,
 			updated_at
 		FROM fail_records
