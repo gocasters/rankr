@@ -134,10 +134,13 @@ func (h Handler) uploadFile(c echo.Context) error {
 		})
 	}
 
+	idempotencyKey := fmt.Sprintf("%s-%d-%d", fileHeader.Filename, fileHeader.Size, claim.ID)
+
 	res, err := h.JobService.CreateImportJob(c.Request().Context(), job.ImportContributorRequest{
-		File:     srcFile,
-		FileName: fileHeader.Filename,
-		FileType: fileType,
+		File:           srcFile,
+		FileName:       fileHeader.Filename,
+		FileType:       fileType,
+		IdempotencyKey: idempotencyKey,
 	})
 	if err != nil {
 		if vEer, ok := err.(validator.Error); ok {
