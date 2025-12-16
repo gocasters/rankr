@@ -1,15 +1,17 @@
 package contributorapp
 
 import (
+	"time"
+
 	"github.com/gocasters/rankr/adapter/redis"
 	middleware2 "github.com/gocasters/rankr/contributorapp/delivery/http/middleware"
 	"github.com/gocasters/rankr/contributorapp/repository"
 	"github.com/gocasters/rankr/contributorapp/service/job"
 	"github.com/gocasters/rankr/contributorapp/worker"
 	"github.com/gocasters/rankr/pkg/database"
+	"github.com/gocasters/rankr/pkg/grpc"
 	"github.com/gocasters/rankr/pkg/httpserver"
 	"github.com/gocasters/rankr/pkg/logger"
-	"time"
 )
 
 type Config struct {

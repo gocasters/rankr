@@ -13,7 +13,7 @@ logger:
   file_max_age_in_days: 7
 
 nats:
-  url: nats://supersecret@localhost:4222
+  url: nats://shared-nats:4222
   connect_timeout: "30s"
   reconnect_wait: "1s"
   retry_on_failed_connect: true
@@ -24,10 +24,10 @@ nats:
       - "github.*"
 
 postgres_db:
-  host: "localhost"
-  port: 5436
-  user: "webhook_admin"
-  password: "password123"
+  host: "shared-postgres"
+  port: 5432
+  user: "webhook_user"
+  password: "change_me_webhook"
   db_name: "webhook_db"
   ssl_mode: "disable"
   max_conns: 100
@@ -39,8 +39,8 @@ postgres_db:
 path_of_migration: "./webhookapp/repository/migrations"
 
 redis:
-  host: "localhost"
-  port: 6389
+  host: "shared-redis"
+  port: 6379
   password: ""
   db: 0
 

@@ -28,7 +28,7 @@ leaderboard_scoring_rpc:
   port: 8091
   grpc_service_name: "leaderboardscoring.v1.LeaderboardScoringService"
   max_attempts: 3
-  initial_backoff: 1s
+  initial_backoff: 30s # changed for scoringGRPC ERROR
   max_backoff: 5s
   backoff_multiplier: 1.5
   retryable_status_codes:
@@ -36,10 +36,13 @@ leaderboard_scoring_rpc:
     - "DEADLINE_EXCEEDED"
 
 scheduler_cfg:
-  snapshot_crontab: "0 */3 * * *"
-  snapshot_job_context_timeout: 15m
-
-
+  public_leaderboard_cron: "* * * * *"
+  job_context_timeout: "1m"
+  daily_score_calculation_cron: "*/10 * * * *"
+  #Production Settings
+  #public_leaderboard_cron: "*/3 * * * *"   # Every 3 minutes
+  #job_context_timeout: "15m"               # 15 minute timeout
+  #daily_score_calculation_cron: "0 2 * * *" # Daily at 2 AM
 
 redis:
   host: "shared-redis"
