@@ -176,6 +176,13 @@ func (s Service) ProcessJob(ctx context.Context, jobID uint) error {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
+	defer func() {
+		if r := recover(); r != nil {
+			logger.L().Error("panic in ProcessJob", "jobID", jobID, "panic", r)
+			_ = s.jobRepo.UpdateStatus(context.Background(), jobID, Failed)
+		}
+	}()
+
 	job, err := s.jobRepo.GetJobByID(ctx, jobID)
 	if err != nil {
 		return fmt.Errorf("failed to get job by id: %w", err)
