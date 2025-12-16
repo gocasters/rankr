@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"github.com/gocasters/rankr/contributorapp/service/contributor"
 	errmsg "github.com/gocasters/rankr/pkg/err_msg"
 	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/gocasters/rankr/pkg/statuscode"
@@ -58,24 +57,38 @@ type Service struct {
 	contributorAdapter ContributorAdapter
 	fileProcessor      FileProcessor
 	failRepo           FailRepository
+	validator          ValidatorJobRepo
 }
 
-func NewService(cfg ConfigJob,
-	repo Repository, pub Publisher, contributorAdapter ContributorAdapter, failRecord FailRepository) Service {
-	return Service{config: cfg, jobRepo: repo,
-		publisher: pub, contributorAdapter: contributorAdapter, failRepo: failRecord}
+func NewService(
+	cfg ConfigJob,
+	repo Repository,
+	pub Publisher,
+	contributorAdapter ContributorAdapter,
+	failRecord FailRepository,
+	validator ValidatorJobRepo) Service {
+	return Service{
+		config:             cfg,
+		jobRepo:            repo,
+		publisher:          pub,
+		contributorAdapter: contributorAdapter,
+		failRepo:           failRecord,
+		validator:          validator,
+	}
 }
 
-func (s Service) CreateImportJob(ctx context.Context, req contributor.ImportContributorRequest) (contributor.ImportContributorResponse, error) {
+func (s Service) CreateImportJob(ctx context.Context, req ImportContributorRequest) (ImportContributorResponse, error) {
+	if err := s.validator.ImportJobRequestValidate(req); err != nil {
 
+	}
 	j, err := s.jobRepo.GetJobByIdempotencyKey(ctx, req.IdempotencyKey)
 	if j != nil {
-		return contributor.ImportContributorResponse{JobID: j.ID, Message: "The file with this idempotency key exists"}, nil
+		return ImportContributorResponse{JobID: j.ID, Message: "The file with this idempotency key exists"}, nil
 	}
 
 	if err != nil {
 		if !errors.Is(err, ErrJobNotExists) {
-			return contributor.ImportContributorResponse{}, errmsg.ErrorResponse{
+			return ImportContributorResponse{}, errmsg.ErrorResponse{
 				Message:         "failed to get job by idempotency key",
 				Errors:          map[string]interface{}{"error": err.Error()},
 				InternalErrCode: statuscode.IntCodeUnExpected,
@@ -86,7 +99,7 @@ func (s Service) CreateImportJob(ctx context.Context, req contributor.ImportCont
 	savePath := filepath.Join(s.config.StoragePath, fmt.Sprintf("%d_%s", time.Now().UnixNano(), req.FileName))
 	dst, err := os.Create(savePath)
 	if err != nil {
-		return contributor.ImportContributorResponse{}, errmsg.ErrorResponse{
+		return ImportContributorResponse{}, errmsg.ErrorResponse{
 			Message:         "failed save file",
 			Errors:          map[string]interface{}{"error": err.Error()},
 			InternalErrCode: statuscode.IntCodeUnExpected,
@@ -106,14 +119,14 @@ func (s Service) CreateImportJob(ctx context.Context, req contributor.ImportCont
 	hashed := sha256.New()
 	writer := io.MultiWriter(dst, hashed)
 	if _, err := io.Copy(writer, req.File); err != nil {
-		return contributor.ImportContributorResponse{}, err
+		return ImportContributorResponse{}, err
 	}
 	fileHash := hex.EncodeToString(hashed.Sum(nil))
 
 	existsJob, err := s.jobRepo.GetJobByFileHash(ctx, fileHash)
 	if err != nil {
 		if !errors.Is(err, ErrJobNotExists) {
-			return contributor.ImportContributorResponse{}, errmsg.ErrorResponse{
+			return ImportContributorResponse{}, errmsg.ErrorResponse{
 				Message:         "failed get file hash",
 				Errors:          map[string]interface{}{"error db": err.Error()},
 				InternalErrCode: statuscode.IntCodeUnExpected,
@@ -122,7 +135,7 @@ func (s Service) CreateImportJob(ctx context.Context, req contributor.ImportCont
 	}
 
 	if existsJob != nil {
-		return contributor.ImportContributorResponse{JobID: existsJob.ID, Message: "file already exists"}, nil
+		return ImportContributorResponse{JobID: existsJob.ID, Message: "file already exists"}, nil
 	}
 
 	job := Job{
@@ -137,7 +150,7 @@ func (s Service) CreateImportJob(ctx context.Context, req contributor.ImportCont
 	jobID, err := s.jobRepo.CreateJob(ctx, job)
 	if err != nil {
 		logger.L().Error("failed create job", "error", err.Error())
-		return contributor.ImportContributorResponse{}, errmsg.ErrorResponse{
+		return ImportContributorResponse{}, errmsg.ErrorResponse{
 			Message:         "failed to create job",
 			Errors:          map[string]interface{}{"error db": err.Error()},
 			InternalErrCode: statuscode.IntCodeUnExpected,
@@ -146,9 +159,9 @@ func (s Service) CreateImportJob(ctx context.Context, req contributor.ImportCont
 
 	job.ID = jobID
 
-	if err := s.publisher.Publish(ctx, ProduceJob{JobID: job.ID, FilePath: job.FilePath}); err != nil {
+	if err := s.publisher.Publish(ctx, ProduceJob{JobID: job.ID}); err != nil {
 		_ = s.jobRepo.UpdateStatus(ctx, job.ID, PendingToQueue)
-		return contributor.ImportContributorResponse{
+		return ImportContributorResponse{
 			JobID:   job.ID,
 			Message: "job saved and will be queued shortly",
 		}, nil
@@ -156,7 +169,7 @@ func (s Service) CreateImportJob(ctx context.Context, req contributor.ImportCont
 
 	successSaveFile = true
 
-	return contributor.ImportContributorResponse{JobID: job.ID, Message: "file received"}, nil
+	return ImportContributorResponse{JobID: job.ID, Message: "file received"}, nil
 }
 
 func (s Service) ProcessJob(ctx context.Context, jobID uint) (ProcessResult, error) {

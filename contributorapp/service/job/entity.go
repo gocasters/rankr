@@ -21,8 +21,7 @@ type Job struct {
 }
 
 type ProduceJob struct {
-	JobID    uint
-	FilePath string
+	JobID uint
 }
 
 type Status string

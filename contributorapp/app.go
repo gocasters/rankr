@@ -47,15 +47,16 @@ func Setup(
 	cache := cachemanager.NewCacheManager(redisAdapter)
 
 	contributorRepo := repository.NewContributorRepo(config.Repository, postgresConn, logger)
-	contributorValidator := contributor.NewValidator(config.Validation)
+	contributorValidator := contributor.NewValidator()
 	contributorSvc := contributor.NewService(contributorRepo, *cache, contributorValidator)
 
 	jobRepo := repository.NewJobRepository(postgresConn)
 	failRecordRepo := repository.NewFailRecordRepository(postgresConn)
 	broker := repository.NewBroker(config.Broker, redisAdapter)
 	contributorAdapter := job.NewContributorAdapter(contributorSvc)
+	validator := job.NewValidator(config.Validation)
 
-	jobSvc := job.NewService(config.Job, jobRepo, broker, contributorAdapter, failRecordRepo)
+	jobSvc := job.NewService(config.Job, jobRepo, broker, contributorAdapter, failRecordRepo, validator)
 
 	contributorHandler := http.NewHandler(contributorSvc, jobSvc, logger)
 

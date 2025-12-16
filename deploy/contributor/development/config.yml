@@ -129,4 +129,8 @@ job:
   buffer_size: 50
 
 broker:
-  stream_key: "queue:job"
+  stream_key: contributor.import.jobs
+  group_name: contributor-import-workers
+  consumer_prefix: import-worker-
+  batch_size: 10
+  block_time: 5s
