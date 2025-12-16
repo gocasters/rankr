@@ -53,7 +53,7 @@ type UpdateProfileResponse struct {
 
 type UpsertContributorRequest struct {
 	GitHubID       int64       `json:"github_id"`
-	GitHubUsername string      `json:"github_username,omitempty"`
+	GitHubUsername string      `json:"github_username"`
 	DisplayName    string      `json:"display_name,omitempty"`
 	ProfileImage   string      `json:"profile_image,omitempty"`
 	Bio            string      `json:"bio,omitempty"`

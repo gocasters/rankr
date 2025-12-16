@@ -112,7 +112,7 @@ postgres_db:
 middleware:
   # 10MB in bytes
   file_size: 10485760
-  file_type :
+  file_type:
     - "csv"
     - "xlsx"
 

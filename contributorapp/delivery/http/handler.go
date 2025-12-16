@@ -103,8 +103,9 @@ func (h Handler) updateProfile(c echo.Context) error {
 }
 
 func (h Handler) uploadFile(c echo.Context) error {
-	claim := c.Get("Authorization").(*types.UserClaim)
-	if claim.Role.String() != types.Admin.String() {
+	claimVal := c.Get("Authorization")
+	claim, ok := claimVal.(*types.UserClaim)
+	if !ok || claim == nil || claim.Role.String() != types.Admin.String() {
 		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
 			"error": "unauthorized",
 		})
@@ -126,7 +127,12 @@ func (h Handler) uploadFile(c echo.Context) error {
 	}
 	defer srcFile.Close()
 
-	fileType, _ := c.Get("FileType").(string)
+	fileType, ok := c.Get("FileType").(string)
+	if !ok || fileType == "" {
+		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+			"error": "file type not detected by middleware",
+		})
+	}
 
 	res, err := h.JobService.CreateImportJob(c.Request().Context(), job.ImportContributorRequest{
 		File:     srcFile,
