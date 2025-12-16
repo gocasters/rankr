@@ -128,7 +128,7 @@ func (h Handler) uploadFile(c echo.Context) error {
 
 	fileType, _ := c.Get("FileType").(string)
 
-	res, err := h.JobService.CreateImportJob(c.Request().Context(), contributor.ImportContributorRequest{
+	res, err := h.JobService.CreateImportJob(c.Request().Context(), job.ImportContributorRequest{
 		File:     srcFile,
 		FileName: fileHeader.Filename,
 		FileType: fileType,
