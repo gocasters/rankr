@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/ThreeDotsLabs/watermill"
+
 	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -31,8 +33,9 @@ func (s *Service) HandleIssuesEvent(provider eventpb.EventProvider, action strin
 }
 
 func (s *Service) publishIssueOpened(req IssueOpenedRequest, provider eventpb.EventProvider, deliveryUID string) error {
+	_ = deliveryUID
 	ev := &eventpb.Event{
-		Id:             deliveryUID,
+		Id:             watermill.NewUUID(),
 		EventName:      eventpb.EventName_EVENT_NAME_ISSUE_OPENED,
 		Provider:       provider,
 		Time:           timestamppb.New(req.Issue.CreatedAt),
@@ -71,8 +74,9 @@ func (s *Service) publishIssueClosed(req IssueClosedRequest, provider eventpb.Ev
 		return fmt.Errorf("invalid IssueClosed payload: issue.closed_at is nil")
 	}
 
+	_ = deliveryUID
 	ev := &eventpb.Event{
-		Id:             deliveryUID,
+		Id:             watermill.NewUUID(),
 		EventName:      eventpb.EventName_EVENT_NAME_ISSUE_CLOSED,
 		Provider:       provider,
 		Time:           timestamppb.New(*req.Issue.ClosedAt),
