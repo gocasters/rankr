@@ -29,15 +29,20 @@ func NewValidator(repo ValidatorContributorRepository) Validator {
 
 func (v Validator) ValidateCreateContributorRequest(ctx context.Context, req CreateContributorRequest) error {
 	return validation.ValidateStruct(&req,
-		validation.Field(&req.GitHubID, validation.Required.Error(ErrValidationRequired), validation.Min(int64(1)).Error(ErrValidationPositive)),
+		validation.Field(
+			&req.GitHubID,
+			validation.When(req.GitHubID != 0, validation.Min(int64(1)).Error(ErrValidationPositive)),
+		),
 		validation.Field(&req.GitHubUsername, validation.Required.Error(ErrValidationRequired), validation.Length(3, 100).Error(ErrValidationLength3To100)),
+		validation.Field(&req.Password, validation.Required.Error(ErrValidationRequired), validation.Length(6, 72).Error(ErrValidationLength3To100)),
 		validation.Field(&req.DisplayName, validation.Length(0, 100).Error(ErrValidationLength3To100)),
 		validation.Field(&req.ProfileImage, validation.Length(0, 255)),
 		validation.Field(&req.Bio, validation.Length(0, 500)),
 		validation.Field(
 			&req.PrivacyMode,
-			validation.Required.Error(ErrValidationRequired),
-			validation.In(PrivacyModeReal, PrivacyModeAnonymous).Error(ErrValidationEnumPrivacy),
+			validation.When(req.PrivacyMode != "",
+				validation.In(PrivacyModeReal, PrivacyModeAnonymous).Error(ErrValidationEnumPrivacy),
+			),
 		),
 	)
 }
@@ -45,16 +50,27 @@ func (v Validator) ValidateCreateContributorRequest(ctx context.Context, req Cre
 func (v Validator) ValidateUpdateProfileRequest(ctx context.Context, req UpdateProfileRequest) error {
 	return validation.ValidateStruct(&req,
 		validation.Field(&req.ID, validation.Required.Error(ErrValidationRequired), validation.By(checkID)),
-		validation.Field(&req.GitHubID, validation.Required.Error(ErrValidationRequired), validation.Min(int64(1)).Error(ErrValidationPositive)),
+		validation.Field(
+			&req.GitHubID,
+			validation.When(req.GitHubID != 0, validation.Min(int64(1)).Error(ErrValidationPositive)),
+		),
 		validation.Field(&req.GitHubUsername, validation.Required.Error(ErrValidationRequired), validation.Length(3, 100).Error(ErrValidationLength3To100)),
 		validation.Field(&req.DisplayName, validation.Length(0, 100).Error(ErrValidationLength3To100)),
 		validation.Field(&req.ProfileImage, validation.Length(0, 255)),
 		validation.Field(&req.Bio, validation.Length(0, 500)),
 		validation.Field(
 			&req.PrivacyMode,
-			validation.Required.Error(ErrValidationRequired),
-			validation.In(PrivacyModeReal, PrivacyModeAnonymous).Error(ErrValidationEnumPrivacy),
+			validation.When(req.PrivacyMode != "",
+				validation.In(PrivacyModeReal, PrivacyModeAnonymous).Error(ErrValidationEnumPrivacy),
+			),
 		),
+	)
+}
+
+func (v Validator) ValidateUpdatePasswordRequest(_ context.Context, req UpdatePasswordRequest) error {
+	return validation.ValidateStruct(&req,
+		validation.Field(&req.ID, validation.Required.Error(ErrValidationRequired), validation.By(checkID)),
+		validation.Field(&req.NewPassword, validation.Required.Error(ErrValidationRequired), validation.Length(6, 72).Error(ErrValidationLength3To100)),
 	)
 }
 

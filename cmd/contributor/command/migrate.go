@@ -53,7 +53,12 @@ func migrate() {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	mgr := migrator.New(cfg.PostgresDB, cfg.PathOfMigration)
+	migrationPath := cfg.PathOfMigration
+	if cfg.PostgresDB.PathOfMigrations != "" {
+		migrationPath = cfg.PostgresDB.PathOfMigrations
+	}
+
+	mgr := migrator.New(cfg.PostgresDB, migrationPath)
 
 	if up {
 		mgr.Up()

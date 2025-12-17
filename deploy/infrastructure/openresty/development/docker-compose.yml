@@ -8,15 +8,13 @@ services:
       - ./nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf:ro
       - ./conf.d:/usr/local/openresty/nginx/conf/conf.d:ro
     networks:
-      - rankr-net
+      - rankr-shared-development-network
 #    depends_on:
 #      - postgres
 #      - auth
 
 
-
-
 networks:
-  rankr-net:
-    name: rankr-development-network
+  rankr-shared-development-network:
+    name: rankr-shared-development-network
     external: true

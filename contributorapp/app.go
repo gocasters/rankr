@@ -63,7 +63,7 @@ func Setup(
 		logger.Error("failed to initialize gRPC server", "err", err)
 		return Application{}, err
 	}
-	grpcHandler := contribgrpc.NewHandler()
+	grpcHandler := contribgrpc.NewHandler(contributorSvc)
 	contributorGRPC := contribgrpc.New(grpcServer, grpcHandler)
 	return Application{
 		ContributorRepo:    contributorRepo,

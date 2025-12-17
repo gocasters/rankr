@@ -72,7 +72,11 @@ func serve() {
 
 	// Run migrations if flags are set
 	if migrateUp || migrateDown {
-		mgr := migrator.New(cfg.PostgresDB, cfg.PostgresDB.PathOfMigrations)
+		migrationPath := cfg.PostgresDB.PathOfMigrations
+		if migrationPath == "" && cfg.PathOfMigration != "" {
+			migrationPath = cfg.PathOfMigration
+		}
+		mgr := migrator.New(cfg.PostgresDB, migrationPath)
 		if migrateUp {
 			contributorLogger.Info("Running migrations up...")
 			mgr.Up()

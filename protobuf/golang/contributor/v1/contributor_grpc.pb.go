@@ -20,6 +20,8 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	ContributorService_GetContributor_FullMethodName = "/contributor.v1.ContributorService/GetContributor"
+	ContributorService_UpdatePassword_FullMethodName = "/contributor.v1.ContributorService/UpdatePassword"
+	ContributorService_VerifyPassword_FullMethodName = "/contributor.v1.ContributorService/VerifyPassword"
 )
 
 // ContributorServiceClient is the client API for ContributorService service.
@@ -27,6 +29,8 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type ContributorServiceClient interface {
 	GetContributor(ctx context.Context, in *GetContributorRequest, opts ...grpc.CallOption) (*GetContributorResponse, error)
+	UpdatePassword(ctx context.Context, in *UpdatePasswordRequest, opts ...grpc.CallOption) (*UpdatePasswordResponse, error)
+	VerifyPassword(ctx context.Context, in *VerifyPasswordRequest, opts ...grpc.CallOption) (*VerifyPasswordResponse, error)
 }
 
 type contributorServiceClient struct {
@@ -47,11 +51,33 @@ func (c *contributorServiceClient) GetContributor(ctx context.Context, in *GetCo
 	return out, nil
 }
 
+func (c *contributorServiceClient) UpdatePassword(ctx context.Context, in *UpdatePasswordRequest, opts ...grpc.CallOption) (*UpdatePasswordResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdatePasswordResponse)
+	err := c.cc.Invoke(ctx, ContributorService_UpdatePassword_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *contributorServiceClient) VerifyPassword(ctx context.Context, in *VerifyPasswordRequest, opts ...grpc.CallOption) (*VerifyPasswordResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(VerifyPasswordResponse)
+	err := c.cc.Invoke(ctx, ContributorService_VerifyPassword_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ContributorServiceServer is the server API for ContributorService service.
 // All implementations must embed UnimplementedContributorServiceServer
 // for forward compatibility.
 type ContributorServiceServer interface {
 	GetContributor(context.Context, *GetContributorRequest) (*GetContributorResponse, error)
+	UpdatePassword(context.Context, *UpdatePasswordRequest) (*UpdatePasswordResponse, error)
+	VerifyPassword(context.Context, *VerifyPasswordRequest) (*VerifyPasswordResponse, error)
 	mustEmbedUnimplementedContributorServiceServer()
 }
 
@@ -64,6 +90,12 @@ type UnimplementedContributorServiceServer struct{}
 
 func (UnimplementedContributorServiceServer) GetContributor(context.Context, *GetContributorRequest) (*GetContributorResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetContributor not implemented")
+}
+func (UnimplementedContributorServiceServer) UpdatePassword(context.Context, *UpdatePasswordRequest) (*UpdatePasswordResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdatePassword not implemented")
+}
+func (UnimplementedContributorServiceServer) VerifyPassword(context.Context, *VerifyPasswordRequest) (*VerifyPasswordResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method VerifyPassword not implemented")
 }
 func (UnimplementedContributorServiceServer) mustEmbedUnimplementedContributorServiceServer() {}
 func (UnimplementedContributorServiceServer) testEmbeddedByValue()                            {}
@@ -104,6 +136,42 @@ func _ContributorService_GetContributor_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ContributorService_UpdatePassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdatePasswordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContributorServiceServer).UpdatePassword(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContributorService_UpdatePassword_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContributorServiceServer).UpdatePassword(ctx, req.(*UpdatePasswordRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ContributorService_VerifyPassword_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VerifyPasswordRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ContributorServiceServer).VerifyPassword(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ContributorService_VerifyPassword_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ContributorServiceServer).VerifyPassword(ctx, req.(*VerifyPasswordRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ContributorService_ServiceDesc is the grpc.ServiceDesc for ContributorService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -114,6 +182,14 @@ var ContributorService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetContributor",
 			Handler:    _ContributorService_GetContributor_Handler,
+		},
+		{
+			MethodName: "UpdatePassword",
+			Handler:    _ContributorService_UpdatePassword_Handler,
+		},
+		{
+			MethodName: "VerifyPassword",
+			Handler:    _ContributorService_VerifyPassword_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

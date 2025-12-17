@@ -3,38 +3,35 @@ package grpc
 import (
 	"context"
 
+	"github.com/gocasters/rankr/contributorapp/service/contributor"
 	"github.com/gocasters/rankr/pkg/logger"
 	contributorpb "github.com/gocasters/rankr/protobuf/golang/contributor/v1"
+	types "github.com/gocasters/rankr/type"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
-
-// Handler implements the contributor gRPC service.
-// For now we return a static credential so the auth service can complete login flows locally.
 type Handler struct {
 	contributorpb.UnimplementedContributorServiceServer
+	svc contributor.Service
 }
 
-func NewHandler() Handler {
-	return Handler{}
+func NewHandler(svc contributor.Service) Handler {
+	return Handler{svc: svc}
 }
 
-func (h Handler) GetContributor(_ context.Context, req *contributorpb.GetContributorRequest) (*contributorpb.GetContributorResponse, error) {
-	username := req.GetGithubUsername()
-	if username == "" {
-		return nil, status.Error(codes.InvalidArgument, "github_username is required")
+func (h Handler) VerifyPassword(ctx context.Context, req *contributorpb.VerifyPasswordRequest) (*contributorpb.VerifyPasswordResponse, error) {
+	res, err := h.svc.VerifyPassword(ctx, contributor.VerifyPasswordRequest{
+		ID:             types.ID(req.GetContributorId()),
+		GitHubUsername: req.GetGithubUsername(),
+		Password:       req.GetPassword(),
+	})
+	if err != nil {
+		logger.L().Warn("verify_password_failed", "error", err)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	logger.L().Info("GetContributor request received", "github_username", username)
-
-	// Temporary hardcoded credentials for local testing.
-	// Only allow a single known user to avoid authenticating arbitrary usernames.
-	if username != "testuser" {
-		return nil, status.Error(codes.NotFound, "contributor not found")
-	}
-
-	return &contributorpb.GetContributorResponse{
-		ContributorId: 1,
-		Password:      "pass",
+	return &contributorpb.VerifyPasswordResponse{
+		Valid:         res.Valid,
+		ContributorId: int64(res.ID),
 	}, nil
 }

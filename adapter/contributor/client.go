@@ -14,11 +14,6 @@ type Client struct {
 	contributorService contributorpb.ContributorServiceClient
 }
 
-type Credentials struct {
-	ID       types.ID
-	Password string
-}
-
 func New(rpcClient *grpc.RPCClient) (*Client, error) {
 	if rpcClient == nil || rpcClient.Conn == nil {
 		return nil, fmt.Errorf("grpc RPC client no initialized (nil connection)")
@@ -36,21 +31,22 @@ func (c *Client) Close() {
 	}
 }
 
-func (c *Client) GetCredentialsByGitHubUsername(ctx context.Context, githubUsername string) (Credentials, error) {
-	req := &contributorpb.GetContributorRequest{
-		GithubUsername: githubUsername,
+func (c *Client) VerifyPassword(ctx context.Context, username string, password string) (types.ID, bool, error) {
+	req := &contributorpb.VerifyPasswordRequest{
+		Password:      password,
+		GithubUsername: username,
 	}
 
-	res, err := c.contributorService.GetContributor(ctx, req)
+	res, err := c.contributorService.VerifyPassword(ctx, req)
 	if err != nil {
-		return Credentials{}, err
+		return 0, false, err
 	}
 	if res == nil {
-		return Credentials{}, fmt.Errorf("empty contributor response")
+
+
+		
+		return 0, false, fmt.Errorf("empty verify password response")
 	}
 
-	return Credentials{
-		ID:       types.ID(res.ContributorId),
-		Password: res.Password,
-	}, nil
+	return types.ID(res.GetContributorId()), res.GetValid(), nil
 }
