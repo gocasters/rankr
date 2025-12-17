@@ -530,16 +530,16 @@ type BulkInsertResult struct {
 func (repo *WebhookRepository) SaveHistoricalEventsBulk(
 	ctx context.Context,
 	inputs []HistoricalEventInput,
-) (BulkInsertResult, error) {
+) ([]HistoricalEventInput, BulkInsertResult, error) {
 	bulkResult := BulkInsertResult{}
 
 	if len(inputs) == 0 {
-		return bulkResult, nil
+		return nil, bulkResult, nil
 	}
 
 	tx, err := repo.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		return bulkResult, fmt.Errorf("failed to begin transaction: %w", err)
+		return nil, bulkResult, fmt.Errorf("failed to begin transaction: %w", err)
 	}
 	defer func() {
 		if err := tx.Rollback(ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
@@ -559,7 +559,7 @@ func (repo *WebhookRepository) SaveHistoricalEventsBulk(
 	for _, input := range inputs {
 		payload, err := proto.Marshal(input.Event)
 		if err != nil {
-			return bulkResult, fmt.Errorf("failed to marshal event %s: %w", input.Event.Id, err)
+			return nil, bulkResult, fmt.Errorf("failed to marshal event %s: %w", input.Event.Id, err)
 		}
 
 		eventKey := BuildEventKey(input.Event.Provider, input.ResourceType, input.ResourceID, input.Event.EventName)
@@ -578,6 +578,7 @@ func (repo *WebhookRepository) SaveHistoricalEventsBulk(
 
 	results := tx.SendBatch(ctx, batch)
 
+	var inserted []HistoricalEventInput
 	for i := 0; i < batch.Len(); i++ {
 		cmdTag, err := results.Exec()
 		if err != nil {
@@ -587,23 +588,24 @@ func (repo *WebhookRepository) SaveHistoricalEventsBulk(
 				continue
 			}
 			results.Close()
-			return bulkResult, fmt.Errorf("failed to execute batch insert for event %d: %w", i, err)
+			return nil, bulkResult, fmt.Errorf("failed to execute batch insert for event %d: %w", i, err)
 		}
 
 		if cmdTag.RowsAffected() > 0 {
 			bulkResult.Inserted++
+			inserted = append(inserted, inputs[i])
 		} else {
 			bulkResult.Duplicates++
 		}
 	}
 
 	if err := results.Close(); err != nil {
-		return bulkResult, fmt.Errorf("failed to close batch results: %w", err)
+		return nil, bulkResult, fmt.Errorf("failed to close batch results: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return bulkResult, fmt.Errorf("failed to commit transaction: %w", err)
+		return nil, bulkResult, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
-	return bulkResult, nil
+	return inserted, bulkResult, nil
 }
