@@ -13,7 +13,7 @@ logger:
   file_max_age_in_days: 7
 
 nats:
-  url: nats://supersecret@localhost:4222
+  url: nats://localhost:4223
   connect_timeout: "30s"
   reconnect_wait: "1s"
   retry_on_failed_connect: true
@@ -40,7 +40,7 @@ path_of_migration: "./webhookapp/repository/migrations"
 
 redis:
   host: "localhost"
-  port: 6389
+  port: 6380
   password: ""
   db: 0
 

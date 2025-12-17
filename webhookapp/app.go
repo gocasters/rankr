@@ -161,5 +161,5 @@ func startBulkInsertScheduler(app Application, done <-chan bool, wg *sync.WaitGr
 		slog.Int("interval_seconds", app.Config.BulkInsertConfig.BulkInsertIntervalInSeconds),
 	)
 
-	go app.RecoveryScheduler.Start(done, wg)
+	go app.BulkInsertScheduler.Start(done, wg)
 }
