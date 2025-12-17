@@ -5,6 +5,11 @@ import (
 	"encoding/json"
 	"strings"
 
+
+
+	"github.com/ThreeDotsLabs/watermill"
+
+
 	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -37,8 +42,9 @@ func (s *Service) publishPush(req PushRequest, provider eventpb.EventProvider, d
 		commitInfos = append(commitInfos, commitInfo)
 	}
 
+	_ = deliveryUID
 	ev := &eventpb.Event{
-		Id:        deliveryUID,
+		Id:        watermill.NewUUID(),
 		EventName: eventpb.EventName_EVENT_NAME_PUSHED,
 		Provider:  provider,
 		//TODO we have no time for when push happened
