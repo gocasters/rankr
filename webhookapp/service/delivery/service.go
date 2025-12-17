@@ -3,6 +3,8 @@ package delivery
 import (
 	"context"
 	"fmt"
+	"log/slog"
+
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/gocasters/rankr/pkg/logger"
@@ -106,7 +108,7 @@ func (s *Service) ProcessBatch(ctx context.Context) error {
 		return nil
 	}
 
-	logger.L().Debug("row events", events)
+	logger.L().Debug("row events", slog.Any("events", events))
 
 	savedEvents, err := s.repo.BulkInsertPostgresSQL(ctx, events)
 	if err != nil {
@@ -114,7 +116,7 @@ func (s *Service) ProcessBatch(ctx context.Context) error {
 		return fmt.Errorf("bulk insert failed: %w", err)
 	}
 
-	logger.L().Debug("events", savedEvents)
+	logger.L().Debug("events", slog.Any("savedEvents", savedEvents))
 
 	for _, ev := range savedEvents {
 		payload, err := proto.Marshal(ev)
