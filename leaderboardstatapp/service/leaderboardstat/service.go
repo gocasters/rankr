@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/gocasters/rankr/adapter/leaderboardscoring"
+	"github.com/gocasters/rankr/adapter/project"
 	lbscoring "github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 
 	"github.com/gocasters/rankr/pkg/cachemanager"
@@ -16,10 +17,6 @@ import (
 	"strconv"
 	"time"
 )
-
-type LeaderboardScoringRPC interface {
-	//GetContributorScores(ctx context.Context, contributorID types.ID) (*leaderboardscoringpb.ContributorScoresResponse, error)
-}
 
 type Repository interface {
 	GetContributorTotalScore(ctx context.Context, ID types.ID) (float64, error)
@@ -35,7 +32,7 @@ type Repository interface {
 }
 
 type RedisLeaderboardRepository interface {
-	GetPublicLeaderboardPaginated(ctx context.Context, projectID types.ID, page int32, pageSize int32) ([]UserScoreEntry, int64, *time.Time, error)
+	GetPublicLeaderboardPaginated(ctx context.Context, projectID types.ID, page int32, pageSize int32) ([]UserScoreEntry, int64, error)
 	SetPublicLeaderboard(ctx context.Context, projectID types.ID, userScores map[int]float64, ttl time.Duration) error
 }
 
@@ -48,7 +45,7 @@ type Service struct {
 	projectClient        *project.Client
 }
 
-func NewService(repo Repository, validator Validator, cacheManger cachemanager.CacheManager, rpc LeaderboardScoringRPC, lbClient *leaderboardscoring.Client) Service {
+func NewService(repo Repository, validator Validator, cacheManger cachemanager.CacheManager, redisLeaderboardRepo RedisLeaderboardRepository, lbClient *leaderboardscoring.Client, projectClient *project.Client) Service {
 	return Service{
 		repository:           repo,
 		validator:            validator,
@@ -390,16 +387,16 @@ func (s *Service) GetPublicLeaderboard(ctx context.Context, projectID types.ID, 
 	log := logger.L()
 	log.Info("GetPublicLeaderboard called")
 
-	if page < 1 {
-		page = 1
-	}
-
-	userScoreEntries, total, lastUpdated, err := s.redisLeaderboardRepo.GetPublicLeaderboardPaginated(ctx, projectID, page, pageSize)
+	userScoreEntries, total, err := s.redisLeaderboardRepo.GetPublicLeaderboardPaginated(ctx, projectID, page, pageSize)
 	if err != nil {
 		log.Error("Failed to get public leaderboard",
 			slog.Uint64("project_id", uint64(projectID)),
 			slog.String("error", err.Error()))
 		return ProjectScoreList{}, fmt.Errorf("failed to get leaderboard: %w", err)
+	}
+
+	if page < 1 {
+		page = 1
 	}
 	startRank := (page-1)*pageSize + 1
 
@@ -418,13 +415,12 @@ func (s *Service) GetPublicLeaderboard(ctx context.Context, projectID types.ID, 
 	}
 
 	return ProjectScoreList{
-		ProjectID:   projectID,
-		UsersScore:  userScoreList,
-		Total:       uint64(total),
-		Page:        page,
-		PageSize:    pageSize,
-		TotalPages:  totalPages,
-		LastUpdated: lastUpdated,
+		ProjectID:  projectID,
+		UsersScore: userScoreList,
+		Total:      uint64(total),
+		Page:       page,
+		PageSize:   pageSize,
+		TotalPages: totalPages,
 	}, nil
 }
 
@@ -498,7 +494,7 @@ func (s *Service) SetPublicLeaderboard(ctx context.Context) error {
 
 		for {
 			getLeaderboardReq := &lbscoring.GetLeaderboardRequest{
-				Timeframe: "all_time",
+				Timeframe: "daily",
 				ProjectID: &proj.GitRepoID,
 				PageSize:  pageSize,
 				Offset:    offset,
@@ -509,7 +505,7 @@ func (s *Service) SetPublicLeaderboard(ctx context.Context) error {
 				log.Error("Failed to get leaderboard data for project",
 					slog.String("git_repo_id", proj.GitRepoID),
 					slog.String("error", err.Error()))
-				return fmt.Errorf("failed to get leaderboard data for project %d: %w", projectID, err)
+				break
 			}
 
 			for _, row := range leaderboardRes.LeaderboardRows {

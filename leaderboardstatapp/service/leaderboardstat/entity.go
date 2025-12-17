@@ -55,13 +55,12 @@ type ContributorTotalStats struct {
 }
 
 type ProjectScoreList struct {
-	ProjectID   types.ID    `koanf:"project_id"`
-	UsersScore  []UserScore `koanf:"user_scores"`
-	Total       uint64      `koanf:"total"`
-	Page        int32       `koanf:"page"`
-	PageSize    int32       `koanf:"page_size"`
-	TotalPages  int32       `koanf:"total_pages"`
-	LastUpdated *time.Time  `koanf:"last_updated"`
+	ProjectID  types.ID    `koanf:"project_id"`
+	UsersScore []UserScore `koanf:"user_scores"`
+	Total      uint64      `koanf:"total"`
+	Page       int32       `koanf:"page"`
+	PageSize   int32       `koanf:"page_size"`
+	TotalPages int32       `koanf:"total_pages"`
 }
 
 type UserScore struct {

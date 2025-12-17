@@ -2,6 +2,8 @@ package grpc
 
 import (
 	"context"
+	"log/slog"
+
 	"github.com/gocasters/rankr/leaderboardstatapp/service/leaderboardstat"
 	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/gocasters/rankr/pkg/slice"
@@ -10,7 +12,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"log/slog"
 )
 
 type Handler struct {
@@ -91,15 +92,9 @@ func (h Handler) GetPublicLeaderboard(ctx context.Context, req *leaderboardstatp
 		items = append(items, item)
 	}
 
-	var lastUpdated *timestamppb.Timestamp
-	if scoreList.LastUpdated != nil {
-		lastUpdated = timestamppb.New(*scoreList.LastUpdated)
-	}
-
 	response := &leaderboardstatpb.GetPublicLeaderboardResponse{
-		ProjectId:   projectId,
-		Rows:        items,
-		LastUpdated: lastUpdated,
+		ProjectId: projectId,
+		Rows:      items,
 	}
 
 	return response, nil

@@ -27,7 +27,7 @@ postgres_db:
   host: "localhost"
   port: 5439
   user: "webhook_user"
-  password: "webhook_pass"
+  password: "change_me_webhook"
   db_name: "webhook_db"
   ssl_mode: "disable"
   max_conns: 100

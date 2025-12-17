@@ -23,29 +23,20 @@ func NewRedisLeaderboardRepository(client *redis.Client) *RedisLeaderboardReposi
 	}
 }
 
-func (r *RedisLeaderboardRepository) GetPublicLeaderboardPaginated(ctx context.Context, projectID types.ID, page, pageSize int32) ([]leaderboardstat.UserScoreEntry, int64, *time.Time, error) {
+func (r *RedisLeaderboardRepository) GetPublicLeaderboardPaginated(ctx context.Context, projectID types.ID, page, pageSize int32) ([]leaderboardstat.UserScoreEntry, int64, error) {
 	cacheKey := fmt.Sprintf("public_leaderboard:project:%d", projectID)
-	lastUpdatedKey := fmt.Sprintf("public_leaderboard:project:%d:last_updated", projectID)
 
 	start := (page - 1) * pageSize
 	stop := start + pageSize - 1
 
 	total, err := r.client.ZCard(ctx, cacheKey).Result()
 	if err != nil {
-		return nil, 0, nil, fmt.Errorf("failed to get leaderboard count: %w", err)
+		return nil, 0, fmt.Errorf("failed to get leaderboard count: %w", err)
 	}
 
 	results, err := r.client.ZRevRangeWithScores(ctx, cacheKey, int64(start), int64(stop)).Result()
 	if err != nil {
-		return nil, 0, nil, fmt.Errorf("failed to get leaderboard range: %w", err)
-	}
-
-	lastUpdatedStr, err := r.client.Get(ctx, lastUpdatedKey).Result()
-	var lastUpdated *time.Time
-	if err == nil && lastUpdatedStr != "" {
-		if parsedTime, parseErr := time.Parse(time.RFC3339, lastUpdatedStr); parseErr == nil {
-			lastUpdated = &parsedTime
-		}
+		return nil, 0, fmt.Errorf("failed to get leaderboard range: %w", err)
 	}
 
 	userScores := make([]leaderboardstat.UserScoreEntry, 0, len(results))
@@ -66,13 +57,12 @@ func (r *RedisLeaderboardRepository) GetPublicLeaderboardPaginated(ctx context.C
 		})
 	}
 
-	return userScores, total, lastUpdated, nil
+	return userScores, total, nil
 }
 
 func (r *RedisLeaderboardRepository) SetPublicLeaderboard(ctx context.Context, projectID types.ID, userScores map[int]float64, ttl time.Duration) error {
 	log := logger.L()
 	cacheKey := fmt.Sprintf("public_leaderboard:project:%d", projectID)
-	lastUpdatedKey := fmt.Sprintf("public_leaderboard:project:%d:last_updated", projectID)
 
 	pipe := r.client.Pipeline()
 
@@ -85,8 +75,7 @@ func (r *RedisLeaderboardRepository) SetPublicLeaderboard(ctx context.Context, p
 		})
 	}
 
-	now := time.Now().UTC()
-	pipe.Set(ctx, lastUpdatedKey, now.Format(time.RFC3339), 0)
+	pipe.Expire(ctx, cacheKey, ttl)
 
 	_, err := pipe.Exec(ctx)
 	if err != nil {
@@ -99,7 +88,7 @@ func (r *RedisLeaderboardRepository) SetPublicLeaderboard(ctx context.Context, p
 	log.Info("Set public leaderboard successfully",
 		slog.String("cache_key", cacheKey),
 		slog.Int("user_count", len(userScores)),
-		slog.String("last_updated", now.Format(time.RFC3339)))
+		slog.String("ttl", ttl.String()))
 
 	return nil
 }
