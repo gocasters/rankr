@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-
 	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )

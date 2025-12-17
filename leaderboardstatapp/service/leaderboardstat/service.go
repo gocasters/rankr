@@ -3,9 +3,7 @@ package leaderboardstat
 import (
 	"context"
 	"fmt"
-
 	"github.com/gocasters/rankr/adapter/leaderboardscoring"
-	"github.com/gocasters/rankr/adapter/project"
 	lbscoring "github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 
 	"github.com/gocasters/rankr/pkg/cachemanager"
@@ -18,6 +16,10 @@ import (
 	"strconv"
 	"time"
 )
+
+type LeaderboardScoringRPC interface {
+	//GetContributorScores(ctx context.Context, contributorID types.ID) (*leaderboardscoringpb.ContributorScoresResponse, error)
+}
 
 type Repository interface {
 	GetContributorTotalScore(ctx context.Context, ID types.ID) (float64, error)
@@ -46,7 +48,7 @@ type Service struct {
 	projectClient        *project.Client
 }
 
-func NewService(repo Repository, validator Validator, cacheManger cachemanager.CacheManager, redisLeaderboardRepo RedisLeaderboardRepository, lbClient *leaderboardscoring.Client, projectClient *project.Client) Service {
+func NewService(repo Repository, validator Validator, cacheManger cachemanager.CacheManager, rpc LeaderboardScoringRPC, lbClient *leaderboardscoring.Client) Service {
 	return Service{
 		repository:           repo,
 		validator:            validator,
@@ -507,7 +509,7 @@ func (s *Service) SetPublicLeaderboard(ctx context.Context) error {
 				log.Error("Failed to get leaderboard data for project",
 					slog.String("git_repo_id", proj.GitRepoID),
 					slog.String("error", err.Error()))
-				break
+				return fmt.Errorf("failed to get leaderboard data for project %d: %w", projectID, err)
 			}
 
 			for _, row := range leaderboardRes.LeaderboardRows {

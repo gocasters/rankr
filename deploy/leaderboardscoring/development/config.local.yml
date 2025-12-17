@@ -52,10 +52,12 @@ nats_adapter:
   url: "nats://localhost:4223"
   max_reconnects: -1
   reconnect_wait: 1s
+
   max_messages: 10000
   max_bytes: 104857600
   max_age: 24h
   storage_type: "memory"
+
   replicas: 1
   retention_policy: "workqueue"
 

@@ -37,7 +37,7 @@ leaderboard_scoring_rpc:
 
 project_rpc:
   host: "project-app"
-  port: 8094
+  port: 8092
   grpc_service_name: "project.v1.ProjectService"
   max_attempts: 3
   initial_backoff: 1s
