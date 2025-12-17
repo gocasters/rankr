@@ -91,9 +91,15 @@ func (h Handler) GetPublicLeaderboard(ctx context.Context, req *leaderboardstatp
 		items = append(items, item)
 	}
 
+	var lastUpdated *timestamppb.Timestamp
+	if scoreList.LastUpdated != nil {
+		lastUpdated = timestamppb.New(*scoreList.LastUpdated)
+	}
+
 	response := &leaderboardstatpb.GetPublicLeaderboardResponse{
-		ProjectId: projectId,
-		Rows:      items,
+		ProjectId:   projectId,
+		Rows:        items,
+		LastUpdated: lastUpdated,
 	}
 
 	return response, nil

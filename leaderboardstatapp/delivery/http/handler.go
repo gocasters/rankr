@@ -45,8 +45,9 @@ type PublicLeaderboardRowResponse struct {
 }
 
 type GetPublicLeaderboardResponse struct {
-	ProjectID string                         `json:"project_id"`
-	Rows      []PublicLeaderboardRowResponse `json:"rows"`
+	ProjectID   string                         `json:"project_id"`
+	Rows        []PublicLeaderboardRowResponse `json:"rows"`
+	LastUpdated *string                        `json:"last_updated,omitempty"`
 }
 
 func (h Handler) GetPublicLeaderboard(c echo.Context) error {
@@ -98,9 +99,16 @@ func (h Handler) GetPublicLeaderboard(c echo.Context) error {
 		})
 	}
 
+	var lastUpdatedStr *string
+	if result.LastUpdated != nil {
+		formatted := result.LastUpdated.Format("2006-01-02T15:04:05Z07:00")
+		lastUpdatedStr = &formatted
+	}
+
 	response := GetPublicLeaderboardResponse{
-		ProjectID: projectID,
-		Rows:      rows,
+		ProjectID:   projectID,
+		Rows:        rows,
+		LastUpdated: lastUpdatedStr,
 	}
 
 	return c.JSON(http.StatusOK, response)

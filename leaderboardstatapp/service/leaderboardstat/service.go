@@ -33,7 +33,7 @@ type Repository interface {
 }
 
 type RedisLeaderboardRepository interface {
-	GetPublicLeaderboardPaginated(ctx context.Context, projectID types.ID, page int32, pageSize int32) ([]UserScoreEntry, int64, error)
+	GetPublicLeaderboardPaginated(ctx context.Context, projectID types.ID, page int32, pageSize int32) ([]UserScoreEntry, int64, *time.Time, error)
 	SetPublicLeaderboard(ctx context.Context, projectID types.ID, userScores map[int]float64, ttl time.Duration) error
 }
 
@@ -392,7 +392,7 @@ func (s *Service) GetPublicLeaderboard(ctx context.Context, projectID types.ID, 
 		page = 1
 	}
 
-	userScoreEntries, total, err := s.redisLeaderboardRepo.GetPublicLeaderboardPaginated(ctx, projectID, page, pageSize)
+	userScoreEntries, total, lastUpdated, err := s.redisLeaderboardRepo.GetPublicLeaderboardPaginated(ctx, projectID, page, pageSize)
 	if err != nil {
 		log.Error("Failed to get public leaderboard",
 			slog.Uint64("project_id", uint64(projectID)),
@@ -416,12 +416,13 @@ func (s *Service) GetPublicLeaderboard(ctx context.Context, projectID types.ID, 
 	}
 
 	return ProjectScoreList{
-		ProjectID:  projectID,
-		UsersScore: userScoreList,
-		Total:      uint64(total),
-		Page:       page,
-		PageSize:   pageSize,
-		TotalPages: totalPages,
+		ProjectID:   projectID,
+		UsersScore:  userScoreList,
+		Total:       uint64(total),
+		Page:        page,
+		PageSize:    pageSize,
+		TotalPages:  totalPages,
+		LastUpdated: lastUpdated,
 	}, nil
 }
 
