@@ -7,7 +7,7 @@ services:
     volumes:
       - ../../..:/app
     ports:
-      - "8090:8090"
+      - "8086:8090"
     networks:
       - rankr-shared-development-network
     environment:

@@ -31,15 +31,14 @@ func (s Server) Stop(ctx context.Context) error {
 }
 
 func (s Server) RegisterRoutes() {
-	// TODO- Add tracing middleware
-
-	// create v1 group
 	v1 := s.HTTPServer.GetRouter().Group("v1")
 	v1.GET("/health-check", s.healthCheck)
 
 	// contributor group
 	contributorGroup := v1.Group("/contributors")
 	contributorGroup.GET("/:id/stats", s.Handler.GetContributorStats)
-	//contributorGroup.GET("/:id/rank", s.Handler.GetContributorRank)
 
+	// public leaderboard
+	leaderboardGroup := v1.Group("/leaderboard")
+	leaderboardGroup.GET("/public/:project_id", s.Handler.GetPublicLeaderboard)
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/gocasters/rankr/adapter/leaderboardscoring"
+	"github.com/gocasters/rankr/adapter/project"
 	lbscoring "github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 
 	"github.com/gocasters/rankr/pkg/cachemanager"
@@ -16,10 +17,6 @@ import (
 	"strconv"
 	"time"
 )
-
-type LeaderboardScoringRPC interface {
-	//GetContributorScores(ctx context.Context, contributorID types.ID) (*leaderboardscoringpb.ContributorScoresResponse, error)
-}
 
 type Repository interface {
 	GetContributorTotalScore(ctx context.Context, ID types.ID) (float64, error)
@@ -40,21 +37,22 @@ type RedisLeaderboardRepository interface {
 }
 
 type Service struct {
-	repository            Repository
-	validator             Validator
-	cacheManager          cachemanager.CacheManager
-	leaderboardScoringRPC LeaderboardScoringRPC
-	lbScoringClient       *leaderboardscoring.Client
-	redisLeaderboardRepo  RedisLeaderboardRepository
+	repository           Repository
+	validator            Validator
+	cacheManager         cachemanager.CacheManager
+	redisLeaderboardRepo RedisLeaderboardRepository
+	lbScoringClient      *leaderboardscoring.Client
+	projectClient        *project.Client
 }
 
-func NewService(repo Repository, validator Validator, cacheManger cachemanager.CacheManager, rpc LeaderboardScoringRPC, lbClient *leaderboardscoring.Client) Service {
+func NewService(repo Repository, validator Validator, cacheManger cachemanager.CacheManager, redisLeaderboardRepo RedisLeaderboardRepository, lbClient *leaderboardscoring.Client, projectClient *project.Client) Service {
 	return Service{
-		repository:            repo,
-		validator:             validator,
-		cacheManager:          cacheManger,
-		leaderboardScoringRPC: rpc,
-		lbScoringClient:       lbClient,
+		repository:           repo,
+		validator:            validator,
+		cacheManager:         cacheManger,
+		redisLeaderboardRepo: redisLeaderboardRepo,
+		lbScoringClient:      lbClient,
+		projectClient:        projectClient,
 	}
 }
 
@@ -434,14 +432,60 @@ func (s *Service) SetPublicLeaderboard(ctx context.Context) error {
 		return fmt.Errorf("leaderboardscoring client is not initialized")
 	}
 
+	if s.projectClient == nil {
+		return fmt.Errorf("project client is not initialized")
+	}
+
+	var allProjects []project.ProjectItem
+	projectPageSize := int32(100)
+	projectOffset := int32(0)
+
+	for {
+		projectsRes, err := s.projectClient.ListProjects(ctx, &project.ListProjectsRequest{
+			PageSize: projectPageSize,
+			Offset:   projectOffset,
+		})
+		if err != nil {
+			log.Error("Failed to fetch projects from project service",
+				slog.Int("offset", int(projectOffset)),
+				slog.String("error", err.Error()))
+			return fmt.Errorf("failed to fetch projects at offset %d: %w", projectOffset, err)
+		}
+
+		if len(projectsRes.Projects) == 0 {
+			break
+		}
+
+		allProjects = append(allProjects, projectsRes.Projects...)
+
+		if int32(len(projectsRes.Projects)) < projectPageSize {
+			break
+		}
+
+		projectOffset += projectPageSize
+	}
+
+	if len(allProjects) == 0 {
+		log.Warn("No projects found in project service")
+		return nil
+	}
+
+	log.Info("Fetched projects from project service", slog.Int("count", len(allProjects)))
+
 	ttl := 3 * time.Minute
-	projects := []int{1, 2, 3, 4, 5, 6} // TODO - get from ProjectAPP
 
-	for _, projectID := range projects {
+	for _, proj := range allProjects {
+		if proj.GitRepoID == "" {
+			log.Warn("Project has no git_repo_id, skipping",
+				slog.String("project_id", proj.ProjectID),
+				slog.String("name", proj.Name))
+			continue
+		}
+
 		log.Info("Updating public leaderboard for project",
-			slog.Int("project_id", projectID))
-
-		projectIDStr := strconv.Itoa(projectID)
+			slog.String("project_id", proj.ProjectID),
+			slog.String("git_repo_id", proj.GitRepoID),
+			slog.String("name", proj.Name))
 
 		userScores := make(map[int]float64)
 
@@ -451,7 +495,7 @@ func (s *Service) SetPublicLeaderboard(ctx context.Context) error {
 		for {
 			getLeaderboardReq := &lbscoring.GetLeaderboardRequest{
 				Timeframe: "daily",
-				ProjectID: &projectIDStr,
+				ProjectID: &proj.GitRepoID,
 				PageSize:  pageSize,
 				Offset:    offset,
 			}
@@ -459,9 +503,9 @@ func (s *Service) SetPublicLeaderboard(ctx context.Context) error {
 			leaderboardRes, err := s.lbScoringClient.GetLeaderboard(ctx, getLeaderboardReq)
 			if err != nil {
 				log.Error("Failed to get leaderboard data for project",
-					slog.Int("project_id", projectID),
+					slog.String("git_repo_id", proj.GitRepoID),
 					slog.String("error", err.Error()))
-				return fmt.Errorf("failed to get leaderboard data for project %d: %w", projectID, err)
+				break
 			}
 
 			for _, row := range leaderboardRes.LeaderboardRows {
@@ -483,21 +527,31 @@ func (s *Service) SetPublicLeaderboard(ctx context.Context) error {
 		}
 
 		if len(userScores) > 0 {
-			err := s.redisLeaderboardRepo.SetPublicLeaderboard(ctx, types.ID(projectID), userScores, ttl)
+			gitRepoIDInt, parseErr := strconv.ParseUint(proj.GitRepoID, 10, 64)
+			if parseErr != nil {
+				log.Error("Failed to parse git_repo_id as uint64",
+					slog.String("git_repo_id", proj.GitRepoID),
+					slog.String("error", parseErr.Error()))
+				continue
+			}
+
+			err := s.redisLeaderboardRepo.SetPublicLeaderboard(ctx, types.ID(gitRepoIDInt), userScores, ttl)
 			if err != nil {
 				log.Error("Failed to set public leaderboard in Redis",
-					slog.Int("project_id", projectID),
+					slog.String("git_repo_id", proj.GitRepoID),
 					slog.String("error", err.Error()))
 				continue
 			}
 
 			log.Info("Updated public leaderboard for project",
-				slog.Int("project_id", projectID),
+				slog.String("git_repo_id", proj.GitRepoID),
+				slog.String("name", proj.Name),
 				slog.Int("total_contributors", len(userScores)),
 				slog.String("ttl", ttl.String()))
 		} else {
 			log.Warn("No scores found for project",
-				slog.Int("project_id", projectID))
+				slog.String("git_repo_id", proj.GitRepoID),
+				slog.String("name", proj.Name))
 		}
 	}
 

@@ -30,20 +30,19 @@ import (
 )
 
 type Application struct {
-	HTTPServer                leaderboardHTTP.Server
-	LeaderboardGrpcServer     leaderboardGRPC.Server
-	LeaderboardSvc            *leaderboardscoring.Service
-	LeaderboardscoringHandler leaderboardHTTP.Handler
-	WMRouter                  *message.Router
-	WMLogger                  watermill.LoggerAdapter
-	Config                    Config
-	WMSubscriber              message.Subscriber
-	RedisAdapter              *redis.Adapter
-	DBConn                    *database.Database
-	NatsWMAdapter             *nats.Adapter
-	NatsAdapter               *natsadapter.Adapter
-	BatchProcessor            *batchprocessor.Processor
-	Scheduler                 scheduler.Scheduler
+	HTTPServer            leaderboardHTTP.Server
+	LeaderboardGrpcServer leaderboardGRPC.Server
+	LeaderboardSvc        *leaderboardscoring.Service
+	WMRouter              *message.Router
+	WMLogger              watermill.LoggerAdapter
+	Config                Config
+	WMSubscriber          message.Subscriber
+	RedisAdapter          *redis.Adapter
+	DBConn                *database.Database
+	NatsWMAdapter         *nats.Adapter
+	NatsAdapter           *natsadapter.Adapter
+	BatchProcessor        *batchprocessor.Processor
+	Scheduler             scheduler.Scheduler
 }
 
 func Setup(ctx context.Context, config Config) *Application {
@@ -128,8 +127,7 @@ func Setup(ctx context.Context, config Config) *Application {
 			slog.String("error", err.Error()))
 		panic(err)
 	}
-	lbScoringHandler := leaderboardHTTP.NewHandler()
-	leaderboardHttpServer := leaderboardHTTP.New(httpServer, lbScoringHandler, lbScoringService)
+	leaderboardHttpServer := leaderboardHTTP.New(httpServer)
 
 	// Initialize gRPC server
 	rpcServer, err := grpc.NewServer(config.RPCServer)
@@ -168,20 +166,19 @@ func Setup(ctx context.Context, config Config) *Application {
 	sch := scheduler.New(lbScoringService, config.SchedulerCfg)
 
 	return &Application{
-		HTTPServer:                leaderboardHttpServer,
-		LeaderboardGrpcServer:     leaderboardGrpcServer,
-		LeaderboardSvc:            lbScoringService,
-		LeaderboardscoringHandler: lbScoringHandler,
-		WMRouter:                  nil,
-		WMLogger:                  wmLogger,
-		Config:                    config,
-		WMSubscriber:              natsWMAdapter.Subscriber(),
-		RedisAdapter:              redisAdapter,
-		DBConn:                    databaseConn,
-		NatsWMAdapter:             natsWMAdapter,
-		NatsAdapter:               natsAdapter,
-		BatchProcessor:            processor,
-		Scheduler:                 sch,
+		HTTPServer:            leaderboardHttpServer,
+		LeaderboardGrpcServer: leaderboardGrpcServer,
+		LeaderboardSvc:        lbScoringService,
+		WMRouter:              nil,
+		WMLogger:              wmLogger,
+		Config:                config,
+		WMSubscriber:          natsWMAdapter.Subscriber(),
+		RedisAdapter:          redisAdapter,
+		DBConn:                databaseConn,
+		NatsWMAdapter:         natsWMAdapter,
+		NatsAdapter:           natsAdapter,
+		BatchProcessor:        processor,
+		Scheduler:             sch,
 	}
 }
 
