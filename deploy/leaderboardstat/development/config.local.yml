@@ -48,7 +48,7 @@ project_rpc:
     - "DEADLINE_EXCEEDED"
 
 scheduler_cfg:
-  public_leaderboard_cron: "1 * * * *"
+  public_leaderboard_cron: "* * * * *"
   job_context_timeout: "1m"
   daily_score_calculation_cron: "*/10 * * * *"
 
