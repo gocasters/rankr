@@ -18,6 +18,7 @@ type Consumer interface {
 	Consume(ctx context.Context, consumer string) ([]repository.Message, error)
 	Ack(ctx context.Context, ids ...string) error
 	HandleFailure(ctx context.Context, msg repository.Message) error
+	CheckMaxRetry(ctx context.Context, msg repository.Message) error
 }
 
 type Pool struct {
@@ -80,6 +81,13 @@ func (p Pool) Start(ctx context.Context) {
 			}
 
 			for _, m := range msgs {
+				if err := p.consumer.CheckMaxRetry(ctx, m); err != nil {
+					logger.L().Error("max retry done",
+						"message id", m.ID,
+						"error", err.Error())
+
+					continue
+				}
 				msgCh <- m
 			}
 		}

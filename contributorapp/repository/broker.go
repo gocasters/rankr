@@ -68,7 +68,10 @@ func (b Broker) Publish(ctx context.Context, pj job.ProduceJob) error {
 			"retry":  0,
 		},
 	}).Result()
+
 	if err != nil {
+		_ = b.redis.Client().Del(ctx, idempotencyKey).Err()
+
 		return fmt.Errorf("failed to publish job to redis: %w", err)
 	}
 
@@ -114,48 +117,30 @@ func (b Broker) Consume(ctx context.Context, consumer string) ([]Message, error)
 	for _, stream := range res {
 		for _, m := range stream.Messages {
 
-			jobID, _ := m.Values["job_id"]
-			retry, _ := strconv.Atoi(fmt.Sprint(m.Values["retry"]))
+			jobIDRaw, ok := m.Values["job_id"]
+			if !ok {
+				logger.L().Error("message missing job_id", "message_id", m.ID)
 
-			if retry >= b.config.RetryCount {
-				pErr := b.publishToDLQ(ctx, Message{
-					ID:      m.ID,
-					Payload: []byte(fmt.Sprint(jobID)),
-					Retry:   retry,
-				})
+				continue
+			}
 
-				if pErr != nil {
-					logger.L().Error(
-						"failed publish to DLQ",
-						"message id",
-						m.ID,
-						"job_id",
-						fmt.Sprint(jobID),
-						"error",
-						pErr.Error(),
-					)
-				}
+			retryRaw, ok := m.Values["retry"]
+			if !ok {
+				logger.L().Error("message missing retry", "message_id", m.ID)
 
-				aErr := b.Ack(ctx, m.ID)
+				continue
+			}
 
-				if aErr != nil {
-					logger.L().Error(
-						"failed ack",
-						"message id",
-						m.ID,
-						"job_id",
-						fmt.Sprint(jobID),
-						"error",
-						aErr.Error(),
-					)
-				}
+			retry, err := strconv.Atoi(fmt.Sprint(retryRaw))
+			if err != nil {
+				logger.L().Error("invalid retry value", "message_id", m.ID, "error", err)
 
 				continue
 			}
 
 			msg = append(msg, Message{
 				ID:      m.ID,
-				Payload: []byte(fmt.Sprint(jobID)),
+				Payload: []byte(fmt.Sprint(jobIDRaw)),
 				Retry:   retry,
 			})
 		}
@@ -199,7 +184,8 @@ func (b Broker) publishToDLQ(ctx context.Context, msg Message) error {
 			"failed_at": time.Now(),
 		},
 	}).Result()
-	return err
+
+	return fmt.Errorf("failed to publish to DLQ: %w", err)
 }
 
 func (b Broker) requeue(ctx context.Context, msg Message) error {
@@ -211,5 +197,19 @@ func (b Broker) requeue(ctx context.Context, msg Message) error {
 		},
 	}).Result()
 
-	return err
+	return fmt.Errorf("failed to requeue message: %w", err)
+}
+
+func (b Broker) CheckMaxRetry(ctx context.Context, msg Message) error {
+	if msg.Retry >= b.config.RetryCount {
+		if err := b.publishToDLQ(ctx, msg); err != nil {
+			return fmt.Errorf("max retry done. failed to publish DLQ: %w", err)
+		}
+
+		if err := b.Ack(ctx, msg.ID); err != nil {
+			return fmt.Errorf("max retry done. failed to ack message by id %s: %w", msg.ID, err)
+		}
+	}
+
+	return nil
 }
