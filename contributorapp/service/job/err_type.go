@@ -4,14 +4,14 @@ type RecordErrType int
 
 const (
 	ErrTypeValidation RecordErrType = iota + 1
-	ErrTypeUnexpect
+	ErrTypeUnexpected
 )
 
-type RecordErr struct {
-	ErrType RecordErrType
-	err     error
+type RecordProcessError struct {
+	Type RecordErrType
+	Err  error
 }
 
-func (e RecordErr) Error() string {
-	return e.err.Error()
+func (e RecordProcessError) Error() string {
+	return e.Err.Error()
 }

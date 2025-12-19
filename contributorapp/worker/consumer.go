@@ -17,6 +17,7 @@ type Config struct {
 type Consumer interface {
 	Consume(ctx context.Context, consumer string) ([]repository.Message, error)
 	Ack(ctx context.Context, ids ...string) error
+	HandleFailure(ctx context.Context, msg repository.Message) error
 }
 
 type Pool struct {
@@ -40,8 +41,13 @@ func (p Pool) Start(ctx context.Context) {
 
 			for msg := range msgCh {
 				if err := p.worker.Process(ctx, string(msg.Payload)); err != nil {
-					logger.L().Error(fmt.Sprintf("failed to process job %s", string(msg.Payload)),
-						"error", err)
+					if fErr := p.consumer.HandleFailure(ctx, msg); fErr != nil {
+						logger.L().Error(
+							"failed to handle failed job",
+							"job_id", string(msg.Payload),
+							"error", fErr)
+					}
+
 					continue
 				}
 

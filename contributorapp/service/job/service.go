@@ -198,7 +198,9 @@ func (s Service) ProcessJob(ctx context.Context, jobID uint) error {
 	}
 
 	ext := strings.ToLower(filepath.Ext(job.FilePath))
+
 	var processor FileProcessor
+
 	switch ext {
 	case s.config.CsvFile:
 		processor = CSVProcess{s.config.WorkerCount, s.config.BufferSize}
@@ -229,7 +231,7 @@ func (s Service) ProcessJob(ctx context.Context, jobID uint) error {
 
 	for _, record := range pResult.SuccessRecords {
 		if err := s.contributorAdapter.UpsertContributor(ctx, record); err != nil {
-			if aErr, ok := err.(RecordErr); ok {
+			if aErr, ok := err.(RecordProcessError); ok {
 				cErr := s.failRepo.Create(ctx, FailRecord{
 					JobID:        jobID,
 					RecordNumber: record.RowNumber,
@@ -237,7 +239,7 @@ func (s Service) ProcessJob(ctx context.Context, jobID uint) error {
 					RawData:      record.mapToSlice(),
 					RetryCount:   0,
 					LastError:    aErr.Error(),
-					ErrType:      aErr.ErrType,
+					ErrType:      aErr.Type,
 				})
 				if cErr != nil {
 					logger.L().Error("failed to insert fail record", "row", record.RowNumber, "error", cErr.Error())

@@ -18,7 +18,7 @@ func NewJobRepository(db *database.Database) JobRepository {
 	return JobRepository{PostgresDB: db}
 }
 
-func (r JobRepository) CreateJob(ctx context.Context, job job.Job) (uint, error) {
+func (r JobRepository) CreateJob(ctx context.Context, j job.Job) (uint, error) {
 	query := `INSERT INTO jobs (idempotency_key, file_path, file_name, file_hash, status, total_records, success_count, fail_count, created_at)
 	          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
               RETURNING id;
@@ -26,15 +26,15 @@ func (r JobRepository) CreateJob(ctx context.Context, job job.Job) (uint, error)
 
 	var id int64
 	err := r.PostgresDB.Pool.QueryRow(ctx, query,
-		job.IdempotencyKey,
-		job.FilePath,
-		job.FileName,
-		job.FileHash,
-		job.Status,
-		job.TotalRecords,
-		job.SuccessCount,
-		job.FailCount,
-		job.CreatedAt,
+		j.IdempotencyKey,
+		j.FilePath,
+		j.FileName,
+		j.FileHash,
+		j.Status,
+		j.TotalRecords,
+		j.SuccessCount,
+		j.FailCount,
+		j.CreatedAt,
 	).Scan(&id)
 
 	if err != nil {
@@ -73,7 +73,7 @@ func (r JobRepository) GetJobByIdempotencyKey(ctx context.Context, key string) (
 			return nil, job.ErrJobNotExists
 		}
 
-		return nil, err
+		return nil, fmt.Errorf("failed to get job by idempotency key: %w", err)
 	}
 
 	return j, nil
@@ -108,7 +108,7 @@ func (r JobRepository) GetJobByFileHash(ctx context.Context, fileHash string) (*
 			return nil, job.ErrJobNotExists
 		}
 
-		return nil, err
+		return nil, fmt.Errorf("failed to get job by file hash: %w", err)
 	}
 
 	return j, nil
@@ -143,7 +143,7 @@ func (r JobRepository) GetJobByID(ctx context.Context, ID uint) (job.Job, error)
 			return job.Job{}, job.ErrJobNotExists
 		}
 
-		return job.Job{}, err
+		return job.Job{}, fmt.Errorf("failed to get job by id: %w", err)
 	}
 
 	return j, nil

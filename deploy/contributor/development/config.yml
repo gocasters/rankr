@@ -134,6 +134,7 @@ broker:
   consumer_prefix: import-worker-
   batch_size: 10
   block_time: 5s
+  retry_count: 5
 
 worker:
   worker_count: 4

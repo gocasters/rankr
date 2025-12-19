@@ -7,6 +7,7 @@ import (
 	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/contributorapp/service/job"
 	redisv9 "github.com/redis/go-redis/v9"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -17,6 +18,7 @@ type BrokerConfig struct {
 	ConsumerPrefix string        `koanf:"consumer_prefix"`
 	BlockTime      time.Duration `koanf:"block_time"`
 	BatchSize      int64         `koanf:"batch_size"`
+	RetryCount     int           `koanf:"retry_count"`
 }
 
 type Broker struct {
@@ -27,6 +29,7 @@ type Broker struct {
 type Message struct {
 	ID      string
 	Payload []byte
+	Retry   int
 }
 
 func NewBroker(cfg BrokerConfig, redis *redis.Adapter) Broker {
@@ -51,6 +54,7 @@ func (b Broker) Publish(ctx context.Context, pj job.ProduceJob) error {
 		Stream: b.config.StreamKey,
 		Values: map[string]interface{}{
 			"job_id": pj.JobID,
+			"retry":  0,
 		},
 	}).Result()
 
@@ -85,9 +89,15 @@ func (b Broker) Consume(ctx context.Context, consumer string) ([]Message, error)
 	var msg []Message
 	for _, stream := range res {
 		for _, m := range stream.Messages {
-			jobID, _ := m.Values["job_id"]
 
-			msg = append(msg, Message{ID: m.ID, Payload: []byte(fmt.Sprint(jobID))})
+			jobID, _ := m.Values["job_id"]
+			retry, _ := strconv.Atoi(fmt.Sprint(m.Values["retry"]))
+
+			msg = append(msg, Message{
+				ID:      m.ID,
+				Payload: []byte(fmt.Sprint(jobID)),
+				Retry:   retry,
+			})
 		}
 	}
 
@@ -104,4 +114,45 @@ func (b Broker) Ack(ctx context.Context, ids ...string) error {
 	}
 
 	return nil
+}
+
+func (b Broker) HandleFailure(ctx context.Context, msg Message) error {
+	if msg.Retry >= b.config.RetryCount {
+		if err := b.publishToDLQ(ctx, msg); err != nil {
+			return err
+		}
+
+		return b.Ack(ctx, msg.ID)
+	}
+
+	if err := b.requeue(ctx, msg); err != nil {
+		return err
+	}
+
+	return b.Ack(ctx, msg.ID)
+}
+
+func (b Broker) publishToDLQ(ctx context.Context, msg Message) error {
+	_, err := b.redis.Client().XAdd(ctx, &redisv9.XAddArgs{
+		Stream: b.config.StreamKey + ".DLQ",
+		Values: map[string]interface{}{
+			"job_id":    string(msg.Payload),
+			"retry":     msg.Retry,
+			"failed_at": time.Now(),
+		},
+	}).Result()
+
+	return err
+}
+
+func (b Broker) requeue(ctx context.Context, msg Message) error {
+	_, err := b.redis.Client().XAdd(ctx, &redisv9.XAddArgs{
+		Stream: b.config.StreamKey,
+		Values: map[string]interface{}{
+			"job_id": string(msg.Payload),
+			"retry":  msg.Retry + 1,
+		},
+	}).Result()
+
+	return err
 }

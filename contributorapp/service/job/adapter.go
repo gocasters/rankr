@@ -22,10 +22,10 @@ func (c ContributorAdapter) UpsertContributor(ctx context.Context, req Contribut
 	_, err := c.contributorSvc.Upsert(ctx, req.mapContributorRecordToUpsertRequest())
 	if err != nil {
 		if vErr, ok := err.(validator.Error); ok {
-			return RecordErr{ErrType: ErrTypeValidation, err: vErr}
+			return RecordProcessError{Err: vErr, Type: ErrTypeValidation}
 		}
 
-		return RecordErr{err: err, ErrType: ErrTypeUnexpect}
+		return RecordProcessError{Err: err, Type: ErrTypeUnexpected}
 	}
 
 	return nil
