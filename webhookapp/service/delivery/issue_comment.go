@@ -4,6 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
+
+
+	"github.com/ThreeDotsLabs/watermill"
+
 	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -22,8 +27,9 @@ func (s *Service) HandleIssueCommentEvent(provider eventpb.EventProvider, action
 }
 
 func (s *Service) publishIssueComment(req IssueCommentCreatedRequest, provider eventpb.EventProvider, deliveryUID string) error {
+	_ = deliveryUID
 	ev := &eventpb.Event{
-		Id:             deliveryUID,
+		Id:             watermill.NewUUID(),
 		EventName:      eventpb.EventName_EVENT_NAME_ISSUE_COMMENTED,
 		Provider:       provider,
 		Time:           timestamppb.New(req.Comment.CreatedAt),

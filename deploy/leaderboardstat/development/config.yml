@@ -28,8 +28,20 @@ leaderboard_scoring_rpc:
   port: 8091
   grpc_service_name: "leaderboardscoring.v1.LeaderboardScoringService"
   max_attempts: 3
-  initial_backoff: 30s # changed for scoringGRPC ERROR
-  max_backoff: 5s
+  initial_backoff: 1s
+  max_backoff: 30s
+  backoff_multiplier: 1.5
+  retryable_status_codes:
+    - "UNAVAILABLE"
+    - "DEADLINE_EXCEEDED"
+
+project_rpc:
+  host: "project-app"
+  port: 8092
+  grpc_service_name: "project.v1.ProjectService"
+  max_attempts: 3
+  initial_backoff: 1s
+  max_backoff: 30s
   backoff_multiplier: 1.5
   retryable_status_codes:
     - "UNAVAILABLE"

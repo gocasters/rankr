@@ -30,6 +30,8 @@ message ProjectItem {
   string project_id = 1;      // Internal Rankr project ID
   string slug = 2;            // Project slug
   string name = 3;            // Project name
+  string repo_provider = 4;   // VCS provider (e.g., "GITHUB")
+  string git_repo_id = 5;     // External repository ID from VCS provider
 }
 
 // Response containing list of projects.

@@ -1,11 +1,13 @@
 package leaderboardscoring_test
 
 import (
+	"strings"
+	"testing"
+	"time"
+
 	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 func TestValidator_ValidateEvent_Success(t *testing.T) {
@@ -46,11 +48,13 @@ func TestValidator_ValidateEvent_MissingID(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestValidator_ValidateEvent_InvalidUUID(t *testing.T) {
+func TestValidator_ValidateEvent_IDTooLong(t *testing.T) {
 	validator := leaderboardscoring.NewValidator()
 
+	longID := strings.Repeat("a", 256)
+
 	event := &leaderboardscoring.EventRequest{
-		ID:             "not-a-uuid",
+		ID:             longID,
 		EventName:      leaderboardscoring.PullRequestOpened.String(),
 		RepositoryID:   1001,
 		RepositoryName: "test-repo",
