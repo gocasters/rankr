@@ -185,7 +185,11 @@ func (b Broker) publishToDLQ(ctx context.Context, msg Message) error {
 		},
 	}).Result()
 
-	return fmt.Errorf("failed to publish to DLQ: %w", err)
+	if err != nil {
+		return fmt.Errorf("failed to publish to DLQ: %w", err)
+	}
+
+	return nil
 }
 
 func (b Broker) requeue(ctx context.Context, msg Message) error {
