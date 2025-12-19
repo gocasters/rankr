@@ -78,11 +78,11 @@ func (b Broker) Publish(ctx context.Context, pj job.ProduceJob) error {
 	return nil
 }
 
-func (b Broker) Ack(ctx context.Context, Id string) error {
+func (b Broker) Ack(ctx context.Context, Ids ...string) error {
 	const maxAckRetry = 3
 	var err error
 	for i := 0; i < maxAckRetry; i++ {
-		err = b.redis.Client().XAck(ctx, b.config.StreamKey, b.config.GroupName, Id).Err()
+		err = b.redis.Client().XAck(ctx, b.config.StreamKey, b.config.GroupName, Ids...).Err()
 		if err == nil {
 			return nil
 		}
@@ -149,7 +149,7 @@ func (b Broker) Consume(ctx context.Context, consumer string) ([]Message, error)
 	return msg, nil
 }
 
-func (b Broker) HandleFailure(ctx context.Context, msg Message, procErr error) error {
+func (b Broker) HandleFailure(ctx context.Context, msg Message) error {
 	if msg.Retry >= b.config.RetryCount {
 		if err := b.publishToDLQ(ctx, msg); err != nil {
 			return fmt.Errorf("publish to DLQ failed: %w", err)

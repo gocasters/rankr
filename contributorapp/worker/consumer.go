@@ -16,7 +16,7 @@ type Config struct {
 
 type Consumer interface {
 	Consume(ctx context.Context, consumer string) ([]repository.Message, error)
-	Ack(ctx context.Context, ids ...string) error
+	Ack(ctx context.Context, id ...string) error
 	HandleFailure(ctx context.Context, msg repository.Message) error
 	CheckMaxRetry(ctx context.Context, msg repository.Message) error
 }
