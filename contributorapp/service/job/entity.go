@@ -21,7 +21,8 @@ type Job struct {
 }
 
 type ProduceJob struct {
-	JobID uint
+	JobID          uint
+	IdempotencyKey string
 }
 
 type Status string

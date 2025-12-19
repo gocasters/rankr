@@ -43,11 +43,11 @@ type FailRepository interface {
 }
 
 type ConfigJob struct {
-	StoragePath string `koanf:"storage_path"`
-	CsvFile     string `koanf:"csv_file"`
-	XlsxFile    string `koanf:"xlsx_file"`
-	WorkerCount int    `koanf:"worker_count"`
-	BufferSize  int    `koanf:"buffer_size"`
+	StoragePath  string `koanf:"storage_path"`
+	CsvFile      string `koanf:"csv_file"`
+	XlsxFile     string `koanf:"xlsx_file"`
+	ProcessCount int    `koanf:"process_count"`
+	BufferSize   int    `koanf:"buffer_size"`
 }
 
 type Service struct {
@@ -159,7 +159,8 @@ func (s Service) CreateImportJob(ctx context.Context, req ImportContributorReque
 
 	job.ID = jobID
 
-	if err := s.publisher.Publish(ctx, ProduceJob{JobID: job.ID}); err != nil {
+	if err := s.publisher.Publish(ctx, ProduceJob{JobID: job.ID,
+		IdempotencyKey: fmt.Sprintf("%s:%s", job.IdempotencyKey, job.FileHash)}); err != nil {
 		_ = s.jobRepo.UpdateStatus(ctx, job.ID, PendingToQueue)
 		return ImportContributorResponse{
 			JobID:   job.ID,
@@ -203,9 +204,9 @@ func (s Service) ProcessJob(ctx context.Context, jobID uint) error {
 
 	switch ext {
 	case s.config.CsvFile:
-		processor = CSVProcess{s.config.WorkerCount, s.config.BufferSize}
+		processor = CSVProcess{s.config.ProcessCount, s.config.BufferSize}
 	case s.config.XlsxFile:
-		processor = XLSXProcess{s.config.WorkerCount, s.config.BufferSize}
+		processor = XLSXProcess{s.config.ProcessCount, s.config.BufferSize}
 	default:
 		job.Status = Failed
 		_ = s.jobRepo.UpdateJob(ctx, job)

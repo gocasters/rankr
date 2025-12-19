@@ -125,7 +125,13 @@ func (h Handler) uploadFile(c echo.Context) error {
 			"error": fmt.Sprintf("failed to open file: %v", err),
 		})
 	}
-	defer srcFile.Close()
+	defer func() {
+		if closeErr := srcFile.Close(); closeErr != nil {
+			h.Logger.Error("failed to close uploaded file",
+				"error", closeErr, "filename",
+				fileHeader.Filename)
+		}
+	}()
 
 	fileType, ok := c.Get("FileType").(string)
 	if !ok || fileType == "" {

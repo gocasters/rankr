@@ -49,13 +49,13 @@ middleware:
 validate:
   http_file_type:
     - "text/csv; charset=utf-8"
-    - "application/zip"
+    - ""application/vnd.openxmlformats-officedocument.spreadsheetml.sheet""
 
 job:
   storage_path: "./uploads/import_contributors/"
   csv_file: .csv
   xlsx_file: .xlsx
-  worker_count: 4
+  process_count: 4
   buffer_size: 50
 
 broker:
