@@ -201,7 +201,11 @@ func (b Broker) requeue(ctx context.Context, msg Message) error {
 		},
 	}).Result()
 
-	return fmt.Errorf("failed to requeue message: %w", err)
+	if err != nil {
+		return fmt.Errorf("failed to requeue message: %w", err)
+	}
+
+	return nil
 }
 
 func (b Broker) CheckMaxRetry(ctx context.Context, msg Message) error {
