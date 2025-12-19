@@ -60,7 +60,7 @@ func (v Validator) validateFile(value interface{}) error {
 	mime := http.DetectContentType(buffer)
 
 	for _, m := range v.config.HttpFileType {
-		if strings.HasPrefix(mime, m) {
+		if strings.HasPrefix(m, mime) || strings.HasPrefix(mime, strings.Split(m, ";")[0]) {
 			return nil
 		}
 	}

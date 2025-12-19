@@ -79,8 +79,9 @@ func NewService(
 
 func (s Service) CreateImportJob(ctx context.Context, req ImportContributorRequest) (ImportContributorResponse, error) {
 	if err := s.validator.ImportJobRequestValidate(req); err != nil {
-
+		return ImportContributorResponse{}, err
 	}
+
 	j, err := s.jobRepo.GetJobByIdempotencyKey(ctx, req.IdempotencyKey)
 	if j != nil {
 		return ImportContributorResponse{JobID: j.ID, Message: "The file with this idempotency key exists"}, nil
@@ -162,6 +163,9 @@ func (s Service) CreateImportJob(ctx context.Context, req ImportContributorReque
 	if err := s.publisher.Publish(ctx, ProduceJob{JobID: job.ID,
 		IdempotencyKey: fmt.Sprintf("%s:%s", job.IdempotencyKey, job.FileHash)}); err != nil {
 		_ = s.jobRepo.UpdateStatus(ctx, job.ID, PendingToQueue)
+
+		successSaveFile = true
+
 		return ImportContributorResponse{
 			JobID:   job.ID,
 			Message: "job saved and will be queued shortly",
