@@ -53,7 +53,7 @@ func (b Broker) InitGroup(ctx context.Context) error {
 func (b Broker) Publish(ctx context.Context, pj job.ProduceJob) error {
 	idempotencyKey := fmt.Sprintf("job_id:%s", pj.IdempotencyKey)
 
-	ok, err := b.redis.Client().SetNX(ctx, idempotencyKey, 1, time.Hour).Result()
+	ok, err := b.redis.Client().SetNX(ctx, idempotencyKey, 1, 24*time.Hour).Result()
 	if err != nil {
 		return fmt.Errorf("failed to check idempotency: %w", err)
 	}

@@ -49,7 +49,7 @@ middleware:
 validate:
   http_file_type:
     - "text/csv; charset=utf-8"
-    - ""application/vnd.openxmlformats-officedocument.spreadsheetml.sheet""
+    - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 job:
   storage_path: "./uploads/import_contributors/"
