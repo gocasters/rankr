@@ -18,8 +18,8 @@ type Handler struct {
 
 func NewHandler(leaderboardScoringSvc *leaderboardscoring.Service) Handler {
 	return Handler{
-		//UnimplementedLeaderboardScoringServiceServer: leaderboardscoringpb.UnimplementedLeaderboardScoringServiceServer{},
-		leaderboardScoringSvc: leaderboardScoringSvc,
+		UnimplementedLeaderboardScoringServiceServer: leaderboardscoringpb.UnimplementedLeaderboardScoringServiceServer{},
+		leaderboardScoringSvc:                        leaderboardScoringSvc,
 	}
 }
 

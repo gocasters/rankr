@@ -75,6 +75,11 @@ func serve() {
 		migrationPath := cfg.PostgresDB.PathOfMigrations
 		if migrationPath == "" && cfg.PathOfMigration != "" {
 			migrationPath = cfg.PathOfMigration
+			log.Println("Warning: Using deprecated PathOfMigration field, please migrate to postgres_db.path_of_migrations")
+		}
+		if migrationPath == "" {
+			log.Println("Error: Migration path not configured")
+			os.Exit(1)
 		}
 		mgr := migrator.New(cfg.PostgresDB, migrationPath)
 		if migrateUp {

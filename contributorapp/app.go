@@ -9,15 +9,13 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/gocasters/rankr/contributorapp/service/contributor"
-	"github.com/gocasters/rankr/pkg/cachemanager"
-
 	"github.com/gocasters/rankr/adapter/redis"
-	contribgrpc "github.com/gocasters/rankr/contributorapp/delivery/grpc"
+	contributorgrpc "github.com/gocasters/rankr/contributorapp/delivery/grpc"
 	"github.com/gocasters/rankr/contributorapp/delivery/http"
 	"github.com/gocasters/rankr/contributorapp/repository"
+	"github.com/gocasters/rankr/contributorapp/service/contributor"
+	"github.com/gocasters/rankr/pkg/cachemanager"
 	"github.com/gocasters/rankr/pkg/database"
-	appgrpc "github.com/gocasters/rankr/pkg/grpc"
 	"github.com/gocasters/rankr/pkg/httpserver"
 )
 
@@ -25,8 +23,9 @@ type Application struct {
 	ContributorRepo    contributor.Repository
 	ContributorSrv     contributor.Service
 	ContributorHandler http.Handler
-	GRPCServer         contribgrpc.Server
+	GRPCServer         contributorgrpc.Server
 	HTTPServer         http.Server
+	GRPCServer         contributorgrpc.Server
 	Config             Config
 	Logger             *slog.Logger
 	Redis              *redis.Adapter
@@ -58,13 +57,14 @@ func Setup(
 		logger.Error("failed to initialize HTTP server", "err", err)
 		return Application{}, err
 	}
-	grpcServer, err := appgrpc.NewServer(config.RPCServer)
+
+	grpcServer, err := grpc.NewServer(config.GRPCServer)
 	if err != nil {
 		logger.Error("failed to initialize gRPC server", "err", err)
 		return Application{}, err
 	}
-	grpcHandler := contribgrpc.NewHandler(contributorSvc)
-	contributorGRPC := contribgrpc.New(grpcServer, grpcHandler)
+	grpcHandler := contributorgrpc.NewHandler(contributorSvc)
+
 	return Application{
 		ContributorRepo:    contributorRepo,
 		ContributorSrv:     contributorSvc,
@@ -75,6 +75,7 @@ func Setup(
 			contributorHandler,
 			logger,
 		),
+		GRPCServer:   contributorgrpc.New(grpcServer, grpcHandler),
 		Config:       config,
 		Logger:       logger,
 		Redis:        redisAdapter,
@@ -107,24 +108,14 @@ func (app Application) Start() {
 }
 
 func startServers(app Application, wg *sync.WaitGroup) {
-	wg.Add(1)
+	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		app.Logger.Info(fmt.Sprintf("✅ HTTP server started on %d", app.Config.HTTPServer.Port))
+		app.Logger.Info(fmt.Sprintf("HTTP server started on %d", app.Config.HTTPServer.Port))
 		if err := app.HTTPServer.Serve(); err != nil {
-			app.Logger.Error(fmt.Sprintf("error in HTTP server on %d", app.Config.HTTPServer.Port), err)
+			app.Logger.Error(fmt.Sprintf("error in HTTP server on %d", app.Config.HTTPServer.Port), slog.String("error", err.Error()))
 		}
 		app.Logger.Info(fmt.Sprintf("HTTP server stopped %d", app.Config.HTTPServer.Port))
-	}()
-
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		app.Logger.Info(fmt.Sprintf("✅ gRPC server started on %d", app.Config.RPCServer.Port))
-		if err := app.GRPCServer.Serve(); err != nil {
-			app.Logger.Error(fmt.Sprintf("error in gRPC server on %d", app.Config.RPCServer.Port), err)
-		}
-		app.Logger.Info(fmt.Sprintf("gRPC server stopped %d", app.Config.RPCServer.Port))
 	}()
 }
 
@@ -135,10 +126,8 @@ func (app Application) shutdownServers(ctx context.Context) bool {
 	parentCtx := context.Background()
 	go func() {
 		var shutdownWg sync.WaitGroup
-		shutdownWg.Add(1)
+		shutdownWg.Add(2)
 		go app.shutdownHTTPServer(parentCtx, &shutdownWg)
-		shutdownWg.Add(1)
-		go app.shutdownGRPCServer(parentCtx, &shutdownWg)
 
 		shutdownWg.Wait()
 		close(shutdownDone)
@@ -166,16 +155,4 @@ func (app Application) shutdownHTTPServer(parentCtx context.Context, wg *sync.Wa
 
 	app.Logger.Info("HTTP server shut down successfully.")
 
-	if app.Redis != nil {
-		app.Redis.Close()
-	}
-}
-
-func (app Application) shutdownGRPCServer(_ context.Context, wg *sync.WaitGroup) {
-	defer wg.Done()
-	app.Logger.Info(fmt.Sprintf("Starting graceful shutdown for gRPC server on port %d", app.Config.RPCServer.Port))
-
-	app.GRPCServer.Stop()
-
-	app.Logger.Info("gRPC server shut down successfully.")
 }

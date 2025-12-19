@@ -1,6 +1,7 @@
 package http
 
 import (
+	"crypto/subtle"
 	"encoding/base64"
 	"encoding/json"
 	"net/http"
@@ -55,26 +56,28 @@ func (h Handler) verifyToken(c echo.Context) error {
 		token = body.Token
 	}
 	// Developer API key bypass (no JWT required)
-	if devKey := os.Getenv("DEV_API_KEY"); devKey != "" {
-		if provided := c.Request().Header.Get("X-API-Key"); provided == devKey {
-			devID := uint64(1)
-			if rawID := os.Getenv("DEV_USER_ID"); rawID != "" {
-				if parsed, err := strconv.ParseUint(rawID, 10, 64); err == nil && parsed > 0 {
-					devID = parsed
+	if os.Getenv("ENV") == "development" {
+		if devKey := os.Getenv("DEV_API_KEY"); devKey != "" {
+			if provided := c.Request().Header.Get("X-API-Key"); subtle.ConstantTimeCompare([]byte(provided), []byte(devKey)) == 1 {
+				devID := uint64(1)
+				if rawID := os.Getenv("DEV_USER_ID"); rawID != "" {
+					if parsed, err := strconv.ParseUint(rawID, 10, 64); err == nil && parsed > 0 {
+						devID = parsed
+					}
 				}
-			}
 
-			response := echo.Map{
-				"user_id": strconv.FormatUint(devID, 10),
-				"role":    "developer",
-			}
-			c.Response().Header().Set("X-User-ID", strconv.FormatUint(devID, 10))
-			c.Response().Header().Set("X-Role", "developer")
-			if encoded, err := encodeUserInfo(strconv.FormatUint(devID, 10)); err == nil {
-				c.Response().Header().Set("X-User-Info", encoded)
-			}
+				response := echo.Map{
+					"user_id": strconv.FormatUint(devID, 10),
+					"role":    "developer",
+				}
+				c.Response().Header().Set("X-User-ID", strconv.FormatUint(devID, 10))
+				c.Response().Header().Set("X-Role", "developer")
+				if encoded, err := encodeUserInfo(strconv.FormatUint(devID, 10)); err == nil {
+					c.Response().Header().Set("X-User-Info", encoded)
+				}
 
-			return c.JSON(http.StatusOK, response)
+				return c.JSON(http.StatusOK, response)
+			}
 		}
 	}
 

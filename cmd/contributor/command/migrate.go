@@ -53,9 +53,14 @@ func migrate() {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	migrationPath := cfg.PathOfMigration
-	if cfg.PostgresDB.PathOfMigrations != "" {
-		migrationPath = cfg.PostgresDB.PathOfMigrations
+	migrationPath := cfg.PostgresDB.PathOfMigrations
+	if migrationPath == "" && cfg.PathOfMigration != "" {
+		migrationPath = cfg.PathOfMigration
+		log.Println("Warning: Using deprecated PathOfMigration field, please migrate to postgres_db.path_of_migrations")
+	}
+	if migrationPath == "" {
+		log.Println("Error: Migration path not configured")
+		os.Exit(1)
 	}
 
 	mgr := migrator.New(cfg.PostgresDB, migrationPath)

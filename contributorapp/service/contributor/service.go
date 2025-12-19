@@ -19,6 +19,7 @@ type Repository interface {
 	CreateContributor(ctx context.Context, contributor Contributor) (*Contributor, error)
 	UpdateProfileContributor(ctx context.Context, contributor Contributor) (*Contributor, error)
 	UpdatePassword(ctx context.Context, id types.ID, hashedPassword string) error
+	FindByVCSUsernames(ctx context.Context, provider VcsProvider, usernames []string) ([]*Contributor, error)
 }
 
 type Service struct {
@@ -216,4 +217,26 @@ func passwordMatches(hashedOrPlain, provided string) bool {
 		return false
 	}
 	return hashedOrPlain == provided
+}
+
+func (s Service) GetContributorsByVCS(ctx context.Context, req GetContributorsByVCSRequest) (GetContributorsByVCSResponse, error) {
+	contributors, err := s.repository.FindByVCSUsernames(ctx, req.VcsProvider, req.Usernames)
+	if err != nil {
+		logger.L().Error("get_contributors_by_vcs", "error", err)
+		return GetContributorsByVCSResponse{}, err
+	}
+
+	mappings := make([]ContributorMapping, 0, len(contributors))
+	for _, c := range contributors {
+		mappings = append(mappings, ContributorMapping{
+			ContributorID: c.ID,
+			VcsUsername:   c.GitHubUsername,
+			VcsUserID:     c.GitHubID,
+		})
+	}
+
+	return GetContributorsByVCSResponse{
+		VcsProvider:  req.VcsProvider,
+		Contributors: mappings,
+	}, nil
 }

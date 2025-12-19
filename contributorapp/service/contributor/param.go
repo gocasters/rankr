@@ -71,3 +71,38 @@ type VerifyPasswordResponse struct {
 	Valid bool     `json:"valid"`
 	ID    types.ID `json:"contributor_id"`
 }
+
+type VcsProvider string
+
+const (
+	VcsProviderGitHub    VcsProvider = "GITHUB"
+	VcsProviderGitLab    VcsProvider = "GITLAB"
+	VcsProviderBitbucket VcsProvider = "BITBUCKET"
+)
+
+var validVcsProviders = map[VcsProvider]struct{}{
+	VcsProviderGitHub:    {},
+	VcsProviderGitLab:    {},
+	VcsProviderBitbucket: {},
+}
+
+func IsValidVcsProvider(p string) bool {
+	_, ok := validVcsProviders[VcsProvider(p)]
+	return ok
+}
+
+type GetContributorsByVCSRequest struct {
+	VcsProvider VcsProvider `json:"vcs_provider"`
+	Usernames   []string    `json:"usernames"`
+}
+
+type ContributorMapping struct {
+	ContributorID int64  `json:"contributor_id"`
+	VcsUsername   string `json:"vcs_username"`
+	VcsUserID     int64  `json:"vcs_user_id"`
+}
+
+type GetContributorsByVCSResponse struct {
+	VcsProvider  VcsProvider          `json:"vcs_provider"`
+	Contributors []ContributorMapping `json:"contributors"`
+}
