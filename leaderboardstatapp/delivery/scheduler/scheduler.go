@@ -53,9 +53,9 @@ func (s *Scheduler) Start(ctx context.Context, wg *sync.WaitGroup) {
 
 	log.Info("leaderboardstat scheduler started")
 
-	if err := s.dailyScoreCalculationJob(ctx); err != nil {
-		log.Error("failed to create daily score calculation job", slog.String("error", err.Error()))
-	}
+	//if err := s.dailyScoreCalculationJob(ctx); err != nil {
+	//	log.Error("failed to create daily score calculation job", slog.String("error", err.Error()))
+	//}
 
 	if err := s.publicLeaderboardJob(ctx); err != nil {
 		log.Error("failed to create public leaderboard job", slog.String("error", err.Error()))

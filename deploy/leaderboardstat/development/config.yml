@@ -103,7 +103,7 @@ nats_adapter:
   max_messages: 10000000
   max_bytes: 10737418240
   max_age: 24h
-  storage_type: "file" # "memory" → RAM
+  storage_type: "memory" # "memory" → RAM
   replicas: 1
   retention_policy: "workqueue"
 
@@ -126,7 +126,7 @@ postgres_db:
   host: shared-postgres
   port: 5432
   user: leaderboardstat_user
-  password: leaderboardstat_pass
+  password: change_me_stat
   db_name: leaderboardstat_db
   ssl_mode: disable
   max_conns: 25  
