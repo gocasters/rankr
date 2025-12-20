@@ -1,14 +1,15 @@
 package webhookapp
 
 import (
+	"time"
+
 	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/pkg/database"
+	"github.com/gocasters/rankr/pkg/grpc"
+	"github.com/gocasters/rankr/pkg/httpserver"
 	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/gocasters/rankr/webhookapp/schedule/insert"
 	"github.com/gocasters/rankr/webhookapp/schedule/recovery"
-	"time"
-
-	"github.com/gocasters/rankr/pkg/httpserver"
 )
 
 type Config struct {
@@ -24,6 +25,7 @@ type Config struct {
 	InsertBatchSize      int64             `koanf:"insert_batch_size"`
 	RecoveryConfig       recovery.Config   `koanf:"recovery_config"`
 	BulkInsertConfig     insert.Config     `koanf:"bulk_insert_config"`
+	ProjectGRPC          grpc.ClientConfig `koanf:"project_grpc"`
 }
 
 type NATSConfig struct {

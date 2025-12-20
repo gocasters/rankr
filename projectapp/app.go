@@ -12,6 +12,7 @@ import (
 	"github.com/gocasters/rankr/pkg/database"
 	"github.com/gocasters/rankr/pkg/grpc"
 	"github.com/gocasters/rankr/pkg/httpserver"
+	githubadapter "github.com/gocasters/rankr/projectapp/adapter/github"
 	projectGRPC "github.com/gocasters/rankr/projectapp/delivery/grpc"
 	"github.com/gocasters/rankr/projectapp/delivery/http"
 	"github.com/gocasters/rankr/projectapp/repository"
@@ -50,6 +51,9 @@ func Setup(
 	projectValidator := project.NewValidator(projectRepo)
 
 	projectService := project.NewService(projectRepo, projectValidator, logger)
+
+	githubClient := githubadapter.NewAdapter()
+	projectService.SetGitHubClient(githubClient)
 
 	httpServer, hErr := httpserver.New(config.HTTPServer)
 	if hErr != nil {

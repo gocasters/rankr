@@ -7,6 +7,7 @@ import (
 
 	cfgloader "github.com/gocasters/rankr/pkg/config"
 	"github.com/gocasters/rankr/pkg/migrator"
+	"github.com/gocasters/rankr/pkg/path"
 	"github.com/gocasters/rankr/projectapp"
 	"github.com/spf13/cobra"
 )
@@ -26,19 +27,22 @@ var migrateCmd = &cobra.Command{
 func migrate() {
 	var cfg projectapp.Config
 
-	workingDir, err := os.Getwd()
+	projectRoot, err := path.PathProjectRoot()
 	if err != nil {
-		log.Fatalf("Error getting working directory: %v", err)
+		log.Fatalf("Error finding project root: %v", err)
 	}
 
-	yamlPath := filepath.Join(workingDir, "projectapp", "repository", "dbconfig.yml")
-
-	if path := os.Getenv("DBCONFIG_OVERRIDE_PATH"); path != "" {
-		yamlPath = path
-		log.Printf("Using override config: %s", yamlPath)
-	} else {
-		log.Printf("Using default config: %s", yamlPath)
+	yamlPath := os.Getenv("CONFIG_PATH")
+	if yamlPath == "" {
+		defaultConfig := filepath.Join(projectRoot, "deploy", "project", "development", "config.yml")
+		if _, err := os.Stat(defaultConfig); err == nil {
+			yamlPath = defaultConfig
+		} else {
+			yamlPath = filepath.Join(projectRoot, "deploy", "project", "development", "config.local.yml")
+		}
 	}
+
+	log.Printf("Using config: %s", yamlPath)
 
 	options := cfgloader.Options{
 		Prefix:       "PROJECT_",
@@ -54,13 +58,16 @@ func migrate() {
 	mgr := migrator.New(cfg.PostgresDB, cfg.PathOfMigration)
 
 	if up {
+		log.Println("Running migrations up...")
 		mgr.Up()
+		log.Println("Migrations up completed.")
 	} else if down {
+		log.Println("Running migrations down...")
 		mgr.Down()
+		log.Println("Migrations down completed.")
 	} else {
 		log.Println("Please specify a migration direction with --up or --down")
 		os.Exit(2)
-
 	}
 }
 

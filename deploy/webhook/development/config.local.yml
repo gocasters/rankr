@@ -67,3 +67,15 @@ bulk_insert_config:
 
 insert_queue_name: "webhook_insert_event"
 insert_batch_size: 30
+
+project_grpc:
+  host: "localhost"
+  port: 8094
+  grpc_service_name: "project.v1.ProjectService"
+  max_attempts: 3
+  initial_backoff: 1s
+  max_backoff: 30s
+  backoff_multiplier: 1.5
+  retryable_status_codes:
+    - "UNAVAILABLE"
+    - "RESOURCE_EXHAUSTED"
