@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"net/http"
-	"path/filepath"
-	"strings"
 )
 
 type Config struct {
@@ -24,30 +22,47 @@ func New(cfg Config) Middleware {
 func (m Middleware) CheckFile(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 
-		file, err := c.FormFile("file")
+		fileHeader, err := c.FormFile("file")
 		if err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]interface{}{
-				"message": "file is required; send it via 'file' field",
+				"message": "fail to get file",
 				"error":   err.Error(),
 			})
 		}
 
-		if file.Size > m.Config.FileSize {
+		srcFile, err := fileHeader.Open()
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+				"error": fmt.Sprintf("failed to open file: %v", err),
+			})
+		}
+		defer srcFile.Close()
+
+		buffer := make([]byte, 512)
+		n, _ := srcFile.Read(buffer)
+		contentType := http.DetectContentType(buffer[:n])
+
+		if _, err := srcFile.Seek(0, 0); err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+				"error": fmt.Sprintf("failed to reset file pointer: %v", err),
+			})
+		}
+
+		if fileHeader.Size > m.Config.FileSize {
 			return c.JSON(http.StatusRequestEntityTooLarge, map[string]interface{}{
 				"message": fmt.Sprintf("file size exceeds %dMB limit", m.Config.FileSize),
 			})
 		}
 
-		ext := strings.TrimPrefix(strings.ToLower(filepath.Ext(file.Filename)), ".")
-		if !m.validFileType(ext) {
+		if !m.validFileType(contentType) {
 			return c.JSON(http.StatusBadRequest, map[string]interface{}{
 				"message":  "invalid file type",
 				"allowed":  m.Config.FileType,
-				"received": ext,
+				"received": contentType,
 			})
 		}
 
-		c.Set("FileType", ext)
+		c.Set("FileType", contentType)
 
 		return next(c)
 	}

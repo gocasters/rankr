@@ -113,13 +113,17 @@ middleware:
   # 10MB in bytes
   file_size: 10485760
   file_type:
-    - "csv"
-    - "xlsx"
+    - "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    -  "application/zip"
+    -  "text/csv"
+    -  "text/plain"
 
 validate:
   http_file_type:
-    - "text/csv; charset=utf-8"
     - "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    - "application/zip"
+    - "text/csv"
+    - "text/plain"
 
 job:
   storage_path: "./uploads/import_contributors/"

@@ -23,15 +23,6 @@ type rowInfo struct {
 	data      []string
 }
 
-func newProcessResult() ProcessResult {
-	return ProcessResult{
-		Total:          0,
-		Success:        0,
-		SuccessRecords: make([]ContributorRecord, 0),
-		FailRecords:    make([]FailRecord, 0),
-	}
-}
-
 type CSVProcess struct {
 	workers int
 	buffer  int

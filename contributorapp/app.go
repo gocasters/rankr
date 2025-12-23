@@ -5,6 +5,7 @@ import (
 	"fmt"
 	middleware2 "github.com/gocasters/rankr/contributorapp/delivery/http/middleware"
 	"github.com/gocasters/rankr/contributorapp/service/job"
+	"github.com/gocasters/rankr/contributorapp/worker"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -32,6 +33,7 @@ type Application struct {
 	Logger             *slog.Logger
 	Redis              *redis.Adapter
 	CacheManager       cachemanager.CacheManager
+	Consumer           worker.Pool
 }
 
 func Setup(
@@ -68,6 +70,15 @@ func Setup(
 		return Application{}, err
 	}
 
+	w := worker.NewProcess(jobSvc)
+
+	if err := broker.InitGroup(ctx); err != nil {
+		logger.Error("failed to init redis consumer group", "error", err.Error())
+		return Application{}, err
+	}
+
+	pool := worker.New(broker, w, config.Worker)
+
 	middleware := middleware2.New(config.Middleware)
 
 	grpcServer, err := grpc.NewServer(config.GRPCServer)
@@ -92,6 +103,7 @@ func Setup(
 		Logger:       logger,
 		Redis:        redisAdapter,
 		CacheManager: *cache,
+		Consumer:     pool,
 	}, nil
 }
 
@@ -100,6 +112,14 @@ func (app Application) Start() {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		app.Logger.Info("consumer started")
+		app.Consumer.Start(ctx)
+		app.Logger.Info("consumer stopped")
+	}()
 
 	startServers(app, &wg)
 	<-ctx.Done()

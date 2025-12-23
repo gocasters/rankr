@@ -43,5 +43,8 @@ func (s Server) RegisterRoutes() {
 	v1.POST("/create", s.Handler.createContributor)
 	v1.PUT("/update", s.Handler.updateProfile)
 
-	v1.POST("/upload", s.Handler.uploadFile, s.Middleware.CheckFile)
+	v1.POST("/jobs/upload", s.Handler.uploadFile)
+
+	// TODO v1.Get("/jobs/status/<job_id>", s.Handler.jobStatus)
+	// TODO v1.Get("/jobs/fail-records/<job_id>", s.Handler.failRecords)
 }
