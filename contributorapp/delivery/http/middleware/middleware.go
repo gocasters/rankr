@@ -3,6 +3,7 @@ package middleware
 import (
 	"fmt"
 	"github.com/labstack/echo/v4"
+	"io"
 	"net/http"
 )
 
@@ -39,7 +40,14 @@ func (m Middleware) CheckFile(next echo.HandlerFunc) echo.HandlerFunc {
 		defer srcFile.Close()
 
 		buffer := make([]byte, 512)
-		n, _ := srcFile.Read(buffer)
+
+		n, err := srcFile.Read(buffer)
+		if err != nil && err != io.EOF {
+			return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+				"error": fmt.Sprintf("failed to read file: %v", err),
+			})
+		}
+
 		contentType := http.DetectContentType(buffer[:n])
 
 		if _, err := srcFile.Seek(0, 0); err != nil {
@@ -50,7 +58,7 @@ func (m Middleware) CheckFile(next echo.HandlerFunc) echo.HandlerFunc {
 
 		if fileHeader.Size > m.Config.FileSize {
 			return c.JSON(http.StatusRequestEntityTooLarge, map[string]interface{}{
-				"message": fmt.Sprintf("file size exceeds %dMB limit", m.Config.FileSize),
+				"message": fmt.Sprintf("file size exceeds %d bytes limit", m.Config.FileSize),
 			})
 		}
 

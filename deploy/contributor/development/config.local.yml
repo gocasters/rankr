@@ -43,10 +43,10 @@ middleware:
   # 10MB in bytes
   file_size: 10485760
   file_type :
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        "application/zip"
-        "text/csv"
-        "text/plain"
+     - "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+     -   "application/zip"
+     -  "text/csv"
+     -   "text/plain"
 
 validate:
   http_file_type:

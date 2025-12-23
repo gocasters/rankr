@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"github.com/xuri/excelize/v2"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -49,7 +50,7 @@ func (c CSVProcess) Process(file *os.File) (ProcessResult, error) {
 	for {
 		rec, err := reader.Read()
 		if err != nil {
-			if err.Error() == "EOF" {
+			if err == io.EOF {
 				break
 			}
 			return ProcessResult{}, fmt.Errorf("failed read row: %w", err)
@@ -65,6 +66,9 @@ func (x XLSXProcess) Process(file *os.File) (ProcessResult, error) {
 	if err != nil {
 		return ProcessResult{}, fmt.Errorf("failed open xlsx: %w", err)
 	}
+
+	defer f.Close()
+
 	sheet := f.GetSheetName(0)
 	rows, err := f.Rows(sheet)
 	if err != nil {
