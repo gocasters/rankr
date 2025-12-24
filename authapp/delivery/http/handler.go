@@ -1,7 +1,11 @@
 package http
 
 import (
+	"crypto/subtle"
+	"encoding/base64"
+	"encoding/json"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -51,6 +55,32 @@ func (h Handler) verifyToken(c echo.Context) error {
 		}
 		token = body.Token
 	}
+	// Developer API key bypass (no JWT required)
+	if os.Getenv("ENV") == "development" {
+		if devKey := os.Getenv("DEV_API_KEY"); devKey != "" {
+			if provided := c.Request().Header.Get("X-API-Key"); subtle.ConstantTimeCompare([]byte(provided), []byte(devKey)) == 1 {
+				devID := uint64(1)
+				if rawID := os.Getenv("DEV_USER_ID"); rawID != "" {
+					if parsed, err := strconv.ParseUint(rawID, 10, 64); err == nil && parsed > 0 {
+						devID = parsed
+					}
+				}
+
+				response := echo.Map{
+					"user_id": strconv.FormatUint(devID, 10),
+					"role":    "developer",
+				}
+				c.Response().Header().Set("X-User-ID", strconv.FormatUint(devID, 10))
+				c.Response().Header().Set("X-Role", "developer")
+				if encoded, err := encodeUserInfo(strconv.FormatUint(devID, 10)); err == nil {
+					c.Response().Header().Set("X-User-Info", encoded)
+				}
+
+				return c.JSON(http.StatusOK, response)
+			}
+		}
+	}
+
 	if token == "" {
 		return c.JSON(http.StatusBadRequest, echo.Map{"error": "token is required"})
 	}
@@ -70,6 +100,13 @@ func (h Handler) verifyToken(c echo.Context) error {
 	if claims.RegisteredClaims.IssuedAt != nil {
 		response["issued_at"] = claims.RegisteredClaims.IssuedAt.Time.Format(time.RFC3339)
 	}
+
+	c.Response().Header().Set("X-User-ID", claims.UserID)
+	c.Response().Header().Set("X-Role", claims.Role)
+	if encoded, err := encodeUserInfo(claims.UserID); err == nil {
+		c.Response().Header().Set("X-User-Info", encoded)
+	}
+
 	return c.JSON(http.StatusOK, response)
 }
 
@@ -197,6 +234,18 @@ func parsePagination(rawPage, rawPageSize string) (int, int, error) {
 		}
 	}
 	return page, pageSize, nil
+}
+
+func encodeUserInfo(userID string) (string, error) {
+	parsedID, err := strconv.ParseUint(userID, 10, 64)
+	if err != nil {
+		return "", err
+	}
+	payload, err := json.Marshal(types.UserClaim{ID: types.ID(parsedID)})
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(payload), nil
 }
 
 func extractBearerToken(r *http.Request) string {

@@ -41,8 +41,8 @@ jwt:
   refresh_token_duration: 168h
 
 contributor_rpc:
-  host: "contributor-service"
-  port: 8090
+  host: "contributor-app" # matches docker-compose service name
+  port: 8093             # contributor gRPC port
   grpc_service_name: "contributor.v1.ContributorService"
   max_attempts: 3
   initial_backoff: 1s

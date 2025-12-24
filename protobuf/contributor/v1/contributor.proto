@@ -15,6 +15,19 @@ message GetContributorResponse {
   string password = 2;
 }
 
+// Request for verifying contributor credentials.
+message VerifyPasswordRequest {
+  int64 contributor_id = 1;
+  string github_username = 2;
+  string password = 3;
+}
+
+// Response for credential verification.
+message VerifyPasswordResponse {
+  bool valid = 1;
+  int64 contributor_id = 2;
+}
+
 // Request for fetching contributors by VCS provider and usernames.
 message GetContributorsByVCSRequest {
   string vcs_provider = 1;           // e.g., "GITHUB", "GITLAB", "BITBUCKET"
@@ -37,6 +50,9 @@ message GetContributorsByVCSResponse {
 service ContributorService {
   // Get contributor credentials by GitHub username (for authentication).
   rpc GetContributor(GetContributorRequest) returns (GetContributorResponse);
+
+  // Verify contributor credentials (used by authentication clients).
+  rpc VerifyPassword(VerifyPasswordRequest) returns (VerifyPasswordResponse);
 
   // Lookup contributors by VCS provider and usernames.
   // Used by webhook service to map VCS users to internal contributor IDs.

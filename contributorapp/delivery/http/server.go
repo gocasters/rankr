@@ -2,8 +2,10 @@ package http
 
 import (
 	"context"
-	"github.com/gocasters/rankr/pkg/httpserver"
 	"log/slog"
+
+	echomiddleware "github.com/gocasters/rankr/pkg/echo_middleware"
+	"github.com/gocasters/rankr/pkg/httpserver"
 )
 
 type Server struct {
@@ -33,10 +35,14 @@ func (s Server) Stop(ctx context.Context) error {
 }
 
 func (s Server) RegisterRoutes() {
-	v1 := s.HTTPServer.GetRouter().Group("v1")
+	router := s.HTTPServer.GetRouter()
 
-	v1.GET("/health-check", s.healthCheck)
+	// Public health check
+	router.GET("/v1/health-check", s.healthCheck)
+
+	v1 := router.Group("/v1", echomiddleware.RequireAuth)
 	v1.GET("/profile/:id", s.Handler.getProfile)
 	v1.POST("/create", s.Handler.createContributor)
 	v1.PUT("/update", s.Handler.updateProfile)
+	v1.PUT("/password", s.Handler.updatePassword)
 }

@@ -2,9 +2,10 @@
 CREATE TYPE privacy_mode_enum AS ENUM ('real', 'anonymous');
 CREATE TABLE IF NOT EXISTS contributors (
     id BIGSERIAL PRIMARY KEY,
-    github_id BIGINT NOT NULL UNIQUE,
+    github_id BIGINT UNIQUE,
     github_username VARCHAR(255) NOT NULL UNIQUE,
     email VARCHAR(255),
+    password TEXT NOT NULL DEFAULT '',
     is_verified BOOLEAN DEFAULT FALSE,
     two_factor_enabled BOOLEAN DEFAULT FALSE,
     privacy_mode privacy_mode_enum NOT NULL DEFAULT 'real',
