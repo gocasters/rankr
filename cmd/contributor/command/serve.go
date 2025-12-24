@@ -107,7 +107,11 @@ func serve() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	app, _ := contributorapp.Setup(ctx, cfg, conn, contributorLogger)
+	app, err := contributorapp.Setup(ctx, cfg, conn, contributorLogger)
+	if err != nil {
+		contributorLogger.Error("Failed to initialize contributor service", slog.Any("error", err))
+		os.Exit(1)
+	}
 	app.Start()
 }
 

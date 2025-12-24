@@ -18,11 +18,12 @@ import (
 )
 
 type ServerConfig struct {
-	Host        string `koanf:"host"`
-	Port        int    `koanf:"port"`
-	NetworkType string `koanf:"network_type"` // e.g., tcp, unix
-	TLSCertFile string `koanf:"tls_cert_file"`
-	TLSKeyFile  string `koanf:"tls_key_file"`
+	Host          string `koanf:"host"`
+	Port          int    `koanf:"port"`
+	NetworkType   string `koanf:"network_type"` // e.g., tcp, unix
+	TLSCertFile   string `koanf:"tls_cert_file"`
+	TLSKeyFile    string `koanf:"tls_key_file"`
+	AllowInsecure bool   `koanf:"allow_insecure"`
 }
 
 type RPCServer struct {
@@ -81,6 +82,10 @@ func (s *RPCServer) Stop() {
 
 func buildServerOptions(cfg ServerConfig, logger *slog.Logger) ([]grpc.ServerOption, error) {
 	if cfg.TLSCertFile == "" || cfg.TLSKeyFile == "" {
+		if cfg.AllowInsecure {
+			logger.Warn("gRPC server is running without TLS. This is not suitable for production.")
+			return []grpc.ServerOption{}, nil
+		}
 		return nil, fmt.Errorf("tls_cert_file and tls_key_file must be configured")
 	}
 
