@@ -110,6 +110,7 @@ func (h Handler) updatePassword(c echo.Context) error {
 	}
 
 	var body struct {
+		OldPassword string `json:"old_password"`
 		NewPassword string `json:"new_password"`
 	}
 	if err := c.Bind(&body); err != nil {
@@ -118,6 +119,7 @@ func (h Handler) updatePassword(c echo.Context) error {
 
 	res, err := h.ContributorService.UpdatePassword(c.Request().Context(), contributor.UpdatePasswordRequest{
 		ID:          types.ID(userID),
+		OldPassword: body.OldPassword,
 		NewPassword: body.NewPassword,
 	})
 	if err != nil {

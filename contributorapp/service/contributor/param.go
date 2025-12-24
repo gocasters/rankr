@@ -54,6 +54,7 @@ type UpdateProfileResponse struct {
 
 type UpdatePasswordRequest struct {
 	ID          types.ID `json:"id"`
+	OldPassword string   `json:"old_password"`
 	NewPassword string   `json:"new_password"`
 }
 

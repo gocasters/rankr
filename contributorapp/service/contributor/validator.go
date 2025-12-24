@@ -13,6 +13,7 @@ const (
 	ErrValidationEnumPrivacy   = "must be 'real' or 'anonymous'"
 	ErrValidationPositive      = "must be 'public' or 'private'"
 	ErrValidationLength3To100  = "must be between 3 and 100 characters"
+	ErrValidationLength6To72   = "must be between 6 and 72 characters"
 	ErrValidationInvalidIDType = "ID must be uint64"
 )
 
@@ -34,7 +35,7 @@ func (v Validator) ValidateCreateContributorRequest(ctx context.Context, req Cre
 			validation.When(req.GitHubID != 0, validation.Min(int64(1)).Error(ErrValidationPositive)),
 		),
 		validation.Field(&req.GitHubUsername, validation.Required.Error(ErrValidationRequired), validation.Length(3, 100).Error(ErrValidationLength3To100)),
-		validation.Field(&req.Password, validation.Required.Error(ErrValidationRequired), validation.Length(6, 72).Error(ErrValidationLength3To100)),
+		validation.Field(&req.Password, validation.Required.Error(ErrValidationRequired), validation.Length(6, 72).Error(ErrValidationLength6To72)),
 		validation.Field(&req.DisplayName, validation.Length(0, 100).Error(ErrValidationLength3To100)),
 		validation.Field(&req.ProfileImage, validation.Length(0, 255)),
 		validation.Field(&req.Bio, validation.Length(0, 500)),
@@ -70,7 +71,8 @@ func (v Validator) ValidateUpdateProfileRequest(ctx context.Context, req UpdateP
 func (v Validator) ValidateUpdatePasswordRequest(_ context.Context, req UpdatePasswordRequest) error {
 	return validation.ValidateStruct(&req,
 		validation.Field(&req.ID, validation.Required.Error(ErrValidationRequired), validation.By(checkID)),
-		validation.Field(&req.NewPassword, validation.Required.Error(ErrValidationRequired), validation.Length(6, 72).Error(ErrValidationLength3To100)),
+		validation.Field(&req.OldPassword, validation.Required.Error(ErrValidationRequired), validation.Length(6, 72).Error(ErrValidationLength6To72)),
+		validation.Field(&req.NewPassword, validation.Required.Error(ErrValidationRequired), validation.Length(6, 72).Error(ErrValidationLength6To72)),
 	)
 }
 

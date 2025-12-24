@@ -9,6 +9,7 @@ import (
 	"github.com/gocasters/rankr/pkg/cachemanager"
 	errmsg "github.com/gocasters/rankr/pkg/err_msg"
 	"github.com/gocasters/rankr/pkg/logger"
+	"github.com/gocasters/rankr/pkg/statuscode"
 	types "github.com/gocasters/rankr/type"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -159,6 +160,19 @@ func (s Service) GetContributorCredentials(ctx context.Context, id types.ID) (*C
 func (s Service) UpdatePassword(ctx context.Context, req UpdatePasswordRequest) (UpdatePasswordResponse, error) {
 	if err := s.validator.ValidateUpdatePasswordRequest(ctx, req); err != nil {
 		return UpdatePasswordResponse{}, err
+	}
+
+	contrib, err := s.repository.GetContributorByID(ctx, req.ID)
+	if err != nil {
+		logger.L().Error("contributor_update_password", "error", err)
+		return UpdatePasswordResponse{}, err
+	}
+
+	if !passwordMatches(contrib.Password, req.OldPassword) {
+		return UpdatePasswordResponse{}, errmsg.ErrorResponse{
+			Message:         "old password is incorrect",
+			InternalErrCode: statuscode.IntCodeNotAuthorize,
+		}
 	}
 
 	hashed, err := hashPassword(req.NewPassword)

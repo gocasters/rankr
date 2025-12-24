@@ -8,18 +8,22 @@ import (
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 	"log/slog"
 	"net"
+	"os"
 )
 
 type ServerConfig struct {
 	Host        string `koanf:"host"`
 	Port        int    `koanf:"port"`
 	NetworkType string `koanf:"network_type"` // e.g., tcp, unix
+	TLSCertFile string `koanf:"tls_cert_file"`
+	TLSKeyFile  string `koanf:"tls_key_file"`
 }
 
 type RPCServer struct {
@@ -42,7 +46,14 @@ func NewServer(cfg ServerConfig) (*RPCServer, error) {
 	}
 
 	// Configure Server Options (Interceptors)
-	serverOptions := buildServerOptions(cfg, logger)
+	serverOptions, err := buildServerOptions(cfg, logger)
+	if err != nil {
+		logger.Error(
+			"failed to configure TLS for gRPC server; refusing to start without TLS",
+			slog.String("error", err.Error()),
+		)
+		os.Exit(1)
+	}
 
 	// Create the gRPC Server Instance
 	gRPCServer := grpc.NewServer(serverOptions...)
@@ -68,7 +79,15 @@ func (s *RPCServer) Stop() {
 	s.Server.GracefulStop()
 }
 
-func buildServerOptions(cfg ServerConfig, logger *slog.Logger) []grpc.ServerOption {
+func buildServerOptions(cfg ServerConfig, logger *slog.Logger) ([]grpc.ServerOption, error) {
+	if cfg.TLSCertFile == "" || cfg.TLSKeyFile == "" {
+		return nil, fmt.Errorf("tls_cert_file and tls_key_file must be configured")
+	}
+
+	creds, err := credentials.NewServerTLSFromFile(cfg.TLSCertFile, cfg.TLSKeyFile)
+	if err != nil {
+		return nil, fmt.Errorf("load TLS credentials: %w", err)
+	}
 
 	// Create a logging interceptor
 	logOpts := []logging.Option{
@@ -85,15 +104,14 @@ func buildServerOptions(cfg ServerConfig, logger *slog.Logger) []grpc.ServerOpti
 
 	// Chain the interceptors. The order is important: recovery should be first.
 	opts := []grpc.ServerOption{
+		grpc.Creds(creds),
 		grpc.ChainUnaryInterceptor(
 			recovery.UnaryServerInterceptor(recoveryOpts...),
 			logging.UnaryServerInterceptor(interceptorLogger(logger), logOpts...),
 		),
 	}
 
-	logger.Warn("gRPC server is starting without TLS. This is not suitable for production.")
-
-	return opts
+	return opts, nil
 }
 
 func interceptorLogger(l *slog.Logger) logging.Logger {
