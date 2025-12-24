@@ -9,9 +9,6 @@ services:
     ports:
       - "8081:8081" 
       - "8091:8091" 
-    depends_on:
-      contributor-app:
-        condition: service_healthy
     networks:
       - rankr-shared-development-network
     env_file:
