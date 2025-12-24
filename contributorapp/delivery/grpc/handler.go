@@ -35,7 +35,7 @@ func (h Handler) VerifyPassword(ctx context.Context, req *contributorpb.VerifyPa
 	return &contributorpb.VerifyPasswordResponse{
 		Valid:         res.Valid,
 		ContributorId: int64(res.ID),
-	}
+	}, nil
 }
 
 func (h Handler) GetContributorsByVCS(ctx context.Context, req *contributorpb.GetContributorsByVCSRequest) (*contributorpb.GetContributorsByVCSResponse, error) {

@@ -10,6 +10,11 @@ services:
     ports:
       - "8082:8082" # HTTP port
       - "8093:8093" # gRPC port
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8082/v1/health-check > /dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
     networks:
       - rankr-shared-development-network
     environment:
@@ -17,6 +22,7 @@ services:
       - contributor_POSTGRES_DB_HOST=shared-postgres
       - contributor_REDIS_HOST=shared-redis
       - contributor_NATS_URL=nats://shared-nats:4222
+      - ENV=development
       - DEV_API_KEY=deyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
       - DEV_USER_ID=1
     entrypoint: [ "air", "-c", "/app/.air/.air.contributor.toml" ]
