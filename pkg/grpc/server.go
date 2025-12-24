@@ -15,7 +15,6 @@ import (
 	"google.golang.org/grpc/status"
 	"log/slog"
 	"net"
-	"os"
 )
 
 type ServerConfig struct {
@@ -52,7 +51,8 @@ func NewServer(cfg ServerConfig) (*RPCServer, error) {
 			"failed to configure TLS for gRPC server; refusing to start without TLS",
 			slog.String("error", err.Error()),
 		)
-		os.Exit(1)
+		_ = listener.Close()
+		return nil, err
 	}
 
 	// Create the gRPC Server Instance

@@ -22,8 +22,19 @@ func NewHandler(svc contributor.Service) Handler {
 }
 
 func (h Handler) VerifyPassword(ctx context.Context, req *contributorpb.VerifyPasswordRequest) (*contributorpb.VerifyPasswordResponse, error) {
+	if req.GetContributorId() <= 0 {
+		return nil, status.Error(codes.InvalidArgument, "contributor_id must be greater than 0")
+	}
+	if req.GetGithubUsername() == "" {
+		return nil, status.Error(codes.InvalidArgument, "github_username cannot be empty")
+	}
+	if req.GetPassword() == "" {
+		return nil, status.Error(codes.InvalidArgument, "password cannot be empty")
+	}
+
+	contributorID := types.ID(uint64(req.GetContributorId()))
 	res, err := h.svc.VerifyPassword(ctx, contributor.VerifyPasswordRequest{
-		ID:             types.ID(req.GetContributorId()),
+		ID:             contributorID,
 		GitHubUsername: req.GetGithubUsername(),
 		Password:       req.GetPassword(),
 	})
