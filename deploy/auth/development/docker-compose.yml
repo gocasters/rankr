@@ -19,7 +19,6 @@ services:
     environment:
       - CONFIG_PATH=/app/deploy/auth/development/config.yml
       - ENV=development
-      - DEV_API_KEY=deyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
       - DEV_USER_ID=1
     entrypoint: [ "air", "-c", "/app/.air/.air.auth.toml" ]
 
