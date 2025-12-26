@@ -7,8 +7,8 @@ services:
     volumes:
       - ../../..:/app
     ports:
-      - '8088:8081' # HTTP port
-      - '8098:8091' # gRPC port
+      - "8088:8081" # HTTP port
+      - "8098:8091" # gRPC port
     networks:
       - rankr-shared-development-network
     environment:
@@ -20,14 +20,7 @@ services:
       - leaderboardstat_POSTGRES_DB_PORT=5432
       - leaderboardstat_REDIS_HOST=shared-redis
       - leaderboardstat_NATS_URL=nats://shared-nats:4222
-      - MAX_TRIES=600 # allow up to 20 minutes to cover slow module downloads/builds
-      - SLEEP_SECS=2
-    entrypoint:
-      [
-        'sh',
-        '-c',
-        'sh /app/deploy/leaderboardstat/development/wait-for-deps.sh && exec air -c /app/.air/.air.leaderboardstat.toml',
-      ]
+    entrypoint: [ "air", "-c", "/app/.air/.air.leaderboardstat.toml" ]
 networks:
   rankr-shared-development-network:
     external: true
