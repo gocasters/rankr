@@ -28,8 +28,8 @@ leaderboard_scoring_rpc:
   port: 8091
   grpc_service_name: "leaderboardscoring.v1.LeaderboardScoringService"
   max_attempts: 3
-  initial_backoff: 1s
-  max_backoff: 30s
+  initial_backoff: 30s
+  max_backoff: 120s
   backoff_multiplier: 1.5
   retryable_status_codes:
     - "UNAVAILABLE"
@@ -41,8 +41,8 @@ project_rpc:
   port: 8094
   grpc_service_name: "project.v1.ProjectService"
   max_attempts: 3
-  initial_backoff: 1s
-  max_backoff: 30s
+  initial_backoff: 30s
+  max_backoff: 120s
   backoff_multiplier: 1.5
   retryable_status_codes:
     - "UNAVAILABLE"
