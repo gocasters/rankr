@@ -24,39 +24,33 @@ CREATE TABLE IF NOT EXISTS projects (
     archived_at          TIMESTAMPTZ
     );
 
--- Common function to maintain updated_at
-CREATE OR REPLACE FUNCTION set_updated_at()
-RETURNS trigger LANGUAGE plpgsql AS '
-BEGIN
-  NEW.updated_at := now();
-  RETURN NEW;
-END;
-';
+-- -- Common function to maintain updated_at
+-- CREATE OR REPLACE FUNCTION set_updated_at()
+-- RETURNS trigger LANGUAGE plpgsql AS '
+-- BEGIN
+--   NEW.updated_at := now();
+--   RETURN NEW;
+-- END;
+-- ';
 
--- Trigger for projects.updated_at
-DROP TRIGGER IF EXISTS trg_projects_set_updated_at ON projects;
-CREATE TRIGGER trg_projects_set_updated_at
-    BEFORE UPDATE ON projects
-    FOR EACH ROW EXECUTE FUNCTION set_updated_at();
+-- -- Trigger for projects.updated_at
+-- DROP TRIGGER IF EXISTS trg_projects_set_updated_at ON projects;
+-- CREATE TRIGGER trg_projects_set_updated_at
+--     BEFORE UPDATE ON projects
+--     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- Helpful indexes
-CREATE INDEX IF NOT EXISTS idx_projects_status     ON projects(status);
-CREATE INDEX IF NOT EXISTS idx_projects_created_at ON projects(created_at DESC);
+-- CREATE INDEX IF NOT EXISTS idx_projects_status     ON projects(status);
+-- CREATE INDEX IF NOT EXISTS idx_projects_created_at ON projects(created_at DESC);
 
 -- +migrate Down
 
 -- Drop trigger first
-DROP TRIGGER IF EXISTS trg_projects_set_updated_at ON projects;
+-- DROP TRIGGER IF EXISTS trg_projects_set_updated_at ON projects;
 
 -- Drop table
 DROP TABLE IF EXISTS projects;
-
--- Drop function (002 will recreate it if needed)
---DROP FUNCTION IF EXISTS set_updated_at();
-
--- Drop enums
-DROP TYPE IF EXISTS vcs_provider;
 DROP TYPE IF EXISTS project_status;
 
 -- Optionally drop the helper function (only if nothing else depends on it)
-DROP FUNCTION IF EXISTS set_updated_at();
+-- DROP FUNCTION IF EXISTS set_updated_at();
