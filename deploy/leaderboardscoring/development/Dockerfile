@@ -19,6 +19,8 @@ WORKDIR /app
 COPY --from=builder /go/bin/air /usr/local/bin/air
 COPY --from=builder /app /app
 
+RUN apk add --no-cache netcat-openbsd
+
 EXPOSE 8080
 
 CMD ["/app/main", "serve", "--migrate-up"]

@@ -14,12 +14,18 @@ services:
       - "8070"
     networks:
       - rankr-shared-development-network
+    healthcheck:
+      test: ['CMD-SHELL', 'nc -z 127.0.0.1 8091']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
     environment:
       - CONFIG_PATH=/app/deploy/leaderboardscoring/development/config.yml
       - LEADERBOARDSCORING_POSTGRES_DB_HOST=shared-postgres
       - LEADERBOARDSCORING_REDIS_HOST=shared-redis
       - LEADERBOARDSCORING_NATS_URL=nats://shared-nats:4222
-    entrypoint: [ "air", "-c", "/app/.air/.air.leaderboardscoring.toml" ]
+    entrypoint: ['air', '-c', '/app/.air/.air.leaderboardscoring.toml']
 
 networks:
   rankr-shared-development-network:

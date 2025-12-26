@@ -2,6 +2,8 @@ FROM golang:1.25-alpine
 
 WORKDIR /app
 
+RUN apk add --no-cache netcat-openbsd
+
 # Install air for hot-reload
 RUN go install github.com/air-verse/air@latest
 
