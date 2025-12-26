@@ -25,7 +25,7 @@ grpc_client:
 
 leaderboard_scoring_rpc:
   host: "leaderboardscoring-app"
-  port: 8091
+  port: 8070
   grpc_service_name: "leaderboardscoring.v1.LeaderboardScoringService"
   max_attempts: 3
   initial_backoff: 30s
@@ -34,7 +34,6 @@ leaderboard_scoring_rpc:
   retryable_status_codes:
     - "UNAVAILABLE"
     - "DEADLINE_EXCEEDED"
-
 
 project_rpc:
   host: "project-app"

@@ -8,8 +8,10 @@ services:
     volumes:
       - ../../..:/app
     ports:
-      - '8080:8081' # HTTP port (host 8080 -> container 8081)
-      - '8090:8091' # gRPC port (host 8090 -> container 8091)
+      - "8080:8081" # HTTP port (host 8080 -> container 8081)
+      - "8090:8070" # gRPC port (host 8090 -> container 8070)
+    expose:
+      - "8070"
     networks:
       - rankr-shared-development-network
     healthcheck:

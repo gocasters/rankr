@@ -11,7 +11,7 @@ CREATE TYPE vcs_provider AS ENUM ('GITHUB', 'GITLAB', 'BITBUCKET');
 
 -- projects table
 CREATE TABLE IF NOT EXISTS projects (
-    id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                                        id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name                 VARCHAR(200) NOT NULL,
     slug                 VARCHAR(120) NOT NULL UNIQUE,
     description          TEXT,
@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS projects (
     created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
     archived_at          TIMESTAMPTZ
-);
+    );
 
 -- Common function to maintain updated_at
 CREATE OR REPLACE FUNCTION set_updated_at()
@@ -50,6 +50,9 @@ DROP TRIGGER IF EXISTS trg_projects_set_updated_at ON projects;
 
 -- Drop table
 DROP TABLE IF EXISTS projects;
+
+-- Drop function (002 will recreate it if needed)
+--DROP FUNCTION IF EXISTS set_updated_at();
 
 -- Drop enums
 DROP TYPE IF EXISTS vcs_provider;

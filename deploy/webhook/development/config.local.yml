@@ -22,6 +22,7 @@ nats:
     name: "EVENTS_STREAM"
     subjects:
       - "github.*"
+      - "rankr_raw_events"
 
 postgres_db:
   host: "localhost"
