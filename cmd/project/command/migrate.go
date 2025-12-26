@@ -59,7 +59,10 @@ func migrate() {
 
 	if up {
 		log.Println("Running migrations up...")
-		mgr.Up()
+		err := mgr.Up()
+		if err != nil {
+			log.Fatalf("Migrations up error: %v", err) // TODO - handling migrations error in other Apps
+		}
 		log.Println("Migrations up completed.")
 	} else if down {
 		log.Println("Running migrations down...")

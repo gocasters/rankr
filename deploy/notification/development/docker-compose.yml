@@ -15,7 +15,7 @@ services:
       - CONFIG_PATH=/app/deploy/notification/development/config.yml
       - notification_POSTGRES_DB_HOST=shared-postgres
       - notification_POSTGRES_DB_USER=notification_user
-      - notification_POSTGRES_DB_PASSWORD=notification_pass
+      - notification_POSTGRES_DB_PASSWORD=change_me_notification
       - notification_POSTGRES_DB_NAME=notification_db
       - notification_POSTGRES_DB_PORT=5432
       - notification_REDIS_HOST=shared-redis
