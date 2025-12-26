@@ -29,7 +29,7 @@ leaderboard_scoring_rpc:
   grpc_service_name: "leaderboardscoring.v1.LeaderboardScoringService"
   max_attempts: 3
   initial_backoff: 30s
-  max_backoff: 120s
+  max_backoff: 50s
   backoff_multiplier: 1.5
   retryable_status_codes:
     - "UNAVAILABLE"
@@ -41,7 +41,7 @@ project_rpc:
   grpc_service_name: "project.v1.ProjectService"
   max_attempts: 3
   initial_backoff: 30s
-  max_backoff: 120s
+  max_backoff: 50s
   backoff_multiplier: 1.5
   retryable_status_codes:
     - "UNAVAILABLE"
@@ -129,8 +129,8 @@ postgres_db:
   password: change_me_stat
   db_name: leaderboardstat_db
   ssl_mode: disable
-  max_conns: 25  
-  min_conns: 5  
+  max_conns: 25
+  min_conns: 5
   max_conn_lifetime: 300
   max_conn_idle_time: 60
   health_check_period: 60
