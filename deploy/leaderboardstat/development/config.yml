@@ -35,9 +35,10 @@ leaderboard_scoring_rpc:
     - "UNAVAILABLE"
     - "DEADLINE_EXCEEDED"
 
+
 project_rpc:
   host: "project-app"
-  port: 8092
+  port: 8094
   grpc_service_name: "project.v1.ProjectService"
   max_attempts: 3
   initial_backoff: 1s
