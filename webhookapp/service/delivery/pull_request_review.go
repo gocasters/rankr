@@ -4,12 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-
-
-
-	"github.com/ThreeDotsLabs/watermill"
-
-
 	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -29,9 +23,8 @@ func (s *Service) HandlePullRequestReviewEvent(provider eventpb.EventProvider, a
 }
 
 func (s *Service) PublishPullRequestReviewSubmitted(req PullRequestReviewSubmittedRequest, provider eventpb.EventProvider, deliveryUID string) error {
-	_ = deliveryUID
 	ev := &eventpb.Event{
-		Id:             watermill.NewUUID(),
+		Id:             deliveryUID,
 		EventName:      eventpb.EventName_EVENT_NAME_PULL_REQUEST_REVIEW_SUBMITTED,
 		Provider:       provider,
 		Time:           timestamppb.New(req.Review.SubmittedAt),

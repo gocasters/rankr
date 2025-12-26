@@ -3,14 +3,16 @@ package repository
 import (
 	"context"
 	"fmt"
-	"github.com/gocasters/rankr/leaderboardstatapp/service/leaderboardstat"
-	types "github.com/gocasters/rankr/type"
 	"strconv"
 	"time"
 
+	"github.com/gocasters/rankr/leaderboardstatapp/service/leaderboardstat"
+	types "github.com/gocasters/rankr/type"
+
+	"log/slog"
+
 	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/redis/go-redis/v9"
-	"log/slog"
 )
 
 type RedisLeaderboardRepository struct {
@@ -41,13 +43,27 @@ func (r *RedisLeaderboardRepository) GetPublicLeaderboardPaginated(ctx context.C
 
 	userScores := make([]leaderboardstat.UserScoreEntry, 0, len(results))
 	for _, result := range results {
-		userID, ok := result.Member.(string)
-		if !ok {
-			continue
-		}
-
-		uid, err := strconv.Atoi(userID)
-		if err != nil {
+		var uid int
+		switch v := result.Member.(type) {
+		case string:
+			if parsed, err := strconv.Atoi(v); err == nil {
+				uid = parsed
+			} else {
+				continue
+			}
+		case []byte:
+			if parsed, err := strconv.Atoi(string(v)); err == nil {
+				uid = parsed
+			} else {
+				continue
+			}
+		case int:
+			uid = v
+		case int64:
+			uid = int(v)
+		case float64:
+			uid = int(v)
+		default:
 			continue
 		}
 
@@ -69,9 +85,10 @@ func (r *RedisLeaderboardRepository) SetPublicLeaderboard(ctx context.Context, p
 	pipe.Del(ctx, cacheKey)
 
 	for userID, score := range userScores {
+		member := strconv.Itoa(userID)
 		pipe.ZAdd(ctx, cacheKey, redis.Z{
 			Score:  score,
-			Member: userID,
+			Member: member,
 		})
 	}
 

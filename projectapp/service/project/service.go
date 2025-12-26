@@ -2,7 +2,9 @@ package project
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 	"time"
 
@@ -21,10 +23,25 @@ type Repository interface {
 	FindByVCSRepo(ctx context.Context, provider constant.VcsProvider, repoID string) (*ProjectEntity, error)
 }
 
+type GitHubRepository struct {
+	ID            uint64  `json:"id"`
+	Name          string  `json:"name"`
+	FullName      string  `json:"full_name"`
+	Description   *string `json:"description"`
+	DefaultBranch string  `json:"default_branch"`
+	Private       bool    `json:"private"`
+	CloneURL      string  `json:"clone_url"`
+}
+
+type GitHubClient interface {
+	GetRepository(owner, repo, token string) (*GitHubRepository, error)
+}
+
 type Service struct {
-	projectRepo Repository
-	validator   *Validator
-	logger      *slog.Logger
+	projectRepo  Repository
+	validator    *Validator
+	logger       *slog.Logger
+	githubClient GitHubClient
 }
 
 func NewService(
@@ -39,9 +56,32 @@ func NewService(
 	}
 }
 
+func (s *Service) SetGitHubClient(client GitHubClient) {
+	s.githubClient = client
+}
+
 func (s Service) CreateProject(ctx context.Context, input CreateProjectInput) (CreateProjectResponse, error) {
 	if err := s.validator.ValidateCreateProject(ctx, input); err != nil {
 		return CreateProjectResponse{}, err
+	}
+
+	gitRepoID := stringsTrimPtr(input.GitRepoID)
+
+	if gitRepoID == nil && input.Owner != nil && input.Repo != nil && input.VcsToken != nil {
+		if input.RepoProvider != nil && *input.RepoProvider == constant.VcsProviderGitHub {
+			if s.githubClient != nil {
+				ghRepo, err := s.githubClient.GetRepository(*input.Owner, *input.Repo, *input.VcsToken)
+				if err != nil {
+					s.logger.Error("failed to fetch repository from GitHub",
+						slog.String("owner", *input.Owner),
+						slog.String("repo", *input.Repo),
+						slog.String("error", err.Error()))
+					return CreateProjectResponse{}, fmt.Errorf("failed to fetch repository from GitHub: %w", err)
+				}
+				repoIDStr := strconv.FormatUint(ghRepo.ID, 10)
+				gitRepoID = &repoIDStr
+			}
+		}
 	}
 
 	now := time.Now().UTC()
@@ -51,7 +91,7 @@ func (s Service) CreateProject(ctx context.Context, input CreateProjectInput) (C
 		Slug:               stringsTrim(input.Slug),
 		Description:        stringsTrimPtr(input.Description),
 		DesignReferenceURL: stringsTrimPtr(input.DesignReferenceURL),
-		GitRepoID:          stringsTrimPtr(input.GitRepoID),
+		GitRepoID:          gitRepoID,
 		RepoProvider:       input.RepoProvider,
 		Status:             constant.ProjectStatusActive,
 		CreatedAt:          now,
@@ -211,6 +251,62 @@ func (s Service) GetProjectByVCSRepo(ctx context.Context, req GetProjectByVCSRep
 		Name:         project.Name,
 		RepoProvider: project.RepoProvider,
 		GitRepoID:    project.GitRepoID,
+	}, nil
+}
+
+func (s Service) CreateProjectFromGitHub(ctx context.Context, input CreateProjectFromGitHubInput) (CreateProjectFromGitHubResponse, error) {
+	if s.githubClient == nil {
+		return CreateProjectFromGitHubResponse{}, fmt.Errorf("github client is not configured")
+	}
+
+	if input.Owner == "" || input.Repo == "" {
+		return CreateProjectFromGitHubResponse{}, fmt.Errorf("owner and repo are required")
+	}
+
+	if input.Token == "" {
+		return CreateProjectFromGitHubResponse{}, fmt.Errorf("github token is required")
+	}
+
+	ghRepo, err := s.githubClient.GetRepository(input.Owner, input.Repo, input.Token)
+	if err != nil {
+		s.logger.Error("failed to fetch repository from GitHub",
+			slog.String("owner", input.Owner),
+			slog.String("repo", input.Repo),
+			slog.String("error", err.Error()))
+		return CreateProjectFromGitHubResponse{}, fmt.Errorf("failed to fetch repository from GitHub: %w", err)
+	}
+
+	gitRepoID := strconv.FormatUint(ghRepo.ID, 10)
+	provider := constant.VcsProviderGitHub
+	slug := strings.ToLower(strings.ReplaceAll(ghRepo.Name, "_", "-"))
+
+	now := time.Now().UTC()
+	p := &ProjectEntity{
+		ID:           uuid.NewString(),
+		Name:         ghRepo.Name,
+		Slug:         slug,
+		Description:  ghRepo.Description,
+		GitRepoID:    &gitRepoID,
+		RepoProvider: &provider,
+		Status:       constant.ProjectStatusActive,
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}
+
+	if err := s.projectRepo.Create(ctx, p); err != nil {
+		return CreateProjectFromGitHubResponse{}, err
+	}
+
+	return CreateProjectFromGitHubResponse{
+		ID:           p.ID,
+		Name:         p.Name,
+		Slug:         p.Slug,
+		Description:  p.Description,
+		GitRepoID:    p.GitRepoID,
+		RepoProvider: p.RepoProvider,
+		Status:       p.Status,
+		CreatedAt:    p.CreatedAt,
+		UpdatedAt:    p.UpdatedAt,
 	}, nil
 }
 

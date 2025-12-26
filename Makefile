@@ -9,7 +9,7 @@ PROTOC_GEN_GO_VERSION ?= v1.34.2
 PROTOC_GEN_GO_GRPC_VERSION ?= v1.5.1
 DOCKER_COMPOSE ?= docker compose
 INFRA_SCRIPT := ./deploy/script/start_infrastructure.sh
-SERVICES := auth contributor leaderboardstat leaderboardscoring notification project realtime task userprofile webhook argus
+SERVICES := auth contributor leaderboardscoring leaderboardstat notification project realtime task userprofile webhook
 
 # ====================================================================================
 # General Go Commands

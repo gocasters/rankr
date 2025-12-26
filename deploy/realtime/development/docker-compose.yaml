@@ -15,7 +15,7 @@ services:
       - CONFIG_PATH=/app/deploy/realtime/development/config.yml
       - realtime_POSTGRES_DB_HOST=shared-postgres
       - realtime_POSTGRES_DB_USER=realtime_user
-      - realtime_POSTGRES_DB_PASSWORD=realtime_pass
+      - realtime_POSTGRES_DB_PASSWORD=change_me_realtime
       - realtime_POSTGRES_DB_NAME=realtime_db
       - realtime_POSTGRES_DB_PORT=5432
       - realtime_REDIS_HOST=shared-redis

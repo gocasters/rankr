@@ -1,13 +1,14 @@
 package command
 
 import (
+	"log"
+	"os"
+	"path/filepath"
+
 	"github.com/gocasters/rankr/leaderboardscoringapp"
 	"github.com/gocasters/rankr/pkg/config"
 	"github.com/gocasters/rankr/pkg/path"
 	"github.com/spf13/cobra"
-	"log"
-	"os"
-	"path/filepath"
 )
 
 func loadAppConfig() leaderboardscoringapp.Config {

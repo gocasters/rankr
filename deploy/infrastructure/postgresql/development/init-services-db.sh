@@ -3,23 +3,23 @@ set -e
 
 # Default values if environment variables are not set
 LEADERBOARDSTAT_USER=${LEADERBOARDSTAT_USER:-leaderboardstat_user}
-LEADERBOARDSTAT_PASS=${LEADERBOARDSTAT_PASS:-leaderboardstat_pass}
+LEADERBOARDSTAT_PASS=${LEADERBOARDSTAT_PASS:-change_me_stat}
 CONTRIBUTOR_USER=${CONTRIBUTOR_USER:-contributor_user}
-CONTRIBUTOR_PASS=${CONTRIBUTOR_PASS:-contributor_pass}
+CONTRIBUTOR_PASS=${CONTRIBUTOR_PASS:-change_me_contributor}
 PROJECT_USER=${PROJECT_USER:-project_user}
-PROJECT_PASS=${PROJECT_PASS:-project_pass}
+PROJECT_PASS=${PROJECT_PASS:-change_me_project}
 WEBHOOK_USER=${WEBHOOK_USER:-webhook_user}
-WEBHOOK_PASS=${WEBHOOK_PASS:-webhook_pass}
+WEBHOOK_PASS=${WEBHOOK_PASS:-change_me_webhook}
 LEADERBOARDSCORING_USER=${LEADERBOARDSCORING_USER:-leaderboardscoring_user}
-LEADERBOARDSCORING_PASS=${LEADERBOARDSCORING_PASS:-leaderboardscoring_pass}
+LEADERBOARDSCORING_PASS=${LEADERBOARDSCORING_PASS:-change_me_leaderboardscoring}
 AUTH_USER=${AUTH_USER:-auth_user}
-AUTH_PASS=${AUTH_PASS:-auth_pass}
+AUTH_PASS=${AUTH_PASS:-change_me_auth}
 NOTIFAPP_USER=${NOTIFAPP_USER:-notification_user}
-NOTIFAPP_PASS=${NOTIFAPP_PASS:-notification_pass}
+NOTIFAPP_PASS=${NOTIFAPP_PASS:-change_me_notification}
 REALTIME_USER=${REALTIME_USER:-realtime_user}
-REALTIME_PASS=${REALTIME_PASS:-realtime_pass}
+REALTIME_PASS=${REALTIME_PASS:-change_me_realtime}
 TASK_USER=${TASK_USER:-task_user}
-TASK_PASS=${TASK_PASS:-task_pass}
+TASK_PASS=${TASK_PASS:-change_me_task}
 
 echo "========================================="
 echo "Initializing Rankr microservice databases..."

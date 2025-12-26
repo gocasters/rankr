@@ -5,12 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/gocasters/rankr/pkg/logger"
-	"github.com/gocasters/rankr/pkg/timettl"
 	"log/slog"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/gocasters/rankr/pkg/logger"
+	"github.com/gocasters/rankr/pkg/timettl"
 )
 
 const (
@@ -73,9 +74,8 @@ func (s *Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) erro
 		return nil
 	}
 
-	// Update Redis leaderboard (real-time)
+	// Update Redis leaderboard (real-time) for all timeframes
 	for _, tf := range Timeframes {
-
 		keys := s.generateKeys(strconv.FormatUint(req.RepositoryID, 10), tf)
 
 		upsertScore := UpsertScore{
@@ -87,28 +87,32 @@ func (s *Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) erro
 			log.Error(ErrFailedToUpdateScores.Error(), slog.String("error", err.Error()))
 			return errors.Join(ErrFailedToUpdateScores, err)
 		}
-
-		// Publish to NATS JetStream for batch persistence
-		pse := ProcessedScoreEvent{
-			UserID:    req.UserID,
-			EventName: EventName(req.EventName),
-			Score:     score,
-			Timestamp: time.Now().UTC(),
-		}
-
-		dataMsg, mErr := json.Marshal(pse)
-		if mErr != nil {
-			log.Error("failed to marshal processed score event", slog.String("error", mErr.Error()))
-			return fmt.Errorf("marshal event: %w", mErr)
-		}
-
-		if err := s.publisher.Publish(ctx, s.processedEventTopic, dataMsg); err != nil {
-			log.Error("failed to publish processed score event", slog.String("error", err.Error()))
-			return fmt.Errorf("publish event: %w", err)
-		}
-
-		log.Debug(MsgSuccessfullyProcessedEvent, slog.String("event_id", req.ID))
 	}
+
+	// Publish to NATS JetStream for batch persistence (once per event)
+	pse := ProcessedScoreEvent{
+		UserID:    req.UserID,
+		EventName: EventName(req.EventName),
+		Score:     score,
+		Timestamp: time.Now().UTC(),
+	}
+
+	dataMsg, mErr := json.Marshal(pse)
+	if mErr != nil {
+		log.Error("failed to marshal processed score event", slog.String("error", mErr.Error()))
+		return fmt.Errorf("marshal event: %w", mErr)
+	}
+
+	log.Info("DEBUG: Attempting to publish processed event",
+		slog.String("topic", s.processedEventTopic),
+		slog.String("event_id", req.ID),
+		slog.Int("data_size", len(dataMsg)))
+	if err := s.publisher.Publish(ctx, s.processedEventTopic, dataMsg); err != nil {
+		log.Error("failed to publish processed score event", slog.String("error", err.Error()))
+		return fmt.Errorf("publish event: %w", err)
+	}
+
+	log.Debug(MsgSuccessfullyProcessedEvent, slog.String("event_id", req.ID))
 
 	return nil
 }

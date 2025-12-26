@@ -174,7 +174,7 @@ func (a *Adapter) ensureStream() error {
 		Retention: a.config.RetentionPolicy.ToNatsRetention(),
 	}
 
-	_, err := a.js.StreamInfo(a.config.StreamName)
+	existingInfo, err := a.js.StreamInfo(a.config.StreamName)
 	if err != nil {
 		_, err = a.js.AddStream(streamConfig)
 		if err != nil {
@@ -182,6 +182,14 @@ func (a *Adapter) ensureStream() error {
 		}
 		a.logger.Info("Created stream", "name", a.config.StreamName)
 		return nil
+	}
+
+	if existingInfo.Config.Storage != a.config.StorageType.ToNatsStorage() {
+		a.logger.Info("Stream exists with different storage type, using existing configuration",
+			"stream", a.config.StreamName,
+			"existing_storage", existingInfo.Config.Storage.String(),
+			"requested_storage", a.config.StorageType)
+		streamConfig.Storage = existingInfo.Config.Storage
 	}
 
 	_, err = a.js.UpdateStream(streamConfig)

@@ -228,3 +228,18 @@ func (h Handler) ListVcsReposByProject(ctx echo.Context) error {
 
 	return ctx.JSON(200, repos)
 }
+
+func (h Handler) CreateProjectFromGitHub(ctx echo.Context) error {
+	var input project.CreateProjectFromGitHubInput
+	if err := ctx.Bind(&input); err != nil {
+		return ctx.JSON(400, echo.Map{"error": "invalid input"})
+	}
+
+	response, err := h.projectService.CreateProjectFromGitHub(ctx.Request().Context(), input)
+	if err != nil {
+		h.logger.Error("failed to create project from GitHub", slog.Any("error", err))
+		return ctx.JSON(500, echo.Map{"error": err.Error()})
+	}
+
+	return ctx.JSON(201, response)
+}
