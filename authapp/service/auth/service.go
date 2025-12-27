@@ -5,12 +5,10 @@ import (
 	"errors"
 	"time"
 
-	"github.com/gocasters/rankr/adapter/contributor"
 	errmsg "github.com/gocasters/rankr/pkg/err_msg"
 	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/gocasters/rankr/pkg/statuscode"
 	types "github.com/gocasters/rankr/type"
-	"golang.org/x/crypto/bcrypt"
 )
 
 type Repository interface {
@@ -31,7 +29,7 @@ type Service struct {
 }
 
 type contributorCredentialsProvider interface {
-	GetCredentialsByGitHubUsername(ctx context.Context, githubUsername string) (contributor.Credentials, error)
+	VerifyPassword(ctx context.Context, username string, password string) (types.ID, bool, error)
 }
 
 type tokenIssuer interface {
@@ -52,23 +50,23 @@ func (s Service) Login(ctx context.Context, req LoginRequest) (LoginResponse, er
 		return LoginResponse{}, err
 	}
 
-	creds, err := s.contributorClient.GetCredentialsByGitHubUsername(ctx, req.ContributorName)
+	contributorID, valid, err := s.contributorClient.VerifyPassword(ctx, req.ContributorName, req.Password)
 	if err != nil {
-		logger.L().Warn("login_contributor_lookup_failed", "error", err)
+		logger.L().Warn("login_verify_password_failed", "error", err)
 		return LoginResponse{}, errmsg.ErrorResponse{
-			Message:         "invalid credentials",
+			Message:         "username or password is incorrect",
 			InternalErrCode: statuscode.IntCodeNotAuthorize,
 		}
 	}
 
-	if !passwordMatches(creds.Password, req.Password) {
+	if !valid {
 		return LoginResponse{}, errmsg.ErrorResponse{
-			Message:         "invalid credentials",
+			Message:         "username or password is incorrect",
 			InternalErrCode: statuscode.IntCodeNotAuthorize,
 		}
 	}
 
-	access, refresh, err := s.tokenService.IssueTokens(creds.ID.String(), "contributor")
+	access, refresh, err := s.tokenService.IssueTokens(contributorID.String(), "contributor")
 	if err != nil {
 		logger.L().Error("login_issue_tokens_failed", "error", err)
 		return LoginResponse{}, errmsg.ErrorResponse{
@@ -81,18 +79,6 @@ func (s Service) Login(ctx context.Context, req LoginRequest) (LoginResponse, er
 		AccessToken:  access,
 		RefreshToken: refresh,
 	}, nil
-}
-
-func passwordMatches(hashedOrPlain, provided string) bool {
-	// Try bcrypt compare first; fall back to plain comparison if hash is not bcrypt.
-	err := bcrypt.CompareHashAndPassword([]byte(hashedOrPlain), []byte(provided))
-	if err == nil {
-		return true
-	}
-	if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
-		return false
-	}
-	return hashedOrPlain == provided
 }
 
 func (s Service) CreateRole(ctx context.Context, req CreateRoleRequest) (CreateRoleResponse, error) {

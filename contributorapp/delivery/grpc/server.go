@@ -43,7 +43,6 @@ func (s *Server) Serve() error {
 		"contributor gRPC server stopped",
 		slog.String("address", s.server.Listener.Addr().String()),
 	)
-
 	return nil
 }
 

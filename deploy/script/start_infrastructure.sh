@@ -10,6 +10,7 @@ PG_PATH="$PROJECT_ROOT/deploy/infrastructure/postgresql/development/docker-compo
 REDIS_PATH="$PROJECT_ROOT/deploy/infrastructure/redis/development/docker-compose.redis.yml"
 NATS_PATH="$PROJECT_ROOT/deploy/infrastructure/nats/development/docker-compose.nats.yml"
 EMQX_PATH="$PROJECT_ROOT/deploy/infrastructure/emqx/development/docker-compose.emqx.yml"
+OPENRESTY_PATH="$PROJECT_ROOT/deploy/infrastructure/openresty/development/docker-compose.yml"
 ENV_FILE="$PROJECT_ROOT/deploy/.env"
 ENV_TEMPLATE="$PROJECT_ROOT/deploy/.env.example"
 GITIGNORE_FILE="$PROJECT_ROOT/.gitignore"
@@ -74,6 +75,10 @@ function print_help() {
     echo "  up-emqx        Start EMQX"
     echo "  down-emqx      Stop and remove EMQX"
     echo "  logs-emqx      Show logs for EMQX"
+    echo ""
+    echo "  up-openresty   Start development Nginx (OpenResty) proxy"
+    echo "  down-openresty Stop and remove development Nginx (OpenResty) proxy"
+    echo "  logs-openresty Show logs for development Nginx (OpenResty) proxy"
     echo ""
     echo "  up-all         Start all infrastructure components"
     echo "  down-all       Stop all infrastructure components"
@@ -192,16 +197,33 @@ function logs_emqx() {
     docker compose -p $PROJECT_NAME --env-file $ENV_FILE -f $EMQX_PATH logs -f
 }
 
+function up_openresty() {
+    echo "Starting OpenResty (nginx)..."
+    docker compose -p $PROJECT_NAME -f $OPENRESTY_PATH up -d
+}
+
+function down_openresty() {
+    echo "Stopping OpenResty (nginx)..."
+    docker compose -p $PROJECT_NAME -f $OPENRESTY_PATH down
+}
+
+function logs_openresty() {
+    echo "Showing OpenResty (nginx) logs..."
+    docker compose -p $PROJECT_NAME -f $OPENRESTY_PATH logs -f
+}
+
 function up_all() {
     up_base
     up_postgres
     up_redis
     up_nats
     up_emqx
+    up_openresty
     echo "All infrastructure services are up and running!"
 }
 
 function down_all() {
+    down_openresty
     down_emqx
     down_nats
     down_redis
@@ -260,6 +282,15 @@ case "$1" in
         ;;
     logs-emqx)
         logs_emqx
+        ;;
+    up-openresty)
+        up_openresty
+        ;;
+    down-openresty)
+        down_openresty
+        ;;
+    logs-openresty)
+        logs_openresty
         ;;
     up-all)
         up_all

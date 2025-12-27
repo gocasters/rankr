@@ -96,7 +96,7 @@ func (v validator) ValidateRemovePermissionRequest(req RemovePermissionRequest) 
 func (v validator) ValidateLoginRequest(req LoginRequest) error {
 	return validation.ValidateStruct(&req,
 		validation.Field(&req.Password, validation.Required),
-		validation.Field(&req.ContributorName, validation.Required),
+		validation.Field(&req.ContributorName, validation.Required, validation.Length(3, 100)),
 	)
 }
 

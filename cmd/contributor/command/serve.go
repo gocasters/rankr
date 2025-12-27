@@ -72,7 +72,16 @@ func serve() {
 
 	// Run migrations if flags are set
 	if migrateUp || migrateDown {
-		mgr := migrator.New(cfg.PostgresDB, cfg.PostgresDB.PathOfMigrations)
+		migrationPath := cfg.PostgresDB.PathOfMigrations
+		if migrationPath == "" && cfg.PathOfMigration != "" {
+			migrationPath = cfg.PathOfMigration
+			log.Println("Warning: Using deprecated PathOfMigration field, please migrate to postgres_db.path_of_migrations")
+		}
+		if migrationPath == "" {
+			log.Println("Error: Migration path not configured")
+			os.Exit(1)
+		}
+		mgr := migrator.New(cfg.PostgresDB, migrationPath)
 		if migrateUp {
 			contributorLogger.Info("Running migrations up...")
 			mgr.Up()
@@ -98,7 +107,11 @@ func serve() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	app, _ := contributorapp.Setup(ctx, cfg, conn, contributorLogger)
+	app, err := contributorapp.Setup(ctx, cfg, conn, contributorLogger)
+	if err != nil {
+		contributorLogger.Error("Failed to initialize contributor service", slog.Any("error", err))
+		os.Exit(1)
+	}
 	app.Start()
 }
 
