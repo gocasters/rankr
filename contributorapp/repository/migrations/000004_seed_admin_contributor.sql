@@ -12,7 +12,7 @@ INSERT INTO contributors (
     NULL,
     'fdaei',
     NULL,
-    '123456789',
+    '$2y$10$RpwjZmD10eub5hSvUENoP.R7G6mtKn/3gt3F6LujsZutUsEGEpBCK',
     'admin',
     'real',
     NOW(),
