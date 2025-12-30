@@ -68,7 +68,7 @@ nats_adapter:
   max_messages: 10000000
   max_bytes: 10737418240
   max_age: 24h
-  storage_type: "file"
+  storage_type: "memory"
   replicas: 1
   retention_policy: "workqueue"
 

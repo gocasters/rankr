@@ -23,4 +23,4 @@ COPY --from=builder /app /app
 
 EXPOSE 8080
 
-CMD ["/app/main", "serve"]
+CMD ["/app/main", "serve", "--migrate-up"]

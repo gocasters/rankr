@@ -5,7 +5,7 @@ http_server:
 
 rpc_server:
   host: ""
-  port: 8091
+  port: 8070
   network_type: "tcp"
 
 scheduler_cfg:
@@ -29,7 +29,7 @@ watermill_nats:
   reconnect_wait: 5s
   ping_interval: 30s
   max_pings_out: 1
-  use_jetstream: true
+  use_jetstream: false
 
 logger:
   level: "debug"
@@ -85,8 +85,8 @@ postgres_db:
   password: change_me_leaderboardscoring
   db_name: leaderboardscoring_db
   ssl_mode: disable
-  max_conns: 25  
-  min_conns: 5  
+  max_conns: 25
+  min_conns: 5
   max_conn_lifetime: 300
   max_conn_idle_time: 60
   health_check_period: 60

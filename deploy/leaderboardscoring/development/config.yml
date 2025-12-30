@@ -5,7 +5,7 @@ http_server:
 
 rpc_server:
   host: ""
-  port: 8091
+  port: 8070
   network_type: "tcp"
 
 grpc_client:
@@ -48,7 +48,7 @@ watermill_nats:
   ping_interval: 30s
   max_pings_out: 1
 
-  use_jetstream: true
+  use_jetstream: false
 
 logger:
   level: "debug" # Can be `debug`, `info`, `warn`, `error`
@@ -73,8 +73,8 @@ nats_adapter:
   reconnect_wait: 1s
 
   # Stream settings
-  max_messages: 10000000
-  max_bytes: 10737418240
+  max_messages: 100000
+  max_bytes: 1073741824
   max_age: 24h
   storage_type: "memory"
   replicas: 1
@@ -102,8 +102,8 @@ postgres_db:
   password: change_me_leaderboardscoring
   db_name: leaderboardscoring_db
   ssl_mode: disable
-  max_conns: 25  
-  min_conns: 5  
+  max_conns: 25
+  min_conns: 5
   max_conn_lifetime: 300
   max_conn_idle_time: 60
   health_check_period: 60

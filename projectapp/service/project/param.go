@@ -14,6 +14,9 @@ type CreateProjectInput struct {
 	GitRepoID          *string                `json:"gitRepoId,omitempty"`
 	RepoProvider       *constant.VcsProvider  `json:"repoProvider,omitempty"`
 	Status             constant.ProjectStatus `json:"status"`
+	Owner              *string                `json:"owner,omitempty"`
+	Repo               *string                `json:"repo,omitempty"`
+	VcsToken           *string                `json:"vcsToken,omitempty"`
 }
 
 type CreateProjectResponse struct {
@@ -96,4 +99,22 @@ type GetProjectByVCSRepoResponse struct {
 	Name         string                `json:"name"`
 	RepoProvider *constant.VcsProvider `json:"repo_provider,omitempty"`
 	GitRepoID    *string               `json:"git_repo_id,omitempty"`
+}
+
+type CreateProjectFromGitHubInput struct {
+	Owner string `json:"owner"`
+	Repo  string `json:"repo"`
+	Token string `json:"token"`
+}
+
+type CreateProjectFromGitHubResponse struct {
+	ID           string                 `json:"id"`
+	Name         string                 `json:"name"`
+	Slug         string                 `json:"slug"`
+	Description  *string                `json:"description,omitempty"`
+	GitRepoID    *string                `json:"gitRepoId,omitempty"`
+	RepoProvider *constant.VcsProvider  `json:"repoProvider,omitempty"`
+	Status       constant.ProjectStatus `json:"status"`
+	CreatedAt    time.Time              `json:"createdAt"`
+	UpdatedAt    time.Time              `json:"updatedAt"`
 }

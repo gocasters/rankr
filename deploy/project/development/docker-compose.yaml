@@ -15,13 +15,6 @@ services:
       - ./.env.development
     environment:
       - CONFIG_PATH=/app/deploy/project/development/config.yml
-      - project_POSTGRES_DB_HOST=${PROJECT_POSTGRES_DB_HOST}
-      - project_POSTGRES_DB_USER=${PROJECT_POSTGRES_DB_USER}
-      - project_POSTGRES_DB_PASSWORD=${PROJECT_POSTGRES_DB_PASSWORD}
-      - project_POSTGRES_DB_NAME=${PROJECT_POSTGRES_DB_NAME}
-      - project_POSTGRES_DB_PORT=${PROJECT_POSTGRES_DB_PORT}
-      - project_REDIS_HOST=${PROJECT_REDIS_HOST}
-      - project_NATS_URL=${PROJECT_NATS_URL}
     entrypoint: [ "air", "-c", "/app/.air/.air.projects.toml" ]
 networks:
   rankr-shared-development-network:
