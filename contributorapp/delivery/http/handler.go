@@ -103,13 +103,13 @@ func (h Handler) updateProfile(c echo.Context) error {
 }
 
 func (h Handler) uploadFile(c echo.Context) error {
-	claimVal := c.Get("Authorization")
-	claim, ok := claimVal.(*types.UserClaim)
-	if !ok || claim == nil || claim.Role.String() != types.Admin.String() {
-		return c.JSON(http.StatusUnauthorized, map[string]interface{}{
-			"error": "unauthorized",
-		})
-	}
+	//claimVal := c.Get("Authorization")
+	//claim, ok := claimVal.(*types.UserClaim)
+	//if !ok || claim == nil || claim.Role.String() != types.Admin.String() {
+	//	return c.JSON(http.StatusUnauthorized, map[string]interface{}{
+	//		"error": "unauthorized",
+	//	})
+	//}
 
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
@@ -140,7 +140,8 @@ func (h Handler) uploadFile(c echo.Context) error {
 		})
 	}
 
-	idempotencyKey := fmt.Sprintf("%s-%d-%d", fileHeader.Filename, fileHeader.Size, claim.ID)
+	// idempotencyKey := fmt.Sprintf("%s-%d-%d", fileHeader.Filename, fileHeader.Size, claim.ID)
+	idempotencyKey := fmt.Sprintf("%s-%d", fileHeader.Filename, fileHeader.Size)
 
 	res, err := h.JobService.CreateImportJob(c.Request().Context(), job.ImportContributorRequest{
 		File:           srcFile,

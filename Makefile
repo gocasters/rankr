@@ -214,7 +214,10 @@ infra-up-emqx:
 define SERVICE_template
 start-$(1)-app-dev:
 	@echo "Starting $(1) service..."
-	cd deploy/$(1)/development && PROJECT_ROOT=$(CURDIR) $(DOCKER_COMPOSE) up -d --build
+	# cd deploy/$(1)/development && PROJECT_ROOT=$(CURDIR) $(DOCKER_COMPOSE) up -d --build
+	cd deploy/$(1)/development && \
+	PROJECT_ROOT=$(CURDIR) $(DOCKER_COMPOSE) build --pull=false && \
+	PROJECT_ROOT=$(CURDIR) $(DOCKER_COMPOSE) up -d
 
 start-$(1)-app-dev-log:
 	@echo "Starting $(1) service with logs..."
