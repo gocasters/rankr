@@ -1,14 +1,14 @@
 package command
 
 import (
-	"log"
-	"os"
-	"path/filepath"
-
+	"fmt"
 	"github.com/gocasters/rankr/contributorapp"
 	cfgloader "github.com/gocasters/rankr/pkg/config"
 	"github.com/gocasters/rankr/pkg/migrator"
 	"github.com/spf13/cobra"
+	"log"
+	"os"
+	"path/filepath"
 )
 
 var up bool
@@ -31,8 +31,10 @@ func migrate() {
 		log.Fatalf("Error getting working directory: %v", err)
 	}
 
-	yamlPath := filepath.Join(workingDir, "contributorapp", "repository", "dbconfig.yml")
-
+	yamlPath := os.Getenv("CONFIG_PATH")
+	if yamlPath == "" {
+		yamlPath = filepath.Join(workingDir, "contributorapp", "repository", "dbconfig.yml")
+	}
 	// to run migrations when you want to run contributor service locally
 	if path := os.Getenv("DBCONFIG_OVERRIDE_PATH"); path != "" {
 		yamlPath = path
@@ -56,7 +58,9 @@ func migrate() {
 	mgr := migrator.New(cfg.PostgresDB, cfg.PathOfMigration)
 
 	if up {
-		mgr.Up()
+		if err := mgr.Up(); err != nil {
+			fmt.Printf("failed to migrate up: %v", err)
+		}
 	} else if down {
 		mgr.Down()
 	} else {

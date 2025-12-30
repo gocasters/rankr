@@ -44,6 +44,8 @@ type ContributorRecord struct {
 	ProfileImage   string
 	Bio            string
 	PrivacyMode    string
+	Email          string
+	CreatedAt      time.Time
 }
 
 func (c ContributorRecord) mapContributorRecordToUpsertRequest() contributor.UpsertContributorRequest {
@@ -54,6 +56,8 @@ func (c ContributorRecord) mapContributorRecordToUpsertRequest() contributor.Ups
 		ProfileImage:   c.ProfileImage,
 		Bio:            c.Bio,
 		PrivacyMode:    contributor.PrivacyMode(c.PrivacyMode),
+		Email:          c.Email,
+		CreateAt:       c.CreatedAt,
 	}
 }
 
@@ -92,6 +96,7 @@ var (
 	ProfileImage   ColumnName = "profile_image"
 	Bio            ColumnName = "bio"
 	PrivacyMode    ColumnName = "privacy_mode"
+	Email          ColumnName = "email"
 )
 
 func (c ColumnName) String() string {
@@ -108,6 +113,8 @@ func (c ColumnName) String() string {
 		return "bio"
 	case PrivacyMode:
 		return "privacy_mode"
+	case Email:
+		return "email"
 	}
 
 	return ""

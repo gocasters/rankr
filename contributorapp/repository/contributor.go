@@ -61,6 +61,7 @@ func (repo ContributorRepo) GetContributorByID(ctx context.Context, id types.ID)
 
 	return &contrib, nil
 }
+
 func (repo ContributorRepo) CreateContributor(ctx context.Context, contributor contributor.Contributor) (*contributor.Contributor, error) {
 	query := `
     	INSERT INTO contributors (github_id, github_username, email , privacy_mode, display_name, profile_image, bio, created_at)
@@ -87,6 +88,7 @@ func (repo ContributorRepo) CreateContributor(ctx context.Context, contributor c
 	contributor.ID = id
 	return &contributor, nil
 }
+
 func (repo ContributorRepo) UpdateProfileContributor(ctx context.Context, contri contributor.Contributor) (*contributor.Contributor, error) {
 	var updated contributor.Contributor
 
@@ -138,17 +140,27 @@ func (repo ContributorRepo) UpdateProfileContributor(ctx context.Context, contri
 }
 
 func (repo ContributorRepo) GetContributorByGitHubUsername(ctx context.Context, githubUsername string) (int64, bool, error) {
-	query := `SELECT github_username FROM contributors WHERE github_username=$1 RETURNING id;`
+
+	query := `
+		    SELECT id
+		    FROM contributors
+		    WHERE github_username = $1
+	`
 
 	var id int64
 
-	err := repo.PostgresSQL.Pool.QueryRow(ctx, query, githubUsername).Scan(&id)
+	err := repo.PostgresSQL.Pool.
+		QueryRow(ctx, query, githubUsername).
+		Scan(&id)
+
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return 0, false, nil
 		}
-
-		return 0, false, fmt.Errorf("failed to check contributor by github_username: %w", err)
+		return 0, false, fmt.Errorf(
+			"get contributor by github_username failed: %w",
+			err,
+		)
 	}
 
 	return id, true, nil

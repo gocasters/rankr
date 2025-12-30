@@ -103,17 +103,17 @@ func (h Handler) updateProfile(c echo.Context) error {
 }
 
 func (h Handler) uploadFile(c echo.Context) error {
-	//claimVal := c.Get("Authorization")
-	//claim, ok := claimVal.(*types.UserClaim)
-	//if !ok || claim == nil || claim.Role.String() != types.Admin.String() {
-	//	return c.JSON(http.StatusUnauthorized, map[string]interface{}{
-	//		"error": "unauthorized",
-	//	})
-	//}
+	claimVal := c.Get("Authorization")
+	claim, ok := claimVal.(*types.UserClaim)
+	if !ok || claim == nil || claim.Role.String() != types.Admin.String() {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "unauthorized",
+		})
+	}
 
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"message": "fail to get file",
 			"error":   err.Error(),
 		})
@@ -121,7 +121,7 @@ func (h Handler) uploadFile(c echo.Context) error {
 
 	srcFile, err := fileHeader.Open()
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": fmt.Sprintf("failed to open file: %v", err),
 		})
 	}
@@ -135,13 +135,12 @@ func (h Handler) uploadFile(c echo.Context) error {
 
 	fileType, ok := c.Get("FileType").(string)
 	if !ok || fileType == "" {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
+		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": "file type not detected by middleware",
 		})
 	}
 
-	// idempotencyKey := fmt.Sprintf("%s-%d-%d", fileHeader.Filename, fileHeader.Size, claim.ID)
-	idempotencyKey := fmt.Sprintf("%s-%d", fileHeader.Filename, fileHeader.Size)
+	idempotencyKey := fmt.Sprintf("%s-%d-%d", fileHeader.Filename, fileHeader.Size, claim.ID)
 
 	res, err := h.JobService.CreateImportJob(c.Request().Context(), job.ImportContributorRequest{
 		File:           srcFile,
@@ -161,10 +160,52 @@ func (h Handler) uploadFile(c echo.Context) error {
 			return c.JSON(statuscode.MapToHTTPStatusCode(eRes), eRes)
 		}
 
-		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": err.Error(),
 		})
 	}
 
 	return c.JSON(http.StatusCreated, res)
+}
+
+func (h Handler) getJobStatus(c echo.Context) error {
+	jobIDStr := c.Param("job_id")
+	jobID, err := strconv.Atoi(jobIDStr)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "invalid job id",
+		})
+	}
+
+	res, err := h.JobService.JobStatus(c.Request().Context(), uint(jobID))
+	if err != nil {
+		if eRes, ok := err.(errmsg.ErrorResponse); ok {
+			return c.JSON(statuscode.MapToHTTPStatusCode(eRes), err)
+		}
+
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, res)
+}
+
+func (h Handler) getFailRecords(c echo.Context) error {
+	jobIdStr := c.Param("job_id")
+	jobID, err := strconv.Atoi(jobIdStr)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "invalid job id",
+		})
+	}
+
+	records, err := h.JobService.GetFailRecords(c.Request().Context(), uint(jobID))
+	if err != nil {
+		if eRes, ok := err.(errmsg.ErrorResponse); ok {
+			return c.JSON(statuscode.MapToHTTPStatusCode(eRes), eRes)
+		}
+
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, records)
 }

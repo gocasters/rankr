@@ -154,7 +154,7 @@ func (s Service) Upsert(ctx context.Context, req UpsertContributorRequest) (Upse
 	}
 
 	if !exists {
-		var reqRequest CreateContributorRequest
+		var reqRequest Contributor
 
 		reqRequest.GitHubUsername = req.GitHubUsername
 		reqRequest.GitHubID = req.GitHubID
@@ -162,30 +162,34 @@ func (s Service) Upsert(ctx context.Context, req UpsertContributorRequest) (Upse
 		reqRequest.Bio = req.Bio
 		reqRequest.ProfileImage = req.ProfileImage
 		reqRequest.DisplayName = req.DisplayName
+		reqRequest.Email = req.Email
+		reqRequest.CreatedAt = req.CreateAt
 
-		resCreate, err := s.CreateContributor(ctx, reqRequest)
+		resCreate, err := s.repository.CreateContributor(ctx, reqRequest)
 		if err != nil {
 			return UpsertContributorResponse{}, errmsg.ErrorResponse{
-				Message:         "failed to create contributor",
+				Message:         "failed to create contributor:" + err.Error(),
 				Errors:          map[string]interface{}{"error": err.Error()},
 				InternalErrCode: statuscode.IntCodeUnExpected,
 			}
 		}
 
-		return UpsertContributorResponse{ID: resCreate.ID, IsNew: true}, nil
+		return UpsertContributorResponse{ID: types.ID(resCreate.ID), IsNew: true}, nil
 	}
 
-	var upRequest UpdateProfileRequest
+	var upRequest Contributor
 
-	upRequest.ID = types.ID(id)
+	upRequest.ID = id
 	upRequest.GitHubID = req.GitHubID
 	upRequest.GitHubUsername = req.GitHubUsername
 	upRequest.DisplayName = req.DisplayName
 	upRequest.Bio = req.Bio
 	upRequest.PrivacyMode = req.PrivacyMode
 	upRequest.ProfileImage = req.ProfileImage
+	upRequest.Email = req.Email
+	upRequest.CreatedAt = req.CreateAt
 
-	_, err = s.UpdateProfile(ctx, upRequest)
+	_, err = s.repository.UpdateProfileContributor(ctx, upRequest)
 	if err != nil {
 		return UpsertContributorResponse{}, errmsg.ErrorResponse{
 			Message:         "failed to update contributor",
@@ -195,7 +199,6 @@ func (s Service) Upsert(ctx context.Context, req UpsertContributorRequest) (Upse
 	}
 
 	return UpsertContributorResponse{ID: types.ID(upRequest.ID), IsNew: false}, nil
-
 }
 
 func (s Service) GetContributorsByVCS(ctx context.Context, req GetContributorsByVCSRequest) (GetContributorsByVCSResponse, error) {

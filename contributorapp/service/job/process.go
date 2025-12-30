@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 )
 
 type ProcessResult struct {
@@ -41,11 +42,6 @@ func (c CSVProcess) Process(file *os.File) (ProcessResult, error) {
 		return ProcessResult{}, fmt.Errorf("failed read header: %w", err)
 	}
 
-	colIdx := map[string]int{}
-	for i, col := range header {
-		colIdx[strings.ToLower(col)] = i
-	}
-
 	var rows [][]string
 	for {
 		rec, err := reader.Read()
@@ -55,10 +51,13 @@ func (c CSVProcess) Process(file *os.File) (ProcessResult, error) {
 			}
 			return ProcessResult{}, fmt.Errorf("failed read row: %w", err)
 		}
+		if len(rec) == 0 {
+			continue
+		}
 		rows = append(rows, rec)
 	}
 
-	return processRows(rows, colIdx, c.workers, c.buffer), nil
+	return processRowsWithHeader(rows, header, c.workers, c.buffer), nil
 }
 
 func (x XLSXProcess) Process(file *os.File) (ProcessResult, error) {
@@ -66,39 +65,61 @@ func (x XLSXProcess) Process(file *os.File) (ProcessResult, error) {
 	if err != nil {
 		return ProcessResult{}, fmt.Errorf("failed open xlsx: %w", err)
 	}
-
 	defer f.Close()
 
 	sheet := f.GetSheetName(0)
-	rows, err := f.Rows(sheet)
+	rowsIter, err := f.Rows(sheet)
 	if err != nil {
 		return ProcessResult{}, fmt.Errorf("failed get rows: %w", err)
 	}
 
-	headerRow, err := rows.Columns()
-	if err != nil {
-		return ProcessResult{}, fmt.Errorf("failed read header: %w", err)
+	var rows [][]string
+	var header []string
+	first := true
+	for rowsIter.Next() {
+		row, _ := rowsIter.Columns()
+		if first {
+			header = row
+			first = false
+			continue
+		}
+		if len(row) == 0 {
+			continue
+		}
+		rows = append(rows, row)
+	}
+
+	return processRowsWithHeader(rows, header, x.workers, x.buffer), nil
+}
+
+func processRowsWithHeader(rows [][]string, header []string, workers, buffer int) ProcessResult {
+	result := ProcessResult{
+		Total:          len(rows),
+		SuccessRecords: []ContributorRecord{},
+		FailRecords:    []FailRecord{},
 	}
 
 	colIdx := map[string]int{}
-	for i, col := range headerRow {
-		colIdx[strings.ToLower(col)] = i
+	for i, col := range header {
+		colName := strings.ToLower(strings.TrimSpace(col))
+		colIdx[colName] = i
 	}
 
-	var dataRows [][]string
-	for rows.Next() {
-		row, _ := rows.Columns()
-		dataRows = append(dataRows, row)
-	}
-
-	return processRows(dataRows, colIdx, x.workers, x.buffer), nil
-}
-
-func processRows(rows [][]string, colIdx map[string]int, workers, buffer int) ProcessResult {
-	result := ProcessResult{
-		Total:          len(rows),
-		SuccessRecords: make([]ContributorRecord, 0),
-		FailRecords:    make([]FailRecord, 0),
+	requiredCols := []ColumnName{GithubID, GithubUsername, PrivacyMode, Email}
+	for _, c := range requiredCols {
+		if _, ok := colIdx[strings.ToLower(c.String())]; !ok {
+			return ProcessResult{
+				Total: len(rows),
+				FailRecords: []FailRecord{
+					{
+						RecordNumber: 0,
+						Reason:       fmt.Sprintf("missing required column: %s", c.String()),
+						LastError:    "header missing required column",
+						ErrType:      ErrTypeValidation,
+					},
+				},
+			}
+		}
 	}
 
 	rowChan := make(chan rowInfo, buffer)
@@ -111,20 +132,42 @@ func processRows(rows [][]string, colIdx map[string]int, workers, buffer int) Pr
 		go func() {
 			defer wg.Done()
 			for r := range rowChan {
-				id, err := strconv.Atoi(r.data[colIdx[GithubID.String()]])
+				if len(r.data) < len(header) {
+					failChan <- FailRecord{
+						RecordNumber: r.rowNumber,
+						Reason:       "row length less than header",
+						RawData:      cloneRow(r.data),
+						LastError:    "row too short",
+						ErrType:      ErrTypeValidation,
+					}
+					continue
+				}
+
+				idStr := safeGet(r.data, colIdx[strings.ToLower(GithubID.String())])
+				id, err := strconv.ParseInt(idStr, 10, 64)
 				if err != nil {
 					failChan <- FailRecord{
 						RecordNumber: r.rowNumber,
 						Reason:       fmt.Sprintf("invalid github id: %v", err),
-						RawData:      r.data,
+						RawData:      cloneRow(r.data),
 						LastError:    err.Error(),
 						ErrType:      ErrTypeValidation,
 					}
 					continue
 				}
-				var cr ContributorRecord
-				setContributorRecord(id, &cr, r.data, colIdx)
-				cr.RowNumber = r.rowNumber
+
+				cr := ContributorRecord{
+					RowNumber:      r.rowNumber,
+					GithubID:       id,
+					GithubUsername: safeGet(r.data, colIdx[strings.ToLower(GithubUsername.String())]),
+					DisplayName:    safeGet(r.data, colIdx[strings.ToLower(DisplayName.String())]),
+					ProfileImage:   safeGet(r.data, colIdx[strings.ToLower(ProfileImage.String())]),
+					Bio:            safeGet(r.data, colIdx[strings.ToLower(Bio.String())]),
+					PrivacyMode:    safeGet(r.data, colIdx[strings.ToLower(PrivacyMode.String())]),
+					Email:          safeGet(r.data, colIdx[strings.ToLower(Email.String())]),
+					CreatedAt:      time.Now(),
+				}
+
 				successChan <- cr
 			}
 		}()
@@ -132,7 +175,10 @@ func processRows(rows [][]string, colIdx map[string]int, workers, buffer int) Pr
 
 	go func() {
 		for i, r := range rows {
-			rowChan <- rowInfo{rowNumber: i + 1, data: r}
+			rowChan <- rowInfo{
+				rowNumber: i + 1,
+				data:      cloneRow(r),
+			}
 		}
 		close(rowChan)
 	}()
@@ -165,18 +211,15 @@ func processRows(rows [][]string, colIdx map[string]int, workers, buffer int) Pr
 	return result
 }
 
-func setContributorRecord(id int, c *ContributorRecord, r []string, columnIdx map[string]int) {
-	c.GithubID = int64(id)
-	c.GithubUsername = safeGet(r, columnIdx[GithubUsername.String()])
-	c.DisplayName = safeGet(r, columnIdx[DisplayName.String()])
-	c.ProfileImage = safeGet(r, columnIdx[ProfileImage.String()])
-	c.Bio = safeGet(r, columnIdx[Bio.String()])
-	c.PrivacyMode = safeGet(r, columnIdx[PrivacyMode.String()])
-}
-
 func safeGet(r []string, idx int) string {
 	if idx < 0 || idx >= len(r) {
 		return ""
 	}
 	return r[idx]
+}
+
+func cloneRow(r []string) []string {
+	cp := make([]string, len(r))
+	copy(cp, r)
+	return cp
 }

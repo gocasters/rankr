@@ -117,6 +117,7 @@ func (r FailRecordRepository) GetByJobID(ctx context.Context, jobID uint) ([]job
 			&rawData,
 			&fr.RetryCount,
 			&fr.LastError,
+			&fr.ErrType,
 			&fr.CreatedAt,
 			&fr.UpdatedAt,
 		); err != nil {

@@ -58,6 +58,8 @@ type UpsertContributorRequest struct {
 	ProfileImage   string      `json:"profile_image,omitempty"`
 	Bio            string      `json:"bio,omitempty"`
 	PrivacyMode    PrivacyMode `json:"privacy_mode,omitempty"`
+	Email          string      `json:"email"`
+	CreateAt       time.Time   `json:"create_at"`
 }
 
 type UpsertContributorResponse struct {

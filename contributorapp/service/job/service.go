@@ -40,6 +40,7 @@ type Publisher interface {
 
 type FailRepository interface {
 	Create(ctx context.Context, failRecord FailRecord) error
+	GetByJobID(ctx context.Context, jobID uint) ([]FailRecord, error)
 }
 
 type ConfigJob struct {
@@ -97,7 +98,18 @@ func (s Service) CreateImportJob(ctx context.Context, req ImportContributorReque
 		}
 	}
 
+	if _, err := os.Stat(s.config.StoragePath); os.IsNotExist(err) {
+		if err := os.MkdirAll(s.config.StoragePath, 0755); err != nil {
+			return ImportContributorResponse{}, errmsg.ErrorResponse{
+				Message:         "failed to create storage directory",
+				Errors:          map[string]interface{}{"error": err.Error()},
+				InternalErrCode: statuscode.IntCodeUnExpected,
+			}
+		}
+	}
+
 	savePath := filepath.Join(s.config.StoragePath, fmt.Sprintf("%d_%s", time.Now().UnixNano(), req.FileName))
+
 	dst, err := os.Create(savePath)
 	if err != nil {
 		return ImportContributorResponse{}, errmsg.ErrorResponse{
@@ -243,7 +255,7 @@ func (s Service) ProcessJob(ctx context.Context, jobID uint) error {
 					Reason:       err.Error(),
 					RawData:      record.mapToSlice(),
 					RetryCount:   0,
-					LastError:    aErr.Error(),
+					LastError:    aErr.Err.Error(),
 					ErrType:      aErr.Type,
 				})
 				if cErr != nil {
@@ -284,4 +296,64 @@ func (s Service) ProcessJob(ctx context.Context, jobID uint) error {
 	}
 
 	return nil
+}
+
+func (s Service) JobStatus(ctx context.Context, id uint) (GetJobResponse, error) {
+	job, err := s.jobRepo.GetJobByID(ctx, id)
+	if err != nil {
+		return GetJobResponse{}, errmsg.ErrorResponse{
+			Message:         "failed to get job by id",
+			InternalErrCode: statuscode.IntCodeUnExpected,
+			Errors:          map[string]interface{}{"error_db": err.Error()},
+		}
+	}
+
+	return GetJobResponse{
+		ID:             job.ID,
+		SuccessCount:   job.SuccessCount,
+		TotalRecords:   job.TotalRecords,
+		FailCount:      job.FailCount,
+		FilePath:       job.FilePath,
+		FileName:       job.FileName,
+		FileHash:       job.FileHash,
+		IdempotencyKey: job.IdempotencyKey,
+		Status:         job.Status,
+		CreatedAt:      job.CreatedAt,
+		UpdatedAt:      job.UpdatedAt,
+	}, nil
+}
+
+func (s Service) GetFailRecords(ctx context.Context, jobID uint) ([]GetFailRecordsResponse, error) {
+	records, err := s.failRepo.GetByJobID(ctx, jobID)
+	if err != nil {
+		return nil, errmsg.ErrorResponse{
+			Message:         "failed to get fail records",
+			Errors:          map[string]interface{}{"error_db": err.Error()},
+			InternalErrCode: statuscode.IntCodeUnExpected,
+		}
+	}
+
+	if len(records) < 1 {
+		return nil, nil
+	}
+
+	fr := make([]GetFailRecordsResponse, 0, len(records))
+
+	for _, r := range records {
+		var failRes GetFailRecordsResponse
+		failRes.ID = r.ID
+		failRes.JobID = r.JobID
+		failRes.RecordNumber = r.RecordNumber
+		failRes.Reason = r.Reason
+		failRes.LastError = r.LastError
+		failRes.RetryCount = r.RetryCount
+		failRes.RawData = r.RawData
+		failRes.ErrType = r.ErrType
+		failRes.CreatedAt = r.CreatedAt
+		failRes.UpdatedAt = r.UpdatedAt
+
+		fr = append(fr, failRes)
+	}
+
+	return fr, nil
 }

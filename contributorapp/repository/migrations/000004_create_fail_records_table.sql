@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS fail_records(
     job_id BIGINT NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
     record_number INT NOT NULL,
     reason TEXT NOT NULL,
-    raw_data TEXT[] NOT NULL,
+    raw_data JSONB NOT NULL,
     last_error TEXT NOT NULL,
     error_type INT NOT NULL,
     retry_count INT DEFAULT 2,
