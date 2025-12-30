@@ -3,6 +3,12 @@ package leaderboardstatapp
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
+
 	"github.com/gocasters/rankr/adapter/leaderboardscoring"
 	"github.com/gocasters/rankr/adapter/project"
 	"github.com/gocasters/rankr/adapter/redis"
@@ -10,11 +16,6 @@ import (
 	"github.com/gocasters/rankr/leaderboardstatapp/repository"
 	"github.com/gocasters/rankr/pkg/cachemanager"
 	"github.com/gocasters/rankr/pkg/database"
-	"log/slog"
-	"os"
-	"os/signal"
-	"sync"
-	"syscall"
 
 	"github.com/gocasters/rankr/leaderboardstatapp/service/leaderboardstat"
 	"github.com/gocasters/rankr/pkg/httpserver"

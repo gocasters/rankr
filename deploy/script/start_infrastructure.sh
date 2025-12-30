@@ -301,6 +301,7 @@ case "$1" in
     logs-all)
         logs_all
         ;;
+
     help|--help|-h|"")
         print_help
         ;;

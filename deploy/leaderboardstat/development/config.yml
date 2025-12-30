@@ -25,11 +25,11 @@ grpc_client:
 
 leaderboard_scoring_rpc:
   host: "leaderboardscoring-app"
-  port: 8091
+  port: 8070
   grpc_service_name: "leaderboardscoring.v1.LeaderboardScoringService"
   max_attempts: 3
-  initial_backoff: 1s
-  max_backoff: 30s
+  initial_backoff: 30s
+  max_backoff: 50s
   backoff_multiplier: 1.5
   retryable_status_codes:
     - "UNAVAILABLE"
@@ -37,11 +37,11 @@ leaderboard_scoring_rpc:
 
 project_rpc:
   host: "project-app"
-  port: 8092
+  port: 8094
   grpc_service_name: "project.v1.ProjectService"
   max_attempts: 3
-  initial_backoff: 1s
-  max_backoff: 30s
+  initial_backoff: 30s
+  max_backoff: 50s
   backoff_multiplier: 1.5
   retryable_status_codes:
     - "UNAVAILABLE"
@@ -103,7 +103,7 @@ nats_adapter:
   max_messages: 10000000
   max_bytes: 10737418240
   max_age: 24h
-  storage_type: "file" # "memory" → RAM
+  storage_type: "memory" # "memory" → RAM
   replicas: 1
   retention_policy: "workqueue"
 
@@ -129,8 +129,8 @@ postgres_db:
   password: change_me_stat
   db_name: leaderboardstat_db
   ssl_mode: disable
-  max_conns: 25  
-  min_conns: 5  
+  max_conns: 25
+  min_conns: 5
   max_conn_lifetime: 300
   max_conn_idle_time: 60
   health_check_period: 60

@@ -45,6 +45,10 @@ func NewServer(cfg ServerConfig) (*RPCServer, error) {
 		return nil, err
 	}
 
+	logger.Info("gRPC server listening on",
+		slog.String("address", address),
+		slog.String("network", cfg.NetworkType))
+
 	// Configure Server Options (Interceptors)
 	serverOptions, err := buildServerOptions(cfg, logger)
 	if err != nil {

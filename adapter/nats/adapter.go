@@ -162,13 +162,14 @@ func New(ctx context.Context, config Config, logger watermill.LoggerAdapter) (ad
 			Disabled:      false,
 			AutoProvision: true,
 			SubscribeOptions: []natsgo.SubOpt{
+				natsgo.Durable(config.DurableName),
 				natsgo.DeliverAll(),
 				natsgo.AckExplicit(),
 				natsgo.AckWait(config.AckWaitTimeout),
 				natsgo.MaxDeliver(10),
 			},
 			AckAsync:      false,
-			DurablePrefix: config.DurableName,
+			DurablePrefix: "",
 		}
 
 		publisherConfig := nats.PublisherConfig{
