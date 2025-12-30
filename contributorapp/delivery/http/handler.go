@@ -180,7 +180,7 @@ func (h Handler) getJobStatus(c echo.Context) error {
 	res, err := h.JobService.JobStatus(c.Request().Context(), uint(jobID))
 	if err != nil {
 		if eRes, ok := err.(errmsg.ErrorResponse); ok {
-			return c.JSON(statuscode.MapToHTTPStatusCode(eRes), err)
+			return c.JSON(statuscode.MapToHTTPStatusCode(eRes), eRes)
 		}
 
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})

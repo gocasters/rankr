@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS fail_records(
     raw_data JSONB NOT NULL,
     last_error TEXT NOT NULL,
     error_type INT NOT NULL,
-    retry_count INT DEFAULT 2,
+    retry_count INT DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE
     );

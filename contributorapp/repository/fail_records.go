@@ -131,5 +131,9 @@ func (r FailRecordRepository) GetByJobID(ctx context.Context, jobID uint) ([]job
 		records = append(records, fr)
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating fail records: %w", err)
+	}
+
 	return records, nil
 }
