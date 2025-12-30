@@ -71,6 +71,7 @@ type VerifyPasswordRequest struct {
 type VerifyPasswordResponse struct {
 	Valid bool     `json:"valid"`
 	ID    types.ID `json:"contributor_id"`
+	Role  string   `json:"role"`
 }
 
 type VcsProvider string

@@ -46,6 +46,7 @@ func (h Handler) VerifyPassword(ctx context.Context, req *contributorpb.VerifyPa
 	return &contributorpb.VerifyPasswordResponse{
 		Valid:         res.Valid,
 		ContributorId: int64(res.ID),
+		Role:          res.Role,
 	}, nil
 }
 

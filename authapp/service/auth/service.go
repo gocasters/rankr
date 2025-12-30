@@ -7,6 +7,7 @@ import (
 
 	errmsg "github.com/gocasters/rankr/pkg/err_msg"
 	"github.com/gocasters/rankr/pkg/logger"
+	"github.com/gocasters/rankr/pkg/role"
 	"github.com/gocasters/rankr/pkg/statuscode"
 	types "github.com/gocasters/rankr/type"
 )
@@ -29,7 +30,7 @@ type Service struct {
 }
 
 type contributorCredentialsProvider interface {
-	VerifyPassword(ctx context.Context, username string, password string) (types.ID, bool, error)
+	VerifyPassword(ctx context.Context, username string, password string) (types.ID, string, bool, error)
 }
 
 type tokenIssuer interface {
@@ -50,7 +51,7 @@ func (s Service) Login(ctx context.Context, req LoginRequest) (LoginResponse, er
 		return LoginResponse{}, err
 	}
 
-	contributorID, valid, err := s.contributorClient.VerifyPassword(ctx, req.ContributorName, req.Password)
+	contributorID, assignedRole, valid, err := s.contributorClient.VerifyPassword(ctx, req.ContributorName, req.Password)
 	if err != nil {
 		logger.L().Warn("login_verify_password_failed", "error", err)
 		return LoginResponse{}, errmsg.ErrorResponse{
@@ -66,7 +67,10 @@ func (s Service) Login(ctx context.Context, req LoginRequest) (LoginResponse, er
 		}
 	}
 
-	access, refresh, err := s.tokenService.IssueTokens(contributorID.String(), "contributor")
+	if assignedRole == "" {
+		assignedRole = string(role.User)
+	}
+	access, refresh, err := s.tokenService.IssueTokens(contributorID.String(), assignedRole)
 	if err != nil {
 		logger.L().Error("login_issue_tokens_failed", "error", err)
 		return LoginResponse{}, errmsg.ErrorResponse{
