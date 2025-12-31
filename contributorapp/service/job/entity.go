@@ -69,7 +69,7 @@ func (c ContributorRecord) mapToSlice() []string {
 	s = append(s, c.DisplayName)
 	s = append(s, c.ProfileImage)
 	s = append(s, c.Bio)
-	s = append(s, string(c.PrivacyMode))
+	s = append(s, c.PrivacyMode)
 
 	return s
 }

@@ -154,10 +154,12 @@ func (s Service) Upsert(ctx context.Context, req UpsertContributorRequest) (Upse
 
 	c, err := s.repository.GetContributorByGitHubUsername(ctx, req.GitHubUsername)
 	if err != nil {
-		return UpsertContributorResponse{}, errmsg.ErrorResponse{
-			Message:         "failed to get contributor",
-			Errors:          map[string]interface{}{"error": err.Error()},
-			InternalErrCode: statuscode.IntCodeUnExpected,
+		if !errors.Is(err, ErrNotFoundGithubUsername) {
+			return UpsertContributorResponse{}, errmsg.ErrorResponse{
+				Message:         "failed to get contributor",
+				Errors:          map[string]interface{}{"error": err.Error()},
+				InternalErrCode: statuscode.IntCodeUnExpected,
+			}
 		}
 	}
 
