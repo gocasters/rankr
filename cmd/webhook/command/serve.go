@@ -123,7 +123,7 @@ func serve() {
 	defer databaseConn.Close()
 
 	// Initialize nats
-	marshaler := &nats.GobMarshaler{}
+	marshaler := &nats.NATSMarshaler{}
 	natsLogger := watermill.NewStdLogger(false, false)
 	natsOptions := []nc.Option{
 		nc.RetryOnFailedConnect(cfg.NATSConfig.RetryOnFailedConnect),

@@ -34,7 +34,7 @@ func (s Server) registerRoutes() {
 
 	health.GET("/v1/notifapp/health-check", s.healthCheck)
 
-	v1 := s.HTTPServer.GetRouter().Group("/v1/notifapp/notifications", echomiddleware.ParseUserDataMiddleware)
+	v1 := s.HTTPServer.GetRouter().Group("/v1/notifapp/notifications", echomiddleware.RequireAuth)
 
 	v1.GET("/unread/count", s.handler.getUnreadCount)
 	v1.GET("/:notification_id", s.handler.getNotification)

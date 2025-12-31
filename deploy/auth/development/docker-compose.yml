@@ -1,25 +1,25 @@
 services:
-  # The main application service
   auth-app:
     build:
-      context: ../../.. # Build from the project root
+      context: ../../.. 
       dockerfile: ./deploy/auth/development/Dockerfile
     container_name: auth-app
     volumes:
       - ../../..:/app
     ports:
-      - "8081:8081" # HTTP port
-      - "8091:8091" # gRPC port
+      - "8081:8081" 
+      - "8091:8091" 
     networks:
       - rankr-shared-development-network
     env_file:
       - ./.env.development
     environment:
       - CONFIG_PATH=/app/deploy/auth/development/config.yml
+      - ENV=development
+      - DEV_USER_ID=1
     entrypoint: [ "air", "-c", "/app/.air/.air.auth.toml" ]
 
-# Shared network is created by `deploy/script/start_infrastructure.sh up-base`
-# or `make infra-up` before running this service.
+
 networks:
   rankr-shared-development-network:
     external: true

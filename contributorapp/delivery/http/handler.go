@@ -189,6 +189,44 @@ func (h Handler) getJobStatus(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
+func (h Handler) updatePassword(c echo.Context) error {
+	userIDHeader := c.Request().Header.Get("X-User-ID")
+	if userIDHeader == "" {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "missing user id"})
+	}
+
+	userID, err := strconv.ParseUint(userIDHeader, 10, 64)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid user id"})
+	}
+
+	var body struct {
+		OldPassword string `json:"old_password"`
+		NewPassword string `json:"new_password"`
+	}
+	if err := c.Bind(&body); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
+	res, err := h.ContributorService.UpdatePassword(c.Request().Context(), contributor.UpdatePasswordRequest{
+		ID:          types.ID(userID),
+		OldPassword: body.OldPassword,
+		NewPassword: body.NewPassword,
+	})
+	if err != nil {
+		if vErr, ok := err.(validator.Error); ok {
+			return c.JSON(vErr.StatusCode(), vErr)
+		}
+		if eResp, ok := err.(errmsg.ErrorResponse); ok {
+			return c.JSON(statuscode.MapToHTTPStatusCode(eResp), eResp)
+		}
+
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	return c.JSON(http.StatusOK, res)
+}
+
 func (h Handler) getFailRecords(c echo.Context) error {
 	jobIdStr := c.Param("job_id")
 	jobID, err := strconv.Atoi(jobIdStr)

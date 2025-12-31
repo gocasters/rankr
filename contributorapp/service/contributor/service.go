@@ -2,18 +2,27 @@ package contributor
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"time"
+
 	"github.com/gocasters/rankr/pkg/cachemanager"
 	errmsg "github.com/gocasters/rankr/pkg/err_msg"
 	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/gocasters/rankr/pkg/statuscode"
+
 	"github.com/gocasters/rankr/type"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Repository interface {
 	GetContributorByID(ctx context.Context, id types.ID) (*Contributor, error)
+	GetContributorByGitHubUsername(ctx context.Context, username string) (*Contributor, error)
 	CreateContributor(ctx context.Context, contributor Contributor) (*Contributor, error)
 	UpdateProfileContributor(ctx context.Context, contributor Contributor) (*Contributor, error)
-	GetContributorByGitHubUsername(ctx context.Context, githubUsername string) (int64, bool, error)
+	UpdatePassword(ctx context.Context, id types.ID, hashedPassword string) error
+
 	FindByVCSUsernames(ctx context.Context, provider VcsProvider, usernames []string) ([]*Contributor, error)
 }
 
@@ -66,13 +75,27 @@ func (s Service) CreateContributor(ctx context.Context, req CreateContributorReq
 		return CreateContributorResponse{}, vErr
 	}
 
+	if req.PrivacyMode == "" {
+		req.PrivacyMode = PrivacyModeReal
+	}
+
+	hashedPassword, err := hashPassword(req.Password)
+	if err != nil {
+		return CreateContributorResponse{}, err
+	}
+
+	now := time.Now()
+
 	contributor := Contributor{
 		GitHubID:       req.GitHubID,
 		GitHubUsername: req.GitHubUsername,
+		Password:       hashedPassword,
 		DisplayName:    req.DisplayName,
 		ProfileImage:   req.ProfileImage,
 		Bio:            req.Bio,
 		PrivacyMode:    req.PrivacyMode,
+		CreatedAt:      now,
+		UpdatedAt:      now, //todo move to repository
 	}
 
 	createdContributor, err := s.repository.CreateContributor(ctx, contributor)
@@ -124,27 +147,12 @@ func (s Service) UpdateProfile(ctx context.Context, req UpdateProfileRequest) (U
 	}, nil
 }
 
-func (s Service) GetContributorByGithubUsername(ctx context.Context, githubUsername string) (int64, bool, error) {
-
-	id, exists, err := s.repository.GetContributorByGitHubUsername(ctx, githubUsername)
-	if err != nil {
-		logger.L().Error("contributor-get-by-id", "error", err)
-		return 0, false, err
-	}
-
-	if !exists {
-		return 0, false, nil
-	}
-
-	return id, true, nil
-}
-
 func (s Service) Upsert(ctx context.Context, req UpsertContributorRequest) (UpsertContributorResponse, error) {
 	if err := s.validator.ValidateUpsertContributorRequest(req); err != nil {
 		return UpsertContributorResponse{}, err
 	}
 
-	id, exists, err := s.GetContributorByGithubUsername(ctx, req.GitHubUsername)
+	c, err := s.repository.GetContributorByGitHubUsername(ctx, req.GitHubUsername)
 	if err != nil {
 		return UpsertContributorResponse{}, errmsg.ErrorResponse{
 			Message:         "failed to get contributor",
@@ -153,7 +161,7 @@ func (s Service) Upsert(ctx context.Context, req UpsertContributorRequest) (Upse
 		}
 	}
 
-	if !exists {
+	if c == nil {
 		var reqRequest Contributor
 
 		reqRequest.GitHubUsername = req.GitHubUsername
@@ -179,7 +187,7 @@ func (s Service) Upsert(ctx context.Context, req UpsertContributorRequest) (Upse
 
 	var upRequest Contributor
 
-	upRequest.ID = id
+	upRequest.ID = c.ID
 	upRequest.GitHubID = req.GitHubID
 	upRequest.GitHubUsername = req.GitHubUsername
 	upRequest.DisplayName = req.DisplayName
@@ -199,6 +207,97 @@ func (s Service) Upsert(ctx context.Context, req UpsertContributorRequest) (Upse
 	}
 
 	return UpsertContributorResponse{ID: types.ID(upRequest.ID), IsNew: false}, nil
+}
+
+func (s Service) GetContributorCredentials(ctx context.Context, id types.ID) (*Contributor, error) {
+	if id == 0 {
+		return nil, fmt.Errorf("contributor id is required")
+	}
+
+	contrib, err := s.repository.GetContributorByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return contrib, nil
+}
+
+func (s Service) UpdatePassword(ctx context.Context, req UpdatePasswordRequest) (UpdatePasswordResponse, error) {
+	if err := s.validator.ValidateUpdatePasswordRequest(ctx, req); err != nil {
+		return UpdatePasswordResponse{}, err
+	}
+
+	contrib, err := s.repository.GetContributorByID(ctx, req.ID)
+	if err != nil {
+		logger.L().Error("contributor_update_password", "error", err)
+		return UpdatePasswordResponse{}, err
+	}
+
+	if !passwordMatches(contrib.Password, req.OldPassword) {
+		return UpdatePasswordResponse{}, errmsg.ErrorResponse{
+			Message:         "old password is incorrect",
+			InternalErrCode: statuscode.IntCodeNotAuthorize,
+		}
+	}
+
+	hashed, err := hashPassword(req.NewPassword)
+	if err != nil {
+		return UpdatePasswordResponse{}, err
+	}
+
+	if err := s.repository.UpdatePassword(ctx, req.ID, hashed); err != nil {
+		logger.L().Error("contributor_update_password", "error", err)
+		return UpdatePasswordResponse{}, err
+	}
+
+	return UpdatePasswordResponse{Success: true}, nil
+}
+
+func (s Service) VerifyPassword(ctx context.Context, req VerifyPasswordRequest) (VerifyPasswordResponse, error) {
+	if req.Password == "" {
+		return VerifyPasswordResponse{}, fmt.Errorf("password is required")
+	}
+	if req.ID == 0 && req.GitHubUsername == "" {
+		return VerifyPasswordResponse{}, fmt.Errorf("id or github_username is required")
+	}
+
+	var (
+		contrib *Contributor
+		err     error
+	)
+
+	if req.ID != 0 {
+		contrib, err = s.repository.GetContributorByID(ctx, req.ID)
+	} else {
+		contrib, err = s.repository.GetContributorByGitHubUsername(ctx, req.GitHubUsername)
+	}
+	if err != nil {
+		return VerifyPasswordResponse{}, err
+	}
+
+	valid := passwordMatches(contrib.Password, req.Password)
+	return VerifyPasswordResponse{Valid: valid, ID: types.ID(contrib.ID)}, nil
+}
+
+func hashPassword(password string) (string, error) {
+	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", fmt.Errorf("failed to hash password: %w", err)
+	}
+
+	return string(hashed), nil
+}
+
+func passwordMatches(hashedOrPlain, provided string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hashedOrPlain), []byte(provided))
+	if err == nil {
+		return true
+	}
+	if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
+		return false
+	}
+
+	return hashedOrPlain == provided
 }
 
 func (s Service) GetContributorsByVCS(ctx context.Context, req GetContributorsByVCSRequest) (GetContributorsByVCSResponse, error) {

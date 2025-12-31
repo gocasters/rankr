@@ -6,5 +6,4 @@ postgres_db:
   password: password123 # In production, use environment variables or a secrets manager
   db_name: contributor_db
   ssl_mode: disable
-
-path_of_migration: ./contributorapp/repository/migrations
+  path_of_migration: ./contributorapp/repository/migrations

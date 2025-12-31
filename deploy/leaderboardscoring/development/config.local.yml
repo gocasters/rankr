@@ -8,50 +8,31 @@ rpc_server:
   port: 8091
   network_type: "tcp"
 
-grpc_client:
-  contributor:
-    address: "contributor-app:8093"
-    grpc_service_name: "contributor"
-    timeout: 30s
-    max_retries: 3
-    retry_backoff: 100ms
-  
-  leaderboardscoring:
-    address: "leaderboardscoring-app:8091"
-    grpc_service_name: "leaderboardscoring"
-    timeout: 30s
-    max_retries: 3
-    retry_backoff: 100ms
-
 scheduler_cfg:
   snapshot_crontab: "0 */3 * * *"
   snapshot_job_context_timeout: 15m
 
-
-
 redis:
-  host: "shared-redis"
-  port: 6379
+  host: "localhost"
+  port: 6380
   password: ""
   db: 0
 
 watermill_nats:
-  url: "nats://shared-nats:4222"
+  url: "nats://localhost:4223"
   client_id: "leaderboardscoring"
   durable_name: "leaderboardscoring-consumer"
   queue_group: "event-group"
-
   ack_wait_timeout: 5m
   max_inflight: 10
   connect_timeout: 30s
   reconnect_wait: 5s
   ping_interval: 30s
   max_pings_out: 1
-
   use_jetstream: true
 
 logger:
-  level: "debug" # Can be `debug`, `info`, `warn`, `error`
+  level: "debug"
   file_path: "logs/leaderboardscoringapp/service.log"
   use_local_time: true
   file_max_size_in_mb: 10
@@ -68,15 +49,15 @@ database_retry:
   retry_delay: 100ms
 
 nats_adapter:
-  url: "nats://shared-nats:4222"
+  url: "nats://localhost:4223"
   max_reconnects: -1
   reconnect_wait: 1s
 
-  # Stream settings
-  max_messages: 10000000
-  max_bytes: 10737418240
+  max_messages: 10000
+  max_bytes: 104857600
   max_age: 24h
   storage_type: "memory"
+
   replicas: 1
   retention_policy: "workqueue"
 
@@ -93,11 +74,13 @@ batch_processor:
 
 total_shutdown_timeout: 30m
 
+stream_name_raw_events: "rankr_raw_events"
+
 path_of_migration: "./leaderboardscoringapp/repository/database/migrations"
 
 postgres_db:
-  host: shared-postgres
-  port: 5432
+  host: localhost
+  port: 5439
   user: leaderboardscoring_user
   password: change_me_leaderboardscoring
   db_name: leaderboardscoring_db

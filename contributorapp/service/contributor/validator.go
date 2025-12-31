@@ -13,6 +13,7 @@ const (
 	ErrValidationEnumPrivacy   = "must be 'real' or 'anonymous'"
 	ErrValidationPositive      = "must be 'public' or 'private'"
 	ErrValidationLength3To100  = "must be between 3 and 100 characters"
+	ErrValidationLength6To72   = "must be between 6 and 72 characters"
 	ErrValidationInvalidIDType = "ID must be uint64"
 )
 
@@ -27,9 +28,14 @@ func NewValidator() Validator {
 }
 
 func (v Validator) ValidateCreateContributorRequest(ctx context.Context, req CreateContributorRequest) error {
-	if err := validation.ValidateStruct(&req,
-		validation.Field(&req.GitHubID, validation.Required.Error(ErrValidationRequired), validation.Min(int64(1)).Error(ErrValidationPositive)),
+
+	return validation.ValidateStruct(&req,
+		validation.Field(
+			&req.GitHubID,
+			validation.When(req.GitHubID != 0, validation.Min(int64(1)).Error(ErrValidationPositive)),
+		),
 		validation.Field(&req.GitHubUsername, validation.Required.Error(ErrValidationRequired), validation.Length(3, 100).Error(ErrValidationLength3To100)),
+		validation.Field(&req.Password, validation.Required.Error(ErrValidationRequired), validation.Length(6, 72).Error(ErrValidationLength6To72)),
 		validation.Field(&req.DisplayName, validation.Length(0, 100).Error(ErrValidationLength3To100)),
 		validation.Field(&req.ProfileImage, validation.Length(0, 255)),
 		validation.Field(&req.Bio, validation.Length(0, 500)),
@@ -37,28 +43,41 @@ func (v Validator) ValidateCreateContributorRequest(ctx context.Context, req Cre
 			&req.PrivacyMode,
 			validation.Required.Error(ErrValidationRequired),
 			validation.In(PrivacyModeReal, PrivacyModeAnonymous).Error(ErrValidationEnumPrivacy),
-		)); err != nil {
-		return validator.NewError(err, validator.Flat, "invalid request")
-	}
-	return nil
+			validation.When(req.PrivacyMode != "",
+				validation.In(PrivacyModeReal, PrivacyModeAnonymous).Error(ErrValidationEnumPrivacy),
+			),
+		),
+	)
+
 }
 
 func (v Validator) ValidateUpdateProfileRequest(ctx context.Context, req UpdateProfileRequest) error {
-	if err := validation.ValidateStruct(&req,
+	return validation.ValidateStruct(&req,
 		validation.Field(&req.ID, validation.Required.Error(ErrValidationRequired), validation.By(checkID)),
-		validation.Field(&req.GitHubID, validation.Required.Error(ErrValidationRequired), validation.Min(int64(1)).Error(ErrValidationPositive)),
+		validation.Field(
+			&req.GitHubID,
+			validation.When(req.GitHubID != 0, validation.Min(int64(1)).Error(ErrValidationPositive)),
+		),
 		validation.Field(&req.GitHubUsername, validation.Required.Error(ErrValidationRequired), validation.Length(3, 100).Error(ErrValidationLength3To100)),
 		validation.Field(&req.DisplayName, validation.Length(0, 100).Error(ErrValidationLength3To100)),
 		validation.Field(&req.ProfileImage, validation.Length(0, 255)),
 		validation.Field(&req.Bio, validation.Length(0, 500)),
-		validation.Field(
-			&req.PrivacyMode,
+		validation.Field(&req.PrivacyMode,
 			validation.Required.Error(ErrValidationRequired),
 			validation.In(PrivacyModeReal, PrivacyModeAnonymous).Error(ErrValidationEnumPrivacy),
-		)); err != nil {
-		return validator.NewError(err, validator.Flat, "invalid request")
-	}
-	return nil
+			validation.When(req.PrivacyMode != "",
+				validation.In(PrivacyModeReal, PrivacyModeAnonymous).Error(ErrValidationEnumPrivacy),
+			),
+		),
+	)
+}
+
+func (v Validator) ValidateUpdatePasswordRequest(_ context.Context, req UpdatePasswordRequest) error {
+	return validation.ValidateStruct(&req,
+		validation.Field(&req.ID, validation.Required.Error(ErrValidationRequired), validation.By(checkID)),
+		validation.Field(&req.OldPassword, validation.Required.Error(ErrValidationRequired), validation.Length(6, 72).Error(ErrValidationLength6To72)),
+		validation.Field(&req.NewPassword, validation.Required.Error(ErrValidationRequired), validation.Length(6, 72).Error(ErrValidationLength6To72)),
+	)
 }
 
 func checkID(value interface{}) error {
