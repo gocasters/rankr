@@ -196,9 +196,15 @@ type GitRef struct {
 }
 
 type Repository struct {
-	ID       uint64 `json:"id"`
-	Name     string `json:"name"`
-	FullName string `json:"full_name"`
+	ID            uint64  `json:"id"`
+	Name          string  `json:"name"`
+	FullName      string  `json:"full_name"`
+	Description   *string `json:"description"`
+	DefaultBranch string  `json:"default_branch"`
+	Private       bool    `json:"private"`
+	HTMLURL       string  `json:"html_url"`
+	CloneURL      string  `json:"clone_url"`
+	Owner         User    `json:"owner"`
 }
 
 type Label struct {
@@ -259,4 +265,30 @@ func (c *GitHubClient) ListPRReviews(owner, repo string, prNumber int32, token s
 	}
 
 	return reviews, nil
+}
+
+func (c *GitHubClient) GetRepository(owner, repo, token string) (*Repository, error) {
+	url := fmt.Sprintf("%s/repos/%s/%s", c.baseURL, owner, repo)
+
+	resp, err := c.doRequestWithRateLimit("GET", url, nil, token)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch repository: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("repository not found: %s/%s", owner, repo)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("GitHub API error: %d - %s", resp.StatusCode, string(body))
+	}
+
+	var repository Repository
+	if err := json.NewDecoder(resp.Body).Decode(&repository); err != nil {
+		return nil, fmt.Errorf("failed to decode repository: %w", err)
+	}
+
+	return &repository, nil
 }

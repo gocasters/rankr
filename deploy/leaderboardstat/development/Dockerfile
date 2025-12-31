@@ -2,8 +2,12 @@ FROM golang:1.25-alpine
 
 WORKDIR /app
 
+RUN apk add --no-cache netcat-openbsd
+
 # Install air for hot-reload
 RUN go install github.com/air-verse/air@latest
+
+ENV GOPROXY=https://mirrors.aliyun.com/goproxy,direct
 
 COPY go.mod go.sum ./
 RUN go mod download

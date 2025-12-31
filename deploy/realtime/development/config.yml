@@ -16,7 +16,7 @@ postgres_db:
   host: "shared-postgres"
   port: 5432
   user: "realtime_user"
-  password: "realtime_pass"
+  password: "change_me_realtime"
   db_name: "realtime_db"
   ssl_mode: "disable"
   max_conns: 10

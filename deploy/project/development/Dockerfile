@@ -2,6 +2,8 @@ FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
+ENV GOPROXY=https://mirrors.aliyun.com/goproxy,direct
+
 COPY go.mod go.sum ./
 RUN go mod download
 
@@ -21,4 +23,4 @@ COPY --from=builder /app /app
 
 EXPOSE 8080
 
-CMD ["/app/main", "serve"]
+CMD ["/app/main", "serve", "--migrate-up"]

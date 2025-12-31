@@ -76,11 +76,19 @@ func (h Handler) GetPublicLeaderboard(ctx context.Context, req *leaderboardstatp
 	log := logger.L()
 	log.Info("gRPC GetPublicLeaderboard request received", slog.Any("request", req))
 
+	log.Info("DEBUG: Before service call",
+		slog.Uint64("project_id", projectId),
+		slog.Int64("page_size", int64(pageSize)),
+		slog.Int64("offset", int64(offset)))
 	scoreList, err := h.leaderboardStatSvc.GetPublicLeaderboard(ctx, types.ID(projectId), pageSize, offset)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get public leaderboard: %v", err)
 	}
 
+	log.Info("DEBUG: After service call",
+		slog.Int("scoreList_length", len(scoreList.UsersScore)),
+		slog.Any("scoreList", scoreList))
+	
 	items := make([]*leaderboardstatpb.PublicLeaderboardRow, 0, len(scoreList.UsersScore))
 	for _, us := range scoreList.UsersScore {
 		item := &leaderboardstatpb.PublicLeaderboardRow{

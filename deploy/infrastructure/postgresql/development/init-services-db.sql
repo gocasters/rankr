@@ -29,7 +29,7 @@
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'leaderboardstat_user') THEN
-        CREATE USER leaderboardstat_user WITH PASSWORD 'leaderboardstat_pass';
+        CREATE USER leaderboardstat_user WITH PASSWORD 'change_me_stat';
         RAISE NOTICE 'User leaderboardstat_user created';
 ELSE
         RAISE NOTICE 'User leaderboardstat_user already exists';
@@ -41,7 +41,7 @@ $$;
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'contributor_user') THEN
-        CREATE USER contributor_user WITH PASSWORD 'contributor_pass';
+        CREATE USER contributor_user WITH PASSWORD 'change_me_contributor';
         RAISE NOTICE 'User contributor_user created';
 ELSE
         RAISE NOTICE 'User contributor_user already exists';
@@ -53,7 +53,7 @@ $$;
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'project_user') THEN
-        CREATE USER project_user WITH PASSWORD 'project_pass';
+        CREATE USER project_user WITH PASSWORD 'change_me_project';
         RAISE NOTICE 'User project_user created';
 ELSE
         RAISE NOTICE 'User project_user already exists';
@@ -65,7 +65,7 @@ $$;
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'webhook_user') THEN
-        CREATE USER webhook_user WITH PASSWORD 'webhook_pass';
+        CREATE USER webhook_user WITH PASSWORD 'change_me_webhook';
         RAISE NOTICE 'User webhook_user created';
 ELSE
         RAISE NOTICE 'User webhook_user already exists';
@@ -77,7 +77,7 @@ $$;
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'leaderboardscoring_user') THEN
-        CREATE USER leaderboardscoring_user WITH PASSWORD 'leaderboardscoring_pass';
+        CREATE USER leaderboardscoring_user WITH PASSWORD 'change_me_leaderboardscoring';
         RAISE NOTICE 'User leaderboardscoring_user created';
 ELSE
         RAISE NOTICE 'User leaderboardscoring_user already exists';

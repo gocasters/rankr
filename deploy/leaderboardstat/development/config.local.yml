@@ -25,7 +25,7 @@ grpc_client:
 
 leaderboard_scoring_rpc:
   host: "localhost"
-  port: 8090
+  port: 8091
   grpc_service_name: "leaderboardscoring.v1.LeaderboardScoringService"
   max_attempts: 3
   initial_backoff: 1s
