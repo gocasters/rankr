@@ -1,5 +1,6 @@
 package types
 
 type UserClaim struct {
-	ID ID
+	ID   ID
+	Role Role
 }
