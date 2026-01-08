@@ -36,7 +36,7 @@ func NewContributorRepo(config Config, db *database.Database, logger *slog.Logge
 }
 
 func (repo ContributorRepo) GetContributorByID(ctx context.Context, id types.ID) (*contributor.Contributor, error) {
-	query := "SELECT id, github_id, github_username, email, password, is_verified, two_factor_enabled, privacy_mode, display_name, profile_image, bio, created_at, updated_at FROM contributors WHERE id=$1"
+	query := "SELECT id, github_id, github_username, email, password, role, is_verified, two_factor_enabled, privacy_mode, display_name, profile_image, bio, created_at, updated_at FROM contributors WHERE id=$1"
 	row := repo.PostgresSQL.Pool.QueryRow(ctx, query, id)
 
 	var contrib contributor.Contributor
@@ -47,6 +47,7 @@ func (repo ContributorRepo) GetContributorByID(ctx context.Context, id types.ID)
 		&contrib.GitHubUsername,
 		&contrib.Email,
 		&contrib.Password,
+		&contrib.Role,
 		&contrib.IsVerified,
 		&contrib.TwoFactor,
 		&contrib.PrivacyMode,
@@ -71,7 +72,7 @@ func (repo ContributorRepo) GetContributorByID(ctx context.Context, id types.ID)
 }
 
 func (repo ContributorRepo) GetContributorByGitHubUsername(ctx context.Context, username string) (*contributor.Contributor, error) {
-	query := "SELECT id, github_id, github_username, email, password, is_verified, two_factor_enabled, privacy_mode, display_name, profile_image, bio, created_at, updated_at FROM contributors WHERE github_username=$1"
+	query := "SELECT id, github_id, github_username, email, password, role, is_verified, two_factor_enabled, privacy_mode, display_name, profile_image, bio, created_at, updated_at FROM contributors WHERE github_username=$1"
 	row := repo.PostgresSQL.Pool.QueryRow(ctx, query, username)
 
 	var contrib contributor.Contributor
@@ -82,6 +83,7 @@ func (repo ContributorRepo) GetContributorByGitHubUsername(ctx context.Context, 
 		&contrib.GitHubUsername,
 		&contrib.Email,
 		&contrib.Password,
+		&contrib.Role,
 		&contrib.IsVerified,
 		&contrib.TwoFactor,
 		&contrib.PrivacyMode,
@@ -107,8 +109,8 @@ func (repo ContributorRepo) GetContributorByGitHubUsername(ctx context.Context, 
 }
 func (repo ContributorRepo) CreateContributor(ctx context.Context, contributor contributor.Contributor) (*contributor.Contributor, error) {
 	query := `
-    	INSERT INTO contributors (github_id, github_username, email, password, privacy_mode, display_name, profile_image, bio, created_at, updated_at)
-    	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    	INSERT INTO contributors (github_id, github_username, email, password, role, privacy_mode, display_name, profile_image, bio, created_at, updated_at)
+    	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
     	RETURNING id, created_at, updated_at;
     `
 
@@ -127,6 +129,7 @@ func (repo ContributorRepo) CreateContributor(ctx context.Context, contributor c
 		contributor.GitHubUsername,
 		contributor.Email,
 		contributor.Password,
+		contributor.Role,
 		contributor.PrivacyMode,
 		contributor.DisplayName,
 		contributor.ProfileImage,

@@ -26,6 +26,7 @@ message VerifyPasswordRequest {
 message VerifyPasswordResponse {
   bool valid = 1;
   int64 contributor_id = 2;
+  string role = 3;
 }
 
 // Request for fetching contributors by VCS provider and usernames.
