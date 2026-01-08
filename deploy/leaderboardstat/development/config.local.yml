@@ -7,6 +7,7 @@ rpc_server:
   host: ""
   port: 8092
   network_type: "tcp"
+  allow_insecure: true
 
 grpc_client:
   contributor:
