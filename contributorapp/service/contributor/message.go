@@ -11,6 +11,8 @@ var (
 	ErrFailedToPublishEvent               = errors.New("❌ failed to publish event in broker")
 	ErrFailedToFindContributorPhoneNumber = errors.New("❌ failed to find contributor by phone number")
 	ErrFailedToLoginContributor           = errors.New("❌ failed to login contributor ")
+	ErrNotFoundID                         = errors.New("id not found")
+	ErrNotFoundGithubUsername             = errors.New("github username not found")
 )
 
 // Define constant messages
