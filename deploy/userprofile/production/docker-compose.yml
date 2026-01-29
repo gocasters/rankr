@@ -1,0 +1,21 @@
+services:
+  userprofile-app:
+    build:
+      context: ../../..
+      dockerfile: ./deploy/userprofile/production/Dockerfile
+    container_name: userprofile-app-prod
+    ports:
+      - "8085:8081"
+      - "8095:8091"
+    networks:
+      - rankr-shared-development-network
+    env_file:
+      - ./.env.production
+    environment:
+      - CONFIG_PATH=/app/deploy/userprofile/production/config.yml
+      - ENV=production
+
+networks:
+  rankr-shared-development-network:
+    external: true
+    name: rankr-shared-development-network

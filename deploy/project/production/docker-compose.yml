@@ -1,0 +1,21 @@
+services:
+  project-app:
+    build:
+      context: ../../..
+      dockerfile: ./deploy/project/production/Dockerfile
+    container_name: project-app-prod
+    ports:
+      - "8084:8084"
+      - "8094:8094"
+    networks:
+      - rankr-shared-development-network
+    env_file:
+      - ./.env.production
+    environment:
+      - CONFIG_PATH=/app/deploy/project/production/config.yml
+      - ENV=production
+
+networks:
+  rankr-shared-development-network:
+    external: true
+    name: rankr-shared-development-network

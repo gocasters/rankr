@@ -287,6 +287,69 @@ status:
 	@docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "rankr|NAMES"
 
 # ====================================================================================
+# Production Docker Build Commands
+# ====================================================================================
+.PHONY: $(SERVICES:%=docker-build-%-prod) docker-build-all-prod vendor
+
+DOCKER_REGISTRY ?=
+IMAGE_TAG ?= latest
+
+vendor:
+	@echo "Updating vendor dependencies..."
+	go mod vendor
+
+# ====================================================================================
+# Production Service Commands
+# ====================================================================================
+.PHONY: $(SERVICES:%=start-%-app-prod) $(SERVICES:%=start-%-app-prod-log) $(SERVICES:%=stop-%-app-prod)
+
+define SERVICE_PROD_template
+start-$(1)-app-prod:
+	@echo "Starting $(1) production service..."
+	cd deploy/$(1)/production && PROJECT_ROOT=$(CURDIR) $(DOCKER_COMPOSE) up -d --build
+
+start-$(1)-app-prod-log:
+	@echo "Starting $(1) production service with logs..."
+	cd deploy/$(1)/production && PROJECT_ROOT=$(CURDIR) $(DOCKER_COMPOSE) up --build
+
+stop-$(1)-app-prod:
+	@echo "Stopping $(1) production service..."
+	cd deploy/$(1)/production && PROJECT_ROOT=$(CURDIR) $(DOCKER_COMPOSE) down
+endef
+
+$(foreach svc,$(SERVICES),$(eval $(call SERVICE_PROD_template,$(svc))))
+
+services-up-prod:
+	@echo "Starting all production services..."
+	@for svc in $(SERVICES); do \
+		$(MAKE) start-$$svc-app-prod; \
+	done
+	@echo "All production services are up!"
+
+services-down-prod:
+	@echo "Stopping all production services..."
+	@for svc in $(SERVICES); do \
+		$(MAKE) stop-$$svc-app-prod; \
+	done
+	@echo "All production services stopped!"
+
+define DOCKER_PROD_template
+docker-build-$(1)-prod:
+	@echo "Building production image for $(1)..."
+	docker build -t $(if $(DOCKER_REGISTRY),$(DOCKER_REGISTRY)/)rankr-$(1):$(IMAGE_TAG) \
+		-f deploy/$(1)/production/Dockerfile .
+endef
+
+$(foreach svc,$(SERVICES),$(eval $(call DOCKER_PROD_template,$(svc))))
+
+docker-build-all-prod:
+	@echo "Building all production images..."
+	@for svc in $(SERVICES); do \
+		$(MAKE) docker-build-$$svc-prod; \
+	done
+	@echo "All production images built!"
+
+# ====================================================================================
 # Help
 # ====================================================================================
 .PHONY: help
@@ -302,13 +365,20 @@ help:
 	@echo "    infra-up-emqx         - Start EMQX only"
 	@echo "    infra-logs            - Tail infrastructure logs"
 	@echo ""
-	@echo "  Services ($(SERVICES)):"
+	@echo "  Services Development ($(SERVICES)):"
 	@echo "    start-<service>-app-dev      - Start a single service (e.g. make start-auth-app-dev)"
 	@echo "    start-<service>-app-dev-log  - Start a service and attach logs"
 	@echo "    stop-<service>-app-dev       - Stop a single service"
 	@echo "    services-up                  - Start every service listed above"
 	@echo "    services-down                - Stop every service listed above"
 	@echo "    services-logs                - Tail logs for every service (Ctrl+C to stop)"
+	@echo ""
+	@echo "  Services Production:"
+	@echo "    start-<service>-app-prod     - Start a single prod service (e.g. make start-auth-app-prod)"
+	@echo "    start-<service>-app-prod-log - Start a prod service and attach logs"
+	@echo "    stop-<service>-app-prod      - Stop a single prod service"
+	@echo "    services-up-prod             - Start all production services"
+	@echo "    services-down-prod           - Stop all production services"
 	@echo ""
 	@echo "  Protobuf:"
 	@echo "    proto-setup           - Setup Buf for project"
@@ -336,6 +406,13 @@ help:
 	@echo "    services-up           - Start all services"
 	@echo "    services-down         - Stop all services"
 	@echo "    services-logs         - Show logs for all services"
+	@echo ""
+	@echo "  Production Docker:"
+	@echo "    vendor                        - Update vendor dependencies"
+	@echo "    docker-build-<service>-prod   - Build production image (e.g. make docker-build-auth-prod)"
+	@echo "    docker-build-all-prod         - Build all production images"
+	@echo "    IMAGE_TAG=v1.0.0              - Set image tag (default: latest)"
+	@echo "    DOCKER_REGISTRY=gcr.io/myproj - Set registry prefix"
 	@echo ""
 	@echo "  Utilities:"
 	@echo "    up                    - Start infrastructure and services"

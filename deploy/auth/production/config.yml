@@ -1,0 +1,125 @@
+http_server:
+  host: ""
+  port: 8081
+  shutdown_context_timeout: 10s
+
+rpc_server:
+  host: ""
+  port: 8091
+  network_type: "tcp"
+  allow_insecure: true
+
+grpc_client:
+  contributor:
+    address: "contributor-app:8093"
+    grpc_service_name: "contributor"
+    timeout: 30s
+    max_retries: 3
+    retry_backoff: 100ms
+  
+  leaderboardscoring:
+    address: "leaderboardscoring-app:8091"
+    grpc_service_name: "leaderboardscoring"
+    timeout: 30s
+    max_retries: 3
+    retry_backoff: 100ms
+
+scheduler_cfg:
+  snapshot_crontab: "0 */3 * * *"
+  snapshot_job_context_timeout: 15m
+
+
+
+redis:
+  host: "shared-redis"
+  port: 6379
+  password: ""
+  db: 0
+
+jwt:
+  secret: "dev-32-char-placeholder-secret!!"
+  token_duration: 1h
+  refresh_token_duration: 168h
+
+contributor_rpc:
+  host: "contributor-app" # matches docker-compose service name
+  port: 8093             # contributor gRPC port
+  grpc_service_name: "contributor.v1.ContributorService"
+  max_attempts: 3
+  initial_backoff: 1s
+  max_backoff: 30s
+  backoff_multiplier: 2
+  retryable_status_codes: ["UNAVAILABLE"]
+
+watermill_nats:
+  url: "nats://shared-nats:4222"
+  client_id: "auth"
+  durable_name: "auth-consumer"
+  queue_group: "event-group"
+
+  ack_wait_timeout: 5m
+  max_inflight: 10
+  connect_timeout: 30s
+  reconnect_wait: 5s
+  ping_interval: 30s
+  max_pings_out: 1
+
+  use_jetstream: true
+
+logger:
+  level: "debug" # Can be `debug`, `info`, `warn`, `error`
+  file_path: "logs/authapp/service.log"
+  use_local_time: true
+  file_max_size_in_mb: 10
+  file_max_age_in_days: 7
+
+raw_event_consumer:
+  processed_key_ttl: 24h
+  lock_key_ttl: 5m
+  prefix_processed_key: "processed_events"
+  prefix_lock_key: "lock"
+
+database_retry:
+  max_retries: 3
+  retry_delay: 100ms
+
+nats_adapter:
+  url: "nats://shared-nats:4222"
+  max_reconnects: -1
+  reconnect_wait: 1s
+
+  # Stream settings
+  max_messages: 10000000
+  max_bytes: 10737418240
+  max_age: 24h
+  storage_type: "file" # "memory" → RAM
+  replicas: 1
+  retention_policy: "workqueue"
+
+pull_consumer:
+  durable_name: "batch-processor"
+  batch_size: 500
+  max_wait: 5s
+  max_deliver: 20
+  ack_wait: 1m
+
+batch_processor:
+  tick_interval: 10s
+  metrics_interval: 30s
+
+total_shutdown_timeout: 30m
+
+path_of_migration: "./authapp/repository/migrations"
+
+postgres_db:
+  host: shared-postgres
+  port: 5432
+  user: auth_user
+  password: change_me_auth
+  db_name: auth_db
+  ssl_mode: disable
+  max_conns: 25  
+  min_conns: 5  
+  max_conn_lifetime: 300
+  max_conn_idle_time: 60
+  health_check_period: 60

@@ -20,7 +20,8 @@ cmd/*/temp/*
 
 # Third-party dependencies
 node_modules/
-vendor/
+
+# vendor/ Hoping one day We can uncomment this section. Like a programmer.
 
 # OS / editor noise
 .DS_Store

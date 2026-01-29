@@ -1,0 +1,21 @@
+services:
+  leaderboardstat-app:
+    build:
+      context: ../../..
+      dockerfile: ./deploy/leaderboardstat/production/Dockerfile
+    container_name: leaderboardstat-app-prod
+    ports:
+      - "8088:8081"
+      - "8098:8091"
+    networks:
+      - rankr-shared-development-network
+    env_file:
+      - ./.env.production
+    environment:
+      - CONFIG_PATH=/app/deploy/leaderboardstat/production/config.yml
+      - ENV=production
+
+networks:
+  rankr-shared-development-network:
+    external: true
+    name: rankr-shared-development-network
