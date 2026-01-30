@@ -13,7 +13,7 @@ RUN apk add --no-cache \
 COPY go.mod go.sum ./
 
 # Download dependencies
-RUN go mod download
+# RUN go mod download
 
 # Copy the entire source code
 COPY . .

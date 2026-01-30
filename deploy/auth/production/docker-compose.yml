@@ -1,0 +1,21 @@
+services:
+  auth-app:
+    build:
+      context: ../../..
+      dockerfile: ./deploy/auth/production/Dockerfile
+    container_name: auth-app-prod
+    ports:
+      - "8081:8080"
+      - "8091:8091"
+    networks:
+      - rankr-shared-development-network
+    env_file:
+      - ./.env.production
+    environment:
+      - CONFIG_PATH=/app/deploy/auth/production/config.yml
+      - ENV=production
+
+networks:
+  rankr-shared-development-network:
+    external: true
+    name: rankr-shared-development-network

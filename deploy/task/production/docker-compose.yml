@@ -1,0 +1,18 @@
+services:
+  task-app:
+    build:
+      context: ../../..
+      dockerfile: ./deploy/task/production/Dockerfile
+    container_name: task-app-prod
+    networks:
+      - rankr-shared-development-network
+    env_file:
+      - ./.env.production
+    environment:
+      - CONFIG_PATH=/app/deploy/task/production/config.yml
+      - ENV=production
+
+networks:
+  rankr-shared-development-network:
+    external: true
+    name: rankr-shared-development-network

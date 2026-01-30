@@ -1,0 +1,20 @@
+services:
+  webhook-app:
+    build:
+      context: ../../..
+      dockerfile: ./deploy/webhook/production/Dockerfile
+    container_name: webhook-app-prod
+    ports:
+      - "8086:8090"
+    networks:
+      - rankr-shared-development-network
+    env_file:
+      - ./.env.production
+    environment:
+      - CONFIG_PATH=/app/deploy/webhook/production/config.yml
+      - ENV=production
+
+networks:
+  rankr-shared-development-network:
+    external: true
+    name: rankr-shared-development-network

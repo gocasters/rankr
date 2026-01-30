@@ -1,0 +1,93 @@
+http_server:
+  host: ""
+  port: 8084
+  shutdown_context_timeout: 10s
+
+rpc_server:
+  host: ""
+  port: 8094
+  network_type: "tcp"
+  allow_insecure: true
+
+scheduler_cfg:
+  snapshot_crontab: "0 */3 * * *"
+  snapshot_job_context_timeout: 15m
+
+postgres_db:
+  host: "shared-postgres"
+  port: 5432
+  user: "realtime_user"
+  password: "change_me_realtime"
+  db_name: "realtime_db"
+  ssl_mode: "disable"
+  max_conns: 10
+  min_conns: 2
+  max_conn_lifetime: 300 # in seconds
+  max_conn_idle_time: 60 # in seconds
+  health_check_period: 60 # in seconds
+
+redis:
+  host: "shared-redis"
+  port: 6379
+  password: ""
+  db: 0
+
+watermill_nats:
+  url: "nats://shared-nats:4222"
+  client_id: "realtime"
+  durable_name: "realtime-consumer"
+  queue_group: "event-group"
+
+  ack_wait_timeout: 5m
+  max_inflight: 10
+  connect_timeout: 30s
+  reconnect_wait: 5s
+  ping_interval: 30s
+  max_pings_out: 1
+
+  use_jetstream: true
+
+logger:
+  level: "debug" # Can be `debug`, `info`, `warn`, `error`
+  file_path: "logs/realtimeapp/service.log"
+  use_local_time: true
+  file_max_size_in_mb: 10
+  file_max_age_in_days: 7
+
+raw_event_consumer:
+  processed_key_ttl: 24h
+  lock_key_ttl: 5m
+  prefix_processed_key: "processed_events"
+  prefix_lock_key: "lock"
+
+database_retry:
+  max_retries: 3
+  retry_delay: 100ms
+
+nats_adapter:
+  url: "nats://shared-nats:4222"
+  max_reconnects: -1
+  reconnect_wait: 1s
+
+  # Stream settings
+  max_messages: 10000000
+  max_bytes: 10737418240
+  max_age: 24h
+  storage_type: "file" # "memory" → RAM
+  replicas: 1
+  retention_policy: "workqueue"
+
+pull_consumer:
+  durable_name: "batch-processor"
+  batch_size: 500
+  max_wait: 5s
+  max_deliver: 20
+  ack_wait: 1m
+
+batch_processor:
+  tick_interval: 10s
+  metrics_interval: 30s
+
+total_shutdown_timeout: 30m
+
+path_of_migration: "./realtimeapp/repository/migrations"
