@@ -170,6 +170,7 @@ func (s Service) Upsert(ctx context.Context, req UpsertContributorRequest) (Upse
 
 		reqRequest.GitHubUsername = req.GitHubUsername
 		reqRequest.GitHubID = req.GitHubID
+		reqRequest.Role = string(role.User)
 		reqRequest.PrivacyMode = req.PrivacyMode
 		reqRequest.Bio = req.Bio
 		reqRequest.ProfileImage = req.ProfileImage
