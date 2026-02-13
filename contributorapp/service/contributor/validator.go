@@ -3,9 +3,9 @@ package contributor
 import (
 	"context"
 	"errors"
-	types "github.com/gocasters/rankr/type"
-
 	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/gocasters/rankr/pkg/validator"
+	types "github.com/gocasters/rankr/type"
 )
 
 const (
@@ -21,14 +21,14 @@ type ValidatorContributorRepository interface {
 }
 
 type Validator struct {
-	repo ValidatorContributorRepository
 }
 
-func NewValidator(repo ValidatorContributorRepository) Validator {
-	return Validator{repo: repo}
+func NewValidator() Validator {
+	return Validator{}
 }
 
 func (v Validator) ValidateCreateContributorRequest(ctx context.Context, req CreateContributorRequest) error {
+
 	return validation.ValidateStruct(&req,
 		validation.Field(
 			&req.GitHubID,
@@ -41,11 +41,14 @@ func (v Validator) ValidateCreateContributorRequest(ctx context.Context, req Cre
 		validation.Field(&req.Bio, validation.Length(0, 500)),
 		validation.Field(
 			&req.PrivacyMode,
+			validation.Required.Error(ErrValidationRequired),
+			validation.In(PrivacyModeReal, PrivacyModeAnonymous).Error(ErrValidationEnumPrivacy),
 			validation.When(req.PrivacyMode != "",
 				validation.In(PrivacyModeReal, PrivacyModeAnonymous).Error(ErrValidationEnumPrivacy),
 			),
 		),
 	)
+
 }
 
 func (v Validator) ValidateUpdateProfileRequest(ctx context.Context, req UpdateProfileRequest) error {
@@ -59,8 +62,9 @@ func (v Validator) ValidateUpdateProfileRequest(ctx context.Context, req UpdateP
 		validation.Field(&req.DisplayName, validation.Length(0, 100).Error(ErrValidationLength3To100)),
 		validation.Field(&req.ProfileImage, validation.Length(0, 255)),
 		validation.Field(&req.Bio, validation.Length(0, 500)),
-		validation.Field(
-			&req.PrivacyMode,
+		validation.Field(&req.PrivacyMode,
+			validation.Required.Error(ErrValidationRequired),
+			validation.In(PrivacyModeReal, PrivacyModeAnonymous).Error(ErrValidationEnumPrivacy),
 			validation.When(req.PrivacyMode != "",
 				validation.In(PrivacyModeReal, PrivacyModeAnonymous).Error(ErrValidationEnumPrivacy),
 			),
@@ -84,6 +88,15 @@ func checkID(value interface{}) error {
 
 	if err := val.Validate(); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (v Validator) ValidateUpsertContributorRequest(req UpsertContributorRequest) error {
+	if err := validation.ValidateStruct(&req,
+		validation.Field(&req.GitHubUsername, validation.Required.Error(ErrValidationRequired))); err != nil {
+		return validator.NewError(err, validator.Flat, "invalid request")
 	}
 
 	return nil

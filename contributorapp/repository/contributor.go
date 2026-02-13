@@ -60,7 +60,7 @@ func (repo ContributorRepo) GetContributorByID(ctx context.Context, id types.ID)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("result with id %d not found", id)
+			return nil, contributor.ErrNotFoundID
 		}
 		return nil, fmt.Errorf("error retrieving contributor with id: %d, error: %v", id, err)
 	}
@@ -96,7 +96,7 @@ func (repo ContributorRepo) GetContributorByGitHubUsername(ctx context.Context, 
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("result with username %s not found", username)
+			return nil, contributor.ErrNotFoundGithubUsername
 		}
 		return nil, fmt.Errorf("error retrieving contributor with username: %s, error: %v", username, err)
 	}
@@ -107,6 +107,7 @@ func (repo ContributorRepo) GetContributorByGitHubUsername(ctx context.Context, 
 
 	return &contrib, nil
 }
+
 func (repo ContributorRepo) CreateContributor(ctx context.Context, contributor contributor.Contributor) (*contributor.Contributor, error) {
 	query := `
     	INSERT INTO contributors (github_id, github_username, email, password, role, privacy_mode, display_name, profile_image, bio, created_at, updated_at)
@@ -145,6 +146,7 @@ func (repo ContributorRepo) CreateContributor(ctx context.Context, contributor c
 	contributor.ID = id
 	return &contributor, nil
 }
+
 func (repo ContributorRepo) UpdateProfileContributor(ctx context.Context, contri contributor.Contributor) (*contributor.Contributor, error) {
 	var updated contributor.Contributor
 	var githubID sql.NullInt64
@@ -222,6 +224,7 @@ func nullInt64(v int64) sql.NullInt64 {
 	}
 	return sql.NullInt64{Int64: v, Valid: true}
 }
+
 func (repo ContributorRepo) FindByVCSUsernames(ctx context.Context, provider contributor.VcsProvider, usernames []string) ([]*contributor.Contributor, error) {
 	if len(usernames) == 0 {
 		return []*contributor.Contributor{}, nil

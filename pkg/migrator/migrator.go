@@ -3,7 +3,6 @@ package migrator
 import (
 	"database/sql"
 	"fmt"
-
 	"github.com/gocasters/rankr/pkg/database"
 	migrate "github.com/rubenv/sql-migrate"
 

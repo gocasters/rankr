@@ -11,7 +11,9 @@ import (
 	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/gocasters/rankr/pkg/role"
 	"github.com/gocasters/rankr/pkg/statuscode"
-	types "github.com/gocasters/rankr/type"
+
+	"github.com/gocasters/rankr/type"
+
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -21,6 +23,7 @@ type Repository interface {
 	CreateContributor(ctx context.Context, contributor Contributor) (*Contributor, error)
 	UpdateProfileContributor(ctx context.Context, contributor Contributor) (*Contributor, error)
 	UpdatePassword(ctx context.Context, id types.ID, hashedPassword string) error
+
 	FindByVCSUsernames(ctx context.Context, provider VcsProvider, usernames []string) ([]*Contributor, error)
 }
 
@@ -94,7 +97,7 @@ func (s Service) CreateContributor(ctx context.Context, req CreateContributorReq
 		Bio:            req.Bio,
 		PrivacyMode:    req.PrivacyMode,
 		CreatedAt:      now,
-		UpdatedAt:      now,//todo move to repository
+		UpdatedAt:      now, //todo move to repository
 	}
 
 	createdContributor, err := s.repository.CreateContributor(ctx, contributor)
@@ -144,6 +147,70 @@ func (s Service) UpdateProfile(ctx context.Context, req UpdateProfileRequest) (U
 		CreatedAt:      resContributor.CreatedAt,
 		UpdatedAt:      resContributor.UpdatedAt,
 	}, nil
+}
+
+func (s Service) Upsert(ctx context.Context, req UpsertContributorRequest) (UpsertContributorResponse, error) {
+	if err := s.validator.ValidateUpsertContributorRequest(req); err != nil {
+		return UpsertContributorResponse{}, err
+	}
+
+	c, err := s.repository.GetContributorByGitHubUsername(ctx, req.GitHubUsername)
+	if err != nil {
+		if !errors.Is(err, ErrNotFoundGithubUsername) {
+			return UpsertContributorResponse{}, errmsg.ErrorResponse{
+				Message:         "failed to get contributor",
+				Errors:          map[string]interface{}{"error": err.Error()},
+				InternalErrCode: statuscode.IntCodeUnExpected,
+			}
+		}
+	}
+
+	if c == nil {
+		var reqRequest Contributor
+
+		reqRequest.GitHubUsername = req.GitHubUsername
+		reqRequest.GitHubID = req.GitHubID
+		reqRequest.PrivacyMode = req.PrivacyMode
+		reqRequest.Bio = req.Bio
+		reqRequest.ProfileImage = req.ProfileImage
+		reqRequest.DisplayName = req.DisplayName
+		reqRequest.Email = req.Email
+		reqRequest.CreatedAt = req.CreateAt
+
+		resCreate, err := s.repository.CreateContributor(ctx, reqRequest)
+		if err != nil {
+			return UpsertContributorResponse{}, errmsg.ErrorResponse{
+				Message:         "failed to create contributor:" + err.Error(),
+				Errors:          map[string]interface{}{"error": err.Error()},
+				InternalErrCode: statuscode.IntCodeUnExpected,
+			}
+		}
+
+		return UpsertContributorResponse{ID: types.ID(resCreate.ID), IsNew: true}, nil
+	}
+
+	var upRequest Contributor
+
+	upRequest.ID = c.ID
+	upRequest.GitHubID = req.GitHubID
+	upRequest.GitHubUsername = req.GitHubUsername
+	upRequest.DisplayName = req.DisplayName
+	upRequest.Bio = req.Bio
+	upRequest.PrivacyMode = req.PrivacyMode
+	upRequest.ProfileImage = req.ProfileImage
+	upRequest.Email = req.Email
+	upRequest.CreatedAt = req.CreateAt
+
+	_, err = s.repository.UpdateProfileContributor(ctx, upRequest)
+	if err != nil {
+		return UpsertContributorResponse{}, errmsg.ErrorResponse{
+			Message:         "failed to update contributor",
+			Errors:          map[string]interface{}{"error": err.Error()},
+			InternalErrCode: statuscode.IntCodeUnExpected,
+		}
+	}
+
+	return UpsertContributorResponse{ID: types.ID(upRequest.ID), IsNew: false}, nil
 }
 
 func (s Service) GetContributorCredentials(ctx context.Context, id types.ID) (*Contributor, error) {
@@ -221,6 +288,7 @@ func hashPassword(password string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to hash password: %w", err)
 	}
+
 	return string(hashed), nil
 }
 
@@ -232,6 +300,7 @@ func passwordMatches(hashedOrPlain, provided string) bool {
 	if errors.Is(err, bcrypt.ErrMismatchedHashAndPassword) {
 		return false
 	}
+
 	return hashedOrPlain == provided
 }
 
