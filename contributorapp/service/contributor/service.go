@@ -9,6 +9,7 @@ import (
 	"github.com/gocasters/rankr/pkg/cachemanager"
 	errmsg "github.com/gocasters/rankr/pkg/err_msg"
 	"github.com/gocasters/rankr/pkg/logger"
+	"github.com/gocasters/rankr/pkg/role"
 	"github.com/gocasters/rankr/pkg/statuscode"
 	types "github.com/gocasters/rankr/type"
 	"golang.org/x/crypto/bcrypt"
@@ -87,6 +88,7 @@ func (s Service) CreateContributor(ctx context.Context, req CreateContributorReq
 		GitHubID:       req.GitHubID,
 		GitHubUsername: req.GitHubUsername,
 		Password:       hashedPassword,
+		Role:           string(role.User),
 		DisplayName:    req.DisplayName,
 		ProfileImage:   req.ProfileImage,
 		Bio:            req.Bio,
@@ -211,7 +213,7 @@ func (s Service) VerifyPassword(ctx context.Context, req VerifyPasswordRequest) 
 	}
 
 	valid := passwordMatches(contrib.Password, req.Password)
-	return VerifyPasswordResponse{Valid: valid, ID: types.ID(contrib.ID)}, nil
+	return VerifyPasswordResponse{Valid: valid, ID: types.ID(contrib.ID), Role: contrib.Role}, nil
 }
 
 func hashPassword(password string) (string, error) {

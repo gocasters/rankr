@@ -196,6 +196,7 @@ type VerifyPasswordResponse struct {
 
 	Valid         bool  `protobuf:"varint,1,opt,name=valid,proto3" json:"valid,omitempty"`
 	ContributorId int64 `protobuf:"varint,2,opt,name=contributor_id,json=contributorId,proto3" json:"contributor_id,omitempty"`
+	Role          string `protobuf:"bytes,3,opt,name=role,proto3" json:"role,omitempty"`
 }
 
 func (x *VerifyPasswordResponse) Reset() {
@@ -242,6 +243,13 @@ func (x *VerifyPasswordResponse) GetContributorId() int64 {
 		return x.ContributorId
 	}
 	return 0
+}
+
+func (x *VerifyPasswordResponse) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
 }
 
 // Request for fetching contributors by VCS provider and usernames.

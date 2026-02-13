@@ -13,6 +13,8 @@ services:
       - argus
     labels:
       - "traefik.enable=true"
+    networks:
+      - rankr-shared-development-network
 
   argus-searcher-service:
     build:
@@ -40,6 +42,8 @@ services:
       - "traefik.http.routers.${SERVICE_NAME}_argus.entrypoints=web"
       - "traefik.http.services.${SERVICE_NAME}_argus.loadbalancer.server.port=5015"
       - "traefik.http.middlewares.${SERVICE_NAME}_strip_argus.stripprefix.prefixes=/argus"
+    networks:
+      - rankr-shared-development-network
 
   argus-indexer-service:
     build:
@@ -63,6 +67,13 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.${SERVICE_NAME}_argus-indexer.service=${SERVICE_NAME}_argus_indexer"
+    networks:
+      - rankr-shared-development-network
 
 volumes:
   rankr-typesense:
+
+networks:
+  rankr-shared-development-network:
+    name: rankr-shared-development-network
+    external: true

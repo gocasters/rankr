@@ -44,7 +44,7 @@ func (c *Client) Close() {
 	}
 }
 
-func (c *Client) VerifyPassword(ctx context.Context, username string, password string) (types.ID, bool, error) {
+func (c *Client) VerifyPassword(ctx context.Context, username string, password string) (types.ID, string, bool, error) {
 	req := &contributorpb.VerifyPasswordRequest{
 		Password:      password,
 		GithubUsername: username,
@@ -52,16 +52,13 @@ func (c *Client) VerifyPassword(ctx context.Context, username string, password s
 
 	res, err := c.contributorService.VerifyPassword(ctx, req)
 	if err != nil {
-		return 0, false, err
+		return 0, "", false, err
 	}
 	if res == nil {
-
-
-		
-		return 0, false, fmt.Errorf("empty verify password response")
+		return 0, "", false, fmt.Errorf("empty verify password response")
 	}
 
-	return types.ID(res.GetContributorId()), res.GetValid(), nil
+	return types.ID(res.GetContributorId()), res.GetRole(), res.GetValid(), nil
 }
 
 func (c *Client) GetContributorsByVCS(ctx context.Context, vcsProvider string, usernames []string) ([]Mapping, error) {
