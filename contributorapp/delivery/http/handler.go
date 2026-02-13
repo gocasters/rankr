@@ -103,7 +103,7 @@ func (h Handler) updateProfile(c echo.Context) error {
 }
 
 func (h Handler) uploadFile(c echo.Context) error {
-	claimVal := c.Get("Authorization")
+	claimVal := c.Get("userInfo")
 	claim, ok := claimVal.(*types.UserClaim)
 	if !ok || claim == nil || claim.Role.String() != types.Admin.String() {
 		return c.JSON(http.StatusUnauthorized, map[string]string{

@@ -59,7 +59,7 @@ func (repo ContributorRepo) GetContributorByID(ctx context.Context, id types.ID)
 	)
 
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, contributor.ErrNotFoundID
 		}
 		return nil, fmt.Errorf("error retrieving contributor with id: %d, error: %v", id, err)
@@ -95,7 +95,7 @@ func (repo ContributorRepo) GetContributorByGitHubUsername(ctx context.Context, 
 	)
 
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, contributor.ErrNotFoundGithubUsername
 		}
 		return nil, fmt.Errorf("error retrieving contributor with username: %s, error: %v", username, err)
