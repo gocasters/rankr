@@ -41,25 +41,26 @@ func (repo ContributorRepo) GetContributorByID(ctx context.Context, id types.ID)
 
 	var contrib contributor.Contributor
 	var githubID sql.NullInt64
+	var email, displayName, profileImage, bio sql.NullString
 	err := row.Scan(
 		&contrib.ID,
 		&githubID,
 		&contrib.GitHubUsername,
-		&contrib.Email,
+		&email,
 		&contrib.Password,
 		&contrib.Role,
 		&contrib.IsVerified,
 		&contrib.TwoFactor,
 		&contrib.PrivacyMode,
-		&contrib.DisplayName,
-		&contrib.ProfileImage,
-		&contrib.Bio,
+		&displayName,
+		&profileImage,
+		&bio,
 		&contrib.CreatedAt,
 		&contrib.UpdatedAt,
 	)
 
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, pgx.ErrNoRows) {
 			return nil, contributor.ErrNotFoundID
 		}
 		return nil, fmt.Errorf("error retrieving contributor with id: %d, error: %v", id, err)
@@ -68,6 +69,19 @@ func (repo ContributorRepo) GetContributorByID(ctx context.Context, id types.ID)
 	if githubID.Valid {
 		contrib.GitHubID = githubID.Int64
 	}
+	if email.Valid {
+		contrib.Email = email.String
+	}
+	if displayName.Valid {
+		contrib.DisplayName = displayName.String
+	}
+	if profileImage.Valid {
+		contrib.ProfileImage = profileImage.String
+	}
+	if bio.Valid {
+		contrib.Bio = bio.String
+	}
+
 	return &contrib, nil
 }
 
@@ -77,25 +91,26 @@ func (repo ContributorRepo) GetContributorByGitHubUsername(ctx context.Context, 
 
 	var contrib contributor.Contributor
 	var githubID sql.NullInt64
+	var email, displayName, profileImage, bio sql.NullString
 	err := row.Scan(
 		&contrib.ID,
 		&githubID,
 		&contrib.GitHubUsername,
-		&contrib.Email,
+		&email,
 		&contrib.Password,
 		&contrib.Role,
 		&contrib.IsVerified,
 		&contrib.TwoFactor,
 		&contrib.PrivacyMode,
-		&contrib.DisplayName,
-		&contrib.ProfileImage,
-		&contrib.Bio,
+		&displayName,
+		&profileImage,
+		&bio,
 		&contrib.CreatedAt,
 		&contrib.UpdatedAt,
 	)
 
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, pgx.ErrNoRows) {
 			return nil, contributor.ErrNotFoundGithubUsername
 		}
 		return nil, fmt.Errorf("error retrieving contributor with username: %s, error: %v", username, err)
@@ -103,6 +118,18 @@ func (repo ContributorRepo) GetContributorByGitHubUsername(ctx context.Context, 
 
 	if githubID.Valid {
 		contrib.GitHubID = githubID.Int64
+	}
+	if email.Valid {
+		contrib.Email = email.String
+	}
+	if displayName.Valid {
+		contrib.DisplayName = displayName.String
+	}
+	if profileImage.Valid {
+		contrib.ProfileImage = profileImage.String
+	}
+	if bio.Valid {
+		contrib.Bio = bio.String
 	}
 
 	return &contrib, nil

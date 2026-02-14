@@ -9,7 +9,7 @@ RUN go install github.com/air-verse/air@latest
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/main ./cmd/contributor/main.go
+RUN CGO_ENABLED=0 GOOS=linux GOFLAGS=-mod=mod go build -o /app/main ./cmd/contributor/main.go
 
 
 FROM golang:1.25-alpine

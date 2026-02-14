@@ -1,14 +1,17 @@
 -- +migrate Up
+-- +migrate StatementBegin
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'role_enum') THEN
         CREATE TYPE role_enum AS ENUM ('admin', 'user');
     END IF;
 END $$;
+-- +migrate StatementEnd
 
 ALTER TABLE contributors
     ADD COLUMN IF NOT EXISTS role role_enum NOT NULL DEFAULT 'user';
 
+-- +migrate StatementBegin
 DO $$
 BEGIN
     IF EXISTS (
@@ -23,6 +26,7 @@ BEGIN
             USING role::role_enum;
     END IF;
 END $$;
+-- +migrate StatementEnd
 
 -- +migrate Down
 ALTER TABLE contributors

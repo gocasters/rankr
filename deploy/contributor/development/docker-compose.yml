@@ -16,17 +16,18 @@ services:
       timeout: 3s
       retries: 12
     networks:
-      - rankr-shared-development-network
+      - rankr-shared-production-network
     environment:
       - CONFIG_PATH=/app/deploy/contributor/development/config.yml
-      - contributor_POSTGRES_DB_HOST=shared-postgres
-      - contributor_REDIS_HOST=shared-redis
-      - contributor_NATS_URL=nats://shared-nats:4222
+      - contributor_POSTGRES_DB_HOST=rankr-shared-postgres
+      - contributor_REDIS_HOST=rankr-shared-redis
+      - contributor_NATS_URL=nats://rankr-shared-nats:4222
       - ENV=development
       - DEV_API_KEY=deyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
       - DEV_USER_ID=1
     entrypoint: [ "air", "-c", "/app/.air/.air.contributor.toml" ]
 
 networks:
-  rankr-shared-development-network:
+  rankr-shared-production-network:
     external: true
+    name: rankr-shared-production-network
