@@ -9,15 +9,6 @@ rpc_server:
   network_type: "tcp"
   allow_insecure: true
 
-middleware:
-  file_size: 10485760
-  file_type:
-    - "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    - "application/zip"
-    - "text/csv"
-    - "text/plain"
-    - "text/plain; charset=utf-8"
-
 grpc_client:
   contributor:
     address: "contributor-app:8093"
@@ -118,28 +109,3 @@ postgres_db:
   max_conn_idle_time: 60
   health_check_period: 60
   path_of_migrations: "./contributorapp/repository/migrations"
-
-validate:
-  http_file_type:
-    - "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    - "application/zip"
-    - "text/csv"
-    - "text/plain"
-    - "application/octet-stream"
-
-job:
-  storage_path: "./uploads/import_contributors/"
-  csv_file: .csv
-  xlsx_file: .xlsx
-  process_count: 4
-
-broker:
-  stream_key: contributor.import.jobs
-  group_name: contributor-import-workers
-  consumer_prefix: import-worker-
-  batch_size: 10
-  block_time: 5s
-  retry_count: 5
-
-worker:
-  worker_count: 4
