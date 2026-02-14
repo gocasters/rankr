@@ -143,3 +143,9 @@ broker:
 
 worker:
   worker_count: 4
+
+auth_client:
+  url: http://auth-app:8081/v1/role
+
+path_of_migrations: "./contributorapp/repository/migrations"
+

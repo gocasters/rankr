@@ -1,6 +1,7 @@
 package contributorapp
 
 import (
+	"github.com/gocasters/rankr/contributorapp/client"
 	"time"
 
 	"github.com/gocasters/rankr/adapter/redis"
@@ -28,4 +29,5 @@ type Config struct {
 	Validation           job.ValidateConfig      `koanf:"validate" json:"validation"`
 	Broker               repository.BrokerConfig `koanf:"broker" json:"broker"`
 	Worker               worker.Config           `koanf:"worker" json:"worker"`
+	AuthClient           client.Config           `koanf:"auth_client" json:"auth_client"`
 }
