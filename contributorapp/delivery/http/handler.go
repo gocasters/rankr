@@ -106,6 +106,8 @@ func (h Handler) updateProfile(c echo.Context) error {
 	})
 }
 
+var roleName = "admin"
+
 func (h Handler) uploadFile(c echo.Context) error {
 	claimVal := c.Get("Authorization")
 	claim, ok := claimVal.(*types.UserClaim)
@@ -125,7 +127,7 @@ func (h Handler) uploadFile(c echo.Context) error {
 		})
 	}
 
-	if resAuth.Role.Name != "admin" {
+	if resAuth.Role.Name != roleName {
 		return c.JSON(http.StatusForbidden, map[string]string{
 			"message": "forbidden",
 		})
