@@ -3,6 +3,7 @@ package contributorapp
 import (
 	"context"
 	"fmt"
+	"github.com/gocasters/rankr/contributorapp/client"
 	middleware2 "github.com/gocasters/rankr/contributorapp/delivery/http/middleware"
 	"github.com/gocasters/rankr/contributorapp/service/job"
 	"github.com/gocasters/rankr/contributorapp/worker"
@@ -61,8 +62,9 @@ func Setup(
 	validator := job.NewValidator(config.Validation)
 
 	jobSvc := job.NewService(config.Job, jobRepo, broker, contributorAdapter, failRecordRepo, validator)
+	authClient := client.NewAuthClient(config.AuthClient)
 
-	contributorHandler := http.NewHandler(contributorSvc, jobSvc, logger)
+	contributorHandler := http.NewHandler(contributorSvc, jobSvc, authClient, logger)
 
 	httpServer, err := httpserver.New(config.HTTPServer)
 	if err != nil {

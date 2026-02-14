@@ -2,6 +2,7 @@ package http
 
 import (
 	"fmt"
+	"github.com/gocasters/rankr/contributorapp/client"
 	"github.com/gocasters/rankr/contributorapp/service/contributor"
 	"github.com/gocasters/rankr/contributorapp/service/job"
 	errmsg "github.com/gocasters/rankr/pkg/err_msg"
@@ -17,13 +18,16 @@ import (
 type Handler struct {
 	ContributorService contributor.Service
 	JobService         job.Service
+	Client             client.AuthClient
 	Logger             *slog.Logger
 }
 
-func NewHandler(contributorSrv contributor.Service, jobSvc job.Service, logger *slog.Logger) Handler {
+func NewHandler(contributorSrv contributor.Service, jobSvc job.Service,
+	client client.AuthClient, logger *slog.Logger) Handler {
 	return Handler{
 		ContributorService: contributorSrv,
 		JobService:         jobSvc,
+		Client:             client,
 		Logger:             logger,
 	}
 }
@@ -105,9 +109,25 @@ func (h Handler) updateProfile(c echo.Context) error {
 func (h Handler) uploadFile(c echo.Context) error {
 	claimVal := c.Get("Authorization")
 	claim, ok := claimVal.(*types.UserClaim)
-	if !ok || claim == nil || claim.Role.String() != types.Admin.String() {
+	if !ok || claim == nil {
 		return c.JSON(http.StatusUnauthorized, map[string]string{
 			"error": "unauthorized",
+		})
+	}
+
+	idStr := strconv.Itoa(int(claim.ID))
+
+	resAuth, err := h.Client.GetRole(c.Request().Context(), idStr)
+	if err != nil {
+		h.Logger.Error("failed to get role", "error", err)
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"message": "unauthorized",
+		})
+	}
+
+	if resAuth.Role.Name != "admin" {
+		return c.JSON(http.StatusForbidden, map[string]string{
+			"message": "forbidden",
 		})
 	}
 
