@@ -40,7 +40,7 @@ func isPublicPath(path string) bool {
 	if path == "" {
 		return true
 	}
-	if path == "/v1/login" || path == "/v1/token/verify" {
+	if path == "/v1/login" || path == "/v1/me" {
 		return true
 	}
 	if strings.Contains(path, "health-check") || strings.Contains(path, "health_check") {

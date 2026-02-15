@@ -2,6 +2,7 @@ package authapp
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -17,6 +18,7 @@ import (
 	"github.com/gocasters/rankr/pkg/grpc"
 	"github.com/gocasters/rankr/pkg/httpserver"
 	"github.com/gocasters/rankr/pkg/logger"
+	types "github.com/gocasters/rankr/type"
 )
 
 type Application struct {
@@ -31,6 +33,16 @@ type Application struct {
 	Validator    auth.Validator
 }
 
+type contributorCredentialsProvider interface {
+	VerifyPassword(ctx context.Context, username string, password string) (types.ID, string, bool, error)
+}
+
+type unavailableContributorClient struct{}
+
+func (unavailableContributorClient) VerifyPassword(_ context.Context, _, _ string) (types.ID, string, bool, error) {
+	return 0, "", false, fmt.Errorf("contributor service is unavailable")
+}
+
 func Setup(
 	ctx context.Context,
 	config Config,
@@ -43,17 +55,21 @@ func Setup(
 
 	tokenSvc := tokenservice.NewAuthService(config.JWT.Secret, config.JWT.TokenDuration, config.JWT.RefreshTokenDuration)
 
+	var contributorClient *contributor.Client
+	var contributorProvider contributorCredentialsProvider = unavailableContributorClient{}
+
 	rpcClient, err := grpc.NewClient(config.ContributorRPC, log)
 	if err != nil {
-		log.Error("failed to initialize contributor RPC client", slog.Any("error", err))
-		return Application{}, err
+		log.Warn("failed to initialize contributor RPC client; auth will start in degraded mode", slog.Any("error", err))
+	} else {
+		contributorClient, err = contributor.New(rpcClient)
+		if err != nil {
+			log.Warn("failed to initialize contributor client; auth will start in degraded mode", slog.Any("error", err))
+		} else {
+			contributorProvider = contributorClient
+		}
 	}
-	contributorClient, err := contributor.New(rpcClient)
-	if err != nil {
-		log.Error("failed to initialize contributor client", slog.Any("error", err))
-		return Application{}, err
-	}
-	svc := auth.NewService(repo, validator, contributorClient, tokenSvc)
+	svc := auth.NewService(repo, validator, contributorProvider, tokenSvc)
 	httpSrvCore, err := httpserver.New(config.HTTPServer)
 	if err != nil {
 		log.Error("failed to initialize HTTP server", slog.Any("error", err))

@@ -44,17 +44,8 @@ func (h Handler) login(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
-func (h Handler) verifyToken(c echo.Context) error {
+func (h Handler) me(c echo.Context) error {
 	token := extractBearerToken(c.Request())
-	if token == "" {
-		var body struct {
-			Token string `json:"token"`
-		}
-		if err := c.Bind(&body); err != nil {
-			return c.JSON(http.StatusBadRequest, echo.Map{"error": "invalid request"})
-		}
-		token = body.Token
-	}
 	if token == "" {
 		return c.JSON(http.StatusBadRequest, echo.Map{"error": "token is required"})
 	}
@@ -88,6 +79,17 @@ func (h Handler) verifyToken(c echo.Context) error {
 	}
 	if claims.RegisteredClaims.IssuedAt != nil {
 		response["issued_at"] = claims.RegisteredClaims.IssuedAt.Time.Format(time.RFC3339)
+	}
+
+	// Direct frontend calls to /v1/me should rotate tokens.
+	// Internal gateway auth checks include X-Original-* headers and only need authorization result.
+	if originalURI == "" && originalMethod == "" {
+		accessToken, refreshToken, issueErr := h.tokenService.IssueTokens(claims.UserID, claims.Role, claims.Access)
+		if issueErr != nil {
+			return c.JSON(http.StatusInternalServerError, echo.Map{"error": "failed to issue tokens"})
+		}
+		response["access_token"] = accessToken
+		response["refresh_token"] = refreshToken
 	}
 
 	c.Response().Header().Set("X-User-ID", claims.UserID)

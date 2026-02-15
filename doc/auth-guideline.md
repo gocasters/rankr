@@ -2,7 +2,7 @@
 
 - Use seeded admin contributor created by migration `000006_seed_admin_contributor.sql`.
 - Login from `AuthService` (`POST /auth/v1/login`) and get JWT tokens.
-- Validate token with `POST /auth/v1/token/verify`.
+- Validate and rotate token with `GET /auth/v1/me`.
 - For other modules, OpenResty calls internal `/auth_verify` on every protected request.
 - If token is valid, these headers are forwarded to upstream services: `X-User-ID`, `X-Role`, `X-User-Info`.
 
@@ -77,8 +77,8 @@ export ADMIN_ACCESS_TOKEN=<ACCESS_TOKEN>
 ### 4. Verify token explicitly
 
 ```bash
-curl -X POST http://localhost/auth/v1/token/verify \
-  -H "Authorization: Bearer $ADMIN_ACCESS_TOKEN"
+curl -X GET http://localhost/auth/v1/me \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMSIsInJvbGUiOiJhZG1pbiIsImFjY2VzcyI6WyIqIl0sImV4cCI6MTc3MTE3NjgzMCwiaWF0IjoxNzcxMTczMjMwfQ.wVAc6Wxc8WiR3TGGgVAh-iXwSX1K5EXYYjIQEiran6M"
 ```
 
 Expected response (example):
@@ -90,6 +90,8 @@ Expected response (example):
   "access": [
     "*"
   ],
+  "access_token": "<NEW_ACCESS_TOKEN>",
+  "refresh_token": "<NEW_REFRESH_TOKEN>",
   "expires_at": "<RFC3339>",
   "issued_at": "<RFC3339>"
 }
@@ -149,7 +151,7 @@ export USER_ACCESS_TOKEN=<ACCESS_TOKEN>
 Inspect role and access list:
 
 ```bash
-curl -X POST http://localhost/auth/v1/token/verify \
+curl -X GET http://localhost/auth/v1/me \
   -H "Authorization: Bearer $USER_ACCESS_TOKEN"
 ```
 
@@ -190,7 +192,7 @@ curl -i http://localhost/v1/projects \
 ### 9. Optional permission check
 
 ```bash
-curl -X POST http://localhost/auth/v1/token/verify \
+curl -X GET http://localhost/auth/v1/me \
   -H "Authorization: Bearer $ADMIN_ACCESS_TOKEN" \
   -H "X-Original-Method: POST" \
   -H "X-Original-URI: /v1/projects" \
