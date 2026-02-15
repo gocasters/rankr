@@ -62,9 +62,8 @@ func Setup(
 	validator := job.NewValidator(config.Validation)
 
 	jobSvc := job.NewService(config.Job, jobRepo, broker, contributorAdapter, failRecordRepo, validator)
-	authClient := client.NewAuthClient(config.AuthClient)
 
-	contributorHandler := http.NewHandler(contributorSvc, jobSvc, authClient, logger)
+	contributorHandler := http.NewHandler(contributorSvc, jobSvc, logger)
 
 	httpServer, err := httpserver.New(config.HTTPServer)
 	if err != nil {
@@ -81,7 +80,8 @@ func Setup(
 
 	pool := worker.New(broker, w, config.Worker)
 
-	middleware := middleware2.New(config.Middleware)
+	authClient := client.NewAuthClient(config.AuthClient)
+	middleware := middleware2.New(config.Middleware, authClient)
 
 	grpcServer, err := pkggrpc.NewServer(config.GRPCServer)
 
