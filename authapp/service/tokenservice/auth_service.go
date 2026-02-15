@@ -33,3 +33,7 @@ func (s *AuthService) IssueTokens(userID, role string, access []string) (string,
 func (s *AuthService) VerifyToken(token string) (*UserClaims, error) {
 	return s.accessManager.Verify(token)
 }
+
+func (s *AuthService) VerifyRefreshToken(token string) (*UserClaims, error) {
+	return s.refreshManager.Verify(token)
+}

@@ -64,9 +64,12 @@ func (h Handler) me(c echo.Context) error {
 	if originalHost == "" {
 		originalHost = c.Request().Host
 	}
-	requiredPermission := role.RequiredPermission(originalMethod, originalURI, originalHost)
-	if requiredPermission != "" && !role.HasPermission(claims.Access, requiredPermission) {
-		return c.JSON(http.StatusForbidden, echo.Map{"error": "forbidden"})
+	
+	if originalURI != "" || originalMethod != "" {
+		requiredPermission := role.RequiredPermission(originalMethod, originalURI, originalHost)
+		if !role.HasPermission(claims.Access, requiredPermission) {
+			return c.JSON(http.StatusForbidden, echo.Map{"error": "forbidden"})
+		}
 	}
 
 	response := echo.Map{
@@ -81,9 +84,19 @@ func (h Handler) me(c echo.Context) error {
 		response["issued_at"] = claims.RegisteredClaims.IssuedAt.Time.Format(time.RFC3339)
 	}
 
-	// Direct frontend calls to /v1/me should rotate tokens.
-	// Internal gateway auth checks include X-Original-* headers and only need authorization result.
 	if originalURI == "" && originalMethod == "" {
+		refreshToken := extractRefreshToken(c.Request())
+		if refreshToken == "" {
+			return c.JSON(http.StatusUnauthorized, echo.Map{"error": "refresh token is required"})
+		}
+		refreshClaims, refreshErr := h.tokenService.VerifyRefreshToken(refreshToken)
+		if refreshErr != nil {
+			return c.JSON(http.StatusUnauthorized, echo.Map{"error": "invalid refresh token"})
+		}
+		if refreshClaims.UserID != claims.UserID || refreshClaims.Role != claims.Role || !sameAccessList(refreshClaims.Access, claims.Access) {
+			return c.JSON(http.StatusForbidden, echo.Map{"error": "refresh token does not match access token"})
+		}
+
 		accessToken, refreshToken, issueErr := h.tokenService.IssueTokens(claims.UserID, claims.Role, claims.Access)
 		if issueErr != nil {
 			return c.JSON(http.StatusInternalServerError, echo.Map{"error": "failed to issue tokens"})
@@ -136,4 +149,47 @@ func extractBearerToken(r *http.Request) string {
 		return authz[7:]
 	}
 	return ""
+}
+
+func extractRefreshToken(r *http.Request) string {
+	if token := strings.TrimSpace(r.Header.Get("X-Refresh-Token")); token != "" {
+		return token
+	}
+	if token := strings.TrimSpace(r.Header.Get("Refresh-Token")); token != "" {
+		return token
+	}
+	if cookie, err := r.Cookie("refresh_token"); err == nil {
+		if token := strings.TrimSpace(cookie.Value); token != "" {
+			return token
+		}
+	}
+	if token := strings.TrimSpace(r.FormValue("refresh_token")); token != "" {
+		return token
+	}
+	return ""
+}
+
+func sameAccessList(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	if len(a) == 0 {
+		return true
+	}
+	counts := make(map[string]int, len(a))
+	for _, item := range a {
+		counts[item]++
+	}
+	for _, item := range b {
+		counts[item]--
+		if counts[item] < 0 {
+			return false
+		}
+	}
+	for _, remaining := range counts {
+		if remaining != 0 {
+			return false
+		}
+	}
+	return true
 }

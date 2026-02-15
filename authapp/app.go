@@ -58,13 +58,14 @@ func Setup(
 	var contributorClient *contributor.Client
 	var contributorProvider contributorCredentialsProvider = unavailableContributorClient{}
 
-	rpcClient, err := grpc.NewClient(config.ContributorRPC, log)
-	if err != nil {
-		log.Warn("failed to initialize contributor RPC client; auth will start in degraded mode", slog.Any("error", err))
+	rpcClient, rpcErr := grpc.NewClient(config.ContributorRPC, log)
+	if rpcErr != nil {
+		log.Warn("failed to initialize contributor RPC client; auth will start in degraded mode", slog.Any("error", rpcErr))
 	} else {
-		contributorClient, err = contributor.New(rpcClient)
-		if err != nil {
-			log.Warn("failed to initialize contributor client; auth will start in degraded mode", slog.Any("error", err))
+		contributorClient, rpcErr = contributor.New(rpcClient)
+		if rpcErr != nil {
+			rpcClient.Close()
+			log.Warn("failed to initialize contributor client; auth will start in degraded mode", slog.Any("error", rpcErr))
 		} else {
 			contributorProvider = contributorClient
 		}

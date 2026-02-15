@@ -78,7 +78,8 @@ export ADMIN_ACCESS_TOKEN=<ACCESS_TOKEN>
 
 ```bash
 curl -X GET http://localhost/auth/v1/me \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMSIsInJvbGUiOiJhZG1pbiIsImFjY2VzcyI6WyIqIl0sImV4cCI6MTc3MTE3NjgzMCwiaWF0IjoxNzcxMTczMjMwfQ.wVAc6Wxc8WiR3TGGgVAh-iXwSX1K5EXYYjIQEiran6M"
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  -H "X-Refresh-Token: <REFRESH_TOKEN>"
 ```
 
 Expected response (example):
@@ -142,17 +143,19 @@ curl -X POST http://localhost/auth/v1/login \
   }'
 ```
 
-Set the returned token:
+Set the returned tokens:
 
 ```bash
 export USER_ACCESS_TOKEN=<ACCESS_TOKEN>
+export USER_REFRESH_TOKEN=<REFRESH_TOKEN>
 ```
 
 Inspect role and access list:
 
 ```bash
 curl -X GET http://localhost/auth/v1/me \
-  -H "Authorization: Bearer $USER_ACCESS_TOKEN"
+  -H "Authorization: Bearer $USER_ACCESS_TOKEN" \
+  -H "X-Refresh-Token: $USER_REFRESH_TOKEN"
 ```
 
 Expected behavior:

@@ -4,9 +4,15 @@ import "strings"
 
 type Permission string
 
-const PermissionAll Permission = "*"
+const (
+	PermissionAll          Permission = "*"
+	PermissionUnresolvable Permission = "unresolvable"
+)
 
 func HasPermission(access []string, permission Permission) bool {
+	if permission == PermissionUnresolvable {
+		return false
+	}
 	if permission == "" {
 		return true
 	}
@@ -19,7 +25,10 @@ func HasPermission(access []string, permission Permission) bool {
 }
 
 func RequiredPermission(method, path, host string) Permission {
-	if path == "" || isPublicPath(path) {
+	if path == "" {
+		return PermissionUnresolvable
+	}
+	if isPublicPath(path) {
 		return ""
 	}
 
@@ -29,24 +38,31 @@ func RequiredPermission(method, path, host string) Permission {
 	}
 	operation := operationFromMethod(method)
 	if module == "" || operation == "" {
-		return ""
+		return PermissionUnresolvable
 	}
 
 	return Permission(module + ":" + operation)
 }
 
 func isPublicPath(path string) bool {
-	path = trimQuery(path)
-	if path == "" {
+	normalizedPath := strings.Trim(trimQuery(path), " /")
+	if normalizedPath == "" {
 		return true
 	}
-	if path == "/v1/login" || path == "/v1/me" {
-		return true
+
+	publicEndpoints := []string{"v1/login", "v1/me"}
+	for _, endpoint := range publicEndpoints {
+		if normalizedPath == endpoint || strings.HasPrefix(normalizedPath, endpoint+"/") {
+			return true
+		}
 	}
-	if strings.Contains(path, "health-check") || strings.Contains(path, "health_check") {
-		return true
+
+	segments := strings.Split(normalizedPath, "/")
+	if len(segments) == 0 {
+		return false
 	}
-	return false
+	lastSegment := segments[len(segments)-1]
+	return lastSegment == "health-check" || lastSegment == "health_check"
 }
 
 func operationFromMethod(method string) string {
