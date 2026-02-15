@@ -36,11 +36,11 @@ func TestExtractRefreshToken(t *testing.T) {
 			wantTok: "cookie-token",
 		},
 		{
-			name: "from form/query",
+			name: "query parameter is ignored",
 			setup: func(r *http.Request) {
 				r.URL = &url.URL{RawQuery: "refresh_token=query-token"}
 			},
-			wantTok: "query-token",
+			wantTok: "",
 		},
 	}
 

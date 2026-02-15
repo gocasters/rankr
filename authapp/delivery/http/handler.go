@@ -64,7 +64,7 @@ func (h Handler) me(c echo.Context) error {
 	if originalHost == "" {
 		originalHost = c.Request().Host
 	}
-	
+
 	if originalURI != "" || originalMethod != "" {
 		requiredPermission := role.RequiredPermission(originalMethod, originalURI, originalHost)
 		if !role.HasPermission(claims.Access, requiredPermission) {
@@ -162,9 +162,6 @@ func extractRefreshToken(r *http.Request) string {
 		if token := strings.TrimSpace(cookie.Value); token != "" {
 			return token
 		}
-	}
-	if token := strings.TrimSpace(r.FormValue("refresh_token")); token != "" {
-		return token
 	}
 	return ""
 }

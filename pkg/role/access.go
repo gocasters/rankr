@@ -52,7 +52,7 @@ func isPublicPath(path string) bool {
 
 	publicEndpoints := []string{"v1/login", "v1/me"}
 	for _, endpoint := range publicEndpoints {
-		if normalizedPath == endpoint || strings.HasPrefix(normalizedPath, endpoint+"/") {
+		if normalizedPath == endpoint {
 			return true
 		}
 	}
