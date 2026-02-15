@@ -6,9 +6,6 @@ services:
     container_name: userprofile-app
     volumes:
       - ../../..:/app
-    ports:
-      - "8085:8081" # HTTP port
-      - "8095:8091" # gRPC port
     networks:
       - rankr-shared-development-network
     environment:

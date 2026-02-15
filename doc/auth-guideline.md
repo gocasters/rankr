@@ -8,6 +8,7 @@
 
 > **Note**:
 > - Public auth endpoints are under `/auth/*` in gateway.
+> - Gateway route selection is path-based; `Host` header is not required.
 > - Protected routes in other modules are checked by `auth_request /auth_verify`.
 
 ---
@@ -71,7 +72,7 @@ Example response:
 
 ```bash
 curl -X POST http://localhost/auth/v1/token/verify \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMSIsInJvbGUiOiJ1c2VyIiwiYWNjZXNzIjpbImFyZ3VzOnJlYWQiLCJjb250cmlidXRvcjpyZWFkIiwiY29udHJpYnV0b3I6dXBkYXRlIiwibGVhZGVyYm9hcmRzY29yaW5nOnJlYWQiLCJsZWFkZXJib2FyZHN0YXQ6cmVhZCIsIm5vdGlmaWNhdGlvbjpyZWFkIiwibm90aWZpY2F0aW9uOnVwZGF0ZSIsInByb2plY3Q6cmVhZCIsInJlYWx0aW1lOnJlYWQiLCJ0YXNrOnJlYWQiLCJ1c2VycHJvZmlsZTpyZWFkIl0sImV4cCI6MTc3MTA4NTQ0MCwiaWF0IjoxNzcxMDgxODQwfQ.5SUK5uuVZdQ9Qx-9MW6ZN9u4Ci_BJK_GM1WVDPAO80U"
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMSIsInJvbGUiOiJhZG1pbiIsImFjY2VzcyI6WyIqIl0sImV4cCI6MTc3MTE1MTczMSwiaWF0IjoxNzcxMTQ4MTMxfQ.XmdFQeXFEU4hoi4ohwdySzdrs0BM3OaclTG2l3_xuEA"
 ```
 
 Expected response (example):
@@ -88,31 +89,29 @@ Expected response (example):
 }
 ```
 
-### 5. Token check for other routes (project module)
+### 5. Token check for protected routes (project module)
 
 Without token (should fail):
 
 ```bash
-curl -i http://localhost/v1/projects \
-  -H "Host: project.rankr.local"
+curl -i http://localhost/v1/projects
 ```
 
 With token (should pass auth check):
 
 ```bash
 curl -i http://localhost/v1/projects \
-  -H "Host: project.rankr.local" \
-  -H "Authorization: Bearer <ACCESS_TOKEN>"
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMSIsInJvbGUiOiJhZG1pbiIsImFjY2VzcyI6WyIqIl0sImV4cCI6MTc3MTE1MTczMSwiaWF0IjoxNzcxMTQ4MTMxfQ.XmdFQeXFEU4hoi4ohwdySzdrs0BM3OaclTG2l3_xuEA"
 ```
 
 ### 6. Optional permission check
 
 ```bash
 curl -X POST http://localhost/auth/v1/token/verify \
-  -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiMSIsInJvbGUiOiJhZG1pbiIsImFjY2VzcyI6WyIqIl0sImV4cCI6MTc3MTE1MTczMSwiaWF0IjoxNzcxMTQ4MTMxfQ.XmdFQeXFEU4hoi4ohwdySzdrs0BM3OaclTG2l3_xuEA" \
   -H "X-Original-Method: POST" \
   -H "X-Original-URI: /v1/projects" \
-  -H "X-Original-Host: project.rankr.local"
+  -H "X-Original-Host: localhost"
 ```
 
 For `admin` token, this request should pass (not forbidden).
@@ -125,20 +124,11 @@ For `admin` token, this request should pass (not forbidden).
 }
 ```
 
-### 7. Verify token check is enabled for module gateways
+### 7. Verify token check is enabled in the default gateway
 
 ```bash
-rg -n "auth_request /auth_verify;" deploy/infrastructure/openresty/development/conf.d/*.conf
+rg -n "auth_request /auth_verify;" deploy/infrastructure/openresty/development/conf.d/auth.conf
 ```
 
-You should see matches in module gateway configs such as:
-- `argus.conf`
-- `contributor.conf`
-- `leaderboardscoring.conf`
-- `leaderboardstat.conf`
-- `notification.conf`
-- `project.conf`
-- `realtime.conf`
-- `task.conf`
-- `userprofile.conf`
-- `webhook.conf`
+You should see matches in route blocks for service paths in:
+- `deploy/infrastructure/openresty/development/conf.d/auth.conf`

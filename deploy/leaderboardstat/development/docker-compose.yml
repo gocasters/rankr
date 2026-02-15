@@ -6,9 +6,6 @@ services:
     container_name: leaderboardstat-app
     volumes:
       - ../../..:/app
-    ports:
-      - "8088:8081" # HTTP port
-      - "8098:8091" # gRPC port
     networks:
       - rankr-shared-development-network
     environment:

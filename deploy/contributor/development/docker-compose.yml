@@ -7,16 +7,13 @@ services:
     volumes:
       - ../../..:/app
       - ./logs:/app/logs # Persist contributor logs
-    ports:
-      - "8082:8082" # HTTP port
-      - "8093:8093" # gRPC port
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8082/v1/health-check > /dev/null"]
       interval: 5s
       timeout: 3s
       retries: 12
     networks:
-      - rankr-shared-production-network
+      - rankr-shared-development-network
     environment:
       - CONFIG_PATH=/app/deploy/contributor/development/config.yml
       - contributor_POSTGRES_DB_HOST=rankr-shared-postgres
@@ -28,6 +25,6 @@ services:
     entrypoint: [ "air", "-c", "/app/.air/.air.contributor.toml" ]
 
 networks:
-  rankr-shared-production-network:
+  rankr-shared-development-network:
     external: true
-    name: rankr-shared-production-network
+    name: rankr-shared-development-network

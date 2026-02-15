@@ -6,9 +6,6 @@ services:
     container_name: project-app
     volumes:
       - ../../..:/app
-    ports:
-      - "8084:8084" # HTTP port
-      - "8094:8094" # gRPC port
     networks:
       - rankr-shared-development-network
     env_file:
