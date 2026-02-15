@@ -66,21 +66,7 @@ func (repo ContributorRepo) GetContributorByID(ctx context.Context, id types.ID)
 		return nil, fmt.Errorf("error retrieving contributor with id: %d, error: %v", id, err)
 	}
 
-	if githubID.Valid {
-		contrib.GitHubID = githubID.Int64
-	}
-	if email.Valid {
-		contrib.Email = email.String
-	}
-	if displayName.Valid {
-		contrib.DisplayName = displayName.String
-	}
-	if profileImage.Valid {
-		contrib.ProfileImage = profileImage.String
-	}
-	if bio.Valid {
-		contrib.Bio = bio.String
-	}
+	applyNullableContributorFields(&contrib, githubID, email, displayName, profileImage, bio)
 
 	return &contrib, nil
 }
@@ -116,21 +102,7 @@ func (repo ContributorRepo) GetContributorByGitHubUsername(ctx context.Context, 
 		return nil, fmt.Errorf("error retrieving contributor with username: %s, error: %v", username, err)
 	}
 
-	if githubID.Valid {
-		contrib.GitHubID = githubID.Int64
-	}
-	if email.Valid {
-		contrib.Email = email.String
-	}
-	if displayName.Valid {
-		contrib.DisplayName = displayName.String
-	}
-	if profileImage.Valid {
-		contrib.ProfileImage = profileImage.String
-	}
-	if bio.Valid {
-		contrib.Bio = bio.String
-	}
+	applyNullableContributorFields(&contrib, githubID, email, displayName, profileImage, bio)
 
 	return &contrib, nil
 }
@@ -250,6 +222,28 @@ func nullInt64(v int64) sql.NullInt64 {
 		return sql.NullInt64{}
 	}
 	return sql.NullInt64{Int64: v, Valid: true}
+}
+
+func applyNullableContributorFields(
+	contrib *contributor.Contributor,
+	githubID sql.NullInt64,
+	email, displayName, profileImage, bio sql.NullString,
+) {
+	if githubID.Valid {
+		contrib.GitHubID = githubID.Int64
+	}
+	if email.Valid {
+		contrib.Email = email.String
+	}
+	if displayName.Valid {
+		contrib.DisplayName = displayName.String
+	}
+	if profileImage.Valid {
+		contrib.ProfileImage = profileImage.String
+	}
+	if bio.Valid {
+		contrib.Bio = bio.String
+	}
 }
 
 func (repo ContributorRepo) FindByVCSUsernames(ctx context.Context, provider contributor.VcsProvider, usernames []string) ([]*contributor.Contributor, error) {

@@ -9,6 +9,8 @@ RUN go install github.com/air-verse/air@latest
 
 COPY . .
 
+RUN go mod tidy
+
 RUN CGO_ENABLED=0 GOOS=linux GOFLAGS=-mod=mod go build -o /app/main ./cmd/contributor/main.go
 
 

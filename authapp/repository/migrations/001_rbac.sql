@@ -3,12 +3,7 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- +migrate StatementBegin
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'role_enum') THEN
-        CREATE TYPE role_enum AS ENUM ('admin', 'user');
-    END IF;
-END $$;
+CREATE TYPE role_enum AS ENUM ('admin', 'user');
 -- +migrate StatementEnd
 
 CREATE TABLE IF NOT EXISTS permissions (
