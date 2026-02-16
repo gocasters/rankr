@@ -7,7 +7,17 @@ type Permission string
 const (
 	PermissionAll          Permission = "*"
 	PermissionUnresolvable Permission = "unresolvable"
+
+	publicEndpointLogin        = "v1/login"
+	publicEndpointRefreshToken = "v1/refresh-token"
+	publicEndpointMe           = "v1/me"
 )
+
+var publicEndpoints = []string{
+	publicEndpointLogin,
+	publicEndpointRefreshToken,
+	publicEndpointMe,
+}
 
 func HasPermission(access []string, permission Permission) bool {
 	if permission == PermissionUnresolvable {
@@ -50,7 +60,6 @@ func isPublicPath(path string) bool {
 		return true
 	}
 
-	publicEndpoints := []string{"v1/login", "v1/me"}
 	for _, endpoint := range publicEndpoints {
 		if normalizedPath == endpoint {
 			return true

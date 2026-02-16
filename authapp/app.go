@@ -62,10 +62,10 @@ func Setup(
 	if rpcErr != nil {
 		log.Warn("failed to initialize contributor RPC client; auth will start in degraded mode", slog.Any("error", rpcErr))
 	} else {
-		contributorClient, rpcErr = contributor.New(rpcClient)
-		if rpcErr != nil {
+		contributorClient, contributorErr := contributor.New(rpcClient)
+		if contributorErr != nil {
 			rpcClient.Close()
-			log.Warn("failed to initialize contributor client; auth will start in degraded mode", slog.Any("error", rpcErr))
+			log.Warn("failed to initialize contributor client; auth will start in degraded mode", slog.Any("error", contributorErr))
 		} else {
 			contributorProvider = contributorClient
 		}

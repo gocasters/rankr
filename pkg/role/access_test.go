@@ -14,6 +14,8 @@ func TestIsPublicPath(t *testing.T) {
 		{name: "login exact", path: "/v1/login", want: true},
 		{name: "login with trailing slash", path: "/v1/login/", want: true},
 		{name: "login callback subpath should not pass", path: "/v1/login/callback", want: false},
+		{name: "refresh token exact", path: "/v1/refresh-token", want: true},
+		{name: "refresh token subpath should not pass", path: "/v1/refresh-token/rotate", want: false},
 		{name: "me exact", path: "/v1/me", want: true},
 		{name: "me settings subpath should not pass", path: "/v1/me/settings", want: false},
 		{name: "health check exact segment", path: "/v1/projects/health-check", want: true},

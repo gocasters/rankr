@@ -34,5 +34,6 @@ func (s Server) RegisterRoutes() {
 
 	v1.GET("/health-check", s.Handler.healthCheck)
 	v1.POST("/login", s.Handler.login)
-	v1.GET("/me", s.Handler.me)
+	v1.POST("/refresh-token", s.Handler.refreshToken)
+	v1.GET("/me", s.Handler.me, s.Handler.requireAccessClaims)
 }

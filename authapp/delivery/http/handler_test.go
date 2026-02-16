@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"net/url"
 	"testing"
+
+	"github.com/gocasters/rankr/pkg/authhttp"
 )
 
 func TestExtractRefreshToken(t *testing.T) {
@@ -48,44 +50,16 @@ func TestExtractRefreshToken(t *testing.T) {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			req, err := http.NewRequest(http.MethodGet, "http://localhost/auth/v1/me", nil)
+			req, err := http.NewRequest(http.MethodPost, "http://localhost/auth/v1/refresh-token", nil)
 			if err != nil {
 				t.Fatalf("failed to build request: %v", err)
 			}
 			if tc.setup != nil {
 				tc.setup(req)
 			}
-			got := extractRefreshToken(req)
+			got := authhttp.ExtractRefreshToken(req)
 			if got != tc.wantTok {
-				t.Fatalf("extractRefreshToken() = %q, want %q", got, tc.wantTok)
-			}
-		})
-	}
-}
-
-func TestSameAccessList(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name string
-		a    []string
-		b    []string
-		want bool
-	}{
-		{name: "same ordered", a: []string{"a:read", "b:update"}, b: []string{"a:read", "b:update"}, want: true},
-		{name: "same unordered", a: []string{"a:read", "b:update"}, b: []string{"b:update", "a:read"}, want: true},
-		{name: "different values", a: []string{"a:read"}, b: []string{"a:update"}, want: false},
-		{name: "different length", a: []string{"a:read"}, b: []string{"a:read", "b:update"}, want: false},
-		{name: "both empty", a: nil, b: nil, want: true},
-	}
-
-	for _, tc := range tests {
-		tc := tc
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			got := sameAccessList(tc.a, tc.b)
-			if got != tc.want {
-				t.Fatalf("sameAccessList(%v, %v) = %v, want %v", tc.a, tc.b, got, tc.want)
+				t.Fatalf("authhttp.ExtractRefreshToken() = %q, want %q", got, tc.wantTok)
 			}
 		})
 	}

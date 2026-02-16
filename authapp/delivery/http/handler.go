@@ -1,20 +1,17 @@
 package http
 
 import (
-	"encoding/base64"
-	"encoding/json"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gocasters/rankr/authapp/service/auth"
 	"github.com/gocasters/rankr/authapp/service/tokenservice"
+	"github.com/gocasters/rankr/pkg/authhttp"
 	errmsg "github.com/gocasters/rankr/pkg/err_msg"
 	"github.com/gocasters/rankr/pkg/role"
 	"github.com/gocasters/rankr/pkg/statuscode"
 	"github.com/gocasters/rankr/pkg/validator"
-	types "github.com/gocasters/rankr/type"
 	"github.com/labstack/echo/v4"
 )
 
@@ -45,17 +42,9 @@ func (h Handler) login(c echo.Context) error {
 }
 
 func (h Handler) me(c echo.Context) error {
-	token := extractBearerToken(c.Request())
-	if token == "" {
-		return c.JSON(http.StatusBadRequest, echo.Map{"error": "token is required"})
-	}
-
-	claims, err := h.tokenService.VerifyToken(token)
-	if err != nil {
+	claims, ok := accessClaimsFromContext(c)
+	if !ok {
 		return c.JSON(http.StatusUnauthorized, echo.Map{"error": "invalid token"})
-	}
-	if _, ok := role.Parse(claims.Role); !ok {
-		return c.JSON(http.StatusUnauthorized, echo.Map{"error": "invalid role"})
 	}
 
 	originalURI := c.Request().Header.Get("X-Original-URI")
@@ -84,37 +73,41 @@ func (h Handler) me(c echo.Context) error {
 		response["issued_at"] = claims.RegisteredClaims.IssuedAt.Time.Format(time.RFC3339)
 	}
 
-	if originalURI == "" && originalMethod == "" {
-		refreshToken := extractRefreshToken(c.Request())
-		if refreshToken == "" {
-			return c.JSON(http.StatusUnauthorized, echo.Map{"error": "refresh token is required"})
-		}
-		refreshClaims, refreshErr := h.tokenService.VerifyRefreshToken(refreshToken)
-		if refreshErr != nil {
-			return c.JSON(http.StatusUnauthorized, echo.Map{"error": "invalid refresh token"})
-		}
-		if refreshClaims.UserID != claims.UserID || refreshClaims.Role != claims.Role || !sameAccessList(refreshClaims.Access, claims.Access) {
-			return c.JSON(http.StatusForbidden, echo.Map{"error": "refresh token does not match access token"})
-		}
-
-		accessToken, refreshToken, issueErr := h.tokenService.IssueTokens(claims.UserID, claims.Role, claims.Access)
-		if issueErr != nil {
-			return c.JSON(http.StatusInternalServerError, echo.Map{"error": "failed to issue tokens"})
-		}
-		response["access_token"] = accessToken
-		response["refresh_token"] = refreshToken
-	}
-
 	c.Response().Header().Set("X-User-ID", claims.UserID)
 	c.Response().Header().Set("X-Role", claims.Role)
 	if len(claims.Access) > 0 {
 		c.Response().Header().Set("X-Access", strings.Join(claims.Access, ","))
 	}
-	if encoded, err := encodeUserInfo(claims.UserID); err == nil {
+	if encoded, err := authhttp.EncodeUserInfo(claims.UserID); err == nil {
 		c.Response().Header().Set("X-User-Info", encoded)
 	}
 
 	return c.JSON(http.StatusOK, response)
+}
+
+func (h Handler) refreshToken(c echo.Context) error {
+	refresh := authhttp.ExtractRefreshToken(c.Request())
+	if refresh == "" {
+		return c.JSON(http.StatusUnauthorized, echo.Map{"error": "refresh token is required"})
+	}
+
+	claims, err := h.tokenService.VerifyRefreshToken(refresh)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, echo.Map{"error": "invalid refresh token"})
+	}
+	if _, ok := role.Parse(claims.Role); !ok {
+		return c.JSON(http.StatusUnauthorized, echo.Map{"error": "invalid role"})
+	}
+
+	accessToken, refreshToken, issueErr := h.tokenService.IssueTokens(claims.UserID, claims.Role, claims.Access)
+	if issueErr != nil {
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": "failed to issue tokens"})
+	}
+
+	return c.JSON(http.StatusOK, echo.Map{
+		"access_token":  accessToken,
+		"refresh_token": refreshToken,
+	})
 }
 
 func (h Handler) healthCheck(c echo.Context) error {
@@ -129,64 +122,4 @@ func (h Handler) handleError(c echo.Context, err error) error {
 		return c.JSON(statuscode.MapToHTTPStatusCode(eResp), eResp)
 	}
 	return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
-}
-
-func encodeUserInfo(userID string) (string, error) {
-	parsedID, err := strconv.ParseUint(userID, 10, 64)
-	if err != nil {
-		return "", err
-	}
-	payload, err := json.Marshal(types.UserClaim{ID: types.ID(parsedID)})
-	if err != nil {
-		return "", err
-	}
-	return base64.StdEncoding.EncodeToString(payload), nil
-}
-
-func extractBearerToken(r *http.Request) string {
-	authz := r.Header.Get("Authorization")
-	if len(authz) > 7 && authz[:7] == "Bearer " {
-		return authz[7:]
-	}
-	return ""
-}
-
-func extractRefreshToken(r *http.Request) string {
-	if token := strings.TrimSpace(r.Header.Get("X-Refresh-Token")); token != "" {
-		return token
-	}
-	if token := strings.TrimSpace(r.Header.Get("Refresh-Token")); token != "" {
-		return token
-	}
-	if cookie, err := r.Cookie("refresh_token"); err == nil {
-		if token := strings.TrimSpace(cookie.Value); token != "" {
-			return token
-		}
-	}
-	return ""
-}
-
-func sameAccessList(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	if len(a) == 0 {
-		return true
-	}
-	counts := make(map[string]int, len(a))
-	for _, item := range a {
-		counts[item]++
-	}
-	for _, item := range b {
-		counts[item]--
-		if counts[item] < 0 {
-			return false
-		}
-	}
-	for _, remaining := range counts {
-		if remaining != 0 {
-			return false
-		}
-	}
-	return true
 }
