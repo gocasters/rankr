@@ -39,16 +39,23 @@ func (s Server) Stop(ctx context.Context) error {
 
 func (s Server) RegisterRoutes() {
 	router := s.HTTPServer.GetRouter()
+	router.Use(
+		echomiddleware.RequireClaimsWithConfig(
+			echomiddleware.RequireClaimsConfig{
+				Skipper: echomiddleware.SkipExactPaths("/v1/health-check"),
+			},
+		),
+	)
 
 	// Public health check
 	router.GET("/v1/health-check", s.healthCheck)
 
-	v1 := router.Group("/v1", echomiddleware.RequireAuth)
+	v1 := router.Group("/v1")
 	v1.GET("/profile/:id", s.Handler.getProfile)
 	v1.POST("/create", s.Handler.createContributor)
 	v1.PUT("/update", s.Handler.updateProfile)
 
-	v1.POST("/jobs/upload", s.Handler.uploadFile, echomiddleware.RequireAuth, s.Middleware.CheckFile)
+	v1.POST("/jobs/upload", s.Handler.uploadFile, s.Middleware.CheckFile)
 	v1.GET("/jobs/status/:job_id", s.Handler.getJobStatus)
 	v1.GET("/jobs/fail_records/:job_id", s.Handler.getFailRecords)
 

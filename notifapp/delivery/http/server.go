@@ -29,12 +29,18 @@ func (s Server) Stop(ctx context.Context) error {
 }
 
 func (s Server) registerRoutes() {
+	router := s.HTTPServer.GetRouter()
+	router.Use(
+		echomiddleware.RequireClaimsWithConfig(
+			echomiddleware.RequireClaimsConfig{
+				Skipper: echomiddleware.SkipExactPaths("/v1/notifapp/health-check"),
+			},
+		),
+	)
 
-	health := s.HTTPServer.GetRouter()
+	router.GET("/v1/notifapp/health-check", s.healthCheck)
 
-	health.GET("/v1/notifapp/health-check", s.healthCheck)
-
-	v1 := s.HTTPServer.GetRouter().Group("/v1/notifapp/notifications", echomiddleware.RequireAuth)
+	v1 := router.Group("/v1/notifapp/notifications")
 
 	v1.GET("/unread/count", s.handler.getUnreadCount)
 	v1.GET("/:notification_id", s.handler.getNotification)

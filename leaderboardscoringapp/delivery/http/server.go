@@ -3,6 +3,7 @@ package http
 import (
 	"context"
 
+	echomiddleware "github.com/gocasters/rankr/pkg/echo_middleware"
 	"github.com/gocasters/rankr/pkg/httpserver"
 )
 
@@ -32,6 +33,15 @@ func (s Server) stop(ctx context.Context) error {
 }
 
 func (s Server) RegisterRoutes() {
-	v1 := s.HTTPServer.GetRouter().Group("/v1")
+	router := s.HTTPServer.GetRouter()
+	router.Use(
+		echomiddleware.RequireClaimsWithConfig(
+			echomiddleware.RequireClaimsConfig{
+				Skipper: echomiddleware.SkipExactPaths("/v1/health-check"),
+			},
+		),
+	)
+
+	v1 := router.Group("/v1")
 	v1.GET("/health-check", s.healthCheck)
 }
