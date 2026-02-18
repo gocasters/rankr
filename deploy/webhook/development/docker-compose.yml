@@ -6,8 +6,6 @@ services:
     container_name: webhook-app
     volumes:
       - ../../..:/app
-    ports:
-      - "8086:8090"
     networks:
       - rankr-shared-development-network
     environment:

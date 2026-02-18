@@ -2,18 +2,22 @@ package http
 
 import (
 	"context"
+	authmiddleware "github.com/gocasters/rankr/authapp/delivery/http/middleware"
+	echomiddleware "github.com/gocasters/rankr/pkg/echo_middleware"
 	"github.com/gocasters/rankr/pkg/httpserver"
 )
 
 type Server struct {
 	HTTPServer httpserver.Server
 	Handler    Handler
+	Middleware authmiddleware.Middleware
 }
 
 func New(server httpserver.Server, handler Handler) Server {
 	return Server{
 		HTTPServer: server,
 		Handler:    handler,
+		Middleware: authmiddleware.New(handler.tokenService),
 	}
 }
 
@@ -30,16 +34,23 @@ func (s Server) Stop(ctx context.Context) error {
 }
 
 func (s Server) RegisterRoutes() {
-	v1 := s.HTTPServer.GetRouter().Group("v1")
+	router := s.HTTPServer.GetRouter()
+	router.Use(
+		s.Middleware.RequireBearerToken(
+			authmiddleware.RequireBearerTokenOptions{
+				Skipper: echomiddleware.SkipExactPaths(
+					"/v1/health-check",
+					"/v1/login",
+					"/v1/refresh-token",
+				),
+			},
+		),
+	)
+
+	v1 := router.Group("v1")
 
 	v1.GET("/health-check", s.Handler.healthCheck)
 	v1.POST("/login", s.Handler.login)
-	v1.POST("/token/verify", s.Handler.verifyToken)
-	v1.GET("/role/:id", s.Handler.getRole)
-	v1.GET("/roles", s.Handler.listRoles)
-	v1.POST("/role", s.Handler.createRole)
-	v1.PUT("/role", s.Handler.updateRole)
-	v1.DELETE("/role/:id", s.Handler.deleteRole)
-	v1.POST("/role/permission", s.Handler.addPermissionToRole)
-	v1.DELETE("/role/permission", s.Handler.removePermissionFromRole)
+	v1.POST("/refresh-token", s.Handler.refreshToken)
+	v1.GET("/me", s.Handler.me)
 }

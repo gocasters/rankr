@@ -28,7 +28,9 @@ func (s Server) Stop(ctx context.Context) error {
 }
 
 func (s Server) registerRoutes() {
-	v1 := s.HTTPServer.GetRouter().Group("/v1/userprofile")
+	router := s.HTTPServer.GetRouter()
+
+	v1 := router.Group("/v1/userprofile")
 
 	v1.GET("/health_check", s.healthCheck)
 

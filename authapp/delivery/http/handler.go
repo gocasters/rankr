@@ -1,20 +1,18 @@
 package http
 
 import (
-	"crypto/subtle"
-	"encoding/base64"
-	"encoding/json"
 	"net/http"
-	"os"
-	"strconv"
+	"strings"
 	"time"
 
+	authmiddleware "github.com/gocasters/rankr/authapp/delivery/http/middleware"
 	"github.com/gocasters/rankr/authapp/service/auth"
 	"github.com/gocasters/rankr/authapp/service/tokenservice"
+	"github.com/gocasters/rankr/pkg/authhttp"
 	errmsg "github.com/gocasters/rankr/pkg/err_msg"
+	"github.com/gocasters/rankr/pkg/role"
 	"github.com/gocasters/rankr/pkg/statuscode"
 	"github.com/gocasters/rankr/pkg/validator"
-	types "github.com/gocasters/rankr/type"
 	"github.com/labstack/echo/v4"
 )
 
@@ -44,157 +42,44 @@ func (h Handler) login(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
-func (h Handler) verifyToken(c echo.Context) error {
-	token := extractBearerToken(c.Request())
-	if token == "" {
-		var body struct {
-			Token string `json:"token"`
-		}
-		if err := c.Bind(&body); err != nil {
-			return c.JSON(http.StatusBadRequest, echo.Map{"error": "invalid request"})
-		}
-		token = body.Token
-	}
-	// Developer API key bypass (no JWT required)
-	if os.Getenv("ENV") == "development" {
-		if devKey := os.Getenv("DEV_API_KEY"); devKey != "" {
-			if provided := c.Request().Header.Get("X-API-Key"); subtle.ConstantTimeCompare([]byte(provided), []byte(devKey)) == 1 {
-				devID := uint64(1)
-				if rawID := os.Getenv("DEV_USER_ID"); rawID != "" {
-					if parsed, err := strconv.ParseUint(rawID, 10, 64); err == nil && parsed > 0 {
-						devID = parsed
-					}
-				}
-
-				response := echo.Map{
-					"user_id": strconv.FormatUint(devID, 10),
-					"role":    "developer",
-				}
-				c.Response().Header().Set("X-User-ID", strconv.FormatUint(devID, 10))
-				c.Response().Header().Set("X-Role", "developer")
-				if encoded, err := encodeUserInfo(strconv.FormatUint(devID, 10)); err == nil {
-					c.Response().Header().Set("X-User-Info", encoded)
-				}
-
-				return c.JSON(http.StatusOK, response)
-			}
-		}
-	}
-
-	if token == "" {
-		return c.JSON(http.StatusBadRequest, echo.Map{"error": "token is required"})
-	}
-
-	claims, err := h.tokenService.VerifyToken(token)
-	if err != nil {
+func (h Handler) me(c echo.Context) error {
+	claims, ok := authmiddleware.AccessClaimsFromContext(c)
+	if !ok || claims == nil {
 		return c.JSON(http.StatusUnauthorized, echo.Map{"error": "invalid token"})
 	}
 
-	response := echo.Map{
-		"user_id": claims.UserID,
-		"role":    claims.Role,
-	}
-	if claims.RegisteredClaims.ExpiresAt != nil {
-		response["expires_at"] = claims.RegisteredClaims.ExpiresAt.Time.Format(time.RFC3339)
-	}
-	if claims.RegisteredClaims.IssuedAt != nil {
-		response["issued_at"] = claims.RegisteredClaims.IssuedAt.Time.Format(time.RFC3339)
+	if requiredPermission := requiredPermissionFromRequest(c.Request()); requiredPermission != "" &&
+		!role.HasPermission(claims.Access, requiredPermission) {
+		return c.JSON(http.StatusForbidden, echo.Map{"error": "forbidden"})
 	}
 
-	c.Response().Header().Set("X-User-ID", claims.UserID)
-	c.Response().Header().Set("X-Role", claims.Role)
-	if encoded, err := encodeUserInfo(claims.UserID); err == nil {
-		c.Response().Header().Set("X-User-Info", encoded)
-	}
-
-	return c.JSON(http.StatusOK, response)
+	setUserResponseHeaders(c, claims)
+	return c.JSON(http.StatusOK, buildMeResponse(claims))
 }
 
-func (h Handler) listRoles(c echo.Context) error {
-	page, pageSize, err := parsePagination(c.QueryParam("page"), c.QueryParam("page_size"))
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, echo.Map{"error": err.Error()})
+func (h Handler) refreshToken(c echo.Context) error {
+	refresh := authhttp.ExtractRefreshToken(c.Request())
+	if refresh == "" {
+		return c.JSON(http.StatusUnauthorized, echo.Map{"error": "refresh token is required"})
 	}
-	res, err := h.authService.ListRoles(c.Request().Context(), auth.ListRoleRequest{
-		Page:     page,
-		PageSize: pageSize,
+
+	claims, err := h.tokenService.VerifyRefreshToken(refresh)
+	if err != nil {
+		return c.JSON(http.StatusUnauthorized, echo.Map{"error": "invalid refresh token"})
+	}
+	if _, ok := role.Parse(claims.Role); !ok {
+		return c.JSON(http.StatusUnauthorized, echo.Map{"error": "invalid role"})
+	}
+
+	accessToken, refreshToken, issueErr := h.tokenService.IssueTokens(claims.UserID, claims.Role, claims.Access)
+	if issueErr != nil {
+		return c.JSON(http.StatusInternalServerError, echo.Map{"error": "failed to issue tokens"})
+	}
+
+	return c.JSON(http.StatusOK, echo.Map{
+		"access_token":  accessToken,
+		"refresh_token": refreshToken,
 	})
-	if err != nil {
-		return h.handleError(c, err)
-	}
-	return c.JSON(http.StatusOK, res)
-}
-
-func (h Handler) getRole(c echo.Context) error {
-	id, err := parseIDParam(c.Param("id"))
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, echo.Map{"error": err.Error()})
-	}
-	res, err := h.authService.GetRole(c.Request().Context(), auth.GetRoleRequest{RoleID: id})
-	if err != nil {
-		return h.handleError(c, err)
-	}
-	return c.JSON(http.StatusOK, res)
-}
-
-func (h Handler) createRole(c echo.Context) error {
-	var req auth.CreateRoleRequest
-	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, echo.Map{"error": "invalid request body"})
-	}
-	res, err := h.authService.CreateRole(c.Request().Context(), req)
-	if err != nil {
-		return h.handleError(c, err)
-	}
-	return c.JSON(http.StatusCreated, res)
-}
-
-func (h Handler) updateRole(c echo.Context) error {
-	var req auth.UpdateRoleRequest
-	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, echo.Map{"error": "invalid request body"})
-	}
-	res, err := h.authService.UpdateRole(c.Request().Context(), req)
-	if err != nil {
-		return h.handleError(c, err)
-	}
-	return c.JSON(http.StatusOK, res)
-}
-
-func (h Handler) deleteRole(c echo.Context) error {
-	id, err := parseIDParam(c.Param("id"))
-	if err != nil {
-		return c.JSON(http.StatusBadRequest, echo.Map{"error": err.Error()})
-	}
-	res, err := h.authService.DeleteRole(c.Request().Context(), auth.DeleteRoleRequest{RoleID: id})
-	if err != nil {
-		return h.handleError(c, err)
-	}
-	return c.JSON(http.StatusOK, res)
-}
-
-func (h Handler) addPermissionToRole(c echo.Context) error {
-	var req auth.AddPermissionRequest
-	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, echo.Map{"error": "invalid request body"})
-	}
-	res, err := h.authService.AddPermissionToRole(c.Request().Context(), req)
-	if err != nil {
-		return h.handleError(c, err)
-	}
-	return c.JSON(http.StatusOK, res)
-}
-
-func (h Handler) removePermissionFromRole(c echo.Context) error {
-	var req auth.RemovePermissionRequest
-	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, echo.Map{"error": "invalid request body"})
-	}
-	res, err := h.authService.RemovePermissionFromRole(c.Request().Context(), req)
-	if err != nil {
-		return h.handleError(c, err)
-	}
-	return c.JSON(http.StatusOK, res)
 }
 
 func (h Handler) healthCheck(c echo.Context) error {
@@ -211,47 +96,42 @@ func (h Handler) handleError(c echo.Context, err error) error {
 	return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
 }
 
-func parseIDParam(raw string) (types.ID, error) {
-	id, err := strconv.ParseUint(raw, 10, 64)
-	if err != nil {
-		return 0, err
+func requiredPermissionFromRequest(req *http.Request) role.Permission {
+	originalURI := req.Header.Get("X-Original-URI")
+	originalMethod := req.Header.Get("X-Original-Method")
+	if originalURI == "" && originalMethod == "" {
+		return role.Permission("")
 	}
-	return types.ID(id), nil
+
+	originalHost := req.Header.Get("X-Original-Host")
+	if originalHost == "" {
+		originalHost = req.Host
+	}
+	return role.RequiredPermission(originalMethod, originalURI, originalHost)
 }
 
-func parsePagination(rawPage, rawPageSize string) (int, int, error) {
-	page := 0
-	pageSize := 0
-	var err error
-	if rawPage != "" {
-		if page, err = strconv.Atoi(rawPage); err != nil {
-			return 0, 0, err
-		}
+func buildMeResponse(claims *tokenservice.UserClaims) echo.Map {
+	response := echo.Map{
+		"user_id": claims.UserID,
+		"role":    claims.Role,
+		"access":  claims.Access,
 	}
-	if rawPageSize != "" {
-		if pageSize, err = strconv.Atoi(rawPageSize); err != nil {
-			return 0, 0, err
-		}
+	if claims.RegisteredClaims.ExpiresAt != nil {
+		response["expires_at"] = claims.RegisteredClaims.ExpiresAt.Time.Format(time.RFC3339)
 	}
-	return page, pageSize, nil
+	if claims.RegisteredClaims.IssuedAt != nil {
+		response["issued_at"] = claims.RegisteredClaims.IssuedAt.Time.Format(time.RFC3339)
+	}
+	return response
 }
 
-func encodeUserInfo(userID string) (string, error) {
-	parsedID, err := strconv.ParseUint(userID, 10, 64)
-	if err != nil {
-		return "", err
+func setUserResponseHeaders(c echo.Context, claims *tokenservice.UserClaims) {
+	c.Response().Header().Set("X-User-ID", claims.UserID)
+	c.Response().Header().Set("X-Role", claims.Role)
+	if len(claims.Access) > 0 {
+		c.Response().Header().Set("X-Access", strings.Join(claims.Access, ","))
 	}
-	payload, err := json.Marshal(types.UserClaim{ID: types.ID(parsedID)})
-	if err != nil {
-		return "", err
+	if encoded, err := authhttp.EncodeUserInfo(claims.UserID); err == nil {
+		c.Response().Header().Set("X-User-Info", encoded)
 	}
-	return base64.StdEncoding.EncodeToString(payload), nil
-}
-
-func extractBearerToken(r *http.Request) string {
-	authz := r.Header.Get("Authorization")
-	if len(authz) > 7 && authz[:7] == "Bearer " {
-		return authz[7:]
-	}
-	return ""
 }

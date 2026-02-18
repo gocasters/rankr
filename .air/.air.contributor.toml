@@ -4,7 +4,7 @@ tmp_dir = "tmp"
 [build]
   bin = "tmp/main"
   args_bin = ["serve", "--migrate-up"]
-  cmd = "go build -buildvcs=false -o ./tmp/main ./cmd/contributor/"
+  cmd = "go build -buildvcs=false -mod=mod -o ./tmp/main ./cmd/contributor/"
   delay = 1000
   exclude_dir = ["vendor", "tmp"]
   exclude_file = []

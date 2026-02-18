@@ -28,6 +28,9 @@ func NewRedisLeaderboardRepository(client *redis.Client) *RedisLeaderboardReposi
 func (r *RedisLeaderboardRepository) GetPublicLeaderboardPaginated(ctx context.Context, projectID types.ID, page, pageSize int32) ([]leaderboardstat.UserScoreEntry, int64, error) {
 	cacheKey := fmt.Sprintf("public_leaderboard:project:%d", projectID)
 
+	if page < 1 {
+		page = 1
+	}
 	start := (page - 1) * pageSize
 	stop := start + pageSize - 1
 

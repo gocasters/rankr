@@ -19,25 +19,33 @@
 make infra-up
 ```
 
-### 2. Project service (dev)
+### 2. Auth + Project services (dev)
 
 ```bash
+make start-auth-app-dev
 make start-project-app-dev
 ```
 
 Create project:
 
 ```bash
-curl -X POST http://localhost:8084/v1/projects \
+export ACCESS_TOKEN=<ACCESS_TOKEN_FROM_AUTH_LOGIN>
+```
+
+Get `ACCESS_TOKEN` from `POST /auth/v1/login` (see `doc/auth-guideline.md`).
+
+```bash
+curl -X POST http://localhost/v1/projects \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "name": "rankr",
     "slug": "rankr",
     "owner": "gocasters",
     "repo": "rankr",
-    "vcsToken": <GITHUB_TOKEN>,
+    "vcsToken": "<GITHUB_TOKEN>",
     "repoProvider": "GITHUB",
-    "status": "active"
+    "status": "ACTIVE"
   }'
 
 ```

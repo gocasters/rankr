@@ -115,7 +115,7 @@ postgres_db:
   host: shared-postgres
   port: 5432
   user: auth_user
-  password: change_me_auth
+  password: auth_pass
   db_name: auth_db
   ssl_mode: disable
   max_conns: 25  

@@ -36,79 +36,81 @@ func NewContributorRepo(config Config, db *database.Database, logger *slog.Logge
 }
 
 func (repo ContributorRepo) GetContributorByID(ctx context.Context, id types.ID) (*contributor.Contributor, error) {
-	query := "SELECT id, github_id, github_username, email, password, is_verified, two_factor_enabled, privacy_mode, display_name, profile_image, bio, created_at, updated_at FROM contributors WHERE id=$1"
+	query := "SELECT id, github_id, github_username, email, password, role, is_verified, two_factor_enabled, privacy_mode, display_name, profile_image, bio, created_at, updated_at FROM contributors WHERE id=$1"
 	row := repo.PostgresSQL.Pool.QueryRow(ctx, query, id)
 
 	var contrib contributor.Contributor
 	var githubID sql.NullInt64
+	var email, displayName, profileImage, bio sql.NullString
 	err := row.Scan(
 		&contrib.ID,
 		&githubID,
 		&contrib.GitHubUsername,
-		&contrib.Email,
+		&email,
 		&contrib.Password,
+		&contrib.Role,
 		&contrib.IsVerified,
 		&contrib.TwoFactor,
 		&contrib.PrivacyMode,
-		&contrib.DisplayName,
-		&contrib.ProfileImage,
-		&contrib.Bio,
+		&displayName,
+		&profileImage,
+		&bio,
 		&contrib.CreatedAt,
 		&contrib.UpdatedAt,
 	)
 
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("result with id %d not found", id)
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, pgx.ErrNoRows) {
+			return nil, contributor.ErrNotFoundID
 		}
 		return nil, fmt.Errorf("error retrieving contributor with id: %d, error: %v", id, err)
 	}
 
-	if githubID.Valid {
-		contrib.GitHubID = githubID.Int64
-	}
+	applyNullableContributorFields(&contrib, githubID, email, displayName, profileImage, bio)
+
 	return &contrib, nil
 }
 
 func (repo ContributorRepo) GetContributorByGitHubUsername(ctx context.Context, username string) (*contributor.Contributor, error) {
-	query := "SELECT id, github_id, github_username, email, password, is_verified, two_factor_enabled, privacy_mode, display_name, profile_image, bio, created_at, updated_at FROM contributors WHERE github_username=$1"
+	query := "SELECT id, github_id, github_username, email, password, role, is_verified, two_factor_enabled, privacy_mode, display_name, profile_image, bio, created_at, updated_at FROM contributors WHERE github_username=$1"
 	row := repo.PostgresSQL.Pool.QueryRow(ctx, query, username)
 
 	var contrib contributor.Contributor
 	var githubID sql.NullInt64
+	var email, displayName, profileImage, bio sql.NullString
 	err := row.Scan(
 		&contrib.ID,
 		&githubID,
 		&contrib.GitHubUsername,
-		&contrib.Email,
+		&email,
 		&contrib.Password,
+		&contrib.Role,
 		&contrib.IsVerified,
 		&contrib.TwoFactor,
 		&contrib.PrivacyMode,
-		&contrib.DisplayName,
-		&contrib.ProfileImage,
-		&contrib.Bio,
+		&displayName,
+		&profileImage,
+		&bio,
 		&contrib.CreatedAt,
 		&contrib.UpdatedAt,
 	)
 
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("result with username %s not found", username)
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, pgx.ErrNoRows) {
+			return nil, contributor.ErrNotFoundGithubUsername
 		}
 		return nil, fmt.Errorf("error retrieving contributor with username: %s, error: %v", username, err)
 	}
 
-	if githubID.Valid {
-		contrib.GitHubID = githubID.Int64
-	}
+	applyNullableContributorFields(&contrib, githubID, email, displayName, profileImage, bio)
 
 	return &contrib, nil
 }
+
 func (repo ContributorRepo) CreateContributor(ctx context.Context, contributor contributor.Contributor) (*contributor.Contributor, error) {
 	query := `
-    	INSERT INTO contributors (github_id, github_username, email, password, privacy_mode, display_name, profile_image, bio, created_at, updated_at)
-    	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    	INSERT INTO contributors (github_id, github_username, email, password, role, privacy_mode, display_name, profile_image, bio, created_at, updated_at)
+    	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
     	RETURNING id, created_at, updated_at;
     `
 
@@ -127,6 +129,7 @@ func (repo ContributorRepo) CreateContributor(ctx context.Context, contributor c
 		contributor.GitHubUsername,
 		contributor.Email,
 		contributor.Password,
+		contributor.Role,
 		contributor.PrivacyMode,
 		contributor.DisplayName,
 		contributor.ProfileImage,
@@ -142,6 +145,7 @@ func (repo ContributorRepo) CreateContributor(ctx context.Context, contributor c
 	contributor.ID = id
 	return &contributor, nil
 }
+
 func (repo ContributorRepo) UpdateProfileContributor(ctx context.Context, contri contributor.Contributor) (*contributor.Contributor, error) {
 	var updated contributor.Contributor
 	var githubID sql.NullInt64
@@ -219,6 +223,29 @@ func nullInt64(v int64) sql.NullInt64 {
 	}
 	return sql.NullInt64{Int64: v, Valid: true}
 }
+
+func applyNullableContributorFields(
+	contrib *contributor.Contributor,
+	githubID sql.NullInt64,
+	email, displayName, profileImage, bio sql.NullString,
+) {
+	if githubID.Valid {
+		contrib.GitHubID = githubID.Int64
+	}
+	if email.Valid {
+		contrib.Email = email.String
+	}
+	if displayName.Valid {
+		contrib.DisplayName = displayName.String
+	}
+	if profileImage.Valid {
+		contrib.ProfileImage = profileImage.String
+	}
+	if bio.Valid {
+		contrib.Bio = bio.String
+	}
+}
+
 func (repo ContributorRepo) FindByVCSUsernames(ctx context.Context, provider contributor.VcsProvider, usernames []string) ([]*contributor.Contributor, error) {
 	if len(usernames) == 0 {
 		return []*contributor.Contributor{}, nil

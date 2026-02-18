@@ -9,7 +9,9 @@ RUN go install github.com/air-verse/air@latest
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/main ./cmd/notification/main.go
+RUN go mod tidy
+
+RUN CGO_ENABLED=0 GOOS=linux GOFLAGS=-mod=mod go build -o /app/main ./cmd/notification/main.go
 
 
 FROM golang:1.25-alpine
@@ -17,6 +19,8 @@ FROM golang:1.25-alpine
 WORKDIR /app
 
 COPY --from=builder /go/bin/air /usr/local/bin/air
+COPY --from=builder /go/pkg/mod /go/pkg/mod
+COPY --from=builder /go/pkg/sumdb /go/pkg/sumdb
 COPY --from=builder /app /app
 
 EXPOSE 8080

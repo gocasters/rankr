@@ -52,6 +52,22 @@ type UpdateProfileResponse struct {
 	UpdatedAt      time.Time   `json:"updated_at"`
 }
 
+type UpsertContributorRequest struct {
+	GitHubID       int64       `json:"github_id"`
+	GitHubUsername string      `json:"github_username"`
+	DisplayName    string      `json:"display_name,omitempty"`
+	ProfileImage   string      `json:"profile_image,omitempty"`
+	Bio            string      `json:"bio,omitempty"`
+	PrivacyMode    PrivacyMode `json:"privacy_mode,omitempty"`
+	Email          string      `json:"email"`
+	CreateAt       time.Time   `json:"create_at"`
+}
+
+type UpsertContributorResponse struct {
+	ID    types.ID
+	IsNew bool
+}
+
 type UpdatePasswordRequest struct {
 	ID          types.ID `json:"id"`
 	OldPassword string   `json:"old_password"`
@@ -71,6 +87,7 @@ type VerifyPasswordRequest struct {
 type VerifyPasswordResponse struct {
 	Valid bool     `json:"valid"`
 	ID    types.ID `json:"contributor_id"`
+	Role  string   `json:"role"`
 }
 
 type VcsProvider string

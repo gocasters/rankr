@@ -31,13 +31,13 @@ scheduler_cfg:
 
 
 redis:
-  host: "shared-redis"
+  host: "rankr-shared-redis"
   port: 6379
   password: ""
   db: 0
 
 watermill_nats:
-  url: "nats://shared-nats:4222"
+  url: "nats://rankr-shared-nats:4222"
   client_id: "contributor"
   durable_name: "contributor-consumer"
   queue_group: "event-group"
@@ -69,7 +69,7 @@ database_retry:
   retry_delay: 100ms
 
 nats_adapter:
-  url: "nats://shared-nats:4222"
+  url: "nats://rankr-shared-nats:4222"
   max_reconnects: -1
   reconnect_wait: 1s
 
@@ -94,10 +94,8 @@ batch_processor:
 
 total_shutdown_timeout: 30m
 
-path_of_migration: "./contributorapp/repository/migrations"
-
 postgres_db:
-  host: shared-postgres
+  host: rankr-shared-postgres
   port: 5432
   user: contributor_user
   password: contributor_pass
@@ -109,3 +107,45 @@ postgres_db:
   max_conn_idle_time: 60
   health_check_period: 60
   path_of_migrations: "./contributorapp/repository/migrations"
+
+
+
+middleware:
+  # 10MB in bytes
+  file_size: 10485760
+  file_type:
+    - "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    -  "application/zip"
+    -  "text/csv"
+    -  "text/plain"
+
+validate:
+  http_file_type:
+    - "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    - "application/zip"
+    - "text/csv"
+    - "text/plain"
+
+job:
+  storage_path: "./uploads/import_contributors/"
+  csv_file: .csv
+  xlsx_file: .xlsx
+  process_count: 4
+  buffer_size: 50
+
+broker:
+  stream_key: contributor.import.jobs
+  group_name: contributor-import-workers
+  consumer_prefix: import-worker-
+  batch_size: 10
+  block_time: 5s
+  retry_count: 5
+
+worker:
+  worker_count: 4
+
+auth_client:
+  url: http://auth-app:8081/v1/role
+
+path_of_migrations: "./contributorapp/repository/migrations"
+

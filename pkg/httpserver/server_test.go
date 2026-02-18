@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gocasters/rankr/pkg/authhttp"
 	"github.com/gocasters/rankr/pkg/httpserver"
 
 	"github.com/labstack/echo/v4"
@@ -85,6 +86,9 @@ func TestOtelMiddlewareInjection(t *testing.T) {
 
 	// Act
 	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	userInfo, encErr := authhttp.EncodeUserInfo("1")
+	assert.NoError(t, encErr)
+	req.Header.Set("X-User-Info", userInfo)
 	rec := httptest.NewRecorder()
 	server.GetRouter().ServeHTTP(rec, req)
 
@@ -106,6 +110,9 @@ func TestRouteRegistrationAndResponse(t *testing.T) {
 	})
 
 	req := httptest.NewRequest(http.MethodGet, "/hello", nil)
+	userInfo, encErr := authhttp.EncodeUserInfo("1")
+	assert.NoError(t, encErr)
+	req.Header.Set("X-User-Info", userInfo)
 	rec := httptest.NewRecorder()
 	server.GetRouter().ServeHTTP(rec, req)
 
@@ -132,4 +139,52 @@ func TestStopWithTimeout(t *testing.T) {
 	// Now verify Start() exited due to shutdown
 	startErr := <-errCh
 	assert.ErrorIs(t, startErr, http.ErrServerClosed, "server.Start() should return ErrServerClosed after shutdown")
+}
+
+func TestPublicRoutesAndProtectedRoutes(t *testing.T) {
+	server, err := httpserver.New(httpserver.Config{Port: 8080})
+	assert.NoError(t, err)
+
+	server.GetRouter().GET("/v1/module/health-check", func(c echo.Context) error {
+		return c.String(http.StatusOK, "ok")
+	})
+	server.GetRouter().POST("/v1/login", func(c echo.Context) error {
+		return c.String(http.StatusOK, "ok")
+	})
+	server.GetRouter().GET("/secure", func(c echo.Context) error {
+		return c.String(http.StatusOK, "ok")
+	})
+
+	healthReq := httptest.NewRequest(http.MethodGet, "/v1/module/health-check", nil)
+	healthRec := httptest.NewRecorder()
+	server.GetRouter().ServeHTTP(healthRec, healthReq)
+	assert.Equal(t, http.StatusOK, healthRec.Code)
+
+	loginReq := httptest.NewRequest(http.MethodPost, "/v1/login", nil)
+	loginRec := httptest.NewRecorder()
+	server.GetRouter().ServeHTTP(loginRec, loginReq)
+	assert.Equal(t, http.StatusOK, loginRec.Code)
+
+	secureReq := httptest.NewRequest(http.MethodGet, "/secure", nil)
+	secureRec := httptest.NewRecorder()
+	server.GetRouter().ServeHTTP(secureRec, secureReq)
+	assert.Equal(t, http.StatusUnauthorized, secureRec.Code)
+}
+
+func TestConfigPublicPathsAreSkipped(t *testing.T) {
+	server, err := httpserver.New(httpserver.Config{
+		Port:        8080,
+		PublicPaths: []string{" v1/public/info/ "},
+	})
+	assert.NoError(t, err)
+
+	server.GetRouter().GET("/v1/public/info", func(c echo.Context) error {
+		return c.String(http.StatusOK, "ok")
+	})
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/public/info", nil)
+	rec := httptest.NewRecorder()
+	server.GetRouter().ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
 }

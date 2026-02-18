@@ -6,9 +6,6 @@ services:
     container_name: notification-app
     volumes:
       - ../../..:/app
-    ports:
-      - "8089:8081" # HTTP port
-      - "8099:8091" # gRPC port
     networks:
       - rankr-shared-development-network
     environment:

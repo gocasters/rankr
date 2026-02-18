@@ -6,9 +6,6 @@ services:
     container_name: realtime-app
     volumes:
       - ../../..:/app
-    ports:
-      - "8087:8081"
-      - "8097:8091"
     networks:
       - rankr-shared-development-network
     environment:

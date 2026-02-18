@@ -34,7 +34,9 @@ func (s *Server) Stop(ctx context.Context) error {
 }
 
 func (s *Server) RegisterRoutes() {
-	webhookRouter := s.HTTPServer.GetRouter().Group("/github-webhook")
+	router := s.HTTPServer.GetRouter()
+
+	webhookRouter := router.Group("/github-webhook")
 
 	webhookRouter.GET("/health-check", s.healthCheck)
 
