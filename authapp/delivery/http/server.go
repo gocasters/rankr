@@ -2,6 +2,7 @@ package http
 
 import (
 	"context"
+	authmiddleware "github.com/gocasters/rankr/authapp/delivery/http/middleware"
 	echomiddleware "github.com/gocasters/rankr/pkg/echo_middleware"
 	"github.com/gocasters/rankr/pkg/httpserver"
 )
@@ -9,12 +10,14 @@ import (
 type Server struct {
 	HTTPServer httpserver.Server
 	Handler    Handler
+	Middleware authmiddleware.Middleware
 }
 
 func New(server httpserver.Server, handler Handler) Server {
 	return Server{
 		HTTPServer: server,
 		Handler:    handler,
+		Middleware: authmiddleware.New(handler.tokenService),
 	}
 }
 
@@ -33,8 +36,8 @@ func (s Server) Stop(ctx context.Context) error {
 func (s Server) RegisterRoutes() {
 	router := s.HTTPServer.GetRouter()
 	router.Use(
-		s.Handler.requireAccessClaimsWithConfig(
-			requireAccessClaimsConfig{
+		s.Middleware.RequireBearerToken(
+			authmiddleware.RequireBearerTokenOptions{
 				Skipper: echomiddleware.SkipExactPaths(
 					"/v1/health-check",
 					"/v1/login",

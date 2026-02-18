@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	authmiddleware "github.com/gocasters/rankr/authapp/delivery/http/middleware"
 	"github.com/gocasters/rankr/authapp/service/auth"
 	"github.com/gocasters/rankr/authapp/service/tokenservice"
 	"github.com/gocasters/rankr/pkg/authhttp"
@@ -42,47 +43,18 @@ func (h Handler) login(c echo.Context) error {
 }
 
 func (h Handler) me(c echo.Context) error {
-	claims, ok := accessClaimsFromContext(c)
-	if !ok {
+	claims, ok := authmiddleware.AccessClaimsFromContext(c)
+	if !ok || claims == nil {
 		return c.JSON(http.StatusUnauthorized, echo.Map{"error": "invalid token"})
 	}
 
-	originalURI := c.Request().Header.Get("X-Original-URI")
-	originalMethod := c.Request().Header.Get("X-Original-Method")
-	originalHost := c.Request().Header.Get("X-Original-Host")
-	if originalHost == "" {
-		originalHost = c.Request().Host
+	if requiredPermission := requiredPermissionFromRequest(c.Request()); requiredPermission != "" &&
+		!role.HasPermission(claims.Access, requiredPermission) {
+		return c.JSON(http.StatusForbidden, echo.Map{"error": "forbidden"})
 	}
 
-	if originalURI != "" || originalMethod != "" {
-		requiredPermission := role.RequiredPermission(originalMethod, originalURI, originalHost)
-		if !role.HasPermission(claims.Access, requiredPermission) {
-			return c.JSON(http.StatusForbidden, echo.Map{"error": "forbidden"})
-		}
-	}
-
-	response := echo.Map{
-		"user_id": claims.UserID,
-		"role":    claims.Role,
-		"access":  claims.Access,
-	}
-	if claims.RegisteredClaims.ExpiresAt != nil {
-		response["expires_at"] = claims.RegisteredClaims.ExpiresAt.Time.Format(time.RFC3339)
-	}
-	if claims.RegisteredClaims.IssuedAt != nil {
-		response["issued_at"] = claims.RegisteredClaims.IssuedAt.Time.Format(time.RFC3339)
-	}
-
-	c.Response().Header().Set("X-User-ID", claims.UserID)
-	c.Response().Header().Set("X-Role", claims.Role)
-	if len(claims.Access) > 0 {
-		c.Response().Header().Set("X-Access", strings.Join(claims.Access, ","))
-	}
-	if encoded, err := authhttp.EncodeUserInfo(claims.UserID); err == nil {
-		c.Response().Header().Set("X-User-Info", encoded)
-	}
-
-	return c.JSON(http.StatusOK, response)
+	setUserResponseHeaders(c, claims)
+	return c.JSON(http.StatusOK, buildMeResponse(claims))
 }
 
 func (h Handler) refreshToken(c echo.Context) error {
@@ -122,4 +94,44 @@ func (h Handler) handleError(c echo.Context, err error) error {
 		return c.JSON(statuscode.MapToHTTPStatusCode(eResp), eResp)
 	}
 	return c.JSON(http.StatusInternalServerError, echo.Map{"error": err.Error()})
+}
+
+func requiredPermissionFromRequest(req *http.Request) role.Permission {
+	originalURI := req.Header.Get("X-Original-URI")
+	originalMethod := req.Header.Get("X-Original-Method")
+	if originalURI == "" && originalMethod == "" {
+		return role.Permission("")
+	}
+
+	originalHost := req.Header.Get("X-Original-Host")
+	if originalHost == "" {
+		originalHost = req.Host
+	}
+	return role.RequiredPermission(originalMethod, originalURI, originalHost)
+}
+
+func buildMeResponse(claims *tokenservice.UserClaims) echo.Map {
+	response := echo.Map{
+		"user_id": claims.UserID,
+		"role":    claims.Role,
+		"access":  claims.Access,
+	}
+	if claims.RegisteredClaims.ExpiresAt != nil {
+		response["expires_at"] = claims.RegisteredClaims.ExpiresAt.Time.Format(time.RFC3339)
+	}
+	if claims.RegisteredClaims.IssuedAt != nil {
+		response["issued_at"] = claims.RegisteredClaims.IssuedAt.Time.Format(time.RFC3339)
+	}
+	return response
+}
+
+func setUserResponseHeaders(c echo.Context, claims *tokenservice.UserClaims) {
+	c.Response().Header().Set("X-User-ID", claims.UserID)
+	c.Response().Header().Set("X-Role", claims.Role)
+	if len(claims.Access) > 0 {
+		c.Response().Header().Set("X-Access", strings.Join(claims.Access, ","))
+	}
+	if encoded, err := authhttp.EncodeUserInfo(claims.UserID); err == nil {
+		c.Response().Header().Set("X-User-Info", encoded)
+	}
 }

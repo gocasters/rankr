@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	echomiddleware "github.com/gocasters/rankr/pkg/echo_middleware"
 	"github.com/gocasters/rankr/pkg/httpserver"
 	"github.com/gocasters/rankr/webhookapp/service/delivery"
 )
@@ -36,13 +35,6 @@ func (s *Server) Stop(ctx context.Context) error {
 
 func (s *Server) RegisterRoutes() {
 	router := s.HTTPServer.GetRouter()
-	router.Use(
-		echomiddleware.RequireClaimsWithConfig(
-			echomiddleware.RequireClaimsConfig{
-				Skipper: echomiddleware.SkipExactPaths("/github-webhook/health-check"),
-			},
-		),
-	)
 
 	webhookRouter := router.Group("/github-webhook")
 

@@ -2,7 +2,6 @@ package http
 
 import (
 	"context"
-	echomiddleware "github.com/gocasters/rankr/pkg/echo_middleware"
 	"github.com/gocasters/rankr/pkg/httpserver"
 )
 
@@ -30,13 +29,6 @@ func (s Server) Stop(ctx context.Context) error {
 
 func (s Server) registerRoutes() {
 	router := s.HTTPServer.GetRouter()
-	router.Use(
-		echomiddleware.RequireClaimsWithConfig(
-			echomiddleware.RequireClaimsConfig{
-				Skipper: echomiddleware.SkipExactPaths("/v1/notifapp/health-check"),
-			},
-		),
-	)
 
 	router.GET("/v1/notifapp/health-check", s.healthCheck)
 

@@ -11,7 +11,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func TestRequireAccessClaims(t *testing.T) {
+func TestRequireUserInfo(t *testing.T) {
 	t.Parallel()
 
 	e := echo.New()
@@ -33,7 +33,7 @@ func TestRequireAccessClaims(t *testing.T) {
 		{
 			name:       "missing claims header",
 			path:       "/v1/private",
-			middleware: RequireClaimsWithConfig(RequireClaimsConfig{}),
+			middleware: RequireUserInfo(RequireUserInfoOptions{}),
 			wantStatus: http.StatusUnauthorized,
 			wantCalled: false,
 		},
@@ -41,14 +41,14 @@ func TestRequireAccessClaims(t *testing.T) {
 			name:       "valid claims header",
 			path:       "/v1/private",
 			userInfo:   encodedClaims,
-			middleware: RequireClaimsWithConfig(RequireClaimsConfig{}),
+			middleware: RequireUserInfo(RequireUserInfoOptions{}),
 			wantStatus: http.StatusNoContent,
 			wantCalled: true,
 		},
 		{
 			name: "skip configured path",
 			path: "/v1/health-check",
-			middleware: RequireClaimsWithConfig(RequireClaimsConfig{
+			middleware: RequireUserInfo(RequireUserInfoOptions{
 				Skipper: SkipExactPaths("/v1/health-check"),
 			}),
 			wantStatus: http.StatusNoContent,

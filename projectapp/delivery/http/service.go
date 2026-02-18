@@ -4,7 +4,6 @@ import (
 	"context"
 	"log/slog"
 
-	echomiddleware "github.com/gocasters/rankr/pkg/echo_middleware"
 	"github.com/gocasters/rankr/pkg/httpserver"
 	"github.com/gocasters/rankr/projectapp/service/project"
 	"github.com/gocasters/rankr/projectapp/service/versioncontrollersystemproject"
@@ -42,13 +41,6 @@ func (s Server) Stop(ctx context.Context) error {
 
 func (s Server) RegisterRoutes() {
 	router := s.HTTPServer.GetRouter()
-	router.Use(
-		echomiddleware.RequireClaimsWithConfig(
-			echomiddleware.RequireClaimsConfig{
-				Skipper: echomiddleware.SkipExactPaths("/v1/health-check"),
-			},
-		),
-	)
 
 	v1 := router.Group("/v1")
 

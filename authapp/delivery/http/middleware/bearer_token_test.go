@@ -1,4 +1,4 @@
-package http
+package middleware
 
 import (
 	"net/http"
@@ -11,7 +11,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-func TestRequireAccessClaims(t *testing.T) {
+func TestRequireBearerToken(t *testing.T) {
 	t.Parallel()
 
 	tokenSvc := tokenservice.NewAuthService("test-secret", time.Hour, 2*time.Hour)
@@ -69,11 +69,11 @@ func TestRequireAccessClaims(t *testing.T) {
 			c := e.NewContext(req, rec)
 
 			nextCalled := false
-			h := Handler{tokenService: tokenSvc}
-			mw := h.requireAccessClaims(func(c echo.Context) error {
+			mid := New(tokenSvc)
+			mw := mid.RequireBearerToken(RequireBearerTokenOptions{})(func(c echo.Context) error {
 				nextCalled = true
-				claims, ok := accessClaimsFromContext(c)
-				if !ok {
+				claims, ok := AccessClaimsFromContext(c)
+				if !ok || claims == nil {
 					t.Fatal("claims were not set in context")
 				}
 				if claims.UserID != "42" {
