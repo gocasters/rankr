@@ -2,7 +2,6 @@ package http
 
 import (
 	"fmt"
-	"github.com/gocasters/rankr/contributorapp/client"
 	"github.com/gocasters/rankr/contributorapp/service/contributor"
 	"github.com/gocasters/rankr/contributorapp/service/job"
 	errmsg "github.com/gocasters/rankr/pkg/err_msg"
@@ -18,16 +17,13 @@ import (
 type Handler struct {
 	ContributorService contributor.Service
 	JobService         job.Service
-	Client             client.AuthClient
 	Logger             *slog.Logger
 }
 
-func NewHandler(contributorSrv contributor.Service, jobSvc job.Service,
-	client client.AuthClient, logger *slog.Logger) Handler {
+func NewHandler(contributorSrv contributor.Service, jobSvc job.Service, logger *slog.Logger) Handler {
 	return Handler{
 		ContributorService: contributorSrv,
 		JobService:         jobSvc,
-		Client:             client,
 		Logger:             logger,
 	}
 }
@@ -106,37 +102,11 @@ func (h Handler) updateProfile(c echo.Context) error {
 	})
 }
 
-var roleName = "admin"
-
 func (h Handler) uploadFile(c echo.Context) error {
-	claimVal := c.Get("Authorization")
-	claim, ok := claimVal.(*types.UserClaim)
-	if !ok || claim == nil {
-		return c.JSON(http.StatusUnauthorized, map[string]string{
-			"error": "unauthorized",
-		})
-	}
-
-	idStr := strconv.Itoa(int(claim.ID))
-
-	resAuth, err := h.Client.GetRole(c.Request().Context(), idStr)
-	if err != nil {
-		h.Logger.Error("failed to get role", "error", err)
-		return c.JSON(http.StatusUnauthorized, map[string]string{
-			"message": "unauthorized",
-		})
-	}
-
-	if resAuth.Role.Name != roleName {
-		return c.JSON(http.StatusForbidden, map[string]string{
-			"message": "forbidden",
-		})
-	}
-
 	fileHeader, err := c.FormFile("file")
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"message": "fail to get file",
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"message": "failed to get file",
 			"error":   err.Error(),
 		})
 	}
@@ -158,9 +128,12 @@ func (h Handler) uploadFile(c echo.Context) error {
 	fileType, ok := c.Get("FileType").(string)
 	if !ok || fileType == "" {
 		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "file type not detected by middleware",
+			"error": "the uploaded file type is not supported",
 		})
 	}
+
+	claimVal := c.Get("UserInfo")
+	claim, _ := claimVal.(*types.UserClaim)
 
 	idempotencyKey := fmt.Sprintf("%s-%d-%d", fileHeader.Filename, fileHeader.Size, claim.ID)
 
