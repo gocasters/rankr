@@ -30,6 +30,7 @@ Create project:
 ```bash
 curl -X POST http://localhost:8084/v1/projects \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <ACCESS_TOKEN> \
   -d '{
     "name": "rankr",
     "slug": "rankr",
