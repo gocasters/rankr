@@ -113,6 +113,7 @@ make start-auth-app-dev
 ### 3. Verify seeded admin contributor
 
 Migration `000006_seed_admin_contributor.sql` inserts admin contributor `fdaei`.
+Seeded password is `demo_pass_123`.
 
 Check user:
 

@@ -12,7 +12,8 @@ INSERT INTO contributors (
     NULL,
     'fdaei',
     NULL,
-    '$2y$10$RpwjZmD10eub5hSvUENoP.R7G6mtKn/3gt3F6LujsZutUsEGEpBCK',
+    -- demo password: demo_pass_123
+    '$2a$10$gPAOVqKrU6Vtew1eqQU35.XMAhxtIEqo0hiyBOnVWzgh27WwOe0Zq',
     'admin',
     'real',
     NOW(),
