@@ -16,7 +16,7 @@ services:
     environment:
       - CONFIG_PATH=/app/deploy/leaderboardscoring/production/config.yml
       - ENV=production
-      - LEADERBOARDSCORING__POSTGRES_DB__PASSWORD=${LEADERBOARDSCORING_PASS}
+      - LEADERBOARDSCORING_POSTGRES_DB__PASSWORD=${LEADERBOARDSCORING_PASS}
 
 networks:
   rankr-prod-network:

@@ -14,7 +14,7 @@ services:
     environment:
       - CONFIG_PATH=/app/deploy/notification/production/config.yml
       - ENV=production
-      - NOTIF__POSTGRES_DB__PASSWORD=${NOTIFAPP_PASS}
+      - NOTIF_POSTGRES_DB__PASSWORD=${NOTIFAPP_PASS}
 
 networks:
   rankr-prod-network:

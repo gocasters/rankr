@@ -11,7 +11,7 @@ services:
     environment:
       - CONFIG_PATH=/app/deploy/task/production/config.yml
       - ENV=production
-      - task__postgres_db__password=${TASK_PASS}
+      - task_postgres_db__password=${TASK_PASS}
 
 networks:
   rankr-prod-network:

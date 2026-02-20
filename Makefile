@@ -348,15 +348,15 @@ vendor:
 define SERVICE_PROD_template
 start-$(1)-app-prod:
 	@echo "Starting $(1) production service..."
-	cd deploy/$(1)/production && PROJECT_ROOT=$(CURDIR) $(DOCKER_COMPOSE) up -d --build
+	cd deploy/$(1)/production && PROJECT_ROOT=$(CURDIR) $(DOCKER_COMPOSE) --env-file $(CURDIR)/deploy/.env.production up -d --build
 
 start-$(1)-app-prod-log:
 	@echo "Starting $(1) production service with logs..."
-	cd deploy/$(1)/production && PROJECT_ROOT=$(CURDIR) $(DOCKER_COMPOSE) up --build
+	cd deploy/$(1)/production && PROJECT_ROOT=$(CURDIR) $(DOCKER_COMPOSE) --env-file $(CURDIR)/deploy/.env.production up --build
 
 stop-$(1)-app-prod:
 	@echo "Stopping $(1) production service..."
-	cd deploy/$(1)/production && PROJECT_ROOT=$(CURDIR) $(DOCKER_COMPOSE) down
+	cd deploy/$(1)/production && PROJECT_ROOT=$(CURDIR) $(DOCKER_COMPOSE) --env-file $(CURDIR)/deploy/.env.production down
 endef
 
 $(foreach svc,$(SERVICES),$(eval $(call SERVICE_PROD_template,$(svc))))

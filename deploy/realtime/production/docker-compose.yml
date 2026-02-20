@@ -14,7 +14,7 @@ services:
     environment:
       - CONFIG_PATH=/app/deploy/realtime/production/config.yml
       - ENV=production
-      - REALTIME__POSTGRES_DB__PASSWORD=${REALTIME_PASS}
+      - REALTIME_POSTGRES_DB__PASSWORD=${REALTIME_PASS}
 
 networks:
   rankr-prod-network:

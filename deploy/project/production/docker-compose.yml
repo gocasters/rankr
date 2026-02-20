@@ -14,7 +14,7 @@ services:
     environment:
       - CONFIG_PATH=/app/deploy/project/production/config.yml
       - ENV=production
-      - PROJECT__POSTGRES_DB__PASSWORD=${PROJECT_PASS}
+      - PROJECT_POSTGRES_DB__PASSWORD=${PROJECT_PASS}
 
 networks:
   rankr-prod-network:

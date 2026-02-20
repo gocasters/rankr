@@ -13,7 +13,7 @@ services:
     environment:
       - CONFIG_PATH=/app/deploy/webhook/production/config.yml
       - ENV=production
-      - WEBHOOK__POSTGRES_DB__PASSWORD=${WEBHOOK_PASS}
+      - WEBHOOK_POSTGRES_DB__PASSWORD=${WEBHOOK_PASS}
 
 networks:
   rankr-prod-network:

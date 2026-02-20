@@ -14,7 +14,7 @@ services:
     environment:
       - CONFIG_PATH=/app/deploy/leaderboardstat/production/config.yml
       - ENV=production
-      - STAT__POSTGRES_DB__PASSWORD=${LEADERBOARDSTAT_PASS}
+      - STAT_POSTGRES_DB__PASSWORD=${LEADERBOARDSTAT_PASS}
 
 networks:
   rankr-prod-network:

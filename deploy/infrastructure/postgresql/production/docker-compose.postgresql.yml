@@ -31,7 +31,7 @@ services:
     volumes:
       - rankr-postgres-prod-data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "5433:5432"
     networks:
       - rankr-prod-network
     restart: unless-stopped

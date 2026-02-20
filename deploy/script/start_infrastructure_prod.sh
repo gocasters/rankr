@@ -5,13 +5,19 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 PG_PATH="$PROJECT_ROOT/deploy/infrastructure/postgresql/production/docker-compose.postgresql.yml"
+NATS_PATH="$PROJECT_ROOT/deploy/infrastructure/nats/production/docker-compose.nats.yml"
+REDIS_PATH="$PROJECT_ROOT/deploy/infrastructure/redis/production/docker-compose.redis.yml"
 ENV_FILE="$PROJECT_ROOT/deploy/.env.production"
 ENV_TEMPLATE="$PROJECT_ROOT/deploy/.env.production.example"
 
 PROJECT_NAME="rankr-prod"
 POSTGRES_CONTAINER="shared-postgres"
+NATS_CONTAINER="shared-nats"
+REDIS_CONTAINER="shared-redis"
 NETWORK_NAME="rankr-prod-network"
 VOLUME_NAME="rankr-postgres-prod-data"
+NATS_VOLUME_NAME="rankr-nats-prod-data"
+REDIS_VOLUME_NAME="rankr-redis-prod-data"
 
 function check_env_file() {
     if [ ! -f "$ENV_FILE" ]; then
@@ -36,6 +42,14 @@ function ensure_volume() {
     if ! docker volume inspect "$VOLUME_NAME" &>/dev/null; then
         echo "Creating volume $VOLUME_NAME..."
         docker volume create "$VOLUME_NAME"
+    fi
+    if ! docker volume inspect "$NATS_VOLUME_NAME" &>/dev/null; then
+        echo "Creating volume $NATS_VOLUME_NAME..."
+        docker volume create "$NATS_VOLUME_NAME"
+    fi
+    if ! docker volume inspect "$REDIS_VOLUME_NAME" &>/dev/null; then
+        echo "Creating volume $REDIS_VOLUME_NAME..."
+        docker volume create "$REDIS_VOLUME_NAME"
     fi
 }
 
@@ -74,6 +88,30 @@ function run_postgres_init_script() {
     docker exec "$POSTGRES_CONTAINER" /docker-entrypoint-initdb.d/init-services-db.sh
 }
 
+function up_nats() {
+    ensure_network
+    ensure_volume
+    echo "Starting NATS (production)..."
+    docker compose -p $PROJECT_NAME -f $NATS_PATH up -d
+}
+
+function down_nats() {
+    echo "Stopping NATS..."
+    docker compose -p $PROJECT_NAME -f $NATS_PATH down
+}
+
+function up_redis() {
+    ensure_network
+    ensure_volume
+    echo "Starting Redis (production)..."
+    docker compose -p $PROJECT_NAME -f $REDIS_PATH up -d
+}
+
+function down_redis() {
+    echo "Stopping Redis..."
+    docker compose -p $PROJECT_NAME -f $REDIS_PATH down
+}
+
 function print_help() {
     echo "Usage: $0 [command]"
     echo ""
@@ -83,6 +121,10 @@ function print_help() {
     echo "  up-postgres    Start PostgreSQL"
     echo "  down-postgres  Stop PostgreSQL"
     echo "  logs-postgres  Show PostgreSQL logs"
+    echo "  up-nats        Start NATS"
+    echo "  down-nats      Stop NATS"
+    echo "  up-redis       Start Redis"
+    echo "  down-redis     Stop Redis"
     echo "  up-all         Start all infrastructure"
     echo "  down-all       Stop all infrastructure"
     echo "  logs-all       Show all logs"
@@ -112,10 +154,14 @@ function logs_postgres() {
 
 function up_all() {
     up_postgres
+    up_nats
+    up_redis
     echo "Production infrastructure is up!"
 }
 
 function down_all() {
+    down_redis
+    down_nats
     down_postgres
     echo "Production infrastructure stopped!"
 }
@@ -138,6 +184,18 @@ case "$1" in
         ;;
     logs-postgres)
         logs_postgres
+        ;;
+    up-nats)
+        up_nats
+        ;;
+    down-nats)
+        down_nats
+        ;;
+    up-redis)
+        up_redis
+        ;;
+    down-redis)
+        down_redis
         ;;
     up-all)
         up_all

@@ -19,7 +19,7 @@ services:
     environment:
       - CONFIG_PATH=/app/deploy/contributor/production/config.yml
       - ENV=production
-      - contributor__postgres_db__password=${CONTRIBUTOR_PASS}
+      - contributor_postgres_db__password=${CONTRIBUTOR_PASS}
 
 networks:
   rankr-prod-network:
