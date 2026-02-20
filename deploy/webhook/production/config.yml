@@ -51,13 +51,8 @@ recovery_config:
   webhooks:
     - repo: "rankr"
       owner: "gocasters"
-<<<<<<< HEAD
       hook_id: "**********"
       token: "*********"
-=======
-      hook_id: "************"
-      token: "*************"
->>>>>>> 2098425 (feat: add user role assignment to request handling)
 
 bulk_insert_config:
   bulk_insert_interval_in_seconds: 5
