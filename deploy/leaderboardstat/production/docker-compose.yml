@@ -5,17 +5,18 @@ services:
       dockerfile: ./deploy/leaderboardstat/production/Dockerfile
     container_name: leaderboardstat-app-prod
     ports:
-      - "8088:8081"
-      - "8098:8091"
+      - "8081:8081"
+      - "8091:8091"
     networks:
-      - rankr-shared-development-network
+      - rankr-prod-network
     env_file:
-      - ./.env.production
+      - ../../.env.production
     environment:
       - CONFIG_PATH=/app/deploy/leaderboardstat/production/config.yml
       - ENV=production
+      - STAT__POSTGRES_DB__PASSWORD=${LEADERBOARDSTAT_PASS}
 
 networks:
-  rankr-shared-development-network:
+  rankr-prod-network:
     external: true
-    name: rankr-shared-development-network
+    name: rankr-prod-network

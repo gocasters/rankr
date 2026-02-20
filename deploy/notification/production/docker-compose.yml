@@ -5,17 +5,18 @@ services:
       dockerfile: ./deploy/notification/production/Dockerfile
     container_name: notification-app-prod
     ports:
-      - "8089:8081"
-      - "8099:8091"
+      - "8085:8081"
+      - "8095:8091"
     networks:
-      - rankr-shared-development-network
+      - rankr-prod-network
     env_file:
-      - ./.env.production
+      - ../../.env.production
     environment:
       - CONFIG_PATH=/app/deploy/notification/production/config.yml
       - ENV=production
+      - NOTIF__POSTGRES_DB__PASSWORD=${NOTIFAPP_PASS}
 
 networks:
-  rankr-shared-development-network:
+  rankr-prod-network:
     external: true
-    name: rankr-shared-development-network
+    name: rankr-prod-network

@@ -13,14 +13,15 @@ services:
       timeout: 3s
       retries: 12
     networks:
-      - rankr-shared-development-network
+      - rankr-prod-network
     env_file:
-      - ./.env.production
+      - ../../.env.production
     environment:
       - CONFIG_PATH=/app/deploy/contributor/production/config.yml
       - ENV=production
+      - contributor__postgres_db__password=${CONTRIBUTOR_PASS}
 
 networks:
-  rankr-shared-development-network:
+  rankr-prod-network:
     external: true
-    name: rankr-shared-development-network
+    name: rankr-prod-network

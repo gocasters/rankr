@@ -5,16 +5,17 @@ services:
       dockerfile: ./deploy/webhook/production/Dockerfile
     container_name: webhook-app-prod
     ports:
-      - "8086:8090"
+      - "8090:8090"
     networks:
-      - rankr-shared-development-network
+      - rankr-prod-network
     env_file:
-      - ./.env.production
+      - ../../.env.production
     environment:
       - CONFIG_PATH=/app/deploy/webhook/production/config.yml
       - ENV=production
+      - WEBHOOK__POSTGRES_DB__PASSWORD=${WEBHOOK_PASS}
 
 networks:
-  rankr-shared-development-network:
+  rankr-prod-network:
     external: true
-    name: rankr-shared-development-network
+    name: rankr-prod-network
