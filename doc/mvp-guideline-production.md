@@ -148,7 +148,7 @@ docker exec shared-redis redis-cli KEYS "leaderboard:*:all_time"
 ```
 
 Output:
-```
+```text
 leaderboard:1028435569:all_time
 leaderboard:global:all_time
 ```

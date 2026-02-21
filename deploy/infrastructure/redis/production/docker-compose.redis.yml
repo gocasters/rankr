@@ -11,7 +11,7 @@ services:
     volumes:
       - rankr-redis-prod-data:/data
     ports:
-      - "6379:6379"
+      - "6380:6379"
     networks:
       - rankr-prod-network
     restart: unless-stopped
