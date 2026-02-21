@@ -1,0 +1,32 @@
+services:
+  shared-redis:
+    image: redis:8.0-alpine
+    container_name: shared-redis
+    command: >
+      redis-server
+      --loglevel notice
+      --protected-mode no
+      --save ""
+      --appendonly yes
+    volumes:
+      - rankr-redis-prod-data:/data
+    ports:
+      - "6380:6379"
+    networks:
+      - rankr-prod-network
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    mem_limit: 512m
+    cpus: 0.5
+
+networks:
+  rankr-prod-network:
+    external: true
+
+volumes:
+  rankr-redis-prod-data:
+    external: true

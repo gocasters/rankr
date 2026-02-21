@@ -5,19 +5,20 @@ services:
       dockerfile: ./deploy/leaderboardscoring/production/Dockerfile
     container_name: leaderboardscoring-app-prod
     ports:
-      - "8080:8081"
-      - "8090:8070"
+      - "8083:8081"
+      - "8070:8070"
     expose:
       - "8070"
     networks:
-      - rankr-shared-development-network
+      - rankr-prod-network
     env_file:
-      - ./.env.production
+      - ../../.env.production
     environment:
       - CONFIG_PATH=/app/deploy/leaderboardscoring/production/config.yml
       - ENV=production
+      - LEADERBOARDSCORING_POSTGRES_DB__PASSWORD=${LEADERBOARDSCORING_PASS}
 
 networks:
-  rankr-shared-development-network:
+  rankr-prod-network:
     external: true
-    name: rankr-shared-development-network
+    name: rankr-prod-network

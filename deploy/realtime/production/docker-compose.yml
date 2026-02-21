@@ -8,14 +8,15 @@ services:
       - "8087:8081"
       - "8097:8091"
     networks:
-      - rankr-shared-development-network
+      - rankr-prod-network
     env_file:
-      - ./.env.production
+      - ../../.env.production
     environment:
       - CONFIG_PATH=/app/deploy/realtime/production/config.yml
       - ENV=production
+      - REALTIME_POSTGRES_DB__PASSWORD=${REALTIME_PASS}
 
 networks:
-  rankr-shared-development-network:
+  rankr-prod-network:
     external: true
-    name: rankr-shared-development-network
+    name: rankr-prod-network

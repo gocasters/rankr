@@ -1,0 +1,53 @@
+services:
+  shared-postgres:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: shared-postgres
+    env_file:
+      - ../../../.env.production
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      LEADERBOARDSTAT_USER: ${LEADERBOARDSTAT_USER}
+      LEADERBOARDSTAT_PASS: ${LEADERBOARDSTAT_PASS}
+      CONTRIBUTOR_USER: ${CONTRIBUTOR_USER}
+      CONTRIBUTOR_PASS: ${CONTRIBUTOR_PASS}
+      PROJECT_USER: ${PROJECT_USER}
+      PROJECT_PASS: ${PROJECT_PASS}
+      WEBHOOK_USER: ${WEBHOOK_USER}
+      WEBHOOK_PASS: ${WEBHOOK_PASS}
+      LEADERBOARDSCORING_USER: ${LEADERBOARDSCORING_USER}
+      LEADERBOARDSCORING_PASS: ${LEADERBOARDSCORING_PASS}
+      AUTH_USER: ${AUTH_USER}
+      AUTH_PASS: ${AUTH_PASS}
+      NOTIFAPP_USER: ${NOTIFAPP_USER}
+      NOTIFAPP_PASS: ${NOTIFAPP_PASS}
+      REALTIME_USER: ${REALTIME_USER}
+      REALTIME_PASS: ${REALTIME_PASS}
+      TASK_USER: ${TASK_USER}
+      TASK_PASS: ${TASK_PASS}
+    volumes:
+      - rankr-postgres-prod-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - rankr-prod-network
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    mem_limit: 4g
+    cpus: 2.0
+
+networks:
+  rankr-prod-network:
+    external: true
+
+volumes:
+  rankr-postgres-prod-data:
+    external: true
