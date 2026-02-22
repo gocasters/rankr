@@ -9,6 +9,7 @@ PROTOC_GEN_GO_VERSION ?= v1.34.2
 PROTOC_GEN_GO_GRPC_VERSION ?= v1.5.1
 DOCKER_COMPOSE ?= docker compose
 INFRA_SCRIPT := ./deploy/script/start_infrastructure.sh
+INFRA_SCRIPT_PROD := ./deploy/script/start_infrastructure_prod.sh
 SERVICES := auth contributor leaderboardscoring leaderboardstat notification project realtime task userprofile webhook
 
 # ====================================================================================
@@ -207,6 +208,47 @@ infra-up-emqx:
 	bash $(INFRA_SCRIPT) up-emqx
 
 # ====================================================================================
+# Production Infrastructure Commands
+# ====================================================================================
+.PHONY: infra-up-prod infra-down-prod infra-logs-prod infra-status-prod
+
+infra-up-prod:
+	@echo "Starting production infrastructure..."
+	bash $(INFRA_SCRIPT_PROD) up-all
+
+infra-down-prod:
+	@echo "Stopping production infrastructure..."
+	bash $(INFRA_SCRIPT_PROD) down-all
+
+infra-logs-prod:
+	@echo "Showing production infrastructure logs..."
+	bash $(INFRA_SCRIPT_PROD) logs-all
+
+infra-status-prod:
+	@echo "Showing production infrastructure status..."
+	bash $(INFRA_SCRIPT_PROD) status
+
+# Complete production startup (infrastructure + services)
+up-prod:
+	$(MAKE) infra-up-prod
+	@echo "Waiting for infrastructure to be ready..."
+	@sleep 10
+	@echo "Starting all production services..."
+	$(MAKE) services-up-prod
+	@echo "All production services are up!"
+
+# Complete production shutdown
+down-prod:
+	$(MAKE) services-down-prod
+	$(MAKE) infra-down-prod
+	@echo "All production services stopped!"
+
+# Production status
+status-prod:
+	@echo "Production container status:"
+	@docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "prod|shared-|NAMES"
+
+# ====================================================================================
 # Service Commands
 # ====================================================================================
 .PHONY: $(SERVICES:%=start-%-app-dev) $(SERVICES:%=start-%-app-dev-log) $(SERVICES:%=stop-%-app-dev)
@@ -306,15 +348,15 @@ vendor:
 define SERVICE_PROD_template
 start-$(1)-app-prod:
 	@echo "Starting $(1) production service..."
-	cd deploy/$(1)/production && PROJECT_ROOT=$(CURDIR) $(DOCKER_COMPOSE) up -d --build
+	cd deploy/$(1)/production && PROJECT_ROOT=$(CURDIR) $(DOCKER_COMPOSE) --env-file $(CURDIR)/deploy/.env.production up -d --build
 
 start-$(1)-app-prod-log:
 	@echo "Starting $(1) production service with logs..."
-	cd deploy/$(1)/production && PROJECT_ROOT=$(CURDIR) $(DOCKER_COMPOSE) up --build
+	cd deploy/$(1)/production && PROJECT_ROOT=$(CURDIR) $(DOCKER_COMPOSE) --env-file $(CURDIR)/deploy/.env.production up --build
 
 stop-$(1)-app-prod:
 	@echo "Stopping $(1) production service..."
-	cd deploy/$(1)/production && PROJECT_ROOT=$(CURDIR) $(DOCKER_COMPOSE) down
+	cd deploy/$(1)/production && PROJECT_ROOT=$(CURDIR) $(DOCKER_COMPOSE) --env-file $(CURDIR)/deploy/.env.production down
 endef
 
 $(foreach svc,$(SERVICES),$(eval $(call SERVICE_PROD_template,$(svc))))
@@ -356,7 +398,8 @@ docker-build-all-prod:
 
 help:
 	@echo "Available targets:"
-	@echo "  Infrastructure:"
+	@echo ""
+	@echo "  Infrastructure (Development):"
 	@echo "    infra-up              - Start all infrastructure services"
 	@echo "    infra-down            - Stop all infrastructure services"
 	@echo "    infra-up-postgres     - Start PostgreSQL only"
@@ -365,7 +408,13 @@ help:
 	@echo "    infra-up-emqx         - Start EMQX only"
 	@echo "    infra-logs            - Tail infrastructure logs"
 	@echo ""
-	@echo "  Services Development ($(SERVICES)):"
+	@echo "  Infrastructure (Production):"
+	@echo "    infra-up-prod         - Start production infrastructure"
+	@echo "    infra-down-prod       - Stop production infrastructure"
+	@echo "    infra-logs-prod       - Tail production infrastructure logs"
+	@echo "    infra-status-prod     - Show production infrastructure status"
+	@echo ""
+	@echo "  Services Development ($(SERVICES)):
 	@echo "    start-<service>-app-dev      - Start a single service (e.g. make start-auth-app-dev)"
 	@echo "    start-<service>-app-dev-log  - Start a service and attach logs"
 	@echo "    stop-<service>-app-dev       - Stop a single service"
@@ -415,8 +464,11 @@ help:
 	@echo "    DOCKER_REGISTRY=gcr.io/myproj - Set registry prefix"
 	@echo ""
 	@echo "  Utilities:"
-	@echo "    up                    - Start infrastructure and services"
-	@echo "    down                  - Stop infrastructure and services"
+	@echo "    up                    - Start infrastructure and services (dev)"
+	@echo "    down                  - Stop infrastructure and services (dev)"
+	@echo "    up-prod               - Start infrastructure and services (prod)"
+	@echo "    down-prod             - Stop infrastructure and services (prod)"
 	@echo "    logs                  - Show logs"
 	@echo "    restart               - Restart everything"
-	@echo "    status                - Show container status"
+	@echo "    status                - Show container status (dev)"
+	@echo "    status-prod           - Show container status (prod)"
