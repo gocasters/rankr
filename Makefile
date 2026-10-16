@@ -386,7 +386,8 @@ $(foreach svc,$(SERVICES),$(eval $(call DOCKER_PROD_template,$(svc))))
 
 docker-build-all-prod:
 	@echo "Building all production images..."
-	@for svc in $(SERVICES); do \
+	@set -e; \
+	for svc in $(SERVICES); do \
 		$(MAKE) docker-build-$$svc-prod; \
 	done
 	@echo "All production images built!"
