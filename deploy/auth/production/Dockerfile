@@ -1,12 +1,13 @@
 FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
+ENV GOPROXY=https://mirrors.aliyun.com/goproxy,direct
 
 COPY go.mod go.sum ./
-COPY vendor ./vendor
+RUN go mod download
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -ldflags="-s -w" -o /app/main ./cmd/auth/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /app/main ./cmd/auth/main.go
 
 FROM alpine:3.21
 
