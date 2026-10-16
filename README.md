@@ -47,7 +47,7 @@ Run `./deploy/docker-compose-dev.bash` to bring up the shared infrastructure and
 This project uses ASDF to manage tool versions
 
 ### Prerequisites
-- **Go 1.21+** (managed via ASDF)
+- **Go 1.25.3+** (managed via ASDF)
 - **Git**
 - **Docker** (for local development)
 
