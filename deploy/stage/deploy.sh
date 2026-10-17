@@ -20,7 +20,9 @@ if [[ ! -f "$ENV_FILE" ]]; then
     exit 1
 fi
 
-GATEWAY_PORT="$(grep -E '^GATEWAY_PORT=' "$ENV_FILE" | cut -d= -f2)"
+# `|| true`: GATEWAY_PORT is optional, and grep finding nothing must not stop
+# the script under pipefail.
+GATEWAY_PORT="$(grep -E '^GATEWAY_PORT=' "$ENV_FILE" | cut -d= -f2 || true)"
 GATEWAY_PORT="${GATEWAY_PORT:-8088}"
 
 compose() {
@@ -40,8 +42,11 @@ health() {
     return $failed
 }
 
+# Waits up to HEALTH_TIMEOUT seconds overall (default 150), not per attempt, so
+# a hanging service cannot delay the automatic rollback much past that.
 wait_healthy() {
-    for _ in $(seq 1 30); do
+    local deadline=$((SECONDS + ${HEALTH_TIMEOUT:-150}))
+    while (( SECONDS < deadline )); do
         if health > /dev/null 2>&1; then
             health
             return 0

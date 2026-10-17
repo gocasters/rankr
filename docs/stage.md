@@ -78,8 +78,9 @@ deploy/stage/deploy.sh deploy
 
 `deploy` builds images tagged with the short commit hash, starts them, and
 checks `/health/<service>` for all six services through the gateway. If a
-service is not healthy after about 2.5 minutes, it starts the previous release
-again and exits non-zero. Each healthy release is appended to
+service is not healthy within `HEALTH_TIMEOUT` seconds (150 by default; up to
+about a minute more when a service hangs instead of failing), it starts the
+previous release again and exits non-zero. Each healthy release is appended to
 `deploy/stage/.deploy-history`.
 
 ## Health
