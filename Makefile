@@ -15,17 +15,13 @@ SERVICES := auth contributor leaderboardscoring leaderboardstat notification pro
 # ====================================================================================
 # General Go Commands
 # ====================================================================================
-.PHONY: start test build clean mod-tidy lint install-linter help
-
-start: build
-	$(BUILD_DIR)/$(BINARY_NAME)
+.PHONY: test build clean mod-tidy lint install-linter help
 
 test:
 	go test -v ./...
 
 build:
-	@mkdir -p $(BUILD_DIR)
-	go build -o $(BUILD_DIR)/$(BINARY_NAME) cmd/rankr/main.go
+	go build ./...
 
 clean:
 	rm -rf $(BUILD_DIR)/
@@ -414,7 +410,7 @@ help:
 	@echo "    infra-logs-prod       - Tail production infrastructure logs"
 	@echo "    infra-status-prod     - Show production infrastructure status"
 	@echo ""
-	@echo "  Services Development ($(SERVICES)):
+	@echo "  Services Development ($(SERVICES)):"
 	@echo "    start-<service>-app-dev      - Start a single service (e.g. make start-auth-app-dev)"
 	@echo "    start-<service>-app-dev-log  - Start a service and attach logs"
 	@echo "    stop-<service>-app-dev       - Stop a single service"
@@ -441,8 +437,7 @@ help:
 	@echo "    proto-validate        - Validate protobuf files"
 	@echo ""
 	@echo "  Build & Development:"
-	@echo "    build                 - Build the binary"
-	@echo "    start                 - Run the binary"
+	@echo "    build                 - Build all Go packages"
 	@echo "    test                  - Run tests"
 	@echo "    clean                 - Clean build artifacts"
 	@echo "    mod-tidy              - Tidy go modules"
