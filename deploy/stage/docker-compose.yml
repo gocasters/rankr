@@ -1,0 +1,300 @@
+# Stage stack for rankr v1 (TD-03, #219).
+#
+# Everything runs on the private `rankr-stage` network. The only port published
+# on the host is the gateway, bound to 127.0.0.1, so the host's own nginx is the
+# single public entry point (TD-05, #222). No service or gRPC port is reachable
+# from outside the host.
+#
+# Secrets come from deploy/stage/.env.stage on the host (never committed);
+# see .env.stage.example and docs/stage.md.
+#
+# Usage: deploy/stage/deploy.sh deploy|status|logs|health|rollback
+
+name: rankr-stage
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+x-app: &app
+  restart: unless-stopped
+  logging: *logging
+  mem_limit: 256m
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    nats:
+      condition: service_healthy
+
+services:
+  # ---------------------------------------------------------------- infra
+  postgres:
+    build:
+      context: ../infrastructure/postgresql/production
+    image: rankr-stage/postgres:17
+    command: ["postgres", "-c", "max_connections=200", "-c", "shared_buffers=128MB"]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set in .env.stage}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env.stage}
+      POSTGRES_DB: ${POSTGRES_DB:?set in .env.stage}
+      AUTH_USER: ${AUTH_USER:?}
+      AUTH_PASS: ${AUTH_PASS:?}
+      CONTRIBUTOR_USER: ${CONTRIBUTOR_USER:?}
+      CONTRIBUTOR_PASS: ${CONTRIBUTOR_PASS:?}
+      LEADERBOARDSCORING_USER: ${LEADERBOARDSCORING_USER:?}
+      LEADERBOARDSCORING_PASS: ${LEADERBOARDSCORING_PASS:?}
+      LEADERBOARDSTAT_USER: ${LEADERBOARDSTAT_USER:?}
+      LEADERBOARDSTAT_PASS: ${LEADERBOARDSTAT_PASS:?}
+      PROJECT_USER: ${PROJECT_USER:?}
+      PROJECT_PASS: ${PROJECT_PASS:?}
+      WEBHOOK_USER: ${WEBHOOK_USER:?}
+      WEBHOOK_PASS: ${WEBHOOK_PASS:?}
+      # init-services-db.sh requires these even though stage does not run
+      # notification, realtime or task yet.
+      NOTIFAPP_USER: ${NOTIFAPP_USER:?}
+      NOTIFAPP_PASS: ${NOTIFAPP_PASS:?}
+      REALTIME_USER: ${REALTIME_USER:?}
+      REALTIME_PASS: ${REALTIME_PASS:?}
+      TASK_USER: ${TASK_USER:?}
+      TASK_PASS: ${TASK_PASS:?}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+    logging: *logging
+    mem_limit: 512m
+    networks:
+      rankr-stage:
+        aliases: [shared-postgres]
+
+  redis:
+    image: redis:8.0-alpine
+    command:
+      - redis-server
+      - --requirepass
+      - ${REDIS_PASSWORD:?set in .env.stage}
+      - --save
+      - ""
+      - --appendonly
+      - "yes"
+      - --maxmemory
+      - 128mb
+      - --maxmemory-policy
+      - noeviction
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    logging: *logging
+    mem_limit: 192m
+    networks:
+      rankr-stage:
+        aliases: [shared-redis]
+
+  nats:
+    image: nats:2.10.14-alpine
+    command: ["-c", "/etc/nats/nats.conf"]
+    volumes:
+      - ./nats.conf:/etc/nats/nats.conf:ro
+      - nats-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8222/healthz > /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    logging: *logging
+    mem_limit: 384m
+    networks:
+      rankr-stage:
+        aliases: [shared-nats]
+
+  # ------------------------------------------------------------- services
+  auth:
+    <<: *app
+    build:
+      context: ../..
+      dockerfile: deploy/auth/production/Dockerfile
+    image: rankr-stage/auth:${TAG:-latest}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_healthy
+      # auth dials contributor's gRPC at startup and runs degraded without it.
+      contributor:
+        condition: service_healthy
+    environment:
+      CONFIG_PATH: /app/deploy/auth/production/config.yml
+      ENV: stage
+      auth_postgres_db__user: ${AUTH_USER}
+      auth_postgres_db__password: ${AUTH_PASS}
+      auth_redis__password: ${REDIS_PASSWORD}
+      auth_jwt__secret: ${JWT_SECRET:?set in .env.stage}
+      auth_logger__level: info
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/v1/health-check > /dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    networks:
+      rankr-stage:
+        aliases: [auth-app]
+
+  contributor:
+    <<: *app
+    build:
+      context: ../..
+      dockerfile: deploy/contributor/production/Dockerfile
+    image: rankr-stage/contributor:${TAG:-latest}
+    environment:
+      CONFIG_PATH: /app/deploy/contributor/production/config.yml
+      ENV: stage
+      contributor_postgres_db__user: ${CONTRIBUTOR_USER}
+      contributor_postgres_db__password: ${CONTRIBUTOR_PASS}
+      contributor_redis__password: ${REDIS_PASSWORD}
+      contributor_logger__level: info
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8082/v1/health-check > /dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    networks:
+      rankr-stage:
+        aliases: [contributor-app]
+
+  leaderboardscoring:
+    <<: *app
+    build:
+      context: ../..
+      dockerfile: deploy/leaderboardscoring/production/Dockerfile
+    image: rankr-stage/leaderboardscoring:${TAG:-latest}
+    environment:
+      CONFIG_PATH: /app/deploy/leaderboardscoring/production/config.yml
+      ENV: stage
+      LEADERBOARDSCORING_POSTGRES_DB__USER: ${LEADERBOARDSCORING_USER}
+      LEADERBOARDSCORING_POSTGRES_DB__PASSWORD: ${LEADERBOARDSCORING_PASS}
+      LEADERBOARDSCORING_REDIS__PASSWORD: ${REDIS_PASSWORD}
+      LEADERBOARDSCORING_LOGGER__LEVEL: info
+      # In-memory stream: keep it well under the NATS max_memory_store (TD-31, #280).
+      LEADERBOARDSCORING_NATS_ADAPTER__MAX_BYTES: "134217728"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/v1/health-check > /dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    networks:
+      rankr-stage:
+        aliases: [leaderboardscoring-app]
+
+  leaderboardstat:
+    <<: *app
+    build:
+      context: ../..
+      dockerfile: deploy/leaderboardstat/production/Dockerfile
+    image: rankr-stage/leaderboardstat:${TAG:-latest}
+    environment:
+      CONFIG_PATH: /app/deploy/leaderboardstat/production/config.yml
+      ENV: stage
+      STAT_POSTGRES_DB__USER: ${LEADERBOARDSTAT_USER}
+      STAT_POSTGRES_DB__PASSWORD: ${LEADERBOARDSTAT_PASS}
+      STAT_REDIS__PASSWORD: ${REDIS_PASSWORD}
+      STAT_LOGGER__LEVEL: info
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/v1/health-check > /dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    networks:
+      rankr-stage:
+        aliases: [leaderboardstat-app]
+
+  project:
+    <<: *app
+    build:
+      context: ../..
+      dockerfile: deploy/project/production/Dockerfile
+    image: rankr-stage/project:${TAG:-latest}
+    environment:
+      CONFIG_PATH: /app/deploy/project/production/config.yml
+      ENV: stage
+      PROJECT_POSTGRES_DB__USER: ${PROJECT_USER}
+      PROJECT_POSTGRES_DB__PASSWORD: ${PROJECT_PASS}
+      PROJECT_LOGGER__LEVEL: info
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8084/v1/health-check > /dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    networks:
+      rankr-stage:
+        # webhook's production config dials project-app-prod.
+        aliases: [project-app, project-app-prod]
+
+  webhook:
+    <<: *app
+    build:
+      context: ../..
+      dockerfile: deploy/webhook/production/Dockerfile
+    image: rankr-stage/webhook:${TAG:-latest}
+    environment:
+      CONFIG_PATH: /app/deploy/webhook/production/config.yml
+      ENV: stage
+      WEBHOOK_POSTGRES_DB__USER: ${WEBHOOK_USER}
+      WEBHOOK_POSTGRES_DB__PASSWORD: ${WEBHOOK_PASS}
+      WEBHOOK_REDIS__PASSWORD: ${REDIS_PASSWORD}
+      WEBHOOK_LOGGER__LEVEL: info
+      # GitHub deliveries carry no bearer token (TD-04, #221).
+      WEBHOOK_HTTP_SERVER__PUBLIC_PATHS: /github-webhook/github/process
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8090/github-webhook/health-check > /dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    networks:
+      rankr-stage:
+        aliases: [webhook-app]
+
+  # -------------------------------------------------------------- gateway
+  gateway:
+    image: openresty/openresty:alpine
+    ports:
+      - "127.0.0.1:${GATEWAY_PORT:-8088}:80"
+    volumes:
+      - ./gateway/nginx.conf:/usr/local/openresty/nginx/conf/nginx.conf:ro
+      - ./gateway/proxy_headers.conf:/usr/local/openresty/nginx/conf/proxy_headers.conf:ro
+      - ./gateway/auth_headers.conf:/usr/local/openresty/nginx/conf/auth_headers.conf:ro
+    depends_on:
+      - auth
+    restart: unless-stopped
+    logging: *logging
+    mem_limit: 64m
+    networks:
+      - rankr-stage
+
+networks:
+  rankr-stage:
+    name: rankr-stage
+
+volumes:
+  postgres-data:
+  redis-data:
+  nats-data:
