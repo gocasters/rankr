@@ -3,12 +3,13 @@ package httpserver
 import (
 	"context"
 	"fmt"
-	echomiddleware "github.com/gocasters/rankr/pkg/echo_middleware"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	"strings"
 	"sync"
 	"time"
+
+	echomiddleware "github.com/gocasters/rankr/pkg/echo_middleware"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 type Config struct {
@@ -32,7 +33,7 @@ type Server struct {
 	router *echo.Echo
 	config *Config
 
-	requireClaimsOnce sync.Once
+	requireClaimsOnce *sync.Once
 }
 
 var basePublicPaths = []string{
