@@ -58,7 +58,7 @@ func Setup(
 	}
 
 	httpServer := http.New(
-		*server,
+		server,
 		taskHandler,
 		logger,
 	)
@@ -106,7 +106,7 @@ func Setup(
 	}, nil
 }
 
-func (app Application) Start() {
+func (app *Application) Start() {
 	var wg sync.WaitGroup
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -130,7 +130,7 @@ func (app Application) Start() {
 	app.Logger.Info("task_app stopped")
 }
 
-func startServers(app Application, wg *sync.WaitGroup) {
+func startServers(app *Application, wg *sync.WaitGroup) {
 
 	wg.Add(1)
 	go func() {
@@ -154,7 +154,7 @@ func startServers(app Application, wg *sync.WaitGroup) {
 	}()
 }
 
-func (app Application) shutdownServers(ctx context.Context) bool {
+func (app *Application) shutdownServers(ctx context.Context) bool {
 	app.Logger.Info("Starting server shutdown process...")
 	shutdownDone := make(chan struct{})
 
@@ -179,7 +179,7 @@ func (app Application) shutdownServers(ctx context.Context) bool {
 	}
 }
 
-func (app Application) shutdownHTTPServer(parentCtx context.Context, wg *sync.WaitGroup) {
+func (app *Application) shutdownHTTPServer(parentCtx context.Context, wg *sync.WaitGroup) {
 	app.Logger.Info(fmt.Sprintf("Starting graceful shutdown for HTTP server on port %d", app.Config.HTTPServer.Port))
 
 	defer wg.Done()
@@ -192,7 +192,7 @@ func (app Application) shutdownHTTPServer(parentCtx context.Context, wg *sync.Wa
 	app.Logger.Info("HTTP server shut down successfully.")
 }
 
-func (app Application) shutdownEventConsumer(wg *sync.WaitGroup) {
+func (app *Application) shutdownEventConsumer(wg *sync.WaitGroup) {
 	app.Logger.Info("Starting graceful shutdown for event consumer")
 
 	defer wg.Done()

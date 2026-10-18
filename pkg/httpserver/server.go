@@ -3,12 +3,13 @@ package httpserver
 import (
 	"context"
 	"fmt"
-	echomiddleware "github.com/gocasters/rankr/pkg/echo_middleware"
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	"strings"
 	"sync"
 	"time"
+
+	echomiddleware "github.com/gocasters/rankr/pkg/echo_middleware"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 type Config struct {
