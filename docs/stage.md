@@ -78,10 +78,19 @@ deploy/stage/deploy.sh deploy
 
 `deploy` builds images tagged with the short commit hash, starts them, and
 checks `/health/<service>` for all six services through the gateway. If a
-service is not healthy within `HEALTH_TIMEOUT` seconds (150 by default; up to
-about a minute more when a service hangs instead of failing), it starts the
-previous release again and exits non-zero. Each healthy release is appended to
+service is not healthy within `HEALTH_TIMEOUT` seconds, it starts the previous
+release again and exits non-zero. Each healthy release is appended to
 `deploy/stage/.deploy-history`.
+
+`HEALTH_TIMEOUT` is the whole wait, not a per-request limit: every request
+(at most 5 seconds each) is cut short at the deadline, and services not
+checked by then are reported as `SKIP`. It defaults to 150, must be a positive
+whole number of seconds, and is read from the shell environment, not from
+`.env.stage`. It applies to `deploy` and `rollback`:
+
+```bash
+HEALTH_TIMEOUT=60 deploy/stage/deploy.sh deploy
+```
 
 ## Health
 
