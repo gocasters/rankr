@@ -42,6 +42,14 @@ func (c Config) Validate() map[string]error {
 		errs["client_id"] = fmt.Errorf("client ID cannot be empty")
 	}
 
+	if c.ConnectTimeout <= 0 {
+		errs["connect_timeout"] = fmt.Errorf("connect timeout must be positive, got: %v", c.ConnectTimeout)
+	}
+
+	if c.AckWaitTimeout <= 0 {
+		errs["ack_wait_timeout"] = fmt.Errorf("ack wait timeout must be positive, got: %v", c.AckWaitTimeout)
+	}
+
 	if c.MaxInflight <= 0 {
 		errs["max_inflight"] = fmt.Errorf("max inflight must be positive, got: %d", c.MaxInflight)
 	}
@@ -321,7 +329,9 @@ func (a *Adapter) Close() error {
 		return fmt.Errorf("errors during NATS adapter shutdown: %v", errs)
 	}
 
-	a.logger.Info("NATS adapter closed successfully", nil)
+	if a.logger != nil {
+		a.logger.Info("NATS adapter closed successfully", nil)
+	}
 	return nil
 }
 
