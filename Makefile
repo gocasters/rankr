@@ -15,7 +15,7 @@ SERVICES := auth contributor leaderboardscoring leaderboardstat notification pro
 # ====================================================================================
 # General Go Commands
 # ====================================================================================
-.PHONY: start test build clean mod-tidy lint install-linter help
+.PHONY: test build clean mod-tidy lint install-linter help
 
 # --- Agentic gate (see AGENTS.md) ---
 .PHONY: check check-all
@@ -37,8 +37,7 @@ test:
 	go test -v ./...
 
 build:
-	@mkdir -p $(BUILD_DIR)
-	go build -o $(BUILD_DIR)/$(BINARY_NAME) cmd/rankr/main.go
+	go build ./...
 
 clean:
 	rm -rf $(BUILD_DIR)/
@@ -455,8 +454,7 @@ help:
 	@echo "    proto-validate        - Validate protobuf files"
 	@echo ""
 	@echo "  Build & Development:"
-	@echo "    build                 - Build the binary"
-	@echo "    start                 - Run the binary"
+	@echo "    build                 - Build all Go packages"
 	@echo "    test                  - Run tests"
 	@echo "    clean                 - Clean build artifacts"
 	@echo "    mod-tidy              - Tidy go modules"
