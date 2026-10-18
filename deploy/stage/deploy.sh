@@ -25,14 +25,35 @@ fi
 GATEWAY_PORT="$(grep -E '^GATEWAY_PORT=' "$ENV_FILE" | cut -d= -f2 || true)"
 GATEWAY_PORT="${GATEWAY_PORT:-8088}"
 
+# Overall time budget for wait_healthy. Checked up front so a typo fails before
+# anything is built, and so only a plain number ever reaches $(( )).
+HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-150}"
+if [[ ! "$HEALTH_TIMEOUT" =~ ^[1-9][0-9]*$ ]]; then
+    echo "HEALTH_TIMEOUT must be a positive whole number of seconds (got '$HEALTH_TIMEOUT')" >&2
+    exit 1
+fi
+
 compose() {
     docker compose --env-file "$ENV_FILE" -f "$STAGE_DIR/docker-compose.yml" "$@"
 }
 
+# health [deadline]: without an argument (`deploy.sh health`) each service gets
+# up to 5 seconds. With a deadline (a $SECONDS value), each request is bounded
+# by the time left and no request is sent once the deadline has passed.
 health() {
-    local failed=0
+    local deadline="${1:-}" failed=0 timeout remaining
     for svc in "${SERVICES[@]}"; do
-        if curl -fsS -o /dev/null --max-time 5 "http://127.0.0.1:$GATEWAY_PORT/health/$svc"; then
+        timeout=5
+        if [[ -n "$deadline" ]]; then
+            remaining=$(( deadline - SECONDS ))
+            if (( remaining <= 0 )); then
+                echo "SKIP  $svc (deadline reached)"
+                failed=1
+                continue
+            fi
+            if (( remaining < timeout )); then timeout=$remaining; fi
+        fi
+        if curl -fsS -o /dev/null --max-time "$timeout" "http://127.0.0.1:$GATEWAY_PORT/health/$svc"; then
             echo "ok    $svc"
         else
             echo "FAIL  $svc"
@@ -42,18 +63,22 @@ health() {
     return $failed
 }
 
-# Waits up to HEALTH_TIMEOUT seconds overall (default 150), not per attempt, so
-# a hanging service cannot delay the automatic rollback much past that.
+# Waits up to HEALTH_TIMEOUT seconds overall. Every request and sleep is
+# bounded by the deadline, and the final report reuses the last pass instead of
+# sending new requests, so a hanging service cannot delay the rollback.
 wait_healthy() {
-    local deadline=$((SECONDS + ${HEALTH_TIMEOUT:-150}))
+    local deadline=$(( SECONDS + HEALTH_TIMEOUT ))
+    local report="" remaining
     while (( SECONDS < deadline )); do
-        if health > /dev/null 2>&1; then
-            health
+        if report="$(health "$deadline" 2>/dev/null)"; then
+            echo "$report"
             return 0
         fi
-        sleep 5
+        remaining=$(( deadline - SECONDS ))
+        (( remaining > 0 )) || break
+        sleep $(( remaining < 5 ? remaining : 5 ))
     done
-    health || true
+    echo "${report:-no health check ran}"
     return 1
 }
 
