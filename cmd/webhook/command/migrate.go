@@ -31,7 +31,7 @@ func init() {
 }
 
 // migrate runs database migrations for the webhook service.
-// 
+//
 // It loads configuration into a webhookapp.Config from a YAML file located by
 // default at "<workingDir>/webhookapp/repository/dbconfig.local.yml" unless the
 // path is overridden via the DBCONFIG_OVERRIDE_PATH environment variable.

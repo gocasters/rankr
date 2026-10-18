@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-     "github.com/eclipse/paho.mqtt.golang"
+	"github.com/eclipse/paho.mqtt.golang"
 )
 
 type MQTTClient struct {
@@ -49,7 +49,6 @@ func (m *MQTTClient) Publish(topic string, qos byte, retained bool, payload inte
 	}
 	return nil
 }
-
 
 func (m *MQTTClient) Disconnect() {
 	m.client.Disconnect(250)

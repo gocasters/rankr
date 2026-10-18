@@ -61,7 +61,7 @@ func main() {
 	go func() {
 		ticker := time.NewTicker(10 * time.Second)
 		defer ticker.Stop()
-		
+
 		for {
 			select {
 			case <-ticker.C:
@@ -70,14 +70,14 @@ func main() {
 					Text: "Hello from server! Time: " + time.Now().Format("15:04:05"),
 					Time: time.Now().Format("2006-01-02 15:04:05"),
 				}
-				
+
 				data, err := json.Marshal(msg)
 				if err != nil {
 					log.Printf("Error marshaling message: %v", err)
 					continue
 				}
-				
-				_, err = node.Publish( "chat", data)
+
+				_, err = node.Publish("chat", data)
 				if err != nil {
 					log.Printf("Error publishing message: %v", err)
 				} else {
@@ -103,7 +103,7 @@ func main() {
 		msg.Time = time.Now().Format("2006-01-02 15:04:05")
 		data, _ := json.Marshal(msg)
 
-		_, err := node.Publish( "chat", data)
+		_, err := node.Publish("chat", data)
 		if err != nil {
 			http.Error(w, "Failed to publish", http.StatusInternalServerError)
 			return

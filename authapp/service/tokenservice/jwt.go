@@ -13,8 +13,8 @@ type JWTManager struct {
 }
 
 type UserClaims struct {
-	UserID string `json:"user_id"`
-	Role   string `json:"role"`
+	UserID string   `json:"user_id"`
+	Role   string   `json:"role"`
 	Access []string `json:"access"`
 	jwt.RegisteredClaims
 }

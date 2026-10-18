@@ -44,3 +44,6 @@ jobs:
 
       - name: Build
         run: go build -v ./...
+
+      - name: Build production Docker images
+        run: make docker-build-all-prod
