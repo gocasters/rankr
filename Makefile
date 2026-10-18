@@ -17,6 +17,22 @@ SERVICES := auth contributor leaderboardscoring leaderboardstat notification pro
 # ====================================================================================
 .PHONY: test build clean mod-tidy lint install-linter help
 
+# --- Agentic gate (see AGENTS.md) ---
+.PHONY: check check-all
+BASE ?= origin/main
+
+check: ## Gate for a change: gofmt, vet, race tests and build on packages changed vs $(BASE)
+	@BASE=$(BASE) ./scripts/check.sh
+
+check-all: ## Same checks on every package (red until the baseline issue is fixed)
+	@test -z "$$(gofmt -l $$(git ls-files '*.go' | grep -v '^protobuf/golang/'))" || (gofmt -l $$(git ls-files '*.go' | grep -v '^protobuf/golang/'); exit 1)
+	go vet ./...
+	go test -race -short -count=1 ./...
+	go build ./...
+
+start: build
+	$(BUILD_DIR)/$(BINARY_NAME)
+
 test:
 	go test -v ./...
 
@@ -382,7 +398,8 @@ $(foreach svc,$(SERVICES),$(eval $(call DOCKER_PROD_template,$(svc))))
 
 docker-build-all-prod:
 	@echo "Building all production images..."
-	@for svc in $(SERVICES); do \
+	@set -e; \
+	for svc in $(SERVICES); do \
 		$(MAKE) docker-build-$$svc-prod; \
 	done
 	@echo "All production images built!"
