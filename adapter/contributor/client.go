@@ -14,7 +14,6 @@ type Client struct {
 	contributorService contributorpb.ContributorServiceClient
 }
 
-
 type Credentials struct {
 	ID       types.ID
 	Password string
@@ -25,7 +24,6 @@ type Mapping struct {
 	VcsUsername   string
 	VcsUserID     int64
 }
-
 
 func New(rpcClient *grpc.RPCClient) (*Client, error) {
 	if rpcClient == nil || rpcClient.Conn == nil {
@@ -46,7 +44,7 @@ func (c *Client) Close() {
 
 func (c *Client) VerifyPassword(ctx context.Context, username string, password string) (types.ID, string, bool, error) {
 	req := &contributorpb.VerifyPasswordRequest{
-		Password:      password,
+		Password:       password,
 		GithubUsername: username,
 	}
 

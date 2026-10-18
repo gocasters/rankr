@@ -88,7 +88,7 @@ func (h Handler) GetPublicLeaderboard(ctx context.Context, req *leaderboardstatp
 	log.Info("DEBUG: After service call",
 		slog.Int("scoreList_length", len(scoreList.UsersScore)),
 		slog.Any("scoreList", scoreList))
-	
+
 	items := make([]*leaderboardstatpb.PublicLeaderboardRow, 0, len(scoreList.UsersScore))
 	for _, us := range scoreList.UsersScore {
 		item := &leaderboardstatpb.PublicLeaderboardRow{
