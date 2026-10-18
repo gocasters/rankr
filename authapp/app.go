@@ -77,7 +77,7 @@ func Setup(
 		return Application{}, err
 	}
 	httpHandler := statHTTP.NewHandler(svc, tokenSvc)
-	httpSrv := statHTTP.New(*httpSrvCore, httpHandler)
+	httpSrv := statHTTP.New(httpSrvCore, httpHandler)
 
 	return Application{
 		ShutdownCtx:  ctx,

@@ -3,15 +3,16 @@ package contributorapp
 import (
 	"context"
 	"fmt"
-	"github.com/gocasters/rankr/contributorapp/client"
-	middleware2 "github.com/gocasters/rankr/contributorapp/delivery/http/middleware"
-	"github.com/gocasters/rankr/contributorapp/service/job"
-	"github.com/gocasters/rankr/contributorapp/worker"
 	"log/slog"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
+
+	"github.com/gocasters/rankr/contributorapp/client"
+	middleware2 "github.com/gocasters/rankr/contributorapp/delivery/http/middleware"
+	"github.com/gocasters/rankr/contributorapp/service/job"
+	"github.com/gocasters/rankr/contributorapp/worker"
 
 	"github.com/gocasters/rankr/adapter/redis"
 	contributorgrpc "github.com/gocasters/rankr/contributorapp/delivery/grpc"
@@ -96,7 +97,7 @@ func Setup(
 		ContributorSrv:     contributorSvc,
 		ContributorHandler: contributorHandler,
 		HTTPServer: http.New(
-			*httpServer,
+			httpServer,
 			contributorHandler,
 			logger,
 			middleware,

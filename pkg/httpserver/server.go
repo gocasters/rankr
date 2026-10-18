@@ -33,7 +33,7 @@ type Server struct {
 	router *echo.Echo
 	config *Config
 
-	requireClaimsOnce *sync.Once
+	requireClaimsOnce sync.Once
 }
 
 var basePublicPaths = []string{
