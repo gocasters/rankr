@@ -29,6 +29,8 @@ go.work.sum
 .env
 deploy/project/development/.env.development
 deploy/auth/development/.env.development
+deploy/stage/.env.stage
+deploy/stage/.deploy-history
 
 # Editor/IDE
 
