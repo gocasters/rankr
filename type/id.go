@@ -19,6 +19,6 @@ func (i ID) Validate() error {
 	if !i.IsValid() {
 		return errors.New("ID must be greater than zero")
 	}
-	
+
 	return nil
 }
