@@ -156,6 +156,37 @@ func TestConfigValidate_Invalid(t *testing.T) {
 	}
 }
 
+func TestConfigValidate_AllFieldsInvalid(t *testing.T) {
+	config := Config{
+		URL:            "",
+		ClientID:       "",
+		AckWaitTimeout: 0,
+		MaxInflight:    0,
+		ConnectTimeout: 0,
+		MaxReconnects:  0,
+		PingInterval:   0,
+		MaxPingsOut:    0,
+	}
+
+	vErrors := config.Validate()
+
+	expectedFields := []string{
+		"url",
+		"client_id",
+		"connect_timeout",
+		"ack_wait_timeout",
+		"max_inflight",
+		"max_reconnects",
+		"ping_interval",
+		"max_pings_out",
+	}
+
+	for _, field := range expectedFields {
+		_, exists := vErrors[field]
+		assert.True(t, exists, "Expected validation error for field: %s", field)
+	}
+}
+
 func TestConfigSetDefaults(t *testing.T) {
 	config := Config{}
 	config.SetDefaults()
@@ -359,6 +390,18 @@ func TestAdapter_Close_NilComponents(t *testing.T) {
 		publisher:  nil,
 		subscriber: nil,
 		conn:       nil,
+	}
+
+	err := adapter.Close()
+	assert.NoError(t, err)
+}
+
+func TestAdapter_Close_WithLogger(t *testing.T) {
+	adapter := &Adapter{
+		publisher:  nil,
+		subscriber: nil,
+		conn:       nil,
+		logger:     watermill.NopLogger{},
 	}
 
 	err := adapter.Close()
