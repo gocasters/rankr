@@ -399,7 +399,8 @@ $(foreach svc,$(SERVICES),$(eval $(call DOCKER_PROD_template,$(svc))))
 
 docker-build-all-prod:
 	@echo "Building all production images..."
-	@for svc in $(SERVICES); do \
+	@set -e; \
+	for svc in $(SERVICES); do \
 		$(MAKE) docker-build-$$svc-prod; \
 	done
 	@echo "All production images built!"
@@ -427,7 +428,7 @@ help:
 	@echo "    infra-logs-prod       - Tail production infrastructure logs"
 	@echo "    infra-status-prod     - Show production infrastructure status"
 	@echo ""
-	@echo "  Services Development ($(SERVICES)):
+	@echo "  Services Development ($(SERVICES)):"
 	@echo "    start-<service>-app-dev      - Start a single service (e.g. make start-auth-app-dev)"
 	@echo "    start-<service>-app-dev-log  - Start a service and attach logs"
 	@echo "    stop-<service>-app-dev       - Stop a single service"
