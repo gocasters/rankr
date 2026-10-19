@@ -3,23 +3,32 @@ package cachemanager
 import (
 	"context"
 	"fmt"
-	"github.com/gocasters/rankr/adapter/redis"
 	"time"
+
+	"github.com/gocasters/rankr/adapter/redis"
+	goredis "github.com/redis/go-redis/v9"
 )
 
+type redisClient interface {
+	Set(ctx context.Context, key string, value any, expiration time.Duration) *goredis.StatusCmd
+	Get(ctx context.Context, key string) *goredis.StringCmd
+	Del(ctx context.Context, keys ...string) *goredis.IntCmd
+	TTL(ctx context.Context, key string) *goredis.DurationCmd
+}
+
 type CacheManager struct {
-	cache *redis.Adapter
+	client redisClient
 }
 
 func NewCacheManager(cache *redis.Adapter) *CacheManager {
 	return &CacheManager{
-		cache: cache,
+		client: cache.Client(),
 	}
 }
 
 func (c *CacheManager) Set(ctx context.Context, key string, value any, expire time.Duration) error {
 
-	err := c.cache.Client().Set(ctx, key, value, expire).Err()
+	err := c.client.Set(ctx, key, value, expire).Err()
 	if err != nil {
 		return err
 	}
@@ -28,7 +37,7 @@ func (c *CacheManager) Set(ctx context.Context, key string, value any, expire ti
 }
 
 func (c *CacheManager) Get(ctx context.Context, key string) (string, error) {
-	data, err := c.cache.Client().Get(ctx, key).Result()
+	data, err := c.client.Get(ctx, key).Result()
 	if err != nil {
 		return "", err
 	}
@@ -38,7 +47,7 @@ func (c *CacheManager) Get(ctx context.Context, key string) (string, error) {
 
 func (c *CacheManager) Delete(ctx context.Context, keys ...string) error {
 
-	if err := c.cache.Client().Del(ctx, keys...).Err(); err != nil {
+	if err := c.client.Del(ctx, keys...).Err(); err != nil {
 		return err
 	}
 
@@ -47,7 +56,7 @@ func (c *CacheManager) Delete(ctx context.Context, keys ...string) error {
 
 func (c *CacheManager) GetTTL(ctx context.Context, key string) (int64, bool, error) {
 
-	ttl, err := c.cache.Client().TTL(ctx, key).Result()
+	ttl, err := c.client.TTL(ctx, key).Result()
 	if err != nil {
 		return 0, false, err
 	}
