@@ -102,7 +102,8 @@ runtime wiring are not shown as connections.
    persists processed events/snapshots to Postgres.
 5. Leaderboard stats calls scoring over gRPC for leaderboard data, uses Redis
    for public leaderboard reads/cache, and calls project over gRPC for project
-   details.
+   details. The public route `GET /v1/leaderboard/public/:project_id` currently
+   returns HTTP 401; see the known limitation in `docs/stage.md`.
 
 The stats service also has scheduled refresh work. The flow above reflects
 service responsibilities; it does not imply that stats consumes the raw event
@@ -165,7 +166,7 @@ flowchart LR
     STAT[Leaderboard stats<br/>HTTP 8081 · gRPC 8091]
     STAT -->|leaderboard gRPC| LS
     STAT -->|project lookup gRPC| PROJECT[Project<br/>HTTP 8084 · gRPC 8094]
-    STAT -->|public leaderboard read/cache| REDIS
+    STAT -->|public leaderboard read/cache (route currently returns 401)| REDIS
     STAT --> PG
 
     AUTH[Auth<br/>HTTP 8081]
