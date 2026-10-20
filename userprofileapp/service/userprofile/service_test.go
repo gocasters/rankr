@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -78,6 +79,8 @@ func TestContributorProfile_Success(t *testing.T) {
 }
 
 func TestContributorProfile_Error(t *testing.T) {
+	assert.NoError(t, logger.Init(logger.Config{Level: "error"}))
+
 	ctx := context.Background()
 	userID := int64(123)
 
