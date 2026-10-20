@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gocasters/rankr/pkg/httpserver"
 )
@@ -25,5 +28,43 @@ func TestHealthCheck(t *testing.T) {
 
 	if response.Code != http.StatusOK {
 		t.Fatalf("want status 200, got %d", response.Code)
+	}
+}
+
+func TestServeStopsWhenContextCanceled(t *testing.T) {
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("create listener: %v", err)
+	}
+	defer listener.Close()
+
+	server, err := newServer(httpserver.Config{
+		Host: "127.0.0.1",
+		Port: listener.Addr().(*net.TCPAddr).Port,
+	})
+	if err != nil {
+		t.Fatalf("create server: %v", err)
+	}
+
+	server.GetRouter().Listener = listener
+	defer server.GetRouter().Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	done := make(chan error, 1)
+	go func() {
+		done <- serve(ctx, server)
+	}()
+
+	cancel()
+
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("expected clean shutdown, got: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("server did not stop after cancellation")
 	}
 }
