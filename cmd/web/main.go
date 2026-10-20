@@ -7,9 +7,11 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
 	"github.com/gocasters/rankr/pkg/httpserver"
+	"github.com/gocasters/rankr/pkg/path"
 	"github.com/spf13/cobra"
 )
 
@@ -32,10 +34,27 @@ func main() {
 		Short: "Start the web service",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			server, err := newServer(httpserver.Config{
-				Host: "127.0.0.1",
-				Port: 8085,
-			})
+			configPath := os.Getenv("CONFIG_PATH")
+
+			if configPath == "" {
+				projectRoot, err := path.PathProjectRoot()
+
+				if err != nil {
+					return fmt.Errorf("web: find project root: %w", err)
+				}
+
+				configPath = filepath.Join(
+					projectRoot, "deploy", "web", "development", "config.yml",
+				)
+			}
+
+			cfg, err := loadConfig(configPath)
+			if err != nil {
+				return err
+			}
+
+			server, err := newServer(cfg.HTTPServer)
+
 			if err != nil {
 				return err
 			}
