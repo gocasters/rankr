@@ -150,7 +150,7 @@ Do not change the following areas, as listed in `AGENTS.md`:
 
 ```mermaid
 flowchart LR
-  GH[GitHub] -->|webhook delivery| WH[Webhook<br/>HTTP 8090]
+  GH[GitHub] -->|webhook delivery| HOST[Host nginx<br/>TLS termination]
   CLIENT[Client] -->|HTTPS| HOST[Host nginx<br/>TLS termination]
   HOST -->|127.0.0.1:8088| GW[Stage gateway<br/>container :80]
 
