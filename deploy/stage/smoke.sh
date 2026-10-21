@@ -51,6 +51,8 @@ check "unknown route" 404 '"route_not_found"' \
 # Without the X-GitHub-* headers webhook answers 400 and publishes nothing.
 # 400 shows the request passed the gateway without a token and reached the
 # service; the gateway itself would answer 401, 404 or 502.
+# TODO(#224): once webhook verifies X-Hub-Signature-256, an unsigned request
+# may get 401 from webhook itself. Revisit this check then.
 check "webhook without token" 400 '' \
     -X POST -H 'Content-Type: application/json' --data '{}' \
     "$BASE_URL/github-webhook/github/process"
