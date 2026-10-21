@@ -108,7 +108,9 @@ check.
 | Check | Request | Expected |
 |---|---|---|
 | public leaderboard | `GET /v1/leaderboard/public/$SMOKE_PROJECT_ID` (default 1) | 200 with `rows` |
-| protected route without token | `GET /v1/projects` | 401 `unauthorized` |
+| projects without token | `GET /v1/projects` | 401 `unauthorized` |
+| profile without token | `GET /v1/profile/1` | 401 `unauthorized` |
+| contributor stats without token | `GET /v1/contributors/1/stats` | 401 `unauthorized` |
 | unknown route | `GET /rankr-smoke-no-such-route` | 404 `route_not_found` |
 | webhook without token | `POST /github-webhook/github/process` without `X-GitHub-*` headers | 400 from webhook (not 401) |
 

@@ -34,8 +34,16 @@ check() {
 check "public leaderboard" 200 '"rows"' \
     "$BASE_URL/v1/leaderboard/public/$PROJECT_ID"
 
-check "protected route without token" 401 '"unauthorized"' \
+# One protected route per auth block in gateway/nginx.conf, so a block that
+# loses its auth include is caught.
+check "projects without token" 401 '"unauthorized"' \
     "$BASE_URL/v1/projects"
+
+check "profile without token" 401 '"unauthorized"' \
+    "$BASE_URL/v1/profile/1"
+
+check "contributor stats without token" 401 '"unauthorized"' \
+    "$BASE_URL/v1/contributors/1/stats"
 
 check "unknown route" 404 '"route_not_found"' \
     "$BASE_URL/rankr-smoke-no-such-route"
