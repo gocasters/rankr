@@ -5,7 +5,7 @@ ENV GOPROXY=https://mirrors.aliyun.com/goproxy,direct
 COPY go.mod go.sum ./
 # RUN go mod download
 
-RUN go install github.com/air-verse/air@latest
+RUN go install github.com/air-verse/air@v1.67.0
 
 COPY . .
 
