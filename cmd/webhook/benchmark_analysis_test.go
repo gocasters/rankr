@@ -247,6 +247,9 @@ func TestBulkInsert(t *testing.T) {
 }
 
 func BenchmarkDirectInsert(b *testing.B) {
+	if testing.Short() {
+		b.Skip("requires Redis and PostgreSQL")
+	}
 	ctx := context.Background()
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -264,6 +267,9 @@ func BenchmarkDirectInsert(b *testing.B) {
 }
 
 func BenchmarkBulkInsert(b *testing.B) {
+	if testing.Short() {
+		b.Skip("requires Redis and PostgreSQL")
+	}
 	ctx := context.Background()
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -281,6 +287,9 @@ func BenchmarkBulkInsert(b *testing.B) {
 }
 
 func BenchmarkDirectInsertParallel(b *testing.B) {
+	if testing.Short() {
+		b.Skip("requires Redis and PostgreSQL")
+	}
 	ctx := context.Background()
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -299,6 +308,9 @@ func BenchmarkDirectInsertParallel(b *testing.B) {
 }
 
 func BenchmarkBulkInsertParallel(b *testing.B) {
+	if testing.Short() {
+		b.Skip("requires Redis and PostgreSQL")
+	}
 	ctx := context.Background()
 	b.ReportAllocs()
 	b.ResetTimer()
