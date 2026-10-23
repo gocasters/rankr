@@ -4,24 +4,35 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-co-op/gocron/v2"
-	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
+	"github.com/gocasters/rankr/adapter/project"
 	"github.com/gocasters/rankr/pkg/logger"
 	"log/slog"
 	"sync"
 	"time"
 )
 
+type ProjectService interface {
+	ListProjects(ctx context.Context, req *project.ListProjectsRequest) (*project.ListProjectsResponse, error)
+}
+
+type LeaderboardService interface {
+	LeaderboardSnapshot(ctx context.Context, projectIDs []string) error
+}
+
 type Config struct {
 	SnapshotCrontab           string        `koanf:"snapshot_crontab"`
 	SnapshotJobContextTimeout time.Duration `koanf:"snapshot_job_context_timeout"`
-}
-type Scheduler struct {
-	sch            gocron.Scheduler
-	leaderboardSvc *leaderboardscoring.Service
-	cfg            Config
+	PageSizeListProject       int32         `koanf:"page_size_list_project"`
 }
 
-func New(leaderboardSvc *leaderboardscoring.Service, schedulerCfg Config) Scheduler {
+type Scheduler struct {
+	sch            gocron.Scheduler
+	leaderboardSvc LeaderboardService
+	cfg            Config
+	project        ProjectService
+}
+
+func New(leaderboardSvc LeaderboardService, projectClient ProjectService, schedulerCfg Config) Scheduler {
 
 	sch, err := gocron.NewScheduler(gocron.WithLocation(time.Local))
 	if err != nil {
@@ -32,6 +43,7 @@ func New(leaderboardSvc *leaderboardscoring.Service, schedulerCfg Config) Schedu
 	return Scheduler{
 		sch:            sch,
 		leaderboardSvc: leaderboardSvc,
+		project:        projectClient,
 		cfg:            schedulerCfg,
 	}
 }
@@ -87,15 +99,61 @@ func (s *Scheduler) leaderboardSnapshotJob(parentCtx context.Context) error {
 func (s *Scheduler) snapshotLeaderboardTask(parentCtx context.Context) {
 	log := logger.L()
 
-	log.Debug(fmt.Sprintf("snapshotLeaderboardTask started at: %s", time.Now().Format(time.RFC3339)))
+	log.Debug(fmt.Sprintf(
+		"snapshotLeaderboardTask started at: %s",
+		time.Now().Format(time.RFC3339),
+	))
 
 	ctx, cancel := context.WithTimeout(parentCtx, s.cfg.SnapshotJobContextTimeout)
 	defer cancel()
 
-	// TODO: Get ProjectIDs from ProjectApp service by gRPC call
-	var projectIDa = []string{"1", "2"}
-	if sErr := s.leaderboardSvc.LeaderboardSnapshot(ctx, projectIDa); sErr != nil {
-		log.Warn("can not successfully run snapshotLeaderboardTask", slog.String("error", sErr.Error()))
+	var offset int32
+	projectIDs := make([]string, 0)
+
+	for {
+		pRes, err := s.project.ListProjects(ctx, &project.ListProjectsRequest{
+			PageSize: s.cfg.PageSizeListProject,
+			Offset:   offset,
+			Status:   project.StatusActive,
+		})
+		if err != nil {
+			log.Warn(
+				"failed to get list active projects",
+				slog.String("error", err.Error()),
+			)
+			return
+		}
+
+		if len(pRes.Projects) == 0 {
+			// No projects mean pagination is complete unless TotalCount indicates missing data
+			if offset < pRes.TotalCount {
+				log.Warn(
+					"project pagination made no progress",
+					slog.Int("offset", int(offset)),
+					slog.Int("total_count", int(pRes.TotalCount)),
+				)
+				return
+			}
+
+			break
+		}
+
+		for _, p := range pRes.Projects {
+			projectIDs = append(projectIDs, p.ProjectID)
+		}
+
+		offset += int32(len(pRes.Projects))
+
+		if offset >= pRes.TotalCount {
+			break
+		}
+	}
+
+	if sErr := s.leaderboardSvc.LeaderboardSnapshot(ctx, projectIDs); sErr != nil {
+		log.Warn(
+			"can not successfully run snapshotLeaderboardTask",
+			slog.String("error", sErr.Error()),
+		)
 		return
 	}
 

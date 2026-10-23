@@ -66,8 +66,13 @@ type GetProjectByIDResponse struct {
 }
 
 type ListProjectsInput struct {
-	PageSize int32 `json:"page_size"`
-	Offset   int32 `json:"offset"`
+	PageSize int32             `json:"page_size"`
+	Offset   int32             `json:"offset"`
+	Filter   ListProjectFilter `json:"filter"`
+}
+
+type ListProjectFilter struct {
+	Status *constant.ProjectStatus `json:"status"`
 }
 
 const (

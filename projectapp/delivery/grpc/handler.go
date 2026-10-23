@@ -65,6 +65,21 @@ func (h Handler) GetProjectByRepo(ctx context.Context, req *projectpb.GetProject
 	}, nil
 }
 
+func mapProjectStatus(status projectpb.ProjectStatus) *constant.ProjectStatus {
+	switch status {
+	case projectpb.ProjectStatus_PROJECT_STATUS_ARCHIVED:
+		s := constant.ProjectStatusArchived
+		return &s
+	case projectpb.ProjectStatus_PROJECT_STATUS_ACTIVE:
+		s := constant.ProjectStatusActive
+		return &s
+
+	default:
+		return nil
+
+	}
+}
+
 func (h Handler) ListProjects(ctx context.Context, req *projectpb.ListProjectsRequest) (*projectpb.ListProjectsResponse, error) {
 	log := logger.L()
 	log.Info("gRPC ListProjects request received", slog.Any("request", req))
@@ -72,6 +87,9 @@ func (h Handler) ListProjects(ctx context.Context, req *projectpb.ListProjectsRe
 	serviceInput := project.ListProjectsInput{
 		PageSize: req.PageSize,
 		Offset:   req.Offset,
+		Filter: project.ListProjectFilter{
+			Status: mapProjectStatus(req.Status),
+		},
 	}
 
 	serviceResp, err := h.projectSvc.ListProjects(ctx, serviceInput)
