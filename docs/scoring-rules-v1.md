@@ -62,6 +62,10 @@ These rules depend on data the pipeline does not deliver correctly today.
    `pull_request_opened`. Anything not matched automatically goes through the admin void tool (#249).
 4. **No bot flag in payloads.** Payloads carry only user IDs, so bots are excluded by a config list
    of account IDs.
+5. **Merged-PR points go to the merger (#306).** The live webhook path sets
+   `PullRequestClosedPayload.user_id` to `sender.id` (`webhookapp/service/delivery/pull_request.go`),
+   which is whoever clicked merge. The history path already uses the PR author. Until #306 is fixed,
+   the "merged pull request" rule credits the wrong person whenever someone else merges.
 
 ## Decisions for the maintainers
 
