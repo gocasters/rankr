@@ -17,6 +17,12 @@ import (
 	"time"
 )
 
+const (
+	leaderboardPageSize  = 100
+	leaderboardPagePause = 100 * time.Millisecond
+	projectListPageSize  = 100
+)
+
 type Repository interface {
 	GetContributorTotalScore(ctx context.Context, ID types.ID) (float64, error)
 	GetContributorTotalRank(ctx context.Context, ID types.ID) (uint, error)
@@ -126,7 +132,7 @@ func (s *Service) getProjectDailyScores(ctx context.Context, gitRepoID string) (
 	log := logger.L()
 
 	var dailyScores []DailyContributorScore
-	pageSize := int32(10) // TODO- Adjust based on what the service can handle
+	pageSize := int32(leaderboardPageSize)
 	offset := int32(0)
 
 	for {
@@ -188,7 +194,7 @@ func (s *Service) getProjectDailyScores(ctx context.Context, gitRepoID string) (
 
 		offset += pageSize
 
-		time.Sleep(100 * time.Millisecond)
+		time.Sleep(leaderboardPagePause)
 	}
 }
 
@@ -196,7 +202,7 @@ func (s *Service) listProjects(ctx context.Context) ([]project.ProjectItem, erro
 	log := logger.L()
 
 	var allProjects []project.ProjectItem
-	projectPageSize := int32(100)
+	projectPageSize := int32(projectListPageSize)
 	projectOffset := int32(0)
 
 	for {

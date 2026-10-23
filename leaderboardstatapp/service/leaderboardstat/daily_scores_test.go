@@ -3,6 +3,7 @@ package leaderboardstat
 import (
 	"context"
 	"errors"
+	"strconv"
 	"testing"
 
 	"github.com/gocasters/rankr/adapter/project"
@@ -28,10 +29,13 @@ func (f *fakeScoringClient) GetLeaderboard(_ context.Context, req *lbscoring.Get
 	if req.ProjectID == nil {
 		return &lbscoring.GetLeaderboardResponse{Timeframe: req.Timeframe}, nil
 	}
+	rows := f.rowsByProject[*req.ProjectID]
+	start := min(int(req.Offset), len(rows))
+	end := min(start+int(req.PageSize), len(rows))
 	return &lbscoring.GetLeaderboardResponse{
 		Timeframe:       req.Timeframe,
 		ProjectID:       req.ProjectID,
-		LeaderboardRows: f.rowsByProject[*req.ProjectID],
+		LeaderboardRows: rows[start:end],
 	}, nil
 }
 
@@ -206,4 +210,29 @@ func TestGetDailyContributorScores_RowProjectIDIsAuthoritative(t *testing.T) {
 
 	require.Len(t, repo.stored, 1)
 	assert.Equal(t, types.ID(2002), repo.stored[0].ProjectID)
+}
+
+func TestGetDailyContributorScores_Pagination(t *testing.T) {
+	initDailyScoresTestLogger(t)
+
+	const repo = "1001"
+	total := leaderboardPageSize + 1
+	rows := make([]lbscoring.LeaderboardRow, 0, total)
+	for i := range total {
+		rows = append(rows, lbscoring.LeaderboardRow{Rank: int64(i + 1), UserID: strconv.Itoa(i + 1), Score: 1, ProjectID: ptr(repo)})
+	}
+
+	scoring := &fakeScoringClient{rowsByProject: map[string][]lbscoring.LeaderboardRow{repo: rows}}
+	store := &fakeDailyScoreRepo{}
+	svc := NewService(store, Validator{}, cachemanager.CacheManager{}, nil, scoring, &fakeProjectClient{projects: []project.ProjectItem{{GitRepoID: repo}}})
+
+	require.NoError(t, svc.GetDailyContributorScores(context.Background()))
+
+	require.Len(t, scoring.requests, 2)
+	assert.Equal(t, int32(0), scoring.requests[0].Offset)
+	assert.Equal(t, int32(leaderboardPageSize), scoring.requests[1].Offset)
+	for _, req := range scoring.requests {
+		assert.Equal(t, int32(leaderboardPageSize), req.PageSize)
+	}
+	assert.Len(t, store.stored, total)
 }
