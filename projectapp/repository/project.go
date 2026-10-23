@@ -44,13 +44,20 @@ const (
 	`
 
 	sqlProjectList = `
-		SELECT id, name, slug, description, design_reference_url, git_repo_id, repo_provider, status, created_at, updated_at, archived_at
-		FROM projects
-		ORDER BY created_at DESC
-		LIMIT $1 OFFSET $2;
-	`
+    	SELECT
+        	id, name, slug,	description, design_reference_url, git_repo_id, repo_provider, status,created_at,
+        	updated_at, archived_at
+    	FROM projects
+ 		WHERE ($1::project_status IS NULL OR status = $1::project_status)
+    	ORDER BY created_at DESC
+    	LIMIT $2 OFFSET $3;
+`
 
-	sqlProjectCount = `SELECT COUNT(*) FROM projects;`
+	sqlProjectCount = `
+    	SELECT COUNT(*)
+    	FROM projects
+    	WHERE ($1::project_status IS NULL OR status = $1::project_status);
+`
 
 	sqlProjectUpdate = `
 		UPDATE projects
@@ -124,8 +131,16 @@ func (r *ProjectRepository) FindByVCSRepo(ctx context.Context, provider constant
 	return &p, nil
 }
 
-func (r *ProjectRepository) List(ctx context.Context, limit, offset int32) ([]*project.ProjectEntity, error) {
-	rows, err := r.database.Pool.Query(ctx, sqlProjectList, limit, offset)
+func projectStatusValues(status *constant.ProjectStatus) any {
+	if status == nil {
+		return nil
+	}
+
+	return string(*status)
+}
+
+func (r *ProjectRepository) List(ctx context.Context, limit, offset int32, filter project.ListProjectFilter) ([]*project.ProjectEntity, error) {
+	rows, err := r.database.Pool.Query(ctx, sqlProjectList, projectStatusValues(filter.Status), limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -145,9 +160,9 @@ func (r *ProjectRepository) List(ctx context.Context, limit, offset int32) ([]*p
 	return out, nil
 }
 
-func (r *ProjectRepository) Count(ctx context.Context) (int32, error) {
+func (r *ProjectRepository) Count(ctx context.Context, filter project.ListProjectFilter) (int32, error) {
 	var count int32
-	err := r.database.Pool.QueryRow(ctx, sqlProjectCount).Scan(&count)
+	err := r.database.Pool.QueryRow(ctx, sqlProjectCount, projectStatusValues(filter.Status)).Scan(&count)
 	if err != nil {
 		return 0, err
 	}

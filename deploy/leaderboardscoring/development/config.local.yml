@@ -12,6 +12,7 @@ rpc_server:
 scheduler_cfg:
   snapshot_crontab: "0 */3 * * *"
   snapshot_job_context_timeout: 15m
+  page_size_list_project: 100
 
 redis:
   host: "localhost"
