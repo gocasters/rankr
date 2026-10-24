@@ -13,6 +13,7 @@ Everything lives in `deploy/stage/`:
 | `nats.conf` | NATS with JetStream memory and disk caps |
 | `.env.stage.example` | Every variable stage needs, without values |
 | `deploy.sh` | Deploy, rollback, status, logs, health |
+| `ci-deploy.sh` | Forced command for the CI deploy key (automatic deploy) |
 | `host-nginx.conf.example` | vhost for the host nginx that terminates TLS |
 
 ## Layout
@@ -70,11 +71,17 @@ certbot --nginx -d stage.rankr.gocasts.ir
 
 ## Deploy
 
+Every push to `main` deploys itself (see [Automatic deploy](#automatic-deploy)).
+To deploy by hand, use the same script as CI, so it waits for any running
+deploy and checks out the tip of `origin/main` inside the same lock:
+
 ```bash
 cd /opt/rankr-stage
-git pull
-deploy/stage/deploy.sh deploy
+deploy/stage/ci-deploy.sh deploy
 ```
+
+Don't run `git checkout` or `deploy.sh deploy` directly while CI may be
+deploying: that bypasses the lock.
 
 `deploy` builds images tagged with the short commit hash, starts them, and
 checks `/health/<service>` for all six services through the gateway. If a
@@ -91,6 +98,51 @@ whole number of seconds, and is read from the shell environment, not from
 ```bash
 HEALTH_TIMEOUT=60 deploy/stage/deploy.sh deploy
 ```
+
+## Automatic deploy
+
+`.github/workflows/deploy-stage.yml` runs on every push to `main` (pushes that
+only touch docs or `*.md` are skipped) and on demand from the Actions tab.
+Deploys run one at a time. The runner only opens an SSH connection and sends
+`deploy <commit sha>`; it never gets a shell.
+
+Not every push gets its own deploy. GitHub keeps only the newest pending run,
+and the script always deploys the current tip of `origin/main`, not the sha it
+was sent. So when several pushes land close together, the intermediate commits
+may be skipped, but stage always ends on the latest `main` and never moves
+backward. A run whose tip is already deployed exits without restarting
+anything.
+
+On the host, the CI key is pinned to `deploy/stage/ci-deploy.sh`. It accepts
+nothing but `deploy [full sha]`, takes a lock so two deploys cannot overlap,
+refuses a sha that is not on `origin/main`, checks out the tip of
+`origin/main` and runs `deploy.sh deploy`. A failed health check rolls back as above and
+fails the workflow run.
+
+One-time setup (needs host and repo admin):
+
+1. Make a key pair just for this, without a passphrase:
+   `ssh-keygen -t ed25519 -N "" -C rankr-stage-ci -f rankr-stage-ci`
+2. On the host, in `~/.ssh/authorized_keys` of the user that owns
+   `/opt/rankr-stage` and can run docker, add one line:
+
+   ```
+   restrict,command="/opt/rankr-stage/deploy/stage/ci-deploy.sh" ssh-ed25519 AAAA... rankr-stage-ci
+   ```
+
+3. In GitHub, Settings → Environments, create `stage`, limit it to the `main`
+   branch, and add these environment secrets:
+
+   | Secret | Value |
+   |---|---|
+   | `STAGE_SSH_KEY` | the private key file `rankr-stage-ci` |
+   | `STAGE_SSH_TARGET` | `user@host` |
+   | `STAGE_SSH_PORT` | only if SSH is not on 22 |
+   | `STAGE_KNOWN_HOSTS` | output of `ssh-keyscan -t ed25519 <host>`, checked against the host's own key |
+
+4. Delete the local private key file once it is stored in GitHub.
+
+To revoke, delete the line from `authorized_keys`.
 
 ## Health
 

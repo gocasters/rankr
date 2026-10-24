@@ -1,0 +1,50 @@
+name: deploy-stage
+
+# Pushes to main are deployed to stage (#227). The runner only opens an SSH
+# connection; the key is pinned on the host to deploy/stage/ci-deploy.sh, which
+# checks out the current tip of main (so stage never moves backward and a
+# pending run GitHub replaces is not lost) and runs deploy.sh (health, smoke
+# test, rollback).
+# Setup: docs/stage.md, "Automatic deploy".
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**.md"
+      - ".claude/**"
+      - ".github/ISSUE_TEMPLATE/**"
+  workflow_dispatch:
+
+permissions: {}
+
+# Deploys run one after another, never in parallel. GitHub keeps only the
+# newest pending run, so intermediate pushes may be skipped; ci-deploy.sh
+# always deploys the tip of main, so stage still ends on the latest commit.
+concurrency:
+  group: deploy-stage
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: stage
+    steps:
+      - name: Deploy ${{ github.sha }}
+        env:
+          SSH_KEY: ${{ secrets.STAGE_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.STAGE_KNOWN_HOSTS }}
+          TARGET: ${{ secrets.STAGE_SSH_TARGET }}
+          PORT: ${{ secrets.STAGE_SSH_PORT }}
+          SHA: ${{ github.sha }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/stage_key
+          chmod 600 ~/.ssh/stage_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/stage_key -p "${PORT:-22}" \
+            -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            -o ConnectTimeout=15 -o ServerAliveInterval=30 \
+            "$TARGET" "deploy $SHA"
