@@ -1,8 +1,10 @@
 name: deploy-stage
 
-# Every push to main is deployed to stage (#227). The runner only opens an SSH
+# Pushes to main are deployed to stage (#227). The runner only opens an SSH
 # connection; the key is pinned on the host to deploy/stage/ci-deploy.sh, which
-# checks out the commit and runs deploy.sh (health, smoke test, rollback).
+# checks out the current tip of main (so stage never moves backward and a
+# pending run GitHub replaces is not lost) and runs deploy.sh (health, smoke
+# test, rollback).
 # Setup: docs/stage.md, "Automatic deploy".
 
 on:

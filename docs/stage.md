@@ -72,14 +72,16 @@ certbot --nginx -d stage.rankr.gocasts.ir
 ## Deploy
 
 Every push to `main` deploys itself (see [Automatic deploy](#automatic-deploy)).
-To deploy by hand:
+To deploy by hand, use the same script as CI, so it waits for any running
+deploy and checks out the tip of `origin/main` inside the same lock:
 
 ```bash
 cd /opt/rankr-stage
-git fetch origin main
-git checkout --detach FETCH_HEAD
-deploy/stage/deploy.sh deploy
+deploy/stage/ci-deploy.sh deploy
 ```
+
+Don't run `git checkout` or `deploy.sh deploy` directly while CI may be
+deploying: that bypasses the lock.
 
 `deploy` builds images tagged with the short commit hash, starts them, and
 checks `/health/<service>` for all six services through the gateway. If a
@@ -104,10 +106,17 @@ only touch docs or `*.md` are skipped) and on demand from the Actions tab.
 Deploys run one at a time. The runner only opens an SSH connection and sends
 `deploy <commit sha>`; it never gets a shell.
 
+Not every push gets its own deploy. GitHub keeps only the newest pending run,
+and the script always deploys the current tip of `origin/main`, not the sha it
+was sent. So when several pushes land close together, the intermediate commits
+may be skipped, but stage always ends on the latest `main` and never moves
+backward. A run whose tip is already deployed exits without restarting
+anything.
+
 On the host, the CI key is pinned to `deploy/stage/ci-deploy.sh`. It accepts
-nothing but `deploy <full sha>`, refuses a commit that is not on
-`origin/main`, takes a lock so two deploys cannot overlap, checks the commit
-out and runs `deploy.sh deploy`. A failed health check rolls back as above and
+nothing but `deploy [full sha]`, takes a lock so two deploys cannot overlap,
+refuses a sha that is not on `origin/main`, checks out the tip of
+`origin/main` and runs `deploy.sh deploy`. A failed health check rolls back as above and
 fails the workflow run.
 
 One-time setup (needs host and repo admin):
