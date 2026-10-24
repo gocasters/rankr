@@ -19,7 +19,9 @@ on:
 
 permissions: {}
 
-# Deploys run one after another, never in parallel; a newer push waits.
+# Deploys run one after another, never in parallel. GitHub keeps only the
+# newest pending run, so intermediate pushes may be skipped; ci-deploy.sh
+# always deploys the tip of main, so stage still ends on the latest commit.
 concurrency:
   group: deploy-stage
   cancel-in-progress: false
