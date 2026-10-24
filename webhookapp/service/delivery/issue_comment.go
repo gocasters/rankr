@@ -43,5 +43,4 @@ func (s *Service) publishIssueComment(req IssueCommentCreatedRequest, provider e
 
 	ctx := context.Background()
 	return s.saveEvent(ctx, ev)
-	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_ISSUE_COMMENTED, TopicGithubIssueComment, metadata)
 }

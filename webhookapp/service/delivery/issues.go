@@ -50,7 +50,6 @@ func (s *Service) publishIssueOpened(req IssueOpenedRequest, provider eventpb.Ev
 
 	ctx := context.Background()
 	return s.saveEvent(ctx, ev)
-	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_ISSUE_OPENED, TopicGithubIssues, metadata)
 }
 
 func (s *Service) publishIssueClosed(req IssueClosedRequest, provider eventpb.EventProvider, deliveryUID string) error {
@@ -100,5 +99,4 @@ func (s *Service) publishIssueClosed(req IssueClosedRequest, provider eventpb.Ev
 
 	ctx := context.Background()
 	return s.saveEvent(ctx, ev)
-	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_ISSUE_CLOSED, TopicGithubIssues, metadata)
 }
