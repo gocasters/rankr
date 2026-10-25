@@ -376,9 +376,10 @@ func protobufToPayload(eventPB *eventpb.Event) (EventPayload, string, error) {
 }
 
 type LeaderboardRow struct {
-	Rank   int64
-	UserID string
-	Score  int64
+	Rank      int64
+	UserID    string
+	Score     int64
+	ProjectID *string
 }
 
 type GetLeaderboardResponse struct {
