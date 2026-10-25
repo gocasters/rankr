@@ -57,3 +57,6 @@
   # down containers
   ./deploy/docker-compose-dev-leaderboardstat-local.bash down
 ```
+### Scheduled jobs
+Two crons keep the public leaderboard (every minute) and contributor stats (every 10 minutes) fresh.
+Names, schedules, config keys and freshness: [docs/leaderboardstat-crons.md](../docs/leaderboardstat-crons.md).
