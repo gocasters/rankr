@@ -61,7 +61,12 @@ main() {
     [[ -n "$sha" && "$sha" != "$tip" ]] && echo "$sha is behind origin/main; deploying $tip"
     git -C "$repo_dir" checkout --quiet --detach "$tip"
 
-    "$repo_dir/deploy/stage/deploy.sh" deploy
+    local log="$repo_dir/deploy/stage/.deploy-log" pid
+    : > "$log"
+    ( trap '' HUP; exec "$repo_dir/deploy/stage/deploy.sh" deploy ) >> "$log" 2>&1 < /dev/null &
+    pid=$!
+    tail -n +1 -f --pid="$pid" "$log" || true
+    wait "$pid"
 }
 
 main "$@"

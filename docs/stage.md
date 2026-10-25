@@ -119,6 +119,11 @@ refuses a sha that is not on `origin/main`, checks out the tip of
 `origin/main` and runs `deploy.sh deploy`. A failed health check rolls back as above and
 fails the workflow run.
 
+The deploy runs detached from the SSH session, so cancelling the run, the job
+timeout or a dropped connection does not stop it halfway: it still ends healthy
+or rolled back, and keeps the lock until then. The run only shows its output;
+the full log of the last deploy is in `deploy/stage/.deploy-log`.
+
 One-time setup (needs host and repo admin):
 
 1. Make a key pair just for this, without a passphrase:
