@@ -1,6 +1,9 @@
 # rankr
 Rank repo contributors
 
+See [the architecture overview](docs/architecture.md) for the Stage v1 service
+map, ports, data stores, event flow, and authentication flow.
+
 
 ---
 ## 🚀 Quick Start
