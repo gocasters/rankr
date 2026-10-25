@@ -58,7 +58,6 @@ func (s *Service) publishPullRequestOpened(req PullRequestOpenedRequest, provide
 
 	ctx := context.Background()
 	return s.saveEvent(ctx, ev)
-	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED, TopicGithubPullRequest, metadata)
 }
 
 func (s *Service) publishPullRequestClosed(req PullRequestClosedRequest, provider eventpb.EventProvider, deliveryUID string) error {
@@ -105,5 +104,4 @@ func (s *Service) publishPullRequestClosed(req PullRequestClosedRequest, provide
 
 	ctx := context.Background()
 	return s.saveEvent(ctx, ev)
-	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PULL_REQUEST_CLOSED, TopicGithubPullRequest, metadata)
 }

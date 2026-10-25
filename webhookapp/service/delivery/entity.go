@@ -244,13 +244,3 @@ const (
 	EventTypePullRequestReview EventType = "pull_request_review"
 	EventTypePush              EventType = "push"
 )
-
-type Topic string
-
-const (
-	TopicGithubIssues       Topic = "github.issues"
-	TopicGithubIssueComment Topic = "github.issue_comments"
-	TopicGithubPullRequest  Topic = "github.pull_requests"
-	TopicGithubReview       Topic = "github.reviews"
-	TopicGithubPush         Topic = "github.pushes"
-)
