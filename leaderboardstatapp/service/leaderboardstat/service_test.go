@@ -91,7 +91,7 @@ func TestGetPublicLeaderboard(t *testing.T) {
 			wantErr:  true,
 		},
 		{
-			name:     "znegative page size returns error",
+			name:     "negative page size returns error",
 			repo:     &fakeRedisLB{entries: []UserScoreEntry{{UserID: 1, Score: 50}}, total: 1},
 			page:     1,
 			pageSize: -1,
