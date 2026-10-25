@@ -83,6 +83,13 @@ func TestGetPublicLeaderboard(t *testing.T) {
 			pageSize: 10,
 			wantErr:  true,
 		},
+		{
+			name:     "zero page size returns error",
+			repo:     &fakeRedisLB{entries: []UserScoreEntry{{UserID: 1, Score: 50}}, total: 1},
+			page:     1,
+			pageSize: 0,
+			wantErr:  true,
+		},
 	}
 
 	for _, tt := range tests {
