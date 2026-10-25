@@ -19,10 +19,17 @@ message GetProjectByRepoResponse {
   string git_repo_id = 5;     // External repository ID
 }
 
+enum ProjectStatus {
+  PROJECT_STATUS_UNSPECIFIED = 0;
+  PROJECT_STATUS_ACTIVE = 1;
+  PROJECT_STATUS_ARCHIVED = 2;
+}
+
 // Request for listing all projects.
 message ListProjectsRequest {
   int32 page_size = 1;        // Number of items per page (0 = all)
   int32 offset = 2;           // Offset for pagination
+  ProjectStatus status = 3;
 }
 
 // Single project item in list response.

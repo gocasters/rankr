@@ -31,9 +31,40 @@ type ProjectItem struct {
 	GitRepoID    string
 }
 
+type ProjectStatus string
+
+const (
+	StatusUnspecified ProjectStatus = "" // all projects
+	StatusActive      ProjectStatus = "ACTIVE"
+	StatusArchived    ProjectStatus = "ARCHIVED"
+)
+
+func (s ProjectStatus) isValid() bool {
+	switch s {
+	case StatusActive, StatusArchived, StatusUnspecified:
+		return true
+
+	default:
+		return false
+	}
+}
+
+func mapStatusToProjectpb(status ProjectStatus) projectpb.ProjectStatus {
+	switch status {
+	case StatusActive:
+		return projectpb.ProjectStatus_PROJECT_STATUS_ACTIVE
+	case StatusArchived:
+		return projectpb.ProjectStatus_PROJECT_STATUS_ARCHIVED
+
+	default:
+		return projectpb.ProjectStatus_PROJECT_STATUS_UNSPECIFIED
+	}
+}
+
 type ListProjectsRequest struct {
 	PageSize int32
 	Offset   int32
+	Status   ProjectStatus
 }
 
 type ListProjectsResponse struct {
@@ -46,9 +77,14 @@ func (c *Client) ListProjects(ctx context.Context, req *ListProjectsRequest) (*L
 		return nil, fmt.Errorf("ListProjects: request cannot be nil")
 	}
 
+	if !req.Status.isValid() {
+		return nil, fmt.Errorf("invalid project status")
+	}
+
 	pbReq := &projectpb.ListProjectsRequest{
 		PageSize: req.PageSize,
 		Offset:   req.Offset,
+		Status:   mapStatusToProjectpb(req.Status),
 	}
 
 	pbRes, err := c.projectClient.ListProjects(ctx, pbReq)

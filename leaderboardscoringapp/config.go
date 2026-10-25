@@ -45,5 +45,6 @@ type Config struct {
 	TotalShutdownTimeout time.Duration `koanf:"total_shutdown_timeout"`
 
 	// Database migration
-	PathOfMigration string `koanf:"path_of_migration"`
+	PathOfMigration string            `koanf:"path_of_migration"`
+	ProjectClient   grpc.ClientConfig `koanf:"project_rpc_client"`
 }
