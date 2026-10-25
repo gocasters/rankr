@@ -11,10 +11,38 @@ import (
 	"time"
 )
 
+// Job names, as shown in logs. See docs/leaderboardstat-crons.md.
+const (
+	// JobNamePublicLeaderboard rebuilds the per-project public leaderboard
+	// in Redis that GET /v1/leaderboard/public/:project_id serves.
+	JobNamePublicLeaderboard = "public-leaderboard-update"
+	// JobNameDailyScoreCalculation copies today's ("daily" timeframe) scores
+	// from leaderboardscoring into Postgres. "Daily" is the data window,
+	// not how often the job runs.
+	JobNameDailyScoreCalculation = "daily-score-calculation"
+
+	jobTag = "leaderboardstat-service"
+)
+
+// Defaults used when a key is missing from scheduler_cfg. The shipped
+// deploy/leaderboardstat/*/config.yml files override both schedules.
+const (
+	DefaultPublicLeaderboardCron     = "*/3 * * * *" // every 3 minutes
+	DefaultDailyScoreCalculationCron = "0 2 * * *"   // daily at 02:00
+	DefaultJobContextTimeout         = 3 * time.Minute
+)
+
+// Config is the scheduler_cfg block of the leaderboardstat config.
+// Crontabs have five fields (minute hour day month weekday) and run in the
+// process's local time zone. Each key can be overridden by an environment
+// variable, e.g. STAT_SCHEDULER_CFG__PUBLIC_LEADERBOARD_CRON.
 type Config struct {
-	DailyScoreCalculationCron string        `koanf:"daily_score_calculation_cron"`
-	PublicLeaderboardCron     string        `koanf:"public_leaderboard_cron"`
-	JobContextTimeout         time.Duration `koanf:"job_context_timeout"`
+	// DailyScoreCalculationCron schedules JobNameDailyScoreCalculation.
+	DailyScoreCalculationCron string `koanf:"daily_score_calculation_cron"`
+	// PublicLeaderboardCron schedules JobNamePublicLeaderboard.
+	PublicLeaderboardCron string `koanf:"public_leaderboard_cron"`
+	// JobContextTimeout bounds a single run of either job.
+	JobContextTimeout time.Duration `koanf:"job_context_timeout"`
 }
 
 type Scheduler struct {
@@ -31,13 +59,13 @@ func New(leaderboardStatSvc *leaderboardstat.Service, schedulerCfg Config) Sched
 	}
 
 	if schedulerCfg.PublicLeaderboardCron == "" {
-		schedulerCfg.PublicLeaderboardCron = "*/3 * * * *"
+		schedulerCfg.PublicLeaderboardCron = DefaultPublicLeaderboardCron
 	}
 	if schedulerCfg.JobContextTimeout <= 0 {
-		schedulerCfg.JobContextTimeout = 3 * time.Minute
+		schedulerCfg.JobContextTimeout = DefaultJobContextTimeout
 	}
 	if schedulerCfg.DailyScoreCalculationCron == "" {
-		schedulerCfg.DailyScoreCalculationCron = "0 2 * * *"
+		schedulerCfg.DailyScoreCalculationCron = DefaultDailyScoreCalculationCron
 	}
 
 	return Scheduler{
@@ -76,16 +104,15 @@ func (s *Scheduler) dailyScoreCalculationJob(parentCtx context.Context) error {
 	log := logger.L()
 
 	if s.cfg.DailyScoreCalculationCron == "" {
-		// Default to run daily at 2 AM
-		s.cfg.DailyScoreCalculationCron = "0 2 * * *"
+		s.cfg.DailyScoreCalculationCron = DefaultDailyScoreCalculationCron
 	}
 
 	dailyJob, err := s.sch.NewJob(
 		gocron.CronJob(s.cfg.DailyScoreCalculationCron, false),
 		gocron.NewTask(func() { s.dailyScoreCalculationTask(parentCtx) }),
 		gocron.WithSingletonMode(gocron.LimitModeWait),
-		gocron.WithName("daily-score-calculation"),
-		gocron.WithTags("leaderboardstat-service"),
+		gocron.WithName(JobNameDailyScoreCalculation),
+		gocron.WithTags(jobTag),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create daily score calculation job: %w", err)
@@ -129,8 +156,8 @@ func (s *Scheduler) publicLeaderboardJob(parentCtx context.Context) error {
 		gocron.CronJob(s.cfg.PublicLeaderboardCron, false),
 		gocron.NewTask(func() { s.publicLeaderboardTask(parentCtx) }),
 		gocron.WithSingletonMode(gocron.LimitModeWait),
-		gocron.WithName("public-leaderboard-update"),
-		gocron.WithTags("leaderboardstat-service"),
+		gocron.WithName(JobNamePublicLeaderboard),
+		gocron.WithTags(jobTag),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create public leaderboard job: %w", err)
