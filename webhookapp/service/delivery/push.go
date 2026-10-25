@@ -62,5 +62,4 @@ func (s *Service) publishPush(req PushRequest, provider eventpb.EventProvider, d
 
 	ctx := context.Background()
 	return s.saveEvent(ctx, ev)
-	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PUSHED, TopicGithubPush, metadata)
 }

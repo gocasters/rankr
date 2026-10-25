@@ -22,6 +22,9 @@ type HistoricalEventTestSuite struct {
 }
 
 func TestHistoricalEventTestSuite(t *testing.T) {
+	if testing.Short() {
+		t.Skip("integration test: needs Postgres (set DATABASE_URL)")
+	}
 	suite.Run(t, new(HistoricalEventTestSuite))
 }
 

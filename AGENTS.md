@@ -12,7 +12,8 @@ A contribution leaderboard for GitHub repos. GitHub webhooks are scored, and a p
 - v1 services: `webhookapp` (ingest), `leaderboardscoringapp` (scoring, NATS consumer), `leaderboardstatapp` (public leaderboard and stats), `projectapp`, `contributorapp`, `authapp`, `userprofileapp`. Plus `cmd/web`, the HTML UI (html/template + htmx), once it lands.
 - Event path: webhook → NATS `rankr_raw_events` → leaderboardscoring (Redis ZSET) → leaderboardstat cron (gRPC) → `GET /v1/leaderboard/public/:project_id`.
 - `protobuf/` holds the .proto sources. `protobuf/golang/` is generated: never edit it by hand; run `make proto-gen`.
-- **Frozen:** `realtimeapp/`, `notifapp/`, `hub/`, `argus`, Temporal and `deploy/development/*-compose.yml`. Do not change them.
+- **Frozen:** `realtimeapp/`, `notifapp/`, `hub/`, `argus`, `cmd/api`, Temporal and `deploy/development/*-compose.yml`. Do not change them.
+- See [`docs/architecture.md`](docs/architecture.md) for the Stage v1 service map, ports, datastore connections, event flow, and auth flow.
 
 ## Commands
 
