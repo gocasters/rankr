@@ -64,11 +64,16 @@ main() {
         exit 1
     fi
 
-    local history="$repo_dir/deploy/stage/.deploy-history"
+    local history="$repo_dir/deploy/stage/.deploy-history" last=""
+    # Compared as commits, not strings: history tags are abbreviated, and
+    # older ones are shorter than the ones deploy.sh writes now.
+    if [[ -f "$history" ]]; then
+        last="$(git -C "$repo_dir" rev-parse -q --verify "$(tail -n 1 "$history")^{commit}" || true)"
+    fi
     # The history only says the tip was healthy once; after `down` or a failed
     # rollback it is not running, so check before skipping. By hand it never
     # skips, so a `.env.stage` edit can be applied without a new commit.
-    if [[ -z "$by_hand" && -f "$history" && "$(tail -n 1 "$history")" == "$(git -C "$repo_dir" rev-parse --short "$tip")" ]]; then
+    if [[ -z "$by_hand" && "$last" == "$tip" ]]; then
         if "$repo_dir/deploy/stage/deploy.sh" health; then
             echo "origin/main ($tip) is already deployed"
             exit 0

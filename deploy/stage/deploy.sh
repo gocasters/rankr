@@ -180,7 +180,9 @@ changed_services() {
 case "${1:-}" in
     deploy)
         check_smoke_project_id
-        tag="$(git -C "$STAGE_DIR" rev-parse --short HEAD)"
+        # A fixed length: plain --short grows with the repo, and the same
+        # commit would get a new tag.
+        tag="$(git -C "$STAGE_DIR" rev-parse --short=12 HEAD)"
         prev="$(previous_tag)"
         echo "deploying $tag (previous: ${prev:-none})"
         mapfile -t build < <(changed_services "$prev")

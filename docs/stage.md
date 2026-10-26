@@ -87,7 +87,7 @@ The checkout in `/opt/rankr-stage` is on a detached HEAD and is managed by
 `ci-deploy.sh`, which fetches and checks out `origin/main` itself. Don't
 `git pull` or commit in it.
 
-`deploy` tags every release with the short commit hash. It rebuilds only the
+`deploy` tags every release with the first 12 characters of the commit hash. It rebuilds only the
 services whose code changed since the last release in `.deploy-history`. The
 other services' images get the new tag too, so every release has an image for
 each service. Every service is then restarted in `depends_on` order, so
@@ -134,8 +134,8 @@ Not every push gets its own deploy. GitHub keeps only the newest pending run,
 and the script always deploys the current tip of `origin/main`, not the sha it
 was sent. So when several pushes land close together, the intermediate commits
 may be skipped, but stage always ends on the latest `main` and never moves
-backward. A run whose tip is already deployed exits without restarting
-anything.
+backward. A CI run whose tip is already deployed and healthy exits without
+restarting anything.
 
 On the host, the CI key is pinned to `deploy/stage/ci-deploy.sh`. It accepts
 nothing but `deploy [full sha]`, takes a lock so two deploys cannot overlap,
