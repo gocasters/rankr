@@ -35,8 +35,9 @@ main() {
     fi
 
     # One deploy at a time, CI or by hand. Checkout happens inside the lock.
+    # The wait stays under the 30 minute job timeout of deploy-stage.yml.
     exec 9> "$repo_dir/deploy/stage/.deploy-lock"
-    if ! flock -w 600 9; then
+    if ! flock -w 1500 9; then
         echo "another deploy is still running" >&2
         exit 1
     fi
