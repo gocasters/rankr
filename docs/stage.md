@@ -221,5 +221,3 @@ Stage shares a small host with other projects, so the stack is capped:
 - The webhook `recovery_config` in the production config holds placeholder
   hook credentials, so lost-delivery recovery logs errors until real values
   are set.
-- Images build from the production Dockerfiles, which need TD-16 (#220) to
-  build from a clean clone.
