@@ -43,7 +43,8 @@ main() {
 
     git -C "$repo_dir" fetch --quiet origin main
     tip="$(git -C "$repo_dir" rev-parse FETCH_HEAD)"
-    if [[ -n "$sha" ]] && ! git -C "$repo_dir" merge-base --is-ancestor "$sha" "$tip"; then
+    if [[ -n "$sha" ]] && ! { git -C "$repo_dir" cat-file -e "$sha^{commit}" 2>/dev/null &&
+        git -C "$repo_dir" merge-base --is-ancestor "$sha" "$tip"; }; then
         echo "$sha is not on origin/main" >&2
         exit 1
     fi
