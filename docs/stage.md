@@ -83,6 +83,10 @@ deploy/stage/ci-deploy.sh deploy
 Don't run `git checkout` or `deploy.sh deploy` directly while CI may be
 deploying: that bypasses the lock.
 
+The checkout in `/opt/rankr-stage` is on a detached HEAD and is managed by
+`ci-deploy.sh`, which fetches and checks out `origin/main` itself. Don't
+`git pull` or commit in it.
+
 `deploy` builds images tagged with the short commit hash, starts them, and
 checks `/health/<service>` for all six services through the gateway. If a
 service is not healthy within `HEALTH_TIMEOUT` seconds, it starts the previous
