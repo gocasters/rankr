@@ -164,10 +164,13 @@ Container logs are capped at 3 × 10 MB per container.
 ## Roll back
 
 ```bash
-deploy/stage/deploy.sh rollback
+flock -w 600 deploy/stage/.deploy-lock deploy/stage/deploy.sh rollback
 ```
 
 This starts the previous release from `.deploy-history` without building.
+`flock` takes the same lock as `ci-deploy.sh`, so a rollback never runs during
+a CI deploy. The next push to `main` deploys the new tip again; to keep stage
+on the old release, pause the `deploy-stage` workflow first.
 Migrations run on startup (`serve --migrate-up`) and are not rolled back: if a
 release added a migration the previous code cannot handle, fix forward instead.
 Old images are needed for rollback, so do not run `docker image prune -a` on
