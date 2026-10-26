@@ -65,12 +65,15 @@ main() {
     fi
 
     local history="$repo_dir/deploy/stage/.deploy-history"
-    # History alone is not proof: `deploy.sh down` keeps it, so also require
-    # the running stack to pass the health check before skipping.
-    if [[ -f "$history" && "$(tail -n 1 "$history")" == "$(git -C "$repo_dir" rev-parse --short "$tip")" ]] &&
-        "$repo_dir/deploy/stage/deploy.sh" health > /dev/null 2>&1; then
-        echo "origin/main ($tip) is already deployed and healthy"
-        exit 0
+    # The history only says the tip was healthy once; after `down` or a failed
+    # rollback it is not running, so check before skipping. By hand it never
+    # skips, so a `.env.stage` edit can be applied without a new commit.
+    if [[ -z "$by_hand" && -f "$history" && "$(tail -n 1 "$history")" == "$(git -C "$repo_dir" rev-parse --short "$tip")" ]]; then
+        if "$repo_dir/deploy/stage/deploy.sh" health; then
+            echo "origin/main ($tip) is already deployed"
+            exit 0
+        fi
+        echo "origin/main ($tip) is the last deploy but stage is not healthy; deploying it again"
     fi
 
     [[ -n "$sha" && "$sha" != "$tip" ]] && echo "$sha is behind origin/main; deploying $tip"

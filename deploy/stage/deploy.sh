@@ -2,8 +2,8 @@
 # Stage deploy helper for rankr. See docs/stage.md.
 #
 #   deploy.sh deploy     rebuild the services changed since the last release,
-#                        start them, check health; rolls back to the previous
-#                        release if health fails
+#                        restart every service, check health; rolls back to
+#                        the previous release if health fails
 #   deploy.sh rollback   start the previous release again (no build)
 #   deploy.sh status     container status
 #   deploy.sh logs [svc] follow logs
@@ -161,7 +161,6 @@ case "${1:-}" in
         if (( ${#build[@]} == ${#SERVICES[@]} )); then
             echo "rebuilding every service"
             TAG="$tag" compose build
-            start "$tag"
         else
             # Unchanged services keep their image under the new tag, so
             # rollback and the next deploy find every service at every tag.
@@ -177,12 +176,16 @@ case "${1:-}" in
             echo "rebuilding: ${build[*]:-none}"
             if (( ${#build[@]} > 0 )); then
                 TAG="$tag" compose build "${build[@]}"
-                start "$tag" --no-deps "${build[@]}"
             fi
-            # Starts whatever is not running (e.g. after `down`) and leaves
-            # the unchanged services' containers alone.
-            start "$tag" --no-recreate
         fi
+        # A new tag changes every service's image, so `up` recreates all of
+        # them in depends_on order and .env.stage edits reach every service.
+        # Deploying the last release again changes nothing compose can see,
+        # so recreate the services by force: that replaces a hung container.
+        if [[ "$tag" == "$prev" ]]; then
+            start "$tag" --force-recreate "${SERVICES[@]}"
+        fi
+        start "$tag"
         if wait_healthy; then
             echo "$tag" >> "$HISTORY"
             echo "deployed $tag"

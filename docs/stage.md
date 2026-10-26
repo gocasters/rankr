@@ -87,10 +87,13 @@ The checkout in `/opt/rankr-stage` is on a detached HEAD and is managed by
 `ci-deploy.sh`, which fetches and checks out `origin/main` itself. Don't
 `git pull` or commit in it.
 
-`deploy` tags every release with the short commit hash. It rebuilds and
-restarts only the services whose code changed since the last release in
-`.deploy-history`. The other services keep running, and their images get the
-new tag too, so every release has an image for each service. Every
+`deploy` tags every release with the short commit hash. It rebuilds only the
+services whose code changed since the last release in `.deploy-history`. The
+other services' images get the new tag too, so every release has an image for
+each service. Every service is then restarted in `depends_on` order, so
+changes to `.env.stage` reach all of them. After editing `.env.stage`, run
+`deploy/stage/ci-deploy.sh deploy` by hand: unlike CI, it does not skip a tip
+that is already deployed, and it recreates every service's container. Every
 service is rebuilt when there is no previous release, or when a shared path
 changed (`pkg/`, `adapter/`, `type/`, `protobuf/`, `go.mod`, `deploy/stage/`,
 or anything else not tied to one service). Changes to `docs/`, `.github/`,
