@@ -71,7 +71,7 @@ certbot --nginx -d stage.rankr.gocasts.ir
 
 ## Deploy
 
-Every push to `main` deploys itself (see [Automatic deploy](#automatic-deploy)).
+Pushes to `main` deploy automatically, except docs-only pushes; intermediate pushes may be skipped (see [Automatic deploy](#automatic-deploy)).
 To deploy by hand, use the same script as CI, so it waits for any running
 deploy and checks out the tip of `origin/main` inside the same lock:
 
