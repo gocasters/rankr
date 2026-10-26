@@ -49,8 +49,11 @@ main() {
     fi
 
     local history="$repo_dir/deploy/stage/.deploy-history"
-    if [[ -f "$history" && "$(tail -n 1 "$history")" == "$(git -C "$repo_dir" rev-parse --short "$tip")" ]]; then
-        echo "origin/main ($tip) is already deployed"
+    # History alone is not proof: `deploy.sh down` keeps it, so also require
+    # the running stack to pass the health check before skipping.
+    if [[ -f "$history" && "$(tail -n 1 "$history")" == "$(git -C "$repo_dir" rev-parse --short "$tip")" ]] &&
+        "$repo_dir/deploy/stage/deploy.sh" health > /dev/null 2>&1; then
+        echo "origin/main ($tip) is already deployed and healthy"
         exit 0
     fi
 
