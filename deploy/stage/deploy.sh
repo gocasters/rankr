@@ -25,6 +25,14 @@ fi
 GATEWAY_PORT="$(grep -E '^GATEWAY_PORT=' "$ENV_FILE" | cut -d= -f2 || true)"
 GATEWAY_PORT="${GATEWAY_PORT:-8088}"
 
+# Smoke test of the public leaderboard (#227). Off while SMOKE_PROJECT_ID is
+# empty: leaderboardstat still answers 401 on that path until TD-04 (#221).
+SMOKE_PROJECT_ID="$(grep -E '^SMOKE_PROJECT_ID=' "$ENV_FILE" | cut -d= -f2 || true)"
+if [[ -n "$SMOKE_PROJECT_ID" && ! "$SMOKE_PROJECT_ID" =~ ^[0-9]+$ ]]; then
+    echo "SMOKE_PROJECT_ID must be a project id (got '$SMOKE_PROJECT_ID')" >&2
+    exit 1
+fi
+
 # Overall time budget for wait_healthy. Checked up front so a typo fails before
 # anything is built, and so only a plain number ever reaches $(( )).
 HEALTH_TIMEOUT="${HEALTH_TIMEOUT:-150}"
@@ -40,23 +48,30 @@ compose() {
 # health [deadline]: without an argument (`deploy.sh health`) each service gets
 # up to 5 seconds. With a deadline (a $SECONDS value), each request is bounded
 # by the time left and no request is sent once the deadline has passed.
+# With SMOKE_PROJECT_ID set, the public leaderboard is checked last.
 health() {
-    local deadline="${1:-}" failed=0 timeout remaining
-    for svc in "${SERVICES[@]}"; do
+    local deadline="${1:-}" failed=0 timeout remaining name path check
+    local checks=()
+    for svc in "${SERVICES[@]}"; do checks+=("$svc /health/$svc"); done
+    if [[ -n "$SMOKE_PROJECT_ID" ]]; then
+        checks+=("leaderboard /v1/leaderboard/public/$SMOKE_PROJECT_ID")
+    fi
+    for check in "${checks[@]}"; do
+        read -r name path <<< "$check"
         timeout=5
         if [[ -n "$deadline" ]]; then
             remaining=$(( deadline - SECONDS ))
             if (( remaining <= 0 )); then
-                echo "SKIP  $svc (deadline reached)"
+                echo "SKIP  $name (deadline reached)"
                 failed=1
                 continue
             fi
             if (( remaining < timeout )); then timeout=$remaining; fi
         fi
-        if curl -fsS -o /dev/null --max-time "$timeout" "http://127.0.0.1:$GATEWAY_PORT/health/$svc"; then
-            echo "ok    $svc"
+        if curl -fsS -o /dev/null --max-time "$timeout" "http://127.0.0.1:$GATEWAY_PORT$path"; then
+            echo "ok    $name"
         else
-            echo "FAIL  $svc"
+            echo "FAIL  $name"
             failed=1
         fi
     done

@@ -87,11 +87,18 @@ The checkout in `/opt/rankr-stage` is on a detached HEAD and is managed by
 `ci-deploy.sh`, which fetches and checks out `origin/main` itself. Don't
 `git pull` or commit in it.
 
-`deploy` builds images tagged with the short commit hash, starts them, and
-checks `/health/<service>` for all six services through the gateway. If a
-service is not healthy within `HEALTH_TIMEOUT` seconds, it starts the previous
-release again and exits non-zero. Each healthy release is appended to
-`deploy/stage/.deploy-history`.
+`deploy` builds images tagged with the short commit hash and starts them.
+
+After starting, `deploy` checks `/health/<service>` for all six services
+through the gateway, then the smoke test below. If a check does not pass
+within `HEALTH_TIMEOUT` seconds, it starts the previous release again and exits
+non-zero. Each healthy release is appended to `deploy/stage/.deploy-history`.
+
+Smoke test: with `SMOKE_PROJECT_ID` set in `.env.stage`, the checks also call
+`GET /v1/leaderboard/public/<SMOKE_PROJECT_ID>` and expect a 2xx. It is empty
+by default: until TD-04 (#221) lands, leaderboardstat answers 401 on that path,
+so turning it on would roll back every deploy. Once #221 is deployed, set it to
+a project that exists on stage.
 
 `HEALTH_TIMEOUT` is the whole wait, not a per-request limit: every request
 (at most 5 seconds each) is cut short at the deadline, and services not
@@ -216,7 +223,8 @@ Stage shares a small host with other projects, so the stack is capped:
 - `GET /v1/leaderboard/public/:project_id` passes the gateway without a token
   but leaderboardstat itself still answers 401: `pkg/httpserver` only skips
   exact public paths, and this path has a parameter. Fixing it needs a
-  prefix skipper in `pkg/httpserver` (TD-04, #221).
+  prefix skipper in `pkg/httpserver` (TD-04, #221). Until then, leave
+  `SMOKE_PROJECT_ID` empty.
 - NATS has no authentication yet. It is only reachable on the private network.
 - The webhook `recovery_config` in the production config holds placeholder
   hook credentials, so lost-delivery recovery logs errors until real values
