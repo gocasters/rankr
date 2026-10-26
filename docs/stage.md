@@ -96,7 +96,7 @@ whole number of seconds, and is read from the shell environment, not from
 `.env.stage`. It applies to `deploy` and `rollback`:
 
 ```bash
-HEALTH_TIMEOUT=60 deploy/stage/deploy.sh deploy
+HEALTH_TIMEOUT=60 deploy/stage/ci-deploy.sh deploy
 ```
 
 ## Automatic deploy
