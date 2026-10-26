@@ -9,6 +9,10 @@
 # By hand, on the host (takes the same lock as CI):
 #
 #   deploy/stage/ci-deploy.sh deploy
+#   deploy/stage/ci-deploy.sh rollback
+#   deploy/stage/ci-deploy.sh down
+#
+# rollback and down are only accepted by hand; the CI key can only deploy.
 #
 # The sha only has to be on origin/main; what gets deployed is always the
 # current tip. So stage never moves backward when runs finish out of order,
@@ -19,18 +23,23 @@
 set -euo pipefail
 
 main() {
-    local repo_dir action sha extra tip
+    local repo_dir action sha extra tip by_hand=""
     repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
     # Arguments only exist when run on the host; sshd passes none.
     if [[ $# -gt 0 ]]; then
+        by_hand=1
         read -r action sha extra <<< "$*"
     else
         read -r action sha extra <<< "${SSH_ORIGINAL_COMMAND:-}"
     fi
-    if [[ "$action" != deploy || -n "$extra" ]] ||
-        [[ -n "$sha" && ! "$sha" =~ ^[0-9a-f]{40}$ ]]; then
-        echo "usage: deploy [full commit sha]" >&2
+    if [[ "$action" == deploy && -z "$extra" ]] &&
+        [[ -z "$sha" || "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+        :
+    elif [[ -n "$by_hand" && ( "$action" == rollback || "$action" == down ) && -z "$sha" ]]; then
+        :
+    else
+        echo "usage: deploy [full commit sha] | rollback | down (by hand only)" >&2
         exit 2
     fi
 
@@ -40,6 +49,11 @@ main() {
     if ! flock -w 1500 9; then
         echo "another deploy is still running" >&2
         exit 1
+    fi
+
+    # exec keeps fd 9, so the lock is held until deploy.sh exits.
+    if [[ "$action" != deploy ]]; then
+        exec "$repo_dir/deploy/stage/deploy.sh" "$action"
     fi
 
     git -C "$repo_dir" fetch --quiet origin main

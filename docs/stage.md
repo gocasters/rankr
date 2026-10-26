@@ -169,11 +169,11 @@ Container logs are capped at 3 × 10 MB per container.
 ## Roll back
 
 ```bash
-flock -w 600 deploy/stage/.deploy-lock deploy/stage/deploy.sh rollback
+deploy/stage/ci-deploy.sh rollback
 ```
 
 This starts the previous release from `.deploy-history` without building.
-`flock` takes the same lock as `ci-deploy.sh`, so a rollback never runs during
+`ci-deploy.sh` holds the deploy lock, so a rollback never runs during
 a CI deploy. The next push to `main` deploys the new tip again; to keep stage
 on the old release, pause the `deploy-stage` workflow first.
 Migrations run on startup (`serve --migrate-up`) and are not rolled back: if a
@@ -184,8 +184,12 @@ the stage host.
 ## Stop
 
 ```bash
-deploy/stage/deploy.sh down
+deploy/stage/ci-deploy.sh down
 ```
+
+`rollback` and `down` go through `ci-deploy.sh` so they wait for a running
+deploy and hold the same lock. They are accepted only by hand on the host; the
+CI key can only send `deploy`. The next push to `main` deploys the tip again.
 
 Volumes (`rankr-stage_postgres-data`, `rankr-stage_redis-data`,
 `rankr-stage_nats-data`) are kept. Never run `docker system prune --volumes`
