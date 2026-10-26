@@ -35,18 +35,34 @@ if [[ ! -f "$ENV_FILE" ]]; then
     exit 1
 fi
 
-# `|| true`: GATEWAY_PORT is optional, and grep finding nothing must not stop
-# the script under pipefail.
-GATEWAY_PORT="$(grep -E '^GATEWAY_PORT=' "$ENV_FILE" | cut -d= -f2 || true)"
+# env_value <name>: a value from .env.stage, empty when unset. Drops a CR
+# (file saved with CRLF) and one pair of surrounding quotes, as compose does.
+# `|| true`: grep finding nothing must not stop the script under pipefail.
+env_value() {
+    local value
+    value="$(grep -E "^$1=" "$ENV_FILE" | cut -d= -f2- || true)"
+    value="${value%$'\r'}"
+    if [[ "$value" =~ ^\"(.*)\"$ || "$value" =~ ^\'(.*)\'$ ]]; then
+        value="${BASH_REMATCH[1]}"
+    fi
+    printf '%s' "$value"
+}
+
+GATEWAY_PORT="$(env_value GATEWAY_PORT)"
 GATEWAY_PORT="${GATEWAY_PORT:-8088}"
 
 # Smoke test of the public leaderboard (#227). Off while SMOKE_PROJECT_ID is
 # empty: leaderboardstat still answers 401 on that path until TD-04 (#221).
-SMOKE_PROJECT_ID="$(grep -E '^SMOKE_PROJECT_ID=' "$ENV_FILE" | cut -d= -f2 || true)"
-if [[ -n "$SMOKE_PROJECT_ID" && ! "$SMOKE_PROJECT_ID" =~ ^[0-9]+$ ]]; then
-    echo "SMOKE_PROJECT_ID must be a project id (got '$SMOKE_PROJECT_ID')" >&2
-    exit 1
-fi
+SMOKE_PROJECT_ID="$(env_value SMOKE_PROJECT_ID)"
+
+# Only deploy and health check it, so a bad value never blocks rollback or
+# down. A rollback with a bad value runs, but its smoke check fails.
+check_smoke_project_id() {
+    if [[ -n "$SMOKE_PROJECT_ID" && ! "$SMOKE_PROJECT_ID" =~ ^[0-9]+$ ]]; then
+        echo "SMOKE_PROJECT_ID must be a project id (got '$SMOKE_PROJECT_ID')" >&2
+        exit 1
+    fi
+}
 
 # Overall time budget for wait_healthy. Checked up front so a typo fails before
 # anything is built, and so only a plain number ever reaches $(( )).
@@ -162,6 +178,7 @@ changed_services() {
 
 case "${1:-}" in
     deploy)
+        check_smoke_project_id
         tag="$(git -C "$STAGE_DIR" rev-parse --short HEAD)"
         prev="$(previous_tag)"
         echo "deploying $tag (previous: ${prev:-none})"
@@ -225,6 +242,7 @@ case "${1:-}" in
         compose logs -f --tail=200 "${@:2}"
         ;;
     health)
+        check_smoke_project_id
         health
         ;;
     down)
