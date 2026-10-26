@@ -148,8 +148,9 @@ changed_services() {
         return
     fi
     # Not a process substitution: its exit status would be lost, and a failed
-    # diff would look like "nothing changed".
-    if ! files="$(git -C "$STAGE_DIR" diff --name-only "$prev" HEAD)"; then
+    # diff would look like "nothing changed". --no-renames lists both sides of
+    # a move, so moving a file out of a shared path still rebuilds everything.
+    if ! files="$(git -C "$STAGE_DIR" diff --no-renames --name-only "$prev" HEAD)"; then
         echo "git diff $prev HEAD failed; rebuilding every service" >&2
         printf '%s\n' "${SERVICES[@]}"
         return
