@@ -122,16 +122,24 @@ start() {
 
 # changed_services <prev tag>: the services whose code changed between the
 # previous release and HEAD, one per line. Prints every service when there is
-# no previous release, the commit is unknown, or a shared path changed.
+# no previous release, the commit is unknown, the diff fails, or a shared path
+# changed.
 changed_services() {
-    local prev="$1" file svc dir hit
+    local prev="$1" files file svc dir hit
     local -A changed=()
     if [[ -z "$prev" ]] || ! git -C "$STAGE_DIR" rev-parse -q --verify "$prev^{commit}" > /dev/null; then
         printf '%s\n' "${SERVICES[@]}"
         return
     fi
+    # Not a process substitution: its exit status would be lost, and a failed
+    # diff would look like "nothing changed".
+    if ! files="$(git -C "$STAGE_DIR" diff --name-only "$prev" HEAD)"; then
+        echo "git diff $prev HEAD failed; rebuilding every service" >&2
+        printf '%s\n' "${SERVICES[@]}"
+        return
+    fi
     while IFS= read -r file; do
-        [[ "$file" == *.md ]] && continue
+        [[ -z "$file" || "$file" == *.md ]] && continue
         hit=""
         for dir in $NO_SERVICE_PATHS; do
             [[ "$file" == "$dir"* ]] && hit=none
@@ -145,7 +153,7 @@ changed_services() {
             printf '%s\n' "${SERVICES[@]}"
             return
         fi
-    done < <(git -C "$STAGE_DIR" diff --name-only "$prev" HEAD)
+    done <<< "$files"
     for svc in "${SERVICES[@]}"; do
         [[ -n "${changed[$svc]:-}" ]] && echo "$svc"
     done
