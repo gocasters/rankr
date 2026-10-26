@@ -143,7 +143,7 @@ One-time setup (needs host and repo admin):
    | `STAGE_SSH_KEY` | the private key file `rankr-stage-ci` |
    | `STAGE_SSH_TARGET` | `user@host` |
    | `STAGE_SSH_PORT` | only if SSH is not on 22 |
-   | `STAGE_KNOWN_HOSTS` | output of `ssh-keyscan -p <port> -t ed25519 <host>` (keep `-p` even for 22), compared with `/etc/ssh/ssh_host_ed25519_key.pub` on the host |
+   | `STAGE_KNOWN_HOSTS` | output of `ssh-keyscan -p <port> -t ed25519 <host>` (keep `-p` even for 22), compared with `/etc/ssh/ssh_host_ed25519_key.pub` on the host. `<host>` must exactly match the host in `STAGE_SSH_TARGET` (same name or IP) |
 
 4. Delete the local private key file once it is stored in GitHub.
 
