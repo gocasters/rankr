@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Stage deploy helper for rankr. See docs/stage.md.
 #
-#   deploy.sh deploy     build the current checkout, start it, check health;
-#                        rolls back to the previous release if health fails
+#   deploy.sh deploy     rebuild the services changed since the last release,
+#                        start them, check health; rolls back to the previous
+#                        release if health fails
 #   deploy.sh rollback   start the previous release again (no build)
 #   deploy.sh status     container status
 #   deploy.sh logs [svc] follow logs
@@ -14,6 +15,20 @@ STAGE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="${ENV_FILE:-$STAGE_DIR/.env.stage}"
 HISTORY="$STAGE_DIR/.deploy-history"
 SERVICES=(auth contributor leaderboardscoring leaderboardstat project webhook)
+
+# Paths only one service (or a few) is built from. Keep in sync with
+# `go list -deps ./cmd/<service>`: leaderboardstat imports leaderboardscoringapp
+# and project imports webhookapp. Any changed path not listed here or in
+# NO_SERVICE_PATHS rebuilds every service.
+declare -A SERVICE_PATHS=(
+    [auth]="authapp/ cmd/auth/ deploy/auth/"
+    [contributor]="contributorapp/ cmd/contributor/ deploy/contributor/"
+    [leaderboardscoring]="leaderboardscoringapp/ cmd/leaderboardscoring/ deploy/leaderboardscoring/"
+    [leaderboardstat]="leaderboardstatapp/ leaderboardscoringapp/ cmd/leaderboardstat/ deploy/leaderboardstat/"
+    [project]="projectapp/ webhookapp/ cmd/project/ deploy/project/"
+    [webhook]="webhookapp/ cmd/webhook/ deploy/webhook/"
+)
+NO_SERVICE_PATHS="docs/ .github/ .claude/"
 
 if [[ ! -f "$ENV_FILE" ]]; then
     echo "missing $ENV_FILE (copy .env.stage.example and fill it)" >&2
@@ -105,13 +120,69 @@ start() {
     TAG="$1" compose up -d --remove-orphans "${@:2}"
 }
 
+# changed_services <prev tag>: the services whose code changed between the
+# previous release and HEAD, one per line. Prints every service when there is
+# no previous release, the commit is unknown, or a shared path changed.
+changed_services() {
+    local prev="$1" file svc dir hit
+    local -A changed=()
+    if [[ -z "$prev" ]] || ! git -C "$STAGE_DIR" rev-parse -q --verify "$prev^{commit}" > /dev/null; then
+        printf '%s\n' "${SERVICES[@]}"
+        return
+    fi
+    while IFS= read -r file; do
+        [[ "$file" == *.md ]] && continue
+        hit=""
+        for dir in $NO_SERVICE_PATHS; do
+            [[ "$file" == "$dir"* ]] && hit=none
+        done
+        for svc in "${SERVICES[@]}"; do
+            for dir in ${SERVICE_PATHS[$svc]}; do
+                [[ "$file" == "$dir"* ]] && { changed[$svc]=1; hit=svc; }
+            done
+        done
+        if [[ -z "$hit" ]]; then
+            printf '%s\n' "${SERVICES[@]}"
+            return
+        fi
+    done < <(git -C "$STAGE_DIR" diff --name-only "$prev" HEAD)
+    for svc in "${SERVICES[@]}"; do
+        [[ -n "${changed[$svc]:-}" ]] && echo "$svc"
+    done
+    return 0
+}
+
 case "${1:-}" in
     deploy)
         tag="$(git -C "$STAGE_DIR" rev-parse --short HEAD)"
         prev="$(previous_tag)"
         echo "deploying $tag (previous: ${prev:-none})"
-        TAG="$tag" compose build
-        start "$tag"
+        mapfile -t build < <(changed_services "$prev")
+        if (( ${#build[@]} == ${#SERVICES[@]} )); then
+            echo "rebuilding every service"
+            TAG="$tag" compose build
+            start "$tag"
+        else
+            # Unchanged services keep their image under the new tag, so
+            # rollback and the next deploy find every service at every tag.
+            # One whose previous image is gone is rebuilt instead.
+            for svc in "${SERVICES[@]}"; do
+                [[ " ${build[*]} " == *" $svc "* ]] && continue
+                if docker image inspect "rankr-stage/$svc:$prev" > /dev/null 2>&1; then
+                    docker tag "rankr-stage/$svc:$prev" "rankr-stage/$svc:$tag"
+                else
+                    build+=("$svc")
+                fi
+            done
+            echo "rebuilding: ${build[*]:-none}"
+            if (( ${#build[@]} > 0 )); then
+                TAG="$tag" compose build "${build[@]}"
+                start "$tag" --no-deps "${build[@]}"
+            fi
+            # Starts whatever is not running (e.g. after `down`) and leaves
+            # the unchanged services' containers alone.
+            start "$tag" --no-recreate
+        fi
         if wait_healthy; then
             echo "$tag" >> "$HISTORY"
             echo "deployed $tag"

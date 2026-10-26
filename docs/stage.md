@@ -87,7 +87,17 @@ The checkout in `/opt/rankr-stage` is on a detached HEAD and is managed by
 `ci-deploy.sh`, which fetches and checks out `origin/main` itself. Don't
 `git pull` or commit in it.
 
-`deploy` builds images tagged with the short commit hash and starts them.
+`deploy` tags every release with the short commit hash. It rebuilds and
+restarts only the services whose code changed since the last release in
+`.deploy-history`. The other services keep running, and their images get the
+new tag too, so every release has an image for each service. Every
+service is rebuilt when there is no previous release, or when a shared path
+changed (`pkg/`, `adapter/`, `type/`, `protobuf/`, `go.mod`, `deploy/stage/`,
+or anything else not tied to one service). Changes to `docs/`, `.github/`,
+`.claude/` and `*.md` files rebuild nothing. The service-to-path map is
+`SERVICE_PATHS` in `deploy.sh`. It includes the imports between services
+(leaderboardstat uses leaderboardscoringapp, project uses webhookapp), so keep
+it in sync with `go list -deps ./cmd/<service>`.
 
 After starting, `deploy` checks `/health/<service>` for all six services
 through the gateway, then the smoke test below. If a check does not pass
