@@ -48,9 +48,20 @@ project_rpc:
     - "UNAVAILABLE"
     - "DEADLINE_EXCEEDED"
 
+# Crons, documented in docs/leaderboardstat-crons.md. Five-field crontabs,
+# local time zone. Override with STAT_SCHEDULER_CFG__<KEY>, e.g.
+# STAT_SCHEDULER_CFG__PUBLIC_LEADERBOARD_CRON. A missing key falls back to
+# the code default in leaderboardstatapp/delivery/scheduler/scheduler.go.
 scheduler_cfg:
+  # job "public-leaderboard-update": rebuilds the Redis public leaderboard
+  # (3m TTL) served by GET /v1/leaderboard/public/:project_id.
+  # Every minute. Code default: "*/3 * * * *".
   public_leaderboard_cron: "* * * * *"
+  # Max duration of one run of either job. Code default: 3m.
   job_context_timeout: "1m"
+  # job "daily-score-calculation": stores today's scores in Postgres for
+  # GET /v1/contributors/:id/stats. "daily" is the data window, not the rate.
+  # Every 10 minutes. Code default: "0 2 * * *" (daily at 02:00).
   daily_score_calculation_cron: "*/10 * * * *"
 
 redis:

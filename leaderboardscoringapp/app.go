@@ -7,6 +7,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/gocasters/rankr/adapter/nats"
 	"github.com/gocasters/rankr/adapter/natsadapter"
+	"github.com/gocasters/rankr/adapter/project"
 	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/consumer/batchprocessor"
 	"github.com/gocasters/rankr/leaderboardscoringapp/delivery/consumer/rawevent"
@@ -163,7 +164,20 @@ func Setup(ctx context.Context, config Config) *Application {
 		slog.Duration("metrics_interval", config.BatchProcessor.MetricsInterval))
 
 	// Initialize Scheduler
-	sch := scheduler.New(lbScoringService, config.SchedulerCfg)
+	projectRPCClient, err := grpc.NewClient(config.ProjectClient, log)
+	if err != nil {
+		log.Error("failed to create project rpc client",
+			slog.String("error", err.Error()))
+		panic(err)
+	}
+
+	projectClient, err := project.New(projectRPCClient)
+	if err != nil {
+		log.Error("failed to create project client",
+			slog.String("error", err.Error()))
+		panic(err)
+	}
+	sch := scheduler.New(lbScoringService, projectClient, config.SchedulerCfg)
 
 	return &Application{
 		HTTPServer:            leaderboardHttpServer,

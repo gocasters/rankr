@@ -1,53 +1,53 @@
 # rankr
 Rank repo contributors
 
+See [the architecture overview](docs/architecture.md) for the Stage v1 service
+map, ports, data stores, event flow, and authentication flow.
+
 
 ---
 ## 🚀 Quick Start
 
-### Quick Setup Commands
+**Prerequisites:** Go 1.25.3+, Docker (running), Make, Git.
+
 ```bash
-# 1. Install tools (ASDF)
-asdf install
+# 1. Clone and enter the repo
+git clone https://github.com/gocasters/rankr.git
+cd rankr
 
-# 2. Setup protobuf (Buf)
-make proto-setup
+# 2. Download Go dependencies
+go mod download
 
-# 3. Setup Go dependencies
-make mod-tidy
-
-# 4. Prepare environment files
+# 3. Prepare environment files
 cp deploy/infrastructure/postgresql/development/.env-example deploy/infrastructure/postgresql/development/.env
 cp deploy/task/development/.env.example deploy/task/development/.env
 
-# 5. Start shared infrastructure
+# 4. Start shared infrastructure (PostgreSQL, Redis, NATS, ...)
 make infra-up
 
-# 6. Start all Application Services
-make services-up
-
-# Or Start the Application Services (in this order)
-make start-userprofile-app-dev
-make start-project-app-dev
-make start-realtime-app-dev
+# 5. Start the services you need, one by one
 make start-auth-app-dev
-make start-leaderboardscoring-app-dev
-make start-contributor-app-dev
-make start-notification-app-dev
-make start-leaderboardstat-app-dev
-make start-task-app-dev
+make start-project-app-dev
 ```
 
-### Local Compose Stack
+To start every service at once, use `make services-up` (heavy on a laptop).
 
-Run `./deploy/docker-compose-dev.bash` to bring up the shared infrastructure and application services (defaults to `up -d`). This script automatically calls `deploy/setup-network.bash`, which creates the shared `rankr-development-network` if needed so every compose file that references it as an external network can start cleanly.
+New here? Read [AGENTS.md](AGENTS.md) and [docs/agentic/WORKFLOW.md](docs/agentic/WORKFLOW.md) before your first PR.
+
+### Stop and inspect
+
+```bash
+make stop-auth-app-dev    # stop one service
+make infra-logs           # follow infrastructure logs
+make infra-down           # stop shared infrastructure
+```
 
 ## 📋 Development Setup
 
-This project uses ASDF to manage tool versions
+ASDF is **optional**. Any way of installing Go 1.25.3+ works. Use ASDF if you want the exact versions in `.tool-versions`.
 
 ### Prerequisites
-- **Go 1.25.3+** (managed via ASDF)
+- **Go 1.25.3+** (via ASDF, Homebrew, or go.dev)
 - **Git**
 - **Docker** (for local development)
 
@@ -86,15 +86,7 @@ go version
 
 ### 3. Project Setup
 
-After cloning the repository:
-
-```bash
-git clone https://github.com/gocasters/rankr/
-cd rankr
-asdf install  # Install tools
-make proto-setup  # Setup protobuf
-make mod-tidy  # Setup Go dependencies
-```
+After installing the tools, follow the [Quick Start](#-quick-start) steps above.
 
 ### 4. BSR Setup (For Contributors)
 
@@ -170,7 +162,7 @@ This project is integrated with BSR for centralized protobuf schema management.
 #### For Different User Types:
 
 **🔍 Just Using the Project (No BSR needed):**
-- Run `make proto-setup-full` and you're done!
+- Nothing to do: generated Go code is already committed. Follow the Quick Start.
 - All protobuf files are included in the repository
 - You can generate code locally without BSR
 

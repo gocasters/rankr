@@ -5,8 +5,10 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 // --- Mock types ---
@@ -78,6 +80,8 @@ func TestContributorProfile_Success(t *testing.T) {
 }
 
 func TestContributorProfile_Error(t *testing.T) {
+	require.NoError(t, logger.Init(logger.Config{Level: "error"}))
+
 	ctx := context.Background()
 	userID := int64(123)
 

@@ -16,8 +16,8 @@ type Repository interface {
 	Create(ctx context.Context, project *ProjectEntity) error
 	FindByID(ctx context.Context, id string) (*ProjectEntity, error)
 	FindBySlug(ctx context.Context, slug string) (*ProjectEntity, error)
-	List(ctx context.Context, limit, offset int32) ([]*ProjectEntity, error)
-	Count(ctx context.Context) (int32, error)
+	List(ctx context.Context, limit, offset int32, filter ListProjectFilter) ([]*ProjectEntity, error)
+	Count(ctx context.Context, filter ListProjectFilter) (int32, error)
 	Update(ctx context.Context, project *ProjectEntity) error
 	Delete(ctx context.Context, id string) error
 	FindByVCSRepo(ctx context.Context, provider constant.VcsProvider, repoID string) (*ProjectEntity, error)
@@ -149,12 +149,12 @@ func (s Service) ListProjects(ctx context.Context, input ListProjectsInput) (Lis
 		offset = 0
 	}
 
-	projects, err := s.projectRepo.List(ctx, pageSize, offset)
+	projects, err := s.projectRepo.List(ctx, pageSize, offset, input.Filter)
 	if err != nil {
 		return ListProjectsResponse{}, err
 	}
 
-	totalCount, err := s.projectRepo.Count(ctx)
+	totalCount, err := s.projectRepo.Count(ctx, input.Filter)
 	if err != nil {
 		return ListProjectsResponse{}, err
 	}

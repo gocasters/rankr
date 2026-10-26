@@ -58,11 +58,15 @@ func (s *Service) publishPullRequestOpened(req PullRequestOpenedRequest, provide
 
 	ctx := context.Background()
 	return s.saveEvent(ctx, ev)
-	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PULL_REQUEST_OPENED, TopicGithubPullRequest, metadata)
 }
 
 func (s *Service) publishPullRequestClosed(req PullRequestClosedRequest, provider eventpb.EventProvider, deliveryUID string) error {
 	_ = deliveryUID
+	authorID := req.Sender.ID
+	if req.PullRequest.User != nil {
+		authorID = req.PullRequest.User.ID
+	}
+
 	t := timestamppb.New(time.Time{}) // it is the "zero time" to be distinguishable
 	if req.PullRequest.ClosedAt != nil {
 		t = timestamppb.New(*req.PullRequest.ClosedAt)
@@ -76,7 +80,7 @@ func (s *Service) publishPullRequestClosed(req PullRequestClosedRequest, provide
 		RepositoryName: req.Repository.FullName,
 		Payload: &eventpb.Event_PrClosedPayload{
 			PrClosedPayload: &eventpb.PullRequestClosedPayload{
-				UserId: req.Sender.ID,
+				UserId: authorID,
 				MergerUserId: func() uint64 {
 					if req.PullRequest.Merged != nil && *req.PullRequest.Merged && req.PullRequest.MergedBy != nil {
 						return req.PullRequest.MergedBy.ID
@@ -100,5 +104,4 @@ func (s *Service) publishPullRequestClosed(req PullRequestClosedRequest, provide
 
 	ctx := context.Background()
 	return s.saveEvent(ctx, ev)
-	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PULL_REQUEST_CLOSED, TopicGithubPullRequest, metadata)
 }

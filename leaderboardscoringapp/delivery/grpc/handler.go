@@ -64,9 +64,10 @@ func leaderboardResToProtobuf(leaderboardRes leaderboardscoring.GetLeaderboardRe
 	rows := make([]*leaderboardscoringpb.LeaderboardRow, 0, len(leaderboardRes.LeaderboardRows))
 	for _, r := range leaderboardRes.LeaderboardRows {
 		leaderboardRow := &leaderboardscoringpb.LeaderboardRow{
-			Rank:   uint64(r.Rank),
-			UserId: r.UserID,
-			Score:  uint64(r.Score),
+			Rank:      uint64(r.Rank),
+			UserId:    r.UserID,
+			Score:     uint64(r.Score),
+			ProjectId: r.ProjectID,
 		}
 
 		rows = append(rows, leaderboardRow)

@@ -5,9 +5,7 @@ import (
 	"errors"
 	"testing"
 	"time"
-	"unsafe"
 
-	"github.com/gocasters/rankr/adapter/redis"
 	redis_client "github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -26,6 +24,16 @@ func (m *MockRedisClient) Set(ctx context.Context, key string, value interface{}
 func (m *MockRedisClient) Get(ctx context.Context, key string) *redis_client.StringCmd {
 	args := m.Mock.Called(ctx, key)
 	return args.Get(0).(*redis_client.StringCmd)
+}
+
+func (m *MockRedisClient) Del(ctx context.Context, keys ...string) *redis_client.IntCmd {
+	args := m.Mock.Called(ctx, keys)
+	return args.Get(0).(*redis_client.IntCmd)
+}
+
+func (m *MockRedisClient) TTL(ctx context.Context, key string) *redis_client.DurationCmd {
+	args := m.Mock.Called(ctx, key)
+	return args.Get(0).(*redis_client.DurationCmd)
 }
 
 // Helper functions to create mock commands with proper behavior
@@ -49,20 +57,6 @@ func createStringCmd(result string, err error) *redis_client.StringCmd {
 	return cmd
 }
 
-// createMockAdapter creates a mock redis.Adapter by using unsafe pointer manipulation
-func createMockAdapter(mockClient *MockRedisClient) *redis.Adapter {
-	// Create a real adapter first (this will be empty/nil)
-	var adapter redis.Adapter
-
-	// Use unsafe to set the internal client field
-	// This is a bit hacky but allows us to inject our mock
-	adapterPtr := unsafe.Pointer(&adapter)
-	clientFieldPtr := (*unsafe.Pointer)(unsafe.Pointer(uintptr(adapterPtr)))
-	*clientFieldPtr = unsafe.Pointer(mockClient)
-
-	return &adapter
-}
-
 func TestCacheManager_Set(t *testing.T) {
 	ctx := context.Background()
 
@@ -71,8 +65,7 @@ func TestCacheManager_Set(t *testing.T) {
 		mockClient := &MockRedisClient{}
 		mockClient.Mock.On("Set", ctx, "key1", "value1", time.Minute).Return(createStatusCmd(nil))
 
-		mockAdapter := createMockAdapter(mockClient)
-		cacheManager := NewCacheManager(mockAdapter)
+		cacheManager := &CacheManager{client: mockClient}
 
 		err := cacheManager.Set(ctx, "key1", "value1", time.Minute)
 		assert.NoError(t, err)
@@ -85,8 +78,7 @@ func TestCacheManager_Set(t *testing.T) {
 		expectedErr := errors.New("redis set error")
 		mockClient.Mock.On("Set", ctx, "key2", "value2", time.Minute).Return(createStatusCmd(expectedErr))
 
-		mockAdapter := createMockAdapter(mockClient)
-		cacheManager := NewCacheManager(mockAdapter)
+		cacheManager := &CacheManager{client: mockClient}
 
 		err := cacheManager.Set(ctx, "key2", "value2", time.Minute)
 		assert.Error(t, err)
@@ -103,8 +95,7 @@ func TestCacheManager_Get(t *testing.T) {
 		mockClient := &MockRedisClient{}
 		mockClient.Mock.On("Get", ctx, "key1").Return(createStringCmd("value1", nil))
 
-		mockAdapter := createMockAdapter(mockClient)
-		cacheManager := NewCacheManager(mockAdapter)
+		cacheManager := &CacheManager{client: mockClient}
 
 		result, err := cacheManager.Get(ctx, "key1")
 		assert.NoError(t, err)
@@ -118,8 +109,7 @@ func TestCacheManager_Get(t *testing.T) {
 		expectedErr := errors.New("redis get error")
 		mockClient.Mock.On("Get", ctx, "key2").Return(createStringCmd("", expectedErr))
 
-		mockAdapter := createMockAdapter(mockClient)
-		cacheManager := NewCacheManager(mockAdapter)
+		cacheManager := &CacheManager{client: mockClient}
 
 		result, err := cacheManager.Get(ctx, "key2")
 		assert.Error(t, err)

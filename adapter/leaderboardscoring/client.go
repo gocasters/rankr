@@ -47,9 +47,10 @@ func protobufToLeaderboardRes(leaderboardPBRes *leaderboardscoringpb.GetLeaderbo
 	var rows = make([]lbscoring.LeaderboardRow, 0, len(leaderboardPBRes.Rows))
 	for _, r := range leaderboardPBRes.Rows {
 		row := lbscoring.LeaderboardRow{
-			Rank:   int64(r.Rank),
-			UserID: r.UserId,
-			Score:  int64(r.Score),
+			Rank:      int64(r.Rank),
+			UserID:    r.UserId,
+			Score:     int64(r.Score),
+			ProjectID: r.ProjectId,
 		}
 		rows = append(rows, row)
 	}
