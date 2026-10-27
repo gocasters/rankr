@@ -101,8 +101,8 @@ HEALTH_TIMEOUT=60 deploy/stage/deploy.sh deploy
 
 ## Automatic deploy
 
-`.github/workflows/deploy-stage.yml` runs on every push to `main` (pushes that
-only touch docs or `*.md` are skipped) and on demand from the Actions tab.
+`.github/workflows/deploy-stage.yml` runs on pushes to `main` (pushes that
+only touch docs, `*.md`, `.claude/` or issue templates are skipped) and on demand from the Actions tab.
 Deploys run one at a time. The runner only opens an SSH connection and sends
 `deploy <commit sha>`; it never gets a shell.
 

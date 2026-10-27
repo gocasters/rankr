@@ -11,3 +11,6 @@ datasources:
     url: http://jaeger:16686
     access: proxy
     editable: false
+
+
+    
