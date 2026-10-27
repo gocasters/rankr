@@ -112,13 +112,13 @@ check.
 | profile without token | `GET /v1/profile/1` | 401 `unauthorized` |
 | contributor stats without token | `GET /v1/contributors/1/stats` | 401 `unauthorized` |
 | unknown route | `GET /rankr-smoke-no-such-route` | 404 `route_not_found` |
-| webhook without token | `POST /github-webhook/github/process` without `X-GitHub-*` headers | 400 from webhook (not 401) |
+| webhook without token | `POST /github-webhook/github/process` without `X-GitHub-*` headers | 400 or 401 from webhook |
 
-Run it on its own with:
+Run it on its own, from the repository root:
 
 ```bash
-deploy/stage/deploy.sh smoke
-deploy/stage/smoke.sh https://stage.rankr.gocasts.ir   # from anywhere
+deploy/stage/deploy.sh smoke                           # on the stage host, through the local gateway
+deploy/stage/smoke.sh https://stage.rankr.gocasts.ir   # from any machine with a checkout, against the public URL
 ```
 
 ## Logs

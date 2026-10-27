@@ -17,13 +17,14 @@ trap 'rm -f "$BODY_FILE"' EXIT
 
 # check NAME STATUS BODY_PART CURL_ARGS...
 # Passes when the response has STATUS and, unless BODY_PART is empty, its body
-# contains BODY_PART. Each request is capped at 5 seconds.
+# contains BODY_PART. STATUS may list several codes separated by "|", such as
+# "400|401". Each request is capped at 5 seconds.
 check() {
     local name="$1" want="$2" want_body="$3" status
     shift 3
     : > "$BODY_FILE"
     status="$(curl -sS --max-time 5 -o "$BODY_FILE" -w '%{http_code}' "$@")" || status="000"
-    if [[ "$status" == "$want" ]] && { [[ -z "$want_body" ]] || grep -qF -- "$want_body" "$BODY_FILE"; }; then
+    if [[ "|$want|" == *"|$status|"* ]] && { [[ -z "$want_body" ]] || grep -qF -- "$want_body" "$BODY_FILE"; }; then
         echo "ok    $name ($status)"
     else
         echo "FAIL  $name (want $want${want_body:+ with $want_body}, got $status)"
@@ -48,10 +49,10 @@ check "contributor stats without token" 401 '"unauthorized"' \
 check "unknown route" 404 '"route_not_found"' \
     "$BASE_URL/rankr-smoke-no-such-route"
 
-# Without the X-GitHub-* headers webhook answers 400 and publishes nothing.
-# 400 shows the request passed the gateway without a token and reached the
-# service; the gateway itself would answer 401, 404 or 502.
-check "webhook without token" 400 '' \
+# Without the X-GitHub-* headers webhook answers 400 and publishes nothing,
+# or 401 once it checks the delivery signature (TD-08 / #224). Either shows the
+# request reached the route; the gateway itself would answer 404 or 502 here.
+check "webhook without token" '400|401' '' \
     -X POST -H 'Content-Type: application/json' --data '{}' \
     "$BASE_URL/github-webhook/github/process"
 
