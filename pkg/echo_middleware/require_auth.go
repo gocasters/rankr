@@ -43,6 +43,9 @@ func RequireUserInfo(opts RequireUserInfoOptions) echo.MiddlewareFunc {
 	}
 }
 
+// SkipExactPaths skips a request whose URL path, or the pattern of the route it
+// matched (c.Path(), such as "/v1/leaderboard/public/:project_id"), is one of
+// paths. There is no prefix or wildcard matching.
 func SkipExactPaths(paths ...string) middleware.Skipper {
 	skipped := make(map[string]struct{}, len(paths))
 	for _, path := range paths {
@@ -54,8 +57,14 @@ func SkipExactPaths(paths ...string) middleware.Skipper {
 	}
 
 	return func(c echo.Context) bool {
-		path := normalizePath(c.Request().URL.Path)
-		_, ok := skipped[path]
+		if _, ok := skipped[normalizePath(c.Request().URL.Path)]; ok {
+			return true
+		}
+		route := normalizePath(c.Path())
+		if route == "" {
+			return false
+		}
+		_, ok := skipped[route]
 		return ok
 	}
 }
