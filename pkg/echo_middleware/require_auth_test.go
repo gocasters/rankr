@@ -102,3 +102,31 @@ func TestSkipExactPaths_NormalizesPaths(t *testing.T) {
 		t.Fatal("expected path to be skipped")
 	}
 }
+
+func TestSkipExactPaths_MatchesRoutePattern(t *testing.T) {
+	t.Parallel()
+
+	skipper := SkipExactPaths("/v1/leaderboard/public/:project_id")
+
+	tests := []struct {
+		name     string
+		url      string
+		route    string
+		wantSkip bool
+	}{
+		{"listed route", "/v1/leaderboard/public/1", "/v1/leaderboard/public/:project_id", true},
+		{"other route", "/v1/leaderboard/private/1", "/v1/leaderboard/private/:project_id", false},
+		{"no matched route", "/v1/leaderboard/public/1/x", "", false},
+	}
+
+	e := echo.New()
+	for _, tc := range tests {
+		req := httptest.NewRequest(http.MethodGet, tc.url, nil)
+		c := e.NewContext(req, httptest.NewRecorder())
+		c.SetPath(tc.route)
+
+		if got := skipper(c); got != tc.wantSkip {
+			t.Errorf("%s: skip = %v, want %v", tc.name, got, tc.wantSkip)
+		}
+	}
+}

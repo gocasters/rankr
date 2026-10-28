@@ -188,3 +188,33 @@ func TestConfigPublicPathsAreSkipped(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
+
+func TestConfigPublicRoutePatternIsSkipped(t *testing.T) {
+	server, err := httpserver.New(httpserver.Config{
+		Port:        8080,
+		PublicPaths: []string{"/v1/leaderboard/public/:project_id"},
+	})
+	assert.NoError(t, err)
+
+	ok := func(c echo.Context) error { return c.String(http.StatusOK, "ok") }
+	server.GetRouter().GET("/v1/leaderboard/public/:project_id", ok)
+	server.GetRouter().GET("/v1/leaderboard/private/:project_id", ok)
+	server.GetRouter().GET("/v1/contributors/:id/stats", ok)
+
+	tests := []struct {
+		path       string
+		wantStatus int
+	}{
+		{"/v1/leaderboard/public/1", http.StatusOK},
+		{"/v1/leaderboard/public/42/", http.StatusOK},
+		{"/v1/leaderboard/private/1", http.StatusUnauthorized},
+		{"/v1/contributors/1/stats", http.StatusUnauthorized},
+	}
+
+	for _, tc := range tests {
+		req := httptest.NewRequest(http.MethodGet, tc.path, nil)
+		rec := httptest.NewRecorder()
+		server.GetRouter().ServeHTTP(rec, req)
+		assert.Equal(t, tc.wantStatus, rec.Code, tc.path)
+	}
+}
