@@ -83,11 +83,35 @@ deploy/stage/ci-deploy.sh deploy
 Don't run `git checkout` or `deploy.sh deploy` directly while CI may be
 deploying: that bypasses the lock.
 
-`deploy` builds images tagged with the short commit hash, starts them, and
-checks `/health/<service>` for all six services through the gateway. If a
-service is not healthy within `HEALTH_TIMEOUT` seconds, it starts the previous
-release again and exits non-zero. Each healthy release is appended to
-`deploy/stage/.deploy-history`.
+The checkout in `/opt/rankr-stage` is on a detached HEAD and is managed by
+`ci-deploy.sh`, which fetches and checks out `origin/main` itself. Don't
+`git pull` or commit in it.
+
+`deploy` tags every release with the first 12 characters of the commit hash. It rebuilds only the
+services whose code changed since the last release in `.deploy-history`. The
+other services' images get the new tag too, so every release has an image for
+each service. Every service is then restarted in `depends_on` order, so
+changes to `.env.stage` reach all of them. After editing `.env.stage`, run
+`deploy/stage/ci-deploy.sh deploy` by hand: unlike CI, it does not skip a tip
+that is already deployed, and it recreates every service's container. Every
+service is rebuilt when there is no previous release, or when a shared path
+changed (`pkg/`, `adapter/`, `type/`, `protobuf/`, `go.mod`, `deploy/stage/`,
+or anything else not tied to one service). Changes to `docs/`, `.github/`,
+`.claude/` and `*.md` files rebuild nothing. The service-to-path map is
+`SERVICE_PATHS` in `deploy.sh`. It includes the imports between services
+(leaderboardstat uses leaderboardscoringapp, project uses webhookapp), so keep
+it in sync with `go list -deps ./cmd/<service>`.
+
+After starting, `deploy` checks `/health/<service>` for all six services
+through the gateway, then the smoke test below. If a check does not pass
+within `HEALTH_TIMEOUT` seconds, it starts the previous release again and exits
+non-zero. Each healthy release is appended to `deploy/stage/.deploy-history`.
+
+Smoke test: with `SMOKE_PROJECT_ID` set in `.env.stage`, the checks also call
+`GET /v1/leaderboard/public/<SMOKE_PROJECT_ID>` and expect a 2xx. It is empty
+by default: until TD-04 (#221) lands, leaderboardstat answers 401 on that path,
+so turning it on would roll back every deploy. Once #221 is deployed, set it to
+a project that exists on stage.
 
 `HEALTH_TIMEOUT` is the whole wait, not a per-request limit: every request
 (at most 5 seconds each) is cut short at the deadline, and services not
@@ -96,7 +120,7 @@ whole number of seconds, and is read from the shell environment, not from
 `.env.stage`. It applies to `deploy` and `rollback`:
 
 ```bash
-HEALTH_TIMEOUT=60 deploy/stage/deploy.sh deploy
+HEALTH_TIMEOUT=60 deploy/stage/ci-deploy.sh deploy
 ```
 
 ## Automatic deploy
@@ -110,14 +134,19 @@ Not every push gets its own deploy. GitHub keeps only the newest pending run,
 and the script always deploys the current tip of `origin/main`, not the sha it
 was sent. So when several pushes land close together, the intermediate commits
 may be skipped, but stage always ends on the latest `main` and never moves
-backward. A run whose tip is already deployed exits without restarting
-anything.
+backward. A CI run whose tip is already deployed and healthy exits without
+restarting anything.
 
 On the host, the CI key is pinned to `deploy/stage/ci-deploy.sh`. It accepts
 nothing but `deploy [full sha]`, takes a lock so two deploys cannot overlap,
 refuses a sha that is not on `origin/main`, checks out the tip of
 `origin/main` and runs `deploy.sh deploy`. A failed health check rolls back as above and
 fails the workflow run.
+
+The deploy runs detached from the SSH session, so cancelling the run, the job
+timeout or a dropped connection does not stop it halfway: it still ends healthy
+or rolled back, and keeps the lock until then. The run only shows its output;
+the full log of the last deploy is in `deploy/stage/.deploy-log`.
 
 One-time setup (needs host and repo admin):
 
@@ -138,7 +167,7 @@ One-time setup (needs host and repo admin):
    | `STAGE_SSH_KEY` | the private key file `rankr-stage-ci` |
    | `STAGE_SSH_TARGET` | `user@host` |
    | `STAGE_SSH_PORT` | only if SSH is not on 22 |
-   | `STAGE_KNOWN_HOSTS` | output of `ssh-keyscan -p <port> -t ed25519 <host>` (keep `-p` even for 22), compared with `/etc/ssh/ssh_host_ed25519_key.pub` on the host |
+   | `STAGE_KNOWN_HOSTS` | output of `ssh-keyscan -p <port> -t ed25519 <host>` (keep `-p` even for 22), compared with `/etc/ssh/ssh_host_ed25519_key.pub` on the host. `<host>` must exactly match the host in `STAGE_SSH_TARGET` (same name or IP) |
 
 4. Delete the local private key file once it is stored in GitHub.
 
@@ -164,11 +193,11 @@ Container logs are capped at 3 × 10 MB per container.
 ## Roll back
 
 ```bash
-flock -w 600 deploy/stage/.deploy-lock deploy/stage/deploy.sh rollback
+deploy/stage/ci-deploy.sh rollback
 ```
 
 This starts the previous release from `.deploy-history` without building.
-`flock` takes the same lock as `ci-deploy.sh`, so a rollback never runs during
+`ci-deploy.sh` holds the deploy lock, so a rollback never runs during
 a CI deploy. The next push to `main` deploys the new tip again; to keep stage
 on the old release, pause the `deploy-stage` workflow first.
 Migrations run on startup (`serve --migrate-up`) and are not rolled back: if a
@@ -179,8 +208,12 @@ the stage host.
 ## Stop
 
 ```bash
-deploy/stage/deploy.sh down
+deploy/stage/ci-deploy.sh down
 ```
+
+`rollback` and `down` go through `ci-deploy.sh` so they wait for a running
+deploy and hold the same lock. They are accepted only by hand on the host; the
+CI key can only send `deploy`. The next push to `main` deploys the tip again.
 
 Volumes (`rankr-stage_postgres-data`, `rankr-stage_redis-data`,
 `rankr-stage_nats-data`) are kept. Never run `docker system prune --volumes`
@@ -203,10 +236,9 @@ Stage shares a small host with other projects, so the stack is capped:
 - `GET /v1/leaderboard/public/:project_id` passes the gateway without a token
   but leaderboardstat itself still answers 401: `pkg/httpserver` only skips
   exact public paths, and this path has a parameter. Fixing it needs a
-  prefix skipper in `pkg/httpserver` (TD-04, #221).
+  prefix skipper in `pkg/httpserver` (TD-04, #221). Until then, leave
+  `SMOKE_PROJECT_ID` empty.
 - NATS has no authentication yet. It is only reachable on the private network.
 - The webhook `recovery_config` in the production config holds placeholder
   hook credentials, so lost-delivery recovery logs errors until real values
   are set.
-- Images build from the production Dockerfiles, which need TD-16 (#220) to
-  build from a clean clone.
