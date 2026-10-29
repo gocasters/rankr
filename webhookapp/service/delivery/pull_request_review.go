@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -43,5 +44,4 @@ func (s *Service) PublishPullRequestReviewSubmitted(req PullRequestReviewSubmitt
 
 	ctx := context.Background()
 	return s.saveEvent(ctx, ev)
-	//return s.publishEvent(ev, eventpb.EventName_EVENT_NAME_PULL_REQUEST_REVIEW_SUBMITTED, TopicGithubReview, metadata)
 }

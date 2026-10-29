@@ -5,7 +5,7 @@ WORKDIR /app
 RUN apk add --no-cache netcat-openbsd
 
 # Install air for hot-reload
-RUN go install github.com/air-verse/air@latest
+RUN go install github.com/air-verse/air@v1.67.0
 
 ENV GOPROXY=https://mirrors.aliyun.com/goproxy,direct
 

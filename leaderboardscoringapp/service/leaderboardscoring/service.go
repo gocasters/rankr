@@ -150,9 +150,8 @@ func (s *Service) GetLeaderboard(ctx context.Context, req *GetLeaderboardRequest
 		return GetLeaderboardResponse{}, nil
 	}
 
-	leaderboardRes := mapLeaderboardScoringToParam(leaderboardScoring)
+	leaderboardRes := mapLeaderboardScoringToParam(leaderboardScoring, req.ProjectID)
 	leaderboardRes.Timeframe = req.Timeframe
-	leaderboardRes.ProjectID = req.ProjectID
 
 	log.Debug("Successfully retrieved leaderboard data", slog.Int("row_count", len(leaderboardRes.LeaderboardRows)))
 	return leaderboardRes, nil
@@ -440,18 +439,19 @@ func getPerProjectLeaderboardKey(project string, timeframe Timeframe, period str
 	return fmt.Sprintf("leaderboard:%s:%s:%s", project, timeframe.String(), period)
 }
 
-func mapLeaderboardScoringToParam(scoring LeaderboardQueryResult) GetLeaderboardResponse {
+func mapLeaderboardScoringToParam(scoring LeaderboardQueryResult, projectID *string) GetLeaderboardResponse {
 	leaderboardRes := GetLeaderboardResponse{
 		Timeframe:       TimeframeUnspecified.String(),
-		ProjectID:       nil,
+		ProjectID:       projectID,
 		LeaderboardRows: make([]LeaderboardRow, 0, len(scoring.LeaderboardRows)),
 	}
 
 	for _, r := range scoring.LeaderboardRows {
 		row := LeaderboardRow{
-			Rank:   r.Rank,
-			UserID: r.UserID,
-			Score:  r.Score,
+			Rank:      r.Rank,
+			UserID:    r.UserID,
+			Score:     r.Score,
+			ProjectID: projectID,
 		}
 
 		leaderboardRes.LeaderboardRows = append(leaderboardRes.LeaderboardRows, row)

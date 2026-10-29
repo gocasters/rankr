@@ -1,0 +1,19 @@
+# Scoring and leaderboard
+/leaderboardscoringapp/ @gohossein
+
+# Webhooks
+/webhookapp/ @gohossein
+
+# Authentication
+/authapp/ @gohossein
+
+# Database migrations
+**/migrations/ @gohossein
+
+# API contracts
+/protobuf/ @gohossein
+
+# Repository automation and agent instructions
+/.github/ @gohossein
+/AGENTS.md @gohossein
+/.claude/ @gohossein
