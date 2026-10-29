@@ -1,0 +1,81 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+#
+# CodeRabbit review config for rankr.
+# General rules come from AGENTS.md / CLAUDE.md, which CodeRabbit loads by
+# default via knowledge_base.code_guidelines. The path instructions below only
+# add what is specific to each area.
+
+language: en-US
+tone_instructions: "Be concise. When a finding comes from AGENTS.md, cite the rule number. Skip style nits that gofmt or vet already cover."
+
+reviews:
+  profile: chill
+
+  # Never request changes or block a merge: CodeRabbit only comments.
+  # (request_changes_workflow is a legacy alias of auto_approvals.enabled.)
+  auto_approvals:
+    enabled: false
+  fail_commit_status: false
+  pre_merge_checks:
+    docstrings:
+      mode: "off"
+    title:
+      mode: warning
+    description:
+      mode: warning
+    issue_assessment:
+      mode: warning
+
+  # Generated code is never edited by hand; review the .proto sources instead.
+  path_filters:
+    - "!protobuf/golang/**"
+
+  path_instructions:
+    - path: "webhookapp/**"
+      instructions: |
+        Ingest service: GitHub webhook -> Postgres -> NATS `rankr_raw_events`.
+        - Deliveries must stay idempotent on `X-GitHub-Delivery`; a redelivered event must not be stored or published twice.
+        - Payload verification must not be weakened. Any `X-Hub-Signature-256` check must use `hmac.Equal`, never `==` or `bytes.Equal`.
+        - Never log raw payloads, headers containing secrets, or tokens.
+        - The event published to NATS is consumed by leaderboardscoringapp: changes to its shape must be backward-compatible.
+        - Every outbound HTTP client must set a timeout.
+
+    - path: "leaderboardscoringapp/**"
+      instructions: |
+        Scoring service: NATS consumer -> Redis ZSET leaderboards -> Postgres snapshots.
+        - Scoring must be deterministic; no `math/rand` outside tests.
+        - Redis updates for one event should be atomic or pipelined; timeframe keys need a TTL or an explicit reason why not.
+        - The consumer must ack only after a successful write and must not double-count when a message is redelivered.
+        - Errors in the batch processor must not be swallowed silently.
+        - Flag any test whose expected score was changed without a matching behaviour change in the PR.
+
+    - path: "**/migrations/**"
+      instructions: |
+        sql-migrate migrations; one database per service.
+        - Additive only, expand/contract: no column/table rename or drop in the same PR that stops using it.
+        - Never edit a migration that is already on main; add a new one.
+        - Each file needs both `-- +migrate Up` and `-- +migrate Down`.
+        - Index creation or backfills on large tables: point out locking and suggest `CONCURRENTLY` with `-- +migrate Up notransaction` where it applies.
+
+    - path: "protobuf/**/*.proto"
+      instructions: |
+        gRPC contracts managed with buf.
+        - Additive only: new fields get new numbers; never renumber, rename or change the type of an existing field.
+        - A removed field's number and name must go into `reserved`.
+        - If a .proto changes, `protobuf/golang/` must be regenerated (`make proto-gen`) in the same PR.
+
+    - path: "deploy/**"
+      instructions: |
+        Deployment configs and compose files.
+        - No secrets, real tokens, passwords or `.env` files, including in examples and comments.
+        - Image tags should be pinned, not `latest`.
+        - `deploy/development/*-compose.yml` is frozen: flag any change to those files.
+        - Health checks and service timeouts must be set explicitly.
+
+    - path: "cmd/web/**"
+      instructions: |
+        HTML UI (html/template + htmx). The only allowed new top-level location in AGENTS.md.
+        - Use `html/template` only; never build `template.HTML`, `template.JS` or `template.URL` from user or API data.
+        - State-changing htmx requests (POST/PUT/DELETE) need CSRF protection.
+        - Unfinished user-visible features must sit behind a feature flag that is off by default.
+        - Every HTTP client used to call backend services must set a timeout.
