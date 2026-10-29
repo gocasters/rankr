@@ -9,6 +9,29 @@ rpc_server:
   network_type: "tcp"
   allow_insecure: true
 
+leaderboardstat_grpc_client:
+  host: "leaderboardstat-app"
+  port: 8091
+  grpc_service_name: "leaderboardstat.v1.LeaderboardstatService"
+  max_attempts: 3
+  initial_backoff: 30s
+  max_backoff: 50s
+  backoff_multiplier: 1.5
+  retryable_status_codes:
+    - "UNAVAILABLE"
+    - "DEADLINE_EXCEEDED"
+
+contributor_grpc_client:
+  host: "contributor-app"
+  port: 8093
+  grpc_service_name: "contributor.v1.ContributorService"
+  max_attempts: 3
+  initial_backoff: 30s
+  max_backoff: 50s
+  backoff_multiplier: 1.5
+  retryable_status_codes:
+    - "UNAVAILABLE"
+    - "DEADLINE_EXCEEDED"
 
 scheduler_cfg:
   snapshot_crontab: "0 */3 * * *"
@@ -67,6 +90,9 @@ batch_processor:
 total_shutdown_timeout: 30m
 
 path_of_migration: "./userprofileapp/repository/migrations"
+
+service:
+  upstream_time_out: 5s
 
 postgres_db:
   host: shared-postgres

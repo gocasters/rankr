@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	lbstat "github.com/gocasters/rankr/leaderboardstatapp/service/leaderboardstat"
 	mygrpc "github.com/gocasters/rankr/pkg/grpc"
 	leaderboardstatpb "github.com/gocasters/rankr/protobuf/golang/leaderboardstat"
 	types "github.com/gocasters/rankr/type"
@@ -112,11 +111,7 @@ func TestClient_GetContributorStats_Success(t *testing.T) {
 	client := createTestClient(t, addr)
 	defer client.Close()
 
-	req := &lbstat.ContributorStatsRequest{
-		ContributorID: 123,
-	}
-
-	resp, err := client.GetContributorStats(context.Background(), req)
+	resp, err := client.GetContributorStats(context.Background(), GetContributorStatRequest{ContributorID: 123})
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 
@@ -141,14 +136,10 @@ func TestClient_GetContributorStats_ServerError(t *testing.T) {
 	client := createTestClient(t, addr)
 	defer client.Close()
 
-	req := &lbstat.ContributorStatsRequest{
-		ContributorID: 123,
-	}
-
-	resp, err := client.GetContributorStats(context.Background(), req)
+	resp, err := client.GetContributorStats(context.Background(), GetContributorStatRequest{ContributorID: 123})
 	assert.Error(t, err)
-	assert.Nil(t, resp)
 	assert.Contains(t, err.Error(), "server error")
+	assert.Equal(t, GetContributorStatResponse{}, resp)
 }
 
 func TestClient_GetContributorStats_ContextCancellation(t *testing.T) {
@@ -178,13 +169,9 @@ func TestClient_GetContributorStats_ContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // Cancel immediately
 
-	req := &lbstat.ContributorStatsRequest{
-		ContributorID: 123,
-	}
-
-	resp, err := client.GetContributorStats(ctx, req)
+	resp, err := client.GetContributorStats(ctx, GetContributorStatRequest{ContributorID: 123})
 	assert.Error(t, err)
-	assert.Nil(t, resp)
+	assert.Equal(t, GetContributorStatResponse{}, resp)
 }
 
 func TestClient_Close(t *testing.T) {
