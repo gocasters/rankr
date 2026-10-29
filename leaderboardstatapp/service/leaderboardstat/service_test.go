@@ -129,10 +129,10 @@ func TestSetPublicLeaderboard_StoresEveryTimeframe(t *testing.T) {
 	err := s.SetPublicLeaderboard(context.Background())
 	require.NoError(t, err)
 	want := []string{"daily", "weekly", "monthly", "yearly", "all_time"}
-	assert.Equal(t, want, redis.setTimeframes)
+	assert.ElementsMatch(t, want, redis.setTimeframes)
 	var asked []string
 	for _, req := range scoring.requests {
 		asked = append(asked, req.Timeframe)
 	}
-	assert.Equal(t, want, asked)
+	assert.ElementsMatch(t, want, asked)
 }

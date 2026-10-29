@@ -529,7 +529,6 @@ func (s *Service) SetPublicLeaderboard(ctx context.Context) error {
 	log.Info("Fetched projects from project service", slog.Int("count", len(allProjects)))
 
 	ttl := 3 * time.Minute
-	timeframes := []string{"daily", "weekly", "monthly", "yearly", "all_time"}
 
 	for _, proj := range allProjects {
 		if proj.GitRepoID == "" {
@@ -539,12 +538,21 @@ func (s *Service) SetPublicLeaderboard(ctx context.Context) error {
 			continue
 		}
 
+		gitRepoIDInt, parseErr := strconv.ParseUint(proj.GitRepoID, 10, 64)
+		if parseErr != nil {
+			log.Error("Failed to parse git_repo_id as uint64",
+				slog.String("git_repo_id", proj.GitRepoID),
+				slog.String("error", parseErr.Error()))
+			continue
+		}
+
 		log.Info("Updating public leaderboard for project",
 			slog.String("project_id", proj.ProjectID),
 			slog.String("git_repo_id", proj.GitRepoID),
 			slog.String("name", proj.Name))
 
-		for _, timeframe := range timeframes {
+		for _, tf := range lbscoring.Timeframes {
+			timeframe := tf.String()
 			userScores := make(map[int]float64)
 
 			pageSize := int32(100)
@@ -586,15 +594,7 @@ func (s *Service) SetPublicLeaderboard(ctx context.Context) error {
 			}
 
 			if len(userScores) > 0 {
-				gitRepoIDInt, parseErr := strconv.ParseUint(proj.GitRepoID, 10, 64)
-				if parseErr != nil {
-					log.Error("Failed to parse git_repo_id as uint64",
-						slog.String("git_repo_id", proj.GitRepoID),
-						slog.String("error", parseErr.Error()))
-					continue
-				}
-
-				err := s.redisLeaderboardRepo.SetPublicLeaderboard(ctx, types.ID(gitRepoIDInt), timeframe, userScores, ttl) // ✨ ۴
+				err := s.redisLeaderboardRepo.SetPublicLeaderboard(ctx, types.ID(gitRepoIDInt), timeframe, userScores, ttl)
 				if err != nil {
 					log.Error("Failed to set public leaderboard in Redis",
 						slog.String("git_repo_id", proj.GitRepoID),
