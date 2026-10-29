@@ -2,8 +2,13 @@ package delivery
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"io"
 	"log/slog"
+	"strings"
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
@@ -25,21 +30,41 @@ type EventDurableRepository interface {
 }
 
 type Service struct {
-	repo            EventRepository
-	publisher       message.Publisher
-	durableRepo     EventDurableRepository
-	insertQueueName string
-	insertBatchSize int64
+	repo               EventRepository
+	publisher          message.Publisher
+	durableRepo        EventDurableRepository
+	githubHmacSecret   []byte
+	githubMaxEventSize int64
+	insertQueueName    string
+	insertBatchSize    int64
 }
 
-func New(repo EventRepository, publisher message.Publisher, durableRepo EventDurableRepository, insertQueueName string, insertBatchSize int64) *Service {
+func New(repo EventRepository, publisher message.Publisher, durableRepo EventDurableRepository, githubHmacSecret []byte, githubMaxEventSize int64, insertQueueName string, insertBatchSize int64) *Service {
 	return &Service{
-		repo:            repo,
-		publisher:       publisher,
-		durableRepo:     durableRepo,
-		insertQueueName: insertQueueName,
-		insertBatchSize: insertBatchSize,
+		repo:               repo,
+		publisher:          publisher,
+		durableRepo:        durableRepo,
+		githubHmacSecret:   githubHmacSecret,
+		githubMaxEventSize: githubMaxEventSize,
+		insertQueueName:    insertQueueName,
+		insertBatchSize:    insertBatchSize,
 	}
+}
+
+func (s *Service) validateGitHubHeaders(hookID, eventName, deliveryUID, msgSig256 string) error {
+	if hookID == "" {
+		return fmt.Errorf("missing X-GitHub-Hook-ID header")
+	}
+	if eventName == "" {
+		return fmt.Errorf("missing X-GitHub-Event header")
+	}
+	if deliveryUID == "" {
+		return fmt.Errorf("missing X-GitHub-Delivery header")
+	}
+	if msgSig256 == "" {
+		return fmt.Errorf("missing X-Hub-Signature-256 header")
+	}
+	return nil
 }
 
 func (s *Service) saveEvent(ctx context.Context, event *eventpb.Event) error {
@@ -68,6 +93,44 @@ func (s *Service) saveEvent(ctx context.Context, event *eventpb.Event) error {
 	}
 
 	return nil
+}
+
+func (s *Service) VerifyEvent(eventReader io.Reader, hookID, eventName, deliveryUID, hubSig256 string) ([]byte, error) {
+	if len(s.githubHmacSecret) == 0 {
+		return nil, fmt.Errorf("GitHub webhook secret must be set")
+	}
+	if s.githubMaxEventSize <= 0 {
+		return nil, fmt.Errorf("GitHub payload size limit must be positive")
+	}
+
+	if err := s.validateGitHubHeaders(hookID, eventName, deliveryUID, hubSig256); err != nil {
+		return nil, err
+	}
+
+	event, err := io.ReadAll(io.LimitReader(eventReader, s.githubMaxEventSize+1))
+	if err != nil {
+		return nil, fmt.Errorf("read GitHub payload: %w", err)
+	}
+	if int64(len(event)) > s.githubMaxEventSize {
+		return nil, fmt.Errorf("GitHub payload exceeds the %d-byte limit", s.githubMaxEventSize)
+	}
+
+	const ghSigPrefix = "sha256="
+	if !strings.HasPrefix(hubSig256, ghSigPrefix) {
+		return nil, fmt.Errorf("GitHub signature must start with %q", ghSigPrefix)
+	}
+
+	decodedSig, err := hex.DecodeString(strings.TrimPrefix(hubSig256, ghSigPrefix))
+	if err != nil {
+		return nil, fmt.Errorf("decode GitHub signature: %w", err)
+	}
+	mac := hmac.New(sha256.New, s.githubHmacSecret)
+	_, _ = mac.Write(event)
+	if !hmac.Equal(mac.Sum(nil), decodedSig) {
+		return nil, fmt.Errorf("hmac verification failed")
+	}
+
+	return event, nil
 }
 
 func (s *Service) ProcessBatch(ctx context.Context) error {

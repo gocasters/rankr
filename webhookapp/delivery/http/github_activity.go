@@ -3,31 +3,23 @@ package http
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+
 	"github.com/gocasters/rankr/pkg/logger"
 	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 	"github.com/gocasters/rankr/webhookapp/service/delivery"
 	"github.com/labstack/echo/v4"
-	"io"
-	"net/http"
 )
 
 func (s *Server) PublishGithubActivity(c echo.Context) error {
 	hookID := c.Request().Header.Get("X-GitHub-Hook-ID")
 	eventName := c.Request().Header.Get("X-GitHub-Event")
 	deliveryUID := c.Request().Header.Get("X-GitHub-Delivery")
-
-	if err := validateGitHubHeaders(hookID, eventName, deliveryUID); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": err.Error(),
-		})
-	}
-
-	// TODO: add limit to read body to avoid abuse. -> "const maxPayload = 1 << 20";
-	// TODO: body, err := io.ReadAll(io.LimitReader(c.Request().Body, maxPayload))
-	body, err := io.ReadAll(c.Request().Body)
+	hubSig256 := c.Request().Header.Get("X-Hub-Signature-256")
+	body, err := s.Service.VerifyEvent(c.Request().Body, hookID, eventName, deliveryUID, hubSig256)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Failed to read request body",
+			"error": err.Error(),
 		})
 	}
 
@@ -79,17 +71,4 @@ func extractWebhookAction(body []byte) (string, error) {
 		return "", fmt.Errorf("missing action field")
 	}
 	return actionData.Action, nil
-}
-
-func validateGitHubHeaders(hookID, eventName, deliveryUID string) error {
-	if hookID == "" {
-		return fmt.Errorf("missing X-GitHub-Hook-ID header")
-	}
-	if eventName == "" {
-		return fmt.Errorf("missing X-GitHub-Event header")
-	}
-	if deliveryUID == "" {
-		return fmt.Errorf("missing X-GitHub-Delivery header")
-	}
-	return nil
 }
