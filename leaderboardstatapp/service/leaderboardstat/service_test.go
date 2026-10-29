@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gocasters/rankr/adapter/project"
+	lbscoring "github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/gocasters/rankr/pkg/logger"
 	types "github.com/gocasters/rankr/type"
 	"github.com/stretchr/testify/assert"
@@ -23,9 +25,10 @@ func TestMain(m *testing.M) {
 
 // fakeRedisLB returns fixed data instead of talking to Redis.
 type fakeRedisLB struct {
-	entries []UserScoreEntry
-	total   int64
-	err     error
+	entries       []UserScoreEntry
+	total         int64
+	err           error
+	setTimeframes []string
 }
 
 func (f *fakeRedisLB) GetPublicLeaderboardPaginated(ctx context.Context, projectID types.ID, page, pageSize int32) ([]UserScoreEntry, int64, error) {
@@ -33,6 +36,7 @@ func (f *fakeRedisLB) GetPublicLeaderboardPaginated(ctx context.Context, project
 }
 
 func (f *fakeRedisLB) SetPublicLeaderboard(ctx context.Context, projectID types.ID, timeframe string, userScores map[int]float64, ttl time.Duration) error {
+	f.setTimeframes = append(f.setTimeframes, timeframe)
 	return nil
 }
 
@@ -104,4 +108,31 @@ func TestGetPublicLeaderboard(t *testing.T) {
 			assert.Equal(t, tt.wantTotalPages, got.TotalPages)
 		})
 	}
+}
+func TestSetPublicLeaderboard_StoresEveryTimeframe(t *testing.T) {
+	scoring := &fakeScoringClient{
+		rowsByProject: map[string][]lbscoring.LeaderboardRow{
+			"1001": {{Rank: 1, UserID: "7", Score: 30}},
+		},
+	}
+	projects := &fakeProjectClient{
+		projects: []project.ProjectItem{{ProjectID: "p-a", GitRepoID: "1001"}},
+	}
+	redis := &fakeRedisLB{}
+
+	s := Service{
+		lbScoringClient:      scoring,
+		projectClient:        projects,
+		redisLeaderboardRepo: redis,
+	}
+
+	err := s.SetPublicLeaderboard(context.Background())
+	require.NoError(t, err)
+	want := []string{"daily", "weekly", "monthly", "yearly", "all_time"}
+	assert.Equal(t, want, redis.setTimeframes)
+	var asked []string
+	for _, req := range scoring.requests {
+		asked = append(asked, req.Timeframe)
+	}
+	assert.Equal(t, want, asked)
 }

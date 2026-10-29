@@ -529,7 +529,7 @@ func (s *Service) SetPublicLeaderboard(ctx context.Context) error {
 	log.Info("Fetched projects from project service", slog.Int("count", len(allProjects)))
 
 	ttl := 3 * time.Minute
-	timeframes := []string{"daily", "weekly", "monthly", "yearly", "all_time"} // ✨ ۱
+	timeframes := []string{"daily", "weekly", "monthly", "yearly", "all_time"}
 
 	for _, proj := range allProjects {
 		if proj.GitRepoID == "" {
