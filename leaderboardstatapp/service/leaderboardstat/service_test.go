@@ -32,7 +32,7 @@ func (f *fakeRedisLB) GetPublicLeaderboardPaginated(ctx context.Context, project
 	return f.entries, f.total, f.err
 }
 
-func (f *fakeRedisLB) SetPublicLeaderboard(ctx context.Context, projectID types.ID, userScores map[int]float64, ttl time.Duration) error {
+func (f *fakeRedisLB) SetPublicLeaderboard(ctx context.Context, projectID types.ID, timeframe string, userScores map[int]float64, ttl time.Duration) error {
 	return nil
 }
 

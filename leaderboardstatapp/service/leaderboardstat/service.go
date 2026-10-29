@@ -46,7 +46,7 @@ type ProjectClient interface {
 
 type RedisLeaderboardRepository interface {
 	GetPublicLeaderboardPaginated(ctx context.Context, projectID types.ID, page int32, pageSize int32) ([]UserScoreEntry, int64, error)
-	SetPublicLeaderboard(ctx context.Context, projectID types.ID, userScores map[int]float64, ttl time.Duration) error
+	SetPublicLeaderboard(ctx context.Context, projectID types.ID, timeframe string, userScores map[int]float64, ttl time.Duration) error
 }
 
 type Service struct {
@@ -529,6 +529,7 @@ func (s *Service) SetPublicLeaderboard(ctx context.Context) error {
 	log.Info("Fetched projects from project service", slog.Int("count", len(allProjects)))
 
 	ttl := 3 * time.Minute
+	timeframes := []string{"daily", "weekly", "monthly", "yearly", "all_time"} // ✨ ۱
 
 	for _, proj := range allProjects {
 		if proj.GitRepoID == "" {
@@ -543,71 +544,77 @@ func (s *Service) SetPublicLeaderboard(ctx context.Context) error {
 			slog.String("git_repo_id", proj.GitRepoID),
 			slog.String("name", proj.Name))
 
-		userScores := make(map[int]float64)
+		for _, timeframe := range timeframes {
+			userScores := make(map[int]float64)
 
-		pageSize := int32(100)
-		offset := int32(0)
+			pageSize := int32(100)
+			offset := int32(0)
 
-		for {
-			getLeaderboardReq := &lbscoring.GetLeaderboardRequest{
-				Timeframe: "daily",
-				ProjectID: &proj.GitRepoID,
-				PageSize:  pageSize,
-				Offset:    offset,
-			}
+			for {
+				getLeaderboardReq := &lbscoring.GetLeaderboardRequest{
+					Timeframe: timeframe,
+					ProjectID: &proj.GitRepoID,
+					PageSize:  pageSize,
+					Offset:    offset,
+				}
 
-			leaderboardRes, err := s.lbScoringClient.GetLeaderboard(ctx, getLeaderboardReq)
-			if err != nil {
-				log.Error("Failed to get leaderboard data for project",
-					slog.String("git_repo_id", proj.GitRepoID),
-					slog.String("error", err.Error()))
-				break
-			}
-
-			for _, row := range leaderboardRes.LeaderboardRows {
-				contributorID, err := strconv.Atoi(row.UserID)
+				leaderboardRes, err := s.lbScoringClient.GetLeaderboard(ctx, getLeaderboardReq)
 				if err != nil {
-					log.Warn("Failed to convert user ID",
-						slog.String("user_id", row.UserID))
+					log.Error("Failed to get leaderboard data for project",
+						slog.String("git_repo_id", proj.GitRepoID),
+						slog.String("timeframe", timeframe),
+						slog.String("error", err.Error()))
+					break
+				}
+
+				for _, row := range leaderboardRes.LeaderboardRows {
+					contributorID, err := strconv.Atoi(row.UserID)
+					if err != nil {
+						log.Warn("Failed to convert user ID",
+							slog.String("user_id", row.UserID))
+						continue
+					}
+
+					userScores[contributorID] = float64(row.Score)
+				}
+
+				if len(leaderboardRes.LeaderboardRows) < int(pageSize) {
+					break
+				}
+
+				offset += pageSize
+			}
+
+			if len(userScores) > 0 {
+				gitRepoIDInt, parseErr := strconv.ParseUint(proj.GitRepoID, 10, 64)
+				if parseErr != nil {
+					log.Error("Failed to parse git_repo_id as uint64",
+						slog.String("git_repo_id", proj.GitRepoID),
+						slog.String("error", parseErr.Error()))
 					continue
 				}
 
-				userScores[contributorID] = float64(row.Score)
-			}
+				err := s.redisLeaderboardRepo.SetPublicLeaderboard(ctx, types.ID(gitRepoIDInt), timeframe, userScores, ttl) // ✨ ۴
+				if err != nil {
+					log.Error("Failed to set public leaderboard in Redis",
+						slog.String("git_repo_id", proj.GitRepoID),
+						slog.String("timeframe", timeframe),
+						slog.String("error", err.Error()))
+					continue
+				}
 
-			if len(leaderboardRes.LeaderboardRows) < int(pageSize) {
-				break
-			}
-
-			offset += pageSize
-		}
-
-		if len(userScores) > 0 {
-			gitRepoIDInt, parseErr := strconv.ParseUint(proj.GitRepoID, 10, 64)
-			if parseErr != nil {
-				log.Error("Failed to parse git_repo_id as uint64",
+				log.Info("Updated public leaderboard for project",
 					slog.String("git_repo_id", proj.GitRepoID),
-					slog.String("error", parseErr.Error()))
-				continue
-			}
-
-			err := s.redisLeaderboardRepo.SetPublicLeaderboard(ctx, types.ID(gitRepoIDInt), userScores, ttl)
-			if err != nil {
-				log.Error("Failed to set public leaderboard in Redis",
+					slog.String("name", proj.Name),
+					slog.String("timeframe", timeframe),
+					slog.Int("total_contributors", len(userScores)),
+					slog.String("ttl", ttl.String()))
+			} else {
+				log.Warn("No scores found for project",
 					slog.String("git_repo_id", proj.GitRepoID),
-					slog.String("error", err.Error()))
-				continue
+					slog.String("name", proj.Name),
+					slog.String("timeframe", timeframe))
 			}
-
-			log.Info("Updated public leaderboard for project",
-				slog.String("git_repo_id", proj.GitRepoID),
-				slog.String("name", proj.Name),
-				slog.Int("total_contributors", len(userScores)),
-				slog.String("ttl", ttl.String()))
-		} else {
-			log.Warn("No scores found for project",
-				slog.String("git_repo_id", proj.GitRepoID),
-				slog.String("name", proj.Name))
 		}
 	}
 
