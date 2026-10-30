@@ -14,6 +14,8 @@ import (
 type ClientConfig struct {
 	Host                 string        `koanf:"host"`
 	Port                 int           `koanf:"port"`
+	DialTimeout          time.Duration `koanf:"dial_timeout"`
+	NonBlocking          bool          `koanf:"non_blocking"`
 	GRPCServiceName      string        `koanf:"grpc_service_name"`
 	MaxAttempts          int           `koanf:"max_attempts"`
 	InitialBackoff       time.Duration `koanf:"initial_backoff"`
@@ -45,10 +47,15 @@ func NewClient(cfg ClientConfig, logger *slog.Logger) (*RPCClient, error) {
 	dialOptions := []grpc.DialOption{
 		grpc.WithTransportCredentials(transportCreds),
 		grpc.WithDefaultServiceConfig(retryPolicyJSON),
-		grpc.WithBlock(),
+	}
+	if !cfg.NonBlocking {
+		dialOptions = append(dialOptions, grpc.WithBlock())
 	}
 
-	timeout := cfg.InitialBackoff
+	timeout := cfg.DialTimeout
+	if timeout <= 0 {
+		timeout = cfg.InitialBackoff
+	}
 	if timeout <= 0 {
 		timeout = 10 * time.Second
 	}

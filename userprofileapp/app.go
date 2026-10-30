@@ -27,7 +27,12 @@ type Application struct {
 }
 
 func Setup(ctx context.Context, cfg Config) (Application, error) {
+	if err := cfg.Validate(); err != nil {
+		return Application{}, err
+	}
 	log := logger.L()
+	cfg.ContributorRPC.NonBlocking = true
+	cfg.LeaderboardStatRPC.NonBlocking = true
 
 	// Initialize grpc Clients
 	// ============================================================
