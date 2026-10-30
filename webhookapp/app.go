@@ -3,6 +3,12 @@ package webhookapp
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
+
 	"github.com/gocasters/rankr/adapter/redis"
 	"github.com/gocasters/rankr/adapter/webhook/github"
 	"github.com/gocasters/rankr/pkg/database"
@@ -11,11 +17,6 @@ import (
 	"github.com/gocasters/rankr/webhookapp/schedule/insert"
 	"github.com/gocasters/rankr/webhookapp/schedule/recovery"
 	"github.com/gocasters/rankr/webhookapp/service/delivery"
-	"log/slog"
-	"os"
-	"os/signal"
-	"sync"
-	"syscall"
 
 	"github.com/ThreeDotsLabs/watermill/message"
 
@@ -45,7 +46,21 @@ func Setup(config Config, conn *database.Database, pub message.Publisher, redisA
 	if err != nil {
 		panic(err)
 	}
-	deliveryService := delivery.New(&eventRepo, pub, &eventDurableRepo, config.InsertQueueName, config.InsertBatchSize)
+
+	if len(config.GithubConfig.Secret) == 0 {
+		panic("the GitHub webhook secret must be set")
+	}
+
+	if config.GithubConfig.MaxPayloadSizeMB < 0 {
+		panic("the GitHub webhook max payload size must not be negative")
+	}
+
+	githubMaxPayloadSize := config.GithubConfig.MaxPayloadSizeMB * (1 << 20)
+	if githubMaxPayloadSize == 0 {
+		githubMaxPayloadSize = 1 << 20
+	}
+
+	deliveryService := delivery.New(&eventRepo, pub, &eventDurableRepo, []byte(config.GithubConfig.Secret), githubMaxPayloadSize, config.InsertQueueName, config.InsertBatchSize)
 	appHttpServer := http.New(
 		httpService,
 		http.NewHandler(),
