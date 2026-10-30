@@ -51,6 +51,10 @@ func Setup(config Config, conn *database.Database, pub message.Publisher, redisA
 		panic("the GitHub webhook secret must be set")
 	}
 
+	if config.GithubConfig.MaxPayloadSizeMB < 0 {
+		panic("the GitHub webhook max payload size must not be negative")
+	}
+
 	githubMaxPayloadSize := config.GithubConfig.MaxPayloadSizeMB * (1 << 20)
 	if githubMaxPayloadSize == 0 {
 		githubMaxPayloadSize = 1 << 20

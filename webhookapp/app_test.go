@@ -29,6 +29,29 @@ func TestSetupRejectsEmptyGitHubSecret(t *testing.T) {
 	Setup(config, &database.Database{}, nil, &redis.Adapter{})
 }
 
+func TestSetupRejectsNegativeGitHubPayloadLimit(t *testing.T) {
+	config := Config{
+		HTTPServer: httpserver.Config{Port: 8080},
+		GithubConfig: GithubConfig{
+			Secret:           "test-secret",
+			MaxPayloadSizeMB: -1,
+		},
+	}
+
+	defer func() {
+		recovered := recover()
+		if recovered == nil {
+			t.Fatal("Setup() did not panic for a negative GitHub payload limit")
+		}
+		const want = "the GitHub webhook max payload size must not be negative"
+		if got := fmt.Sprint(recovered); got != want {
+			t.Fatalf("Setup() panic = %q, want %q", got, want)
+		}
+	}()
+
+	Setup(config, &database.Database{}, nil, &redis.Adapter{})
+}
+
 func TestSetupConvertsGitHubPayloadLimitFromMiBToBytes(t *testing.T) {
 	secret := []byte("test-secret")
 	config := Config{
