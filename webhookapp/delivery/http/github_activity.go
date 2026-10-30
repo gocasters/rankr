@@ -2,6 +2,7 @@ package http
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -18,7 +19,13 @@ func (s *Server) PublishGithubActivity(c echo.Context) error {
 	hubSig256 := c.Request().Header.Get("X-Hub-Signature-256")
 	body, err := s.Service.VerifyEvent(c.Request().Body, hookID, eventName, deliveryUID, hubSig256)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
+		var httpStatus int
+		if errors.Is(err, delivery.ErrWebhookHmacSigFailure) {
+			httpStatus = http.StatusUnauthorized
+		} else {
+			httpStatus = http.StatusBadRequest
+		}
+		return c.JSON(httpStatus, map[string]string{
 			"error": err.Error(),
 		})
 	}

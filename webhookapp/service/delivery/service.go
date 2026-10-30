@@ -62,7 +62,7 @@ func (s *Service) validateGitHubHeaders(hookID, eventName, deliveryUID, msgSig25
 		return fmt.Errorf("missing X-GitHub-Delivery header")
 	}
 	if msgSig256 == "" {
-		return fmt.Errorf("missing X-Hub-Signature-256 header")
+		return fmt.Errorf("%w: missing X-Hub-Signature-256 header", ErrWebhookHmacSigFailure)
 	}
 	return nil
 }
@@ -97,7 +97,7 @@ func (s *Service) saveEvent(ctx context.Context, event *eventpb.Event) error {
 
 func (s *Service) VerifyEvent(eventReader io.Reader, hookID, eventName, deliveryUID, hubSig256 string) ([]byte, error) {
 	if len(s.githubHmacSecret) == 0 {
-		return nil, fmt.Errorf("GitHub webhook secret must be set")
+		return nil, fmt.Errorf("%w: GitHub webhook secret must be set", ErrWebhookHmacSigFailure)
 	}
 	if s.githubMaxEventSize <= 0 {
 		return nil, fmt.Errorf("GitHub payload size limit must be positive")
@@ -117,17 +117,17 @@ func (s *Service) VerifyEvent(eventReader io.Reader, hookID, eventName, delivery
 
 	const ghSigPrefix = "sha256="
 	if !strings.HasPrefix(hubSig256, ghSigPrefix) {
-		return nil, fmt.Errorf("GitHub signature must start with %q", ghSigPrefix)
+		return nil, fmt.Errorf("%w: GitHub signature must start with %q", ErrWebhookHmacSigFailure, ghSigPrefix)
 	}
 
 	decodedSig, err := hex.DecodeString(strings.TrimPrefix(hubSig256, ghSigPrefix))
 	if err != nil {
-		return nil, fmt.Errorf("decode GitHub signature: %w", err)
+		return nil, fmt.Errorf("%w: decode GitHub signature: %w", ErrWebhookHmacSigFailure, err)
 	}
 	mac := hmac.New(sha256.New, s.githubHmacSecret)
 	_, _ = mac.Write(event)
 	if !hmac.Equal(mac.Sum(nil), decodedSig) {
-		return nil, fmt.Errorf("hmac verification failed")
+		return nil, ErrWebhookHmacSigFailure
 	}
 
 	return event, nil
