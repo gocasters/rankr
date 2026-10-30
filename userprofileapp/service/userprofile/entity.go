@@ -23,12 +23,18 @@ type Task struct {
 	State       string `json:"state"` // open / closed
 }
 
+type ScoreEntry struct {
+	Activity string    `json:"activity"`
+	Score    float64   `json:"score"`
+	EarnedAt time.Time `json:"earned_at"`
+}
+
 type ContributorStat struct {
-	ContributorID types.ID       `json:"contributor_id"`
-	GlobalRank    int            `json:"global_rank"`
-	TotalScore    float64        `json:"total_score"`
-	ProjectsScore map[string]int `json:"project_score"`
-	ScoreHistory  map[string]int `json:"score_history"`
+	ContributorID types.ID                  `json:"contributor_id"`
+	GlobalRank    int                       `json:"global_rank"`
+	TotalScore    float64                   `json:"total_score"`
+	ProjectsScore map[types.ID]float64      `json:"project_score"`
+	ScoreHistory  map[types.ID][]ScoreEntry `json:"score_history"`
 }
 
 type Profile struct {
