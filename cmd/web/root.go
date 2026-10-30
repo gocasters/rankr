@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/gocasters/rankr/adapter/leaderboardstat"
 	"github.com/gocasters/rankr/pkg/path"
 	"github.com/spf13/cobra"
 )
@@ -16,6 +17,9 @@ func newRootCommand() *cobra.Command {
 
 	preview := root.PersistentFlags().Bool(
 		"preview", false, "Enable a local preview with sample data",
+	)
+	leaderboardEnabled := root.PersistentFlags().Bool(
+		"leaderboard", false, "Enable the API-backed leaderboard page",
 	)
 
 	root.AddCommand(&cobra.Command{
@@ -47,12 +51,30 @@ func newRootCommand() *cobra.Command {
 				)
 			}
 
+			var client *leaderboardstat.HTTPClient
+			if *leaderboardEnabled {
+				client, err = leaderboardstat.NewHTTPClient(
+					cfg.LeaderboardAPI.BaseURL,
+					cfg.LeaderboardAPI.Timeout,
+				)
+				if err != nil {
+					return fmt.Errorf("web: create leaderboard client: %w", err)
+				}
+
+				cfg.HTTPServer.PublicPaths = append(
+					cfg.HTTPServer.PublicPaths, "/leaderboard",
+				)
+			}
+
 			server, err := newServer(cfg.HTTPServer)
 			if err != nil {
 				return err
 			}
 
 			registerLeaderboardPreview(server.GetRouter(), *preview)
+			registerLeaderboard(
+				server.GetRouter(), client, *leaderboardEnabled,
+			)
 
 			return serve(cmd.Context(), server)
 		},

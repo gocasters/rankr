@@ -2,3 +2,7 @@ http_server:
   host: "127.0.0.1"
   port: 8085
   shutdown_context_timeout: 10s
+
+leaderboard_api:
+  base_url: "http://127.0.0.1:8081"
+  timeout: 5s

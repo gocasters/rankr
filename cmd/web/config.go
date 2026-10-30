@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/gocasters/rankr/pkg/config"
 	"github.com/gocasters/rankr/pkg/httpserver"
@@ -9,6 +10,11 @@ import (
 
 type Config struct {
 	HTTPServer httpserver.Config `koanf:"http_server"`
+
+	LeaderboardAPI struct {
+		BaseURL string        `koanf:"base_url"`
+		Timeout time.Duration `koanf:"timeout"`
+	} `koanf:"leaderboard_api"`
 }
 
 func loadConfig(configPath string) (Config, error) {
