@@ -42,6 +42,42 @@ make infra-logs           # follow infrastructure logs
 make infra-down           # stop shared infrastructure
 ```
 
+### Webhook development
+
+The webhook service requires an HMAC secret at startup. Generate a local-only
+secret and save it in the Compose environment file:
+
+```bash
+openssl rand -hex 32
+
+# Create this ignored file and paste the generated value after `=`.
+printf 'GITHUB_WEBHOOK_SECRET=replace-with-the-generated-value\n' \
+  > deploy/webhook/development/.env
+```
+
+Never commit the generated secret or any `.env` file. Docker Compose loads
+`deploy/webhook/development/.env` when starting the webhook service.
+
+Start the shared infrastructure and webhook service with:
+
+```bash
+make infra-up
+make start-webhook-app-dev-log
+```
+
+`make start-webhook-app-dev`, `make services-up`, and `make up` also require
+`GITHUB_WEBHOOK_SECRET`. Any GitHub webhook sender or simulator must sign its
+payloads with the same value.
+
+The repository does not currently provide a supported webhook simulator or a
+host-exposed development webhook endpoint. Use the package tests for webhook
+verification changes until that development workflow is added:
+
+```bash
+go test -short ./webhookapp/...
+make check
+```
+
 ## 📋 Development Setup
 
 ASDF is **optional**. Any way of installing Go 1.25.3+ works. Use ASDF if you want the exact versions in `.tool-versions`.
