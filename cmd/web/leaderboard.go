@@ -12,6 +12,7 @@ type leaderboardView struct {
 	ProjectID string
 	Rows      []leaderboardstat.PublicLeaderboardRow
 	Error     bool
+	Preview   bool
 }
 
 const leaderboardTemplate = `<!doctype html>
@@ -42,6 +43,36 @@ const leaderboardTemplate = `<!doctype html>
 			border-bottom: 1px solid #d5e0e8;
 		}
 		caption { text-align: start; margin-bottom: 1rem; }
+		main {
+	border: 1px solid #e1e7ef;
+	box-shadow: 0 12px 36px rgba(24, 48, 71, .05);
+}
+h1 { font-size: clamp(1.7rem, 4vw, 2.5rem); }
+thead { background: #f3f6fa; }
+tbody tr:hover { background: #f8fafc; }
+td { font-variant-numeric: tabular-nums; }
+td:last-child { font-weight: bold; }
+.preview-note {
+	display: inline-block;
+	padding: .5rem .75rem;
+	border-radius: 8px;
+	background: #fff4db;
+	color: #785000;
+}
+.preview-nav {
+	display: flex;
+	flex-wrap: wrap;
+	gap: .5rem;
+	margin-bottom: 1.5rem;
+}
+.preview-nav a {
+	padding: .75rem 1rem;
+	border-radius: 8px;
+	background: #eef3f8;
+	color: #183047;
+	text-decoration: none;
+}
+.preview-nav a:hover { background: #e1eaf3; }
 	</style>
 </head>
 <body>
@@ -77,6 +108,17 @@ const leaderboardTemplate = `<!doctype html>
 			<p>هنوز امتیازی ثبت نشده است.</p>
 		{{end}}
 	</main>
+	{{if .Preview}}
+		<p class="preview-note">پیش‌نمایش با دادهٔ آزمایشی</p>
+		<nav class="preview-nav" aria-label="حالت پیش‌نمایش">
+			<a href="/preview">جدول</a>
+			<a href="/preview?state=empty">حالت خالی</a>
+			<a href="/preview?state=error">حالت خطا</a>
+		</nav>
+	{{end}}
+
+
+
 </body>
 </html>`
 
