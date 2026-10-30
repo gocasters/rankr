@@ -20,8 +20,8 @@ func TestHTTPClientGetPublicLeaderboard(t *testing.T) {
 			if r.URL.Query().Get("page_size") != "10" {
 				t.Error("expected page_size=10")
 			}
-			if r.URL.Query().Get("offset") != "0" {
-				t.Error("expected offset=0")
+			if r.URL.Query().Get("offset") != "20" {
+				t.Error("expected offset=20")
 			}
 
 			w.Header().Set("Content-Type", "application/json")
@@ -38,7 +38,7 @@ func TestHTTPClientGetPublicLeaderboard(t *testing.T) {
 		t.Fatalf("create client: %v", err)
 	}
 
-	result, err := client.GetPublicLeaderboard(t.Context(), 5001, 10, 0)
+	result, err := client.GetPublicLeaderboard(t.Context(), 5001, 10, 20)
 	if err != nil {
 		t.Fatalf("get leaderboard: %v", err)
 	}
