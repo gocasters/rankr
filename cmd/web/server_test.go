@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -29,6 +30,14 @@ func TestHealthCheck(t *testing.T) {
 	if response.Code != http.StatusOK {
 		t.Fatalf("want status 200, got %d", response.Code)
 	}
+	var body map[string]string
+	if err := json.NewDecoder(response.Body).Decode(&body); err != nil {
+		t.Fatalf("decode health response: %v", err)
+	}
+	if body["status"] != "ok" {
+		t.Fatalf("expected status field ok, got %q", body["status"])
+	}
+
 }
 
 func TestServeStopsWhenContextCanceled(t *testing.T) {
@@ -56,6 +65,19 @@ func TestServeStopsWhenContextCanceled(t *testing.T) {
 	go func() {
 		done <- serve(ctx, server)
 	}()
+
+	client := &http.Client{Timeout: 2 * time.Second}
+	response, err := client.Get(
+		"http://" + listener.Addr().String() + "/v1/health-check",
+	)
+	if err != nil {
+		t.Fatalf("server did not respond before cancellation: %v", err)
+	}
+	response.Body.Close()
+
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("expected status 200, got %d", response.StatusCode)
+	}
 
 	cancel()
 
