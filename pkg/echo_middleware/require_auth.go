@@ -69,7 +69,8 @@ func SkipExactPaths(paths ...string) middleware.Skipper {
 		// "/public/1/extra" matches "/public/:project_id" with "1/extra".
 		// Only skip when every parameter is a single path segment.
 		for _, v := range c.ParamValues() {
-			if strings.Contains(strings.TrimSuffix(v, "/"), "/") {
+			value := strings.TrimSuffix(v, "/")
+			if value == "" || strings.Contains(value, "/") {
 				return false
 			}
 		}
