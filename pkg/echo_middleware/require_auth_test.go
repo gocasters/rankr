@@ -112,11 +112,14 @@ func TestSkipExactPaths_MatchesRoutePattern(t *testing.T) {
 		name     string
 		url      string
 		route    string
+		param    string
 		wantSkip bool
 	}{
-		{"listed route", "/v1/leaderboard/public/1", "/v1/leaderboard/public/:project_id", true},
-		{"other route", "/v1/leaderboard/private/1", "/v1/leaderboard/private/:project_id", false},
-		{"no matched route", "/v1/leaderboard/public/1/x", "", false},
+		{"listed route", "/v1/leaderboard/public/1", "/v1/leaderboard/public/:project_id", "1", true},
+		{"listed route with trailing slash", "/v1/leaderboard/public/1/", "/v1/leaderboard/public/:project_id", "1/", true},
+		{"surplus segment", "/v1/leaderboard/public/1/x", "/v1/leaderboard/public/:project_id", "1/x", false},
+		{"other route", "/v1/leaderboard/private/1", "/v1/leaderboard/private/:project_id", "1", false},
+		{"no matched route", "/v1/leaderboard/other", "", "", false},
 	}
 
 	e := echo.New()
@@ -124,6 +127,10 @@ func TestSkipExactPaths_MatchesRoutePattern(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, tc.url, nil)
 		c := e.NewContext(req, httptest.NewRecorder())
 		c.SetPath(tc.route)
+		if tc.param != "" {
+			c.SetParamNames("project_id")
+			c.SetParamValues(tc.param)
+		}
 
 		if got := skipper(c); got != tc.wantSkip {
 			t.Errorf("%s: skip = %v, want %v", tc.name, got, tc.wantSkip)

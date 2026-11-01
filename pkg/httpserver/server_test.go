@@ -207,6 +207,7 @@ func TestConfigPublicRoutePatternIsSkipped(t *testing.T) {
 	}{
 		{"/v1/leaderboard/public/1", http.StatusOK},
 		{"/v1/leaderboard/public/42/", http.StatusOK},
+		{"/v1/leaderboard/public/1/extra", http.StatusUnauthorized},
 		{"/v1/leaderboard/private/1", http.StatusUnauthorized},
 		{"/v1/contributors/1/stats", http.StatusUnauthorized},
 	}
