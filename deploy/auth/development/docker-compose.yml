@@ -11,6 +11,7 @@ services:
     container_name: auth-app
     volumes:
       - ../../..:/app
+      - rankr-go-build-cache:/root/.cache/go-build
     networks:
       - rankr-shared-development-network
     env_file:
@@ -20,7 +21,16 @@ services:
       - ENV=development
       - DEV_USER_ID=1
     entrypoint: [ "air", "-c", "/app/.air/.air.auth.toml" ]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/v1/health-check > /dev/null"]
+      interval: 8s
+      timeout: 3s
+      retries: 5
+      start_period: 8s
 
+volumes:
+  rankr-go-build-cache:
+    name: rankr-go-build-cache
 
 networks:
   rankr-shared-development-network:

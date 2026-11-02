@@ -12,11 +12,13 @@ services:
     volumes:
       - ../../..:/app
       - ./logs:/app/logs # Persist contributor logs
+      - rankr-go-build-cache:/root/.cache/go-build
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8082/v1/health-check > /dev/null"]
-      interval: 5s
+      interval: 8s
       timeout: 3s
-      retries: 12
+      retries: 5
+      start_period: 8s
     networks:
       - rankr-shared-development-network
     environment:
@@ -28,6 +30,10 @@ services:
       - DEV_API_KEY=deyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9
       - DEV_USER_ID=1
     entrypoint: [ "air", "-c", "/app/.air/.air.contributor.toml" ]
+
+volumes:
+  rankr-go-build-cache:
+    name: rankr-go-build-cache
 
 networks:
   rankr-shared-development-network:

@@ -11,6 +11,7 @@ services:
     container_name: project-app
     volumes:
       - ../../..:/app
+      - rankr-go-build-cache:/root/.cache/go-build
     networks:
       - rankr-shared-development-network
     env_file:
@@ -18,6 +19,17 @@ services:
     environment:
       - CONFIG_PATH=/app/deploy/project/development/config.yml
     entrypoint: [ "air", "-c", "/app/.air/.air.projects.toml" ]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8084/v1/health-check > /dev/null"]
+      interval: 8s
+      timeout: 3s
+      retries: 5
+      start_period: 8s
+
+volumes:
+  rankr-go-build-cache:
+    name: rankr-go-build-cache
+
 networks:
   rankr-shared-development-network:
     external: true
