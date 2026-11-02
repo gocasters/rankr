@@ -1,8 +1,13 @@
 services:
   realtime-app:
+    image: rankr-go-dev:${GO_IMAGE_VERSION:-${DEFAULT_GO_IMAGE_VERSION:-1.25-alpine}}
     build:
       context: ../../..
-      dockerfile: ./deploy/realtime/development/Dockerfile
+      dockerfile: ./deploy/development/Dockerfile
+      args:
+        GO_IMAGE_NAME: ${GO_IMAGE_NAME:-${DEFAULT_GO_IMAGE_NAME:-golang}}
+        GO_IMAGE_VERSION: ${GO_IMAGE_VERSION:-${DEFAULT_GO_IMAGE_VERSION:-1.25-alpine}}
+        AIR_VERSION: ${AIR_VERSION:-${DEFAULT_AIR_VERSION:-v1.66.1}}
     container_name: realtime-app
     volumes:
       - ../../..:/app
