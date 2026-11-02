@@ -218,6 +218,7 @@ services:
       STAT_POSTGRES_DB__PASSWORD: ${LEADERBOARDSTAT_PASS}
       STAT_REDIS__PASSWORD: ${REDIS_PASSWORD}
       STAT_LOGGER__LEVEL: info
+      STAT_HTTP_SERVER__PUBLIC_PATHS: /v1/leaderboard/public/:project_id
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8081/v1/health-check > /dev/null"]
       interval: 10s
