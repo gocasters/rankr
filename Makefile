@@ -15,8 +15,10 @@ DOCKER_COMPOSE ?= docker compose
 INFRA_SCRIPT := ./deploy/script/start_infrastructure.sh
 INFRA_SCRIPT_PROD := ./deploy/script/start_infrastructure_prod.sh
 SERVICES := auth contributor leaderboardscoring leaderboardstat notification project realtime task userprofile webhook
-SERVICES_V1 := auth contributor leaderboardscoring leaderboardstat project webhook
+SERVICES_V1 := auth contributor project leaderboardscoring leaderboardstat webhook
 INFRA_V1 := postgres redis nats openresty
+DEV_WAIT_TIMEOUT ?= 20
+FORCE ?=
 
 export DEFAULT_GO_IMAGE_NAME DEFAULT_GO_IMAGE_VERSION DEFAULT_AIR_VERSION
 
@@ -279,12 +281,24 @@ status-prod:
 # ====================================================================================
 # Service Commands
 # ====================================================================================
-.PHONY: $(SERVICES:%=start-%-app-dev) $(SERVICES:%=start-%-app-dev-log) $(SERVICES:%=stop-%-app-dev) docker-build-dev
+.PHONY: $(SERVICES:%=start-%-app-dev) \
+	$(SERVICES:%=start-and-wait-%-app-dev) \
+	$(SERVICES:%=start-%-app-dev-log) \
+	$(SERVICES:%=stop-%-app-dev) \
+	docker-build-dev
 
 define SERVICE_template
 start-$(1)-app-dev:
 	@echo "Starting $(1) service..."
 	cd deploy/$(1)/development && PROJECT_ROOT=$(CURDIR) $(DOCKER_COMPOSE) up -d
+
+start-and-wait-$(1)-app-dev:
+	@echo "Starting $(1) service and waiting up to $(DEV_WAIT_TIMEOUT)s..."
+	@cd deploy/$(1)/development && \
+		PROJECT_ROOT=$(CURDIR) $(DOCKER_COMPOSE) up -d \
+			--wait \
+			--wait-timeout $(DEV_WAIT_TIMEOUT) || \
+		( echo "⚠️  $(1) did not become healthy within $(DEV_WAIT_TIMEOUT)s." && exit 1 )
 
 start-$(1)-app-dev-log:
 	@echo "Starting $(1) service with logs..."
@@ -383,11 +397,9 @@ up-v1:
 	@sleep 10
 	@echo "Starting all v1 application services..."
 	$(MAKE) docker-build-dev
-	@set -e; \
-	for svc in $(SERVICES_V1); do \
-		$(MAKE) start-$$svc-app-dev; \
-	done
-	@echo "✅ All v1 services are up!"
+	@failed=0; for svc in $(SERVICES_V1); do $(MAKE) start-and-wait-$$svc-app-dev || failed=1; done; \
+	if [ $$failed -eq 0 ]; then echo "✅ All v1 services are up!"; else \
+	echo "⚠️  Not all v1 services became healthy within $(DEV_WAIT_TIMEOUT)s each (containers are still running)."; exit 1; fi
 
 # ====================================================================================
 # Production Docker Build Commands
@@ -482,6 +494,7 @@ help:
 	@echo "    DEFAULT_GO_IMAGE_NAME=golang DEFAULT_GO_IMAGE_VERSION=1.25-alpine DEFAULT_AIR_VERSION=latest"
 	@echo "                              Set shared development Docker defaults (service overrides remain possible)"
 	@echo "    docker-build-dev             - Build the shared development Go/Air image (skipped if image exists; FORCE=1 to rebuild)"
+	@echo "    DEV_WAIT_TIMEOUT=120        - Seconds for start-and-wait-* health wait (default 20)"
 	@echo "    start-<service>-app-dev      - Start a single service (e.g. make start-auth-app-dev)"
 	@echo "    start-<service>-app-dev-log  - Start a service and attach logs"
 	@echo "    stop-<service>-app-dev       - Stop a single service"
