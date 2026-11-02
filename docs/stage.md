@@ -151,6 +151,28 @@ deploy/stage/deploy.sh health
 curl https://stage.rankr.gocasts.ir/health/leaderboardstat
 ```
 
+## Smoke test
+
+After the health check, `deploy` runs `deploy/stage/smoke.sh` through the
+gateway. If any check fails, it rolls back exactly as for a failed health
+check.
+
+| Check | Request | Expected |
+|---|---|---|
+| public leaderboard | `GET /v1/leaderboard/public/$SMOKE_PROJECT_ID` (default 1) | 200 with `rows` |
+| projects without token | `GET /v1/projects` | 401 `unauthorized` |
+| profile without token | `GET /v1/profile/1` | 401 `unauthorized` |
+| contributor stats without token | `GET /v1/contributors/1/stats` | 401 `unauthorized` |
+| unknown route | `GET /rankr-smoke-no-such-route` | 404 `route_not_found` |
+| webhook without token | `POST /github-webhook/github/process` without `X-GitHub-*` headers | 400 or 401 from webhook |
+
+Run it on its own, from the repository root:
+
+```bash
+deploy/stage/deploy.sh smoke                           # on the stage host, through the local gateway
+deploy/stage/smoke.sh https://stage.rankr.gocasts.ir   # from any machine with a checkout, against the public URL
+```
+
 ## Logs
 
 ```bash
