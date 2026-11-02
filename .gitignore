@@ -32,6 +32,7 @@ deploy/auth/development/.env.development
 deploy/stage/.env.stage
 deploy/stage/.deploy-history
 deploy/stage/.deploy-lock
+deploy/stage/.deploy-log
 
 # Editor/IDE
 

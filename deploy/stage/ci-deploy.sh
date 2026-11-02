@@ -9,6 +9,10 @@
 # By hand, on the host (takes the same lock as CI):
 #
 #   deploy/stage/ci-deploy.sh deploy
+#   deploy/stage/ci-deploy.sh rollback
+#   deploy/stage/ci-deploy.sh down
+#
+# rollback and down are only accepted by hand; the CI key can only deploy.
 #
 # The sha only has to be on origin/main; what gets deployed is always the
 # current tip. So stage never moves backward when runs finish out of order,
@@ -19,26 +23,37 @@
 set -euo pipefail
 
 main() {
-    local repo_dir action sha extra tip
+    local repo_dir action sha extra tip by_hand=""
     repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
     # Arguments only exist when run on the host; sshd passes none.
     if [[ $# -gt 0 ]]; then
+        by_hand=1
         read -r action sha extra <<< "$*"
     else
         read -r action sha extra <<< "${SSH_ORIGINAL_COMMAND:-}"
     fi
-    if [[ "$action" != deploy || -n "$extra" ]] ||
-        [[ -n "$sha" && ! "$sha" =~ ^[0-9a-f]{40}$ ]]; then
-        echo "usage: deploy [full commit sha]" >&2
+    if [[ "$action" == deploy && -z "$extra" ]] &&
+        [[ -z "$sha" || "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+        :
+    elif [[ -n "$by_hand" && ( "$action" == rollback || "$action" == down ) && -z "$sha" ]]; then
+        :
+    else
+        echo "usage: deploy [full commit sha] | rollback | down (by hand only)" >&2
         exit 2
     fi
 
     # One deploy at a time, CI or by hand. Checkout happens inside the lock.
+    # The wait stays under the 30 minute job timeout of deploy-stage.yml.
     exec 9> "$repo_dir/deploy/stage/.deploy-lock"
-    if ! flock -w 600 9; then
+    if ! flock -w 1500 9; then
         echo "another deploy is still running" >&2
         exit 1
+    fi
+
+    # exec keeps fd 9, so the lock is held until deploy.sh exits.
+    if [[ "$action" != deploy ]]; then
+        exec "$repo_dir/deploy/stage/deploy.sh" "$action"
     fi
 
     git -C "$repo_dir" fetch --quiet origin main
@@ -49,19 +64,32 @@ main() {
         exit 1
     fi
 
-    local history="$repo_dir/deploy/stage/.deploy-history"
-    # History alone is not proof: `deploy.sh down` keeps it, so also require
-    # the running stack to pass the health check before skipping.
-    if [[ -f "$history" && "$(tail -n 1 "$history")" == "$(git -C "$repo_dir" rev-parse --short "$tip")" ]] &&
-        "$repo_dir/deploy/stage/deploy.sh" health > /dev/null 2>&1; then
-        echo "origin/main ($tip) is already deployed and healthy"
-        exit 0
+    local history="$repo_dir/deploy/stage/.deploy-history" last=""
+    # Compared as commits, not strings: history tags are abbreviated, and
+    # older ones are shorter than the ones deploy.sh writes now.
+    if [[ -f "$history" ]]; then
+        last="$(git -C "$repo_dir" rev-parse -q --verify "$(tail -n 1 "$history")^{commit}" || true)"
+    fi
+    # The history only says the tip was healthy once; after `down` or a failed
+    # rollback it is not running, so check before skipping. By hand it never
+    # skips, so a `.env.stage` edit can be applied without a new commit.
+    if [[ -z "$by_hand" && "$last" == "$tip" ]]; then
+        if "$repo_dir/deploy/stage/deploy.sh" health; then
+            echo "origin/main ($tip) is already deployed"
+            exit 0
+        fi
+        echo "origin/main ($tip) is the last deploy but stage is not healthy; deploying it again"
     fi
 
     [[ -n "$sha" && "$sha" != "$tip" ]] && echo "$sha is behind origin/main; deploying $tip"
     git -C "$repo_dir" checkout --quiet --detach "$tip"
 
-    "$repo_dir/deploy/stage/deploy.sh" deploy
+    local log="$repo_dir/deploy/stage/.deploy-log" pid
+    : > "$log"
+    ( trap '' HUP; exec "$repo_dir/deploy/stage/deploy.sh" deploy ) >> "$log" 2>&1 < /dev/null &
+    pid=$!
+    tail -n +1 -f --pid="$pid" "$log" || true
+    wait "$pid"
 }
 
 main "$@"

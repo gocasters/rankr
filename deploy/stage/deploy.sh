@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Stage deploy helper for rankr. See docs/stage.md.
 #
-#   deploy.sh deploy     build the current checkout, start it, check health;
-#                        rolls back to the previous release if health fails
+#   deploy.sh deploy     rebuild the services changed since the last release,
+#                        restart every service, check health; rolls back to
+#                        the previous release if health fails
 #   deploy.sh rollback   start the previous release again (no build)
 #   deploy.sh status     container status
 #   deploy.sh logs [svc] follow logs
@@ -15,15 +16,53 @@ ENV_FILE="${ENV_FILE:-$STAGE_DIR/.env.stage}"
 HISTORY="$STAGE_DIR/.deploy-history"
 SERVICES=(auth contributor leaderboardscoring leaderboardstat project webhook)
 
+# Paths only one service (or a few) is built from. Keep in sync with
+# `go list -deps ./cmd/<service>`: leaderboardstat imports leaderboardscoringapp
+# and project imports webhookapp. Any changed path not listed here or in
+# NO_SERVICE_PATHS rebuilds every service.
+declare -A SERVICE_PATHS=(
+    [auth]="authapp/ cmd/auth/ deploy/auth/"
+    [contributor]="contributorapp/ cmd/contributor/ deploy/contributor/"
+    [leaderboardscoring]="leaderboardscoringapp/ cmd/leaderboardscoring/ deploy/leaderboardscoring/"
+    [leaderboardstat]="leaderboardstatapp/ leaderboardscoringapp/ cmd/leaderboardstat/ deploy/leaderboardstat/"
+    [project]="projectapp/ webhookapp/ cmd/project/ deploy/project/"
+    [webhook]="webhookapp/ cmd/webhook/ deploy/webhook/"
+)
+NO_SERVICE_PATHS="docs/ .github/ .claude/"
+
 if [[ ! -f "$ENV_FILE" ]]; then
     echo "missing $ENV_FILE (copy .env.stage.example and fill it)" >&2
     exit 1
 fi
 
-# `|| true`: GATEWAY_PORT is optional, and grep finding nothing must not stop
-# the script under pipefail.
-GATEWAY_PORT="$(grep -E '^GATEWAY_PORT=' "$ENV_FILE" | cut -d= -f2 || true)"
+# env_value <name>: a value from .env.stage, empty when unset. Drops a CR
+# (file saved with CRLF) and one pair of surrounding quotes, as compose does.
+# `|| true`: grep finding nothing must not stop the script under pipefail.
+env_value() {
+    local value
+    value="$(grep -E "^$1=" "$ENV_FILE" | cut -d= -f2- || true)"
+    value="${value%$'\r'}"
+    if [[ "$value" =~ ^\"(.*)\"$ || "$value" =~ ^\'(.*)\'$ ]]; then
+        value="${BASH_REMATCH[1]}"
+    fi
+    printf '%s' "$value"
+}
+
+GATEWAY_PORT="$(env_value GATEWAY_PORT)"
 GATEWAY_PORT="${GATEWAY_PORT:-8088}"
+
+# Smoke test of the public leaderboard (#227). Off while SMOKE_PROJECT_ID is
+# empty: leaderboardstat still answers 401 on that path until TD-04 (#221).
+SMOKE_PROJECT_ID="$(env_value SMOKE_PROJECT_ID)"
+
+# Only deploy and health check it, so a bad value never blocks rollback or
+# down. A rollback with a bad value runs, but its smoke check fails.
+check_smoke_project_id() {
+    if [[ -n "$SMOKE_PROJECT_ID" && ! "$SMOKE_PROJECT_ID" =~ ^[0-9]+$ ]]; then
+        echo "SMOKE_PROJECT_ID must be a project id (got '$SMOKE_PROJECT_ID')" >&2
+        exit 1
+    fi
+}
 
 # Overall time budget for wait_healthy. Checked up front so a typo fails before
 # anything is built, and so only a plain number ever reaches $(( )).
@@ -40,23 +79,30 @@ compose() {
 # health [deadline]: without an argument (`deploy.sh health`) each service gets
 # up to 5 seconds. With a deadline (a $SECONDS value), each request is bounded
 # by the time left and no request is sent once the deadline has passed.
+# With SMOKE_PROJECT_ID set, the public leaderboard is checked last.
 health() {
-    local deadline="${1:-}" failed=0 timeout remaining
-    for svc in "${SERVICES[@]}"; do
+    local deadline="${1:-}" failed=0 timeout remaining name path check
+    local checks=()
+    for svc in "${SERVICES[@]}"; do checks+=("$svc /health/$svc"); done
+    if [[ -n "$SMOKE_PROJECT_ID" ]]; then
+        checks+=("leaderboard /v1/leaderboard/public/$SMOKE_PROJECT_ID")
+    fi
+    for check in "${checks[@]}"; do
+        read -r name path <<< "$check"
         timeout=5
         if [[ -n "$deadline" ]]; then
             remaining=$(( deadline - SECONDS ))
             if (( remaining <= 0 )); then
-                echo "SKIP  $svc (deadline reached)"
+                echo "SKIP  $name (deadline reached)"
                 failed=1
                 continue
             fi
             if (( remaining < timeout )); then timeout=$remaining; fi
         fi
-        if curl -fsS -o /dev/null --max-time "$timeout" "http://127.0.0.1:$GATEWAY_PORT/health/$svc"; then
-            echo "ok    $svc"
+        if curl -fsS -o /dev/null --max-time "$timeout" "http://127.0.0.1:$GATEWAY_PORT$path"; then
+            echo "ok    $name"
         else
-            echo "FAIL  $svc"
+            echo "FAIL  $name"
             failed=1
         fi
     done
@@ -90,12 +136,83 @@ start() {
     TAG="$1" compose up -d --remove-orphans "${@:2}"
 }
 
+# changed_services <prev tag>: the services whose code changed between the
+# previous release and HEAD, one per line. Prints every service when there is
+# no previous release, the commit is unknown, the diff fails, or a shared path
+# changed.
+changed_services() {
+    local prev="$1" files file svc dir hit
+    local -A changed=()
+    if [[ -z "$prev" ]] || ! git -C "$STAGE_DIR" rev-parse -q --verify "$prev^{commit}" > /dev/null; then
+        printf '%s\n' "${SERVICES[@]}"
+        return
+    fi
+    # Not a process substitution: its exit status would be lost, and a failed
+    # diff would look like "nothing changed". --no-renames lists both sides of
+    # a move, so moving a file out of a shared path still rebuilds everything.
+    if ! files="$(git -C "$STAGE_DIR" diff --no-renames --name-only "$prev" HEAD)"; then
+        echo "git diff $prev HEAD failed; rebuilding every service" >&2
+        printf '%s\n' "${SERVICES[@]}"
+        return
+    fi
+    while IFS= read -r file; do
+        [[ -z "$file" || "$file" == *.md ]] && continue
+        hit=""
+        for dir in $NO_SERVICE_PATHS; do
+            [[ "$file" == "$dir"* ]] && hit=none
+        done
+        for svc in "${SERVICES[@]}"; do
+            for dir in ${SERVICE_PATHS[$svc]}; do
+                [[ "$file" == "$dir"* ]] && { changed[$svc]=1; hit=svc; }
+            done
+        done
+        if [[ -z "$hit" ]]; then
+            printf '%s\n' "${SERVICES[@]}"
+            return
+        fi
+    done <<< "$files"
+    for svc in "${SERVICES[@]}"; do
+        [[ -n "${changed[$svc]:-}" ]] && echo "$svc"
+    done
+    return 0
+}
+
 case "${1:-}" in
     deploy)
-        tag="$(git -C "$STAGE_DIR" rev-parse --short HEAD)"
+        check_smoke_project_id
+        # A fixed length: plain --short grows with the repo, and the same
+        # commit would get a new tag.
+        tag="$(git -C "$STAGE_DIR" rev-parse --short=12 HEAD)"
         prev="$(previous_tag)"
         echo "deploying $tag (previous: ${prev:-none})"
-        TAG="$tag" compose build
+        mapfile -t build < <(changed_services "$prev")
+        if (( ${#build[@]} == ${#SERVICES[@]} )); then
+            echo "rebuilding every service"
+            TAG="$tag" compose build
+        else
+            # Unchanged services keep their image under the new tag, so
+            # rollback and the next deploy find every service at every tag.
+            # One whose previous image is gone is rebuilt instead.
+            for svc in "${SERVICES[@]}"; do
+                [[ " ${build[*]} " == *" $svc "* ]] && continue
+                if docker image inspect "rankr-stage/$svc:$prev" > /dev/null 2>&1; then
+                    docker tag "rankr-stage/$svc:$prev" "rankr-stage/$svc:$tag"
+                else
+                    build+=("$svc")
+                fi
+            done
+            echo "rebuilding: ${build[*]:-none}"
+            if (( ${#build[@]} > 0 )); then
+                TAG="$tag" compose build "${build[@]}"
+            fi
+        fi
+        # A new tag changes every service's image, so `up` recreates all of
+        # them in depends_on order and .env.stage edits reach every service.
+        # Deploying the last release again changes nothing compose can see,
+        # so recreate the services by force: that replaces a hung container.
+        if [[ "$tag" == "$prev" ]]; then
+            start "$tag" --force-recreate "${SERVICES[@]}"
+        fi
         start "$tag"
         if wait_healthy; then
             echo "$tag" >> "$HISTORY"
@@ -128,6 +245,7 @@ case "${1:-}" in
         compose logs -f --tail=200 "${@:2}"
         ;;
     health)
+        check_smoke_project_id
         health
         ;;
     down)
