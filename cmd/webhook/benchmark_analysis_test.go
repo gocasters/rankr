@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 	"github.com/gocasters/rankr/webhookapp/service/delivery"
@@ -30,11 +31,11 @@ var (
 	totalProcessed    atomic.Int64
 )
 
-func init() {
-	if err := initializeServices(); err != nil {
-		log.Fatalf("failed to initialize services: %v", err)
-	}
-}
+//func init() {
+//	if err := initializeServices(); err != nil {
+//		log.Fatalf("failed to initialize services: %v", err)
+//	}
+//}
 
 func initializeServices() error {
 	var err error
@@ -110,10 +111,19 @@ func getEnv(key, defaultValue string) string {
 }
 
 func TestMain(m *testing.M) {
+	flag.Parse()
+
+	if testing.Short() {
+		os.Exit(m.Run())
+	}
+
+	if err := initializeServices(); err != nil {
+		log.Printf("failed to initialize services: %v", err)
+		os.Exit(1)
+	}
+
 	code := m.Run()
-
 	cleanup()
-
 	os.Exit(code)
 }
 
@@ -138,6 +148,9 @@ func cleanup() {
 }
 
 func TestDirectInsert(t *testing.T) {
+	if testing.Short() {
+		t.Skip("requires Redis and PostgreSQL")
+	}
 	rate, rErr := strconv.Atoi(getEnv("INSERT_RATE", "1000"))
 	if rErr != nil {
 		t.Fatal(rErr)
@@ -185,6 +198,9 @@ func TestDirectInsert(t *testing.T) {
 }
 
 func TestBulkInsert(t *testing.T) {
+	if testing.Short() {
+		t.Skip("requires Redis and PostgreSQL")
+	}
 	rate, rErr := strconv.Atoi(getEnv("INSERT_RATE", "1000"))
 	if rErr != nil {
 		t.Fatal(rErr)
@@ -231,6 +247,9 @@ func TestBulkInsert(t *testing.T) {
 }
 
 func BenchmarkDirectInsert(b *testing.B) {
+	if testing.Short() {
+		b.Skip("requires Redis and PostgreSQL")
+	}
 	ctx := context.Background()
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -248,6 +267,9 @@ func BenchmarkDirectInsert(b *testing.B) {
 }
 
 func BenchmarkBulkInsert(b *testing.B) {
+	if testing.Short() {
+		b.Skip("requires Redis and PostgreSQL")
+	}
 	ctx := context.Background()
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -265,6 +287,9 @@ func BenchmarkBulkInsert(b *testing.B) {
 }
 
 func BenchmarkDirectInsertParallel(b *testing.B) {
+	if testing.Short() {
+		b.Skip("requires Redis and PostgreSQL")
+	}
 	ctx := context.Background()
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -283,6 +308,9 @@ func BenchmarkDirectInsertParallel(b *testing.B) {
 }
 
 func BenchmarkBulkInsertParallel(b *testing.B) {
+	if testing.Short() {
+		b.Skip("requires Redis and PostgreSQL")
+	}
 	ctx := context.Background()
 	b.ReportAllocs()
 	b.ResetTimer()
