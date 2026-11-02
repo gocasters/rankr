@@ -11,6 +11,9 @@ DOCKER_COMPOSE ?= docker compose
 INFRA_SCRIPT := ./deploy/script/start_infrastructure.sh
 INFRA_SCRIPT_PROD := ./deploy/script/start_infrastructure_prod.sh
 SERVICES := auth contributor leaderboardscoring leaderboardstat notification project realtime task userprofile webhook
+SERVICES_V1 := auth contributor leaderboardscoring leaderboardstat project webhook
+INFRA_V1 := postgres redis nats openresty
+
 
 # ====================================================================================
 # General Go Commands
@@ -189,7 +192,7 @@ else \
 # Infrastructure Commands
 # ====================================================================================
 .PHONY: infra-up infra-down infra-logs
-.PHONY: infra-up-postgres infra-up-redis infra-up-nats infra-up-emqx
+.PHONY: infra-up-base infra-up-postgres infra-up-redis infra-up-nats infra-up-emqx infra-up-openresty
 
 infra-up:
 	@echo "Starting shared infrastructure..."
@@ -202,6 +205,10 @@ infra-down:
 infra-logs:
 	@echo "Showing logs for infrastructure stack..."
 	bash $(INFRA_SCRIPT) logs-all
+
+infra-up-base:
+	@echo "Starting infrastructure base network and volumes..."
+	bash $(INFRA_SCRIPT) up-base
 
 infra-up-postgres:
 	@echo "Starting infrastructure PostgreSQL..."
@@ -218,6 +225,10 @@ infra-up-nats:
 infra-up-emqx:
 	@echo "Starting infrastructure EMQX..."
 	bash $(INFRA_SCRIPT) up-emqx
+
+infra-up-openresty:
+	@echo "Starting infrastructure OpenResty..."
+	bash $(INFRA_SCRIPT) up-openresty
 
 # ====================================================================================
 # Production Infrastructure Commands
@@ -310,6 +321,7 @@ services-logs:
 	done; \
 	wait
 
+.PHONY: up down logs restart up-v1
 # Complete startup (infrastructure + services)
 up:
 	$(MAKE) infra-up
@@ -339,6 +351,22 @@ restart: down
 status:
 	@echo "Container status:"
 	@docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "rankr|NAMES"
+
+# Startup v1 setup (infrastructure + services)
+up-v1:
+	$(MAKE) infra-up-base
+	@set -e; \
+	for infra in $(INFRA_V1); do \
+		$(MAKE) infra-up-$$infra; \
+	done
+	@echo "Waiting for infrastructure to be ready..."
+	@sleep 10
+	@echo "Starting all v1 application services..."
+	@set -e; \
+	for svc in $(SERVICES_V1); do \
+		$(MAKE) start-$$svc-app-dev; \
+	done
+	@echo "✅ All v1 services are up!"
 
 # ====================================================================================
 # Production Docker Build Commands
@@ -415,10 +443,12 @@ help:
 	@echo "  Infrastructure (Development):"
 	@echo "    infra-up              - Start all infrastructure services"
 	@echo "    infra-down            - Stop all infrastructure services"
+	@echo "	  infra-up-base			- Setup base volumes and networks"
 	@echo "    infra-up-postgres     - Start PostgreSQL only"
 	@echo "    infra-up-redis        - Start Redis only"
 	@echo "    infra-up-nats         - Start NATS only"
 	@echo "    infra-up-emqx         - Start EMQX only"
+	@echo "	  infra-up-openresty		- Start OpenResty only"
 	@echo "    infra-logs            - Tail infrastructure logs"
 	@echo ""
 	@echo "  Infrastructure (Production):"
@@ -477,6 +507,7 @@ help:
 	@echo ""
 	@echo "  Utilities:"
 	@echo "    up                    - Start infrastructure and services (dev)"
+	@echo "    up-v1						- Start v1 infrastructure and services (dev)"
 	@echo "    down                  - Stop infrastructure and services (dev)"
 	@echo "    up-prod               - Start infrastructure and services (prod)"
 	@echo "    down-prod             - Stop infrastructure and services (prod)"
