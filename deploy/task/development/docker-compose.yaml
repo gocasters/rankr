@@ -1,8 +1,13 @@
 services:
   task-app:
+    image: rankr-go-dev:${GO_IMAGE_VERSION:-${DEFAULT_GO_IMAGE_VERSION:-1.25.3-alpine}}
     build:
       context: ../../..
-      dockerfile: ./deploy/task/development/Dockerfile
+      dockerfile: ./deploy/development/Dockerfile
+      args:
+        GO_IMAGE_NAME: ${GO_IMAGE_NAME:-${DEFAULT_GO_IMAGE_NAME:-golang}}
+        GO_IMAGE_VERSION: ${GO_IMAGE_VERSION:-${DEFAULT_GO_IMAGE_VERSION:-1.25.3-alpine}}
+        AIR_VERSION: ${AIR_VERSION:-${DEFAULT_AIR_VERSION:-v1.66.1}}
     container_name: task-app
     volumes:
       - ../../..:/app
