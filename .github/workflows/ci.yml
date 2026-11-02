@@ -27,21 +27,21 @@ jobs:
           go mod tidy
           go mod download
 
-      - name: Lint (non-blocking)
+      - name: Lint
         uses: golangci/golangci-lint-action@v8
-        continue-on-error: true
         with:
           version: v2.4.0
           args: >
             --timeout=5m
-            --issues-exit-code=0
 #            --format=github-actions
 
-
-      - name: Test (non-blocking)
+      - name: Test
         run: |
-          go test ./... -v -coverprofile=coverage.out || true
+          go test ./... -v -coverprofile=coverage.out
 
+      - name: make check-all
+        run: make check-all
+          
       - name: Build
         run: go build -v ./...
 
