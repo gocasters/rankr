@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+import "google/protobuf/timestamp.proto";
+
 package contributor.v1;
 
 option go_package = "github.com/gocasters/rankr/protobuf/golang/contributor/v1;contributorpb";
@@ -48,6 +50,21 @@ message GetContributorsByVCSResponse {
   repeated ContributorMapping contributors = 2;
 }
 
+message GetContributorInfoRequest {
+  uint64 contributor_id = 1;
+}
+
+message GetContributorInfoResponse {
+  uint64 contributor_id = 1;
+  int64 github_id = 2;
+  string github_username = 3;
+  string display_name = 4;
+  string profile_image = 5;
+  string bio = 6;
+  string privacy_mode = 7;
+  google.protobuf.Timestamp created_at = 8;
+}
+
 service ContributorService {
   // Get contributor credentials by GitHub username (for authentication).
   rpc GetContributor(GetContributorRequest) returns (GetContributorResponse);
@@ -58,4 +75,6 @@ service ContributorService {
   // Lookup contributors by VCS provider and usernames.
   // Used by webhook service to map VCS users to internal contributor IDs.
   rpc GetContributorsByVCS(GetContributorsByVCSRequest) returns (GetContributorsByVCSResponse);
+
+  rpc GetContributorInfo(GetContributorInfoRequest) returns (GetContributorInfoResponse);
 }
