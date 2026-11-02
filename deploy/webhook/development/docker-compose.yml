@@ -18,6 +18,7 @@ services:
       - WEBHOOK_REDIS__HOST=shared-redis
       - WEBHOOK_REDIS__PORT=6379
       - WEBHOOK_NATS__URL=nats://shared-nats:4222
+      - WEBHOOK_GITHUB__SECRET=${GITHUB_WEBHOOK_SECRET:?GITHUB_WEBHOOK_SECRET is required}
     entrypoint: ["air", "-c", "/app/.air/.air.webhook.toml"]
 
 networks:
