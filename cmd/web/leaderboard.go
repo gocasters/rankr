@@ -1,12 +1,16 @@
 package main
 
 import (
+	"embed"
 	"fmt"
 	"html/template"
 	"io"
 
 	"github.com/gocasters/rankr/adapter/leaderboardstat"
 )
+
+//go:embed templates/leaderboard.html
+var leaderboardTemplates embed.FS
 
 type leaderboardView struct {
 	ProjectID string
@@ -15,115 +19,12 @@ type leaderboardView struct {
 	Preview   bool
 }
 
-const leaderboardTemplate = `<!doctype html>
-<html lang="fa" dir="rtl">
-<head>
-	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>لیدربورد پروژه {{.ProjectID}} | Rankr</title>
-	<style>
-		body {
-			font-family: Tahoma, sans-serif;
-			max-width: 60rem;
-			margin: 2rem auto;
-			padding: 0 1rem;
-			background: #f5f8fb;
-			color: #183047;
-		}
-		main {
-			background: white;
-			padding: 1.5rem;
-			border-radius: 12px;
-		}
-		.table-wrapper { overflow-x: auto; }
-		table { width: 100%; border-collapse: collapse; }
-		th, td {
-			text-align: start;
-			padding: .75rem;
-			border-bottom: 1px solid #d5e0e8;
-		}
-		caption { text-align: start; margin-bottom: 1rem; }
-		main {
-	border: 1px solid #e1e7ef;
-	box-shadow: 0 12px 36px rgba(24, 48, 71, .05);
-}
-h1 { font-size: clamp(1.7rem, 4vw, 2.5rem); }
-thead { background: #f3f6fa; }
-tbody tr:hover { background: #f8fafc; }
-td { font-variant-numeric: tabular-nums; }
-td:last-child { font-weight: bold; }
-.preview-note {
-	display: inline-block;
-	padding: .5rem .75rem;
-	border-radius: 8px;
-	background: #fff4db;
-	color: #785000;
-}
-.preview-nav {
-	display: flex;
-	flex-wrap: wrap;
-	gap: .5rem;
-	margin-bottom: 1.5rem;
-}
-.preview-nav a {
-	padding: .75rem 1rem;
-	border-radius: 8px;
-	background: #eef3f8;
-	color: #183047;
-	text-decoration: none;
-}
-.preview-nav a:hover { background: #e1eaf3; }
-	</style>
-</head>
-<body>
-	<main>
-		<h1>لیدربورد عمومی</h1>
-		<p>شناسهٔ مخزن: {{.ProjectID}}</p>
-
-		{{if .Error}}
-			<p role="alert">دریافت اطلاعات انجام نشد.</p>
-		{{else if .Rows}}
-			<div class="table-wrapper">
-				<table>
-					<caption>امتیاز مشارکت‌کنندگان</caption>
-					<thead>
-						<tr>
-							<th scope="col">رتبه</th>
-							<th scope="col">شناسهٔ کاربر</th>
-							<th scope="col">امتیاز</th>
-						</tr>
-					</thead>
-					<tbody>
-						{{range .Rows}}
-						<tr>
-							<td>{{.Rank}}</td>
-							<td>{{.UserID}}</td>
-							<td>{{.Score}}</td>
-						</tr>
-						{{end}}
-					</tbody>
-				</table>
-			</div>
-		{{else}}
-			<p>هنوز امتیازی ثبت نشده است.</p>
-		{{end}}
-	</main>
-	{{if .Preview}}
-		<p class="preview-note">پیش‌نمایش با دادهٔ آزمایشی</p>
-		<nav class="preview-nav" aria-label="حالت پیش‌نمایش">
-			<a href="/preview">جدول</a>
-			<a href="/preview?state=empty">حالت خالی</a>
-			<a href="/preview?state=error">حالت خطا</a>
-		</nav>
-	{{end}}
-
-
-
-</body>
-</html>`
-
 func renderLeaderboard(w io.Writer, view leaderboardView) error {
-	page, err := template.New("leaderboard").Parse(leaderboardTemplate)
+	page, err := template.ParseFS(
+		leaderboardTemplates,
+		"templates/leaderboard.html",
+	)
+
 	if err != nil {
 		return fmt.Errorf("web: parse leaderboard template: %w", err)
 	}
