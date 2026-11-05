@@ -17,8 +17,7 @@ func TestLeaderboardPreview(t *testing.T) {
 		want    string
 	}{
 		{"disabled", "/preview", false, 404, ""},
-		{"rows", "/preview", true, 200, "پیش‌نمایش با دادهٔ آزمایشی"},
-		{"empty", "/preview?state=empty", true, 200, "هنوز امتیازی ثبت نشده است."},
+		{"rows", "/preview", true, 200, "پیش\u200cنمایش با دادهٔ آزمایشی"}, {"empty", "/preview?state=empty", true, 200, "هنوز امتیازی ثبت نشده است."},
 		{"error", "/preview?state=error", true, 200, "دریافت اطلاعات انجام نشد."},
 	}
 
