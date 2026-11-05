@@ -3,7 +3,8 @@
 Part of issue #218. Currently provides an HTTP server, health check,
 configuration loading, and graceful shutdown.
 
-The leaderboard page and feature flag integration are still pending.
+An opt-in leaderboard preview renders sample, empty, and error states.
+The API-backed page and shared feature flag integration are follow-up work.
 
 ## Run locally
 
@@ -24,6 +25,21 @@ Expected response:
 ```
 
 Press Ctrl+C to stop the server.
+
+## Leaderboard preview
+
+Run from the repository root:
+
+```bash
+go run ./cmd/web serve --preview
+```
+
+Open http://localhost:8085/preview.
+
+Use the page links to inspect the sample table, empty state, and error state.
+The preview uses sample data and is disabled by default.
+
+Templates are embedded in the binary. Restart the web process after editing them.
 
 ## Configuration
 
