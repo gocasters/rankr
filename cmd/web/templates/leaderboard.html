@@ -106,6 +106,14 @@
   </head>
   <body>
     <main>
+      {{if .Preview}}
+      <p class="preview-note">پیش‌نمایش با دادهٔ آزمایشی</p>
+      <nav class="preview-nav" aria-label="حالت پیش‌نمایش">
+        <a href="/preview">جدول</a>
+        <a href="/preview?state=empty">حالت خالی</a>
+        <a href="/preview?state=error">حالت خطا</a>
+      </nav>
+      {{end}}
       <h1>لیدربورد عمومی</h1>
       <p>شناسهٔ مخزن: {{.ProjectID}}</p>
 
@@ -139,13 +147,5 @@
       <p>هنوز امتیازی ثبت نشده است.</p>
       {{end}}
     </main>
-    {{if .Preview}}
-    <p class="preview-note">پیش‌نمایش با دادهٔ آزمایشی</p>
-    <nav class="preview-nav" aria-label="حالت پیش‌نمایش">
-      <a href="/preview">جدول</a>
-      <a href="/preview?state=empty">حالت خالی</a>
-      <a href="/preview?state=error">حالت خطا</a>
-    </nav>
-    {{end}}
   </body>
 </html>
