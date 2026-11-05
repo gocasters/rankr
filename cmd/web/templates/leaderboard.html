@@ -4,6 +4,26 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>لیدربورد پروژه {{.ProjectID}} | Rankr</title>
+    {{if not .Preview}}
+    <meta
+      name="htmx-config"
+      content='{
+    "responseHandling": [
+      {"code": "204", "swap": false},
+      {"code": "[23]..", "swap": true},
+      {"code": "502", "swap": true, "error": true},
+      {"code": "[45]..", "swap": false, "error": true},
+      {"code": "...", "swap": false}
+    ]
+  }'
+    />
+    <script
+      src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.11/dist/htmx.min.js"
+      integrity="sha384-2OatzQy1H+Zd/IIrjr1TcuDGqLXeHhbooAyJY1KdQMKnr4LZ22k31GBLdYKHmVjg"
+      crossorigin="anonymous"
+      defer
+    ></script>
+    {{end}}
     <style>
       body {
         font-family: Tahoma, sans-serif;
@@ -102,10 +122,20 @@
           padding: 0.5rem;
         }
       }
+
+      .refresh-form {
+        margin: 1rem 0;
+      }
+
+      .refresh-form button {
+        font: inherit;
+        padding: 0.5rem 0.75rem;
+        min-height: 44px;
+      }
     </style>
   </head>
   <body>
-    <main>
+    <main id="leaderboard-content">
       {{if .Preview}}
       <p class="preview-note">پیش‌نمایش با دادهٔ آزمایشی</p>
       <nav class="preview-nav" aria-label="حالت پیش‌نمایش">
@@ -117,7 +147,21 @@
       <h1>لیدربورد عمومی</h1>
       <p>شناسهٔ مخزن: {{.ProjectID}}</p>
 
-      {{if .Error}}
+      {{if not .Preview}}
+      <form
+        class="refresh-form"
+        method="get"
+        action="/leaderboard"
+        hx-get="/leaderboard"
+        hx-target="#leaderboard-content"
+        hx-select="#leaderboard-content"
+        hx-swap="outerHTML"
+        hx-disabled-elt="find button"
+      >
+        <input type="hidden" name="project_id" value="{{.ProjectID}}" />
+        <button type="submit">به‌روزرسانی</button>
+      </form>
+      {{end}} {{if .Error}}
       <p role="alert">دریافت اطلاعات انجام نشد.</p>
       {{else if .Rows}}
       <div class="table-wrapper">

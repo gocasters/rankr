@@ -5,7 +5,7 @@ configuration loading, and graceful shutdown.
 
 An opt-in leaderboard preview renders sample, empty, and error states.
 An opt-in leaderboard page fetches data from the leaderboardstat HTTP API.
-Shared feature flag integration and htmx remain follow-up work.
+Shared feature flag integration remains follow-up work.
 
 ## Run locally
 
@@ -62,6 +62,9 @@ in YAML. Environment overrides are also supported:
 ```bash
 WEB__LEADERBOARD_API__BASE_URL=http://127.0.0.1:8081 go run ./cmd/web serve --leaderboard
 ```
+
+The refresh button updates the leaderboard using htmx.
+htmx 2.0.11 is loaded from jsDelivr with an integrity check.
 
 ## Configuration
 
