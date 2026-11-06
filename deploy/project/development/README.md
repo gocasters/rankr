@@ -1,7 +1,7 @@
 # Project Service (Development)
 
 ## Prerequisites
-- Run `bash deploy/script/start_infrastructure.sh up-base` or `make infra-up` so the shared services and `rankr-shared-development-network` exist.
+- Run `make up-v1` to start shared infra plus all six v1 apps, or run `bash deploy/script/start_infrastructure.sh up-base` / `make infra-up` so the shared services and `rankr-shared-development-network` exist.
 - Copy `.env.development.example` to `.env.development` in this directory and adjust the database, Redis, or NATS endpoints if your setup differs.
 - Review `config.yml` if you need to tweak ports or internal settings before starting the container.
 
