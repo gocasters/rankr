@@ -1,0 +1,11 @@
+{
+  "action": "opened",
+  "issue": {
+    "id": 3000001, "number": 11, "state": "open", "title": "Leaderboard ignores project id",
+    "user": {"id": 2003, "login": "contributor-c"},
+    "labels": [{"id": 1, "name": "bug"}], "comments": 0,
+    "created_at": "2026-10-20T08:00:00Z", "updated_at": "2026-10-20T08:00:00Z", "closed_at": null
+  },
+  "repository": {"id": 1000001, "name": "example-repo", "full_name": "example-org/example-repo"},
+  "sender": {"id": 2003, "login": "contributor-c"}
+}
