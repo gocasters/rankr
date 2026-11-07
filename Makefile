@@ -4,6 +4,10 @@ SHELL := /bin/bash
 BINARY_NAME ?= rankr
 BUILD_DIR ?= bin
 BUF_VERSION ?= v1.56.0
+DEFAULT_GO_VERSION ?= $(shell awk '$$1 == "go" { print $$2; exit }' go.mod)
+DEFAULT_GO_IMAGE_NAME ?= golang
+DEFAULT_GO_IMAGE_VERSION ?= ${DEFAULT_GO_VERSION}-alpine
+DEFAULT_AIR_VERSION ?= v1.66.1
 DEFAULT_BRANCH ?= main
 PROTOC_GEN_GO_VERSION ?= v1.34.2
 PROTOC_GEN_GO_GRPC_VERSION ?= v1.5.1
@@ -11,6 +15,12 @@ DOCKER_COMPOSE ?= docker compose
 INFRA_SCRIPT := ./deploy/script/start_infrastructure.sh
 INFRA_SCRIPT_PROD := ./deploy/script/start_infrastructure_prod.sh
 SERVICES := auth contributor leaderboardscoring leaderboardstat notification project realtime task userprofile webhook
+SERVICES_V1 := auth contributor project leaderboardscoring leaderboardstat webhook
+INFRA_V1 := postgres redis nats openresty
+DEV_WAIT_TIMEOUT ?= 20
+FORCE ?=
+
+export DEFAULT_GO_IMAGE_NAME DEFAULT_GO_IMAGE_VERSION DEFAULT_AIR_VERSION
 
 # ====================================================================================
 # General Go Commands
@@ -159,7 +169,7 @@ install-buf:
 	@if command -v buf &> /dev/null && buf --version &> /dev/null; then \
 	   CURRENT_VERSION=$(buf --version | sed 's/^v//'); \
 	   EXPECTED_VERSION=$(echo "$(BUF_VERSION)" | sed 's/^v//'); \
-	   if [ "$CURRENT_VERSION" = "$EXPECTED_VERSION" ]; then \
+	   if [ "$$CURRENT_VERSION" = "$$EXPECTED_VERSION" ]; then \
 	      echo "Buf $(BUF_VERSION) is already installed"; \
 	   else \
 	      echo "Buf version mismatch. Expected $(BUF_VERSION), found $CURRENT_VERSION. Reinstalling..."; \
@@ -189,7 +199,7 @@ else \
 # Infrastructure Commands
 # ====================================================================================
 .PHONY: infra-up infra-down infra-logs
-.PHONY: infra-up-postgres infra-up-redis infra-up-nats infra-up-emqx
+.PHONY: infra-up-base infra-up-postgres infra-up-redis infra-up-nats infra-up-emqx infra-up-openresty
 
 infra-up:
 	@echo "Starting shared infrastructure..."
@@ -202,6 +212,10 @@ infra-down:
 infra-logs:
 	@echo "Showing logs for infrastructure stack..."
 	bash $(INFRA_SCRIPT) logs-all
+
+infra-up-base:
+	@echo "Starting infrastructure base network and volumes..."
+	bash $(INFRA_SCRIPT) up-base
 
 infra-up-postgres:
 	@echo "Starting infrastructure PostgreSQL..."
@@ -218,6 +232,10 @@ infra-up-nats:
 infra-up-emqx:
 	@echo "Starting infrastructure EMQX..."
 	bash $(INFRA_SCRIPT) up-emqx
+
+infra-up-openresty:
+	@echo "Starting infrastructure OpenResty..."
+	bash $(INFRA_SCRIPT) up-openresty
 
 # ====================================================================================
 # Production Infrastructure Commands
@@ -263,16 +281,28 @@ status-prod:
 # ====================================================================================
 # Service Commands
 # ====================================================================================
-.PHONY: $(SERVICES:%=start-%-app-dev) $(SERVICES:%=start-%-app-dev-log) $(SERVICES:%=stop-%-app-dev)
+.PHONY: $(SERVICES:%=start-%-app-dev) \
+	$(SERVICES:%=start-and-wait-%-app-dev) \
+	$(SERVICES:%=start-%-app-dev-log) \
+	$(SERVICES:%=stop-%-app-dev) \
+	docker-build-dev
 
 define SERVICE_template
 start-$(1)-app-dev:
 	@echo "Starting $(1) service..."
-	cd deploy/$(1)/development && PROJECT_ROOT=$(CURDIR) $(DOCKER_COMPOSE) up -d --build
+	cd deploy/$(1)/development && PROJECT_ROOT=$(CURDIR) $(DOCKER_COMPOSE) up -d
+
+start-and-wait-$(1)-app-dev:
+	@echo "Starting $(1) service and waiting up to $(DEV_WAIT_TIMEOUT)s..."
+	@cd deploy/$(1)/development && \
+		PROJECT_ROOT=$(CURDIR) $(DOCKER_COMPOSE) up -d \
+			--wait \
+			--wait-timeout $(DEV_WAIT_TIMEOUT) || \
+		( echo "⚠️  $(1) did not become healthy within $(DEV_WAIT_TIMEOUT)s." && exit 1 )
 
 start-$(1)-app-dev-log:
 	@echo "Starting $(1) service with logs..."
-	cd deploy/$(1)/development && PROJECT_ROOT=$(CURDIR) $(DOCKER_COMPOSE) up --build
+	cd deploy/$(1)/development && PROJECT_ROOT=$(CURDIR) $(DOCKER_COMPOSE) up
 
 stop-$(1)-app-dev:
 	@echo "Stopping $(1) service..."
@@ -281,11 +311,26 @@ endef
 
 $(foreach svc,$(SERVICES),$(eval $(call SERVICE_template,$(svc))))
 
+docker-build-dev:
+	@if [ "$(FORCE)" = "1" ] || ! docker image inspect rankr-go-dev:$(DEFAULT_GO_IMAGE_VERSION) >/dev/null 2>&1; then \
+		echo "Building development image..."; \
+		docker build \
+			--build-arg GO_IMAGE_NAME=$(DEFAULT_GO_IMAGE_NAME) \
+			--build-arg GO_IMAGE_VERSION=$(DEFAULT_GO_IMAGE_VERSION) \
+			--build-arg AIR_VERSION=$(DEFAULT_AIR_VERSION) \
+			-t rankr-go-dev:$(DEFAULT_GO_IMAGE_VERSION) \
+			-f deploy/development/Dockerfile . && \
+		echo "✅ Development image built!"; \
+	else \
+		echo "✅ Development image already exists: rankr-go-dev:$(DEFAULT_GO_IMAGE_VERSION) (set FORCE=1 to rebuild)"; \
+	fi
+
 .PHONY: services-up services-down services-logs
 
 # All services commands
 services-up:
 	@echo "Starting all application services..."
+	$(MAKE) docker-build-dev
 	@for svc in $(SERVICES); do \
 		$(MAKE) start-$$svc-app-dev; \
 	done
@@ -310,6 +355,7 @@ services-logs:
 	done; \
 	wait
 
+.PHONY: up down logs restart up-v1
 # Complete startup (infrastructure + services)
 up:
 	$(MAKE) infra-up
@@ -339,6 +385,21 @@ restart: down
 status:
 	@echo "Container status:"
 	@docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "rankr|NAMES"
+
+# Startup v1 setup (infrastructure + services)
+up-v1:
+	$(MAKE) infra-up-base
+	@set -e; \
+	for infra in $(INFRA_V1); do \
+		$(MAKE) infra-up-$$infra; \
+	done
+	@echo "Waiting for infrastructure to be ready..."
+	@sleep 10
+	@echo "Starting all v1 application services..."
+	$(MAKE) docker-build-dev
+	@failed=0; for svc in $(SERVICES_V1); do $(MAKE) start-and-wait-$$svc-app-dev || failed=1; done; \
+	if [ $$failed -eq 0 ]; then echo "✅ All v1 services are up!"; else \
+	echo "⚠️  Not all v1 services became healthy within $(DEV_WAIT_TIMEOUT)s each (containers are still running)."; exit 1; fi
 
 # ====================================================================================
 # Production Docker Build Commands
@@ -415,10 +476,12 @@ help:
 	@echo "  Infrastructure (Development):"
 	@echo "    infra-up              - Start all infrastructure services"
 	@echo "    infra-down            - Stop all infrastructure services"
+	@echo "	  infra-up-base			- Setup base volumes and networks"
 	@echo "    infra-up-postgres     - Start PostgreSQL only"
 	@echo "    infra-up-redis        - Start Redis only"
 	@echo "    infra-up-nats         - Start NATS only"
 	@echo "    infra-up-emqx         - Start EMQX only"
+	@echo "	  infra-up-openresty		- Start OpenResty only"
 	@echo "    infra-logs            - Tail infrastructure logs"
 	@echo ""
 	@echo "  Infrastructure (Production):"
@@ -428,6 +491,10 @@ help:
 	@echo "    infra-status-prod     - Show production infrastructure status"
 	@echo ""
 	@echo "  Services Development ($(SERVICES)):"
+	@echo "    DEFAULT_GO_IMAGE_NAME=golang DEFAULT_GO_IMAGE_VERSION=1.25-alpine DEFAULT_AIR_VERSION=latest"
+	@echo "                              Set shared development Docker defaults (service overrides remain possible)"
+	@echo "    docker-build-dev             - Build the shared development Go/Air image (skipped if image exists; FORCE=1 to rebuild)"
+	@echo "    DEV_WAIT_TIMEOUT=120        - Seconds for start-and-wait-* health wait (default 20)"
 	@echo "    start-<service>-app-dev      - Start a single service (e.g. make start-auth-app-dev)"
 	@echo "    start-<service>-app-dev-log  - Start a service and attach logs"
 	@echo "    stop-<service>-app-dev       - Stop a single service"
@@ -477,6 +544,7 @@ help:
 	@echo ""
 	@echo "  Utilities:"
 	@echo "    up                    - Start infrastructure and services (dev)"
+	@echo "    up-v1						- Start v1 infrastructure and services (dev)"
 	@echo "    down                  - Stop infrastructure and services (dev)"
 	@echo "    up-prod               - Start infrastructure and services (prod)"
 	@echo "    down-prod             - Stop infrastructure and services (prod)"
