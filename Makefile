@@ -18,17 +18,20 @@ SERVICES := auth contributor leaderboardscoring leaderboardstat notification pro
 .PHONY: test build clean mod-tidy lint install-linter help
 
 # --- Agentic gate (see AGENTS.md) ---
-.PHONY: check check-all
+.PHONY: check check-all arch-lint
 BASE ?= origin/main
 
 check: ## Gate for a change: gofmt, vet, race tests and build on packages changed vs $(BASE)
 	@BASE=$(BASE) ./scripts/check.sh
 
-check-all: ## Same checks on every package (red until the baseline issue is fixed)
+check-all: arch-lint ## Same checks on every package (red until the baseline issue is fixed)
 	@test -z "$$(gofmt -l $$(git ls-files '*.go' | grep -v '^protobuf/golang/'))" || (gofmt -l $$(git ls-files '*.go' | grep -v '^protobuf/golang/'); exit 1)
 	go vet ./...
 	go test -race -short -count=1 ./...
 	go build ./...
+
+arch-lint: ## Architecture rules (#285): no cross-app imports, no math/rand outside tests (depguard, see .golangci.yml)
+	golangci-lint run --enable-only depguard ./...
 
 start: build
 	$(BUILD_DIR)/$(BINARY_NAME)
@@ -459,6 +462,7 @@ help:
 	@echo "    clean                 - Clean build artifacts"
 	@echo "    mod-tidy              - Tidy go modules"
 	@echo "    lint                  - Run linter"
+	@echo "    arch-lint             - Run architecture rules (depguard only)"
 	@echo "    install-linter        - Install linter"
 	@echo "    install-protoc-plugins - Install protoc plugins"
 	@echo "    install-buf           - Install Buf"
