@@ -9,17 +9,18 @@ import (
 )
 
 func TestTaskJSONHidesLinkedPR(t *testing.T) {
+	without := Task{ID: 1}
+	with := without
 	linkedPR := int64(7)
-	task := Task{
-		ID:       1,
-		LinkedPR: &linkedPR,
-	}
+	with.LinkedPR = &linkedPR
 
-	data, err := json.Marshal(task)
+	withoutJSON, err := json.Marshal(without)
 	require.NoError(t, err)
 
-	var got map[string]any
-	require.NoError(t, json.Unmarshal(data, &got))
+	withJSON, err := json.Marshal(with)
+	require.NoError(t, err)
 
-	assert.NotContains(t, got, "linked_pr")
+	assert.JSONEq(t, string(withoutJSON), string(withJSON))
+	assert.NotContains(t, string(withJSON), "linked_pr")
+	assert.NotContains(t, string(withJSON), "LinkedPR")
 }

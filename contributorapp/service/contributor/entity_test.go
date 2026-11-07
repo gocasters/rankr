@@ -9,18 +9,21 @@ import (
 )
 
 func TestContributorJSONHidesTwoFactor(t *testing.T) {
-	c := Contributor{
+	without := Contributor{
 		ID:             1,
 		GitHubID:       42,
 		GitHubUsername: "octocat",
-		TwoFactor:      true,
 	}
+	with := without
+	with.TwoFactor = true
 
-	data, err := json.Marshal(c)
+	withoutJSON, err := json.Marshal(without)
 	require.NoError(t, err)
 
-	var got map[string]any
-	require.NoError(t, json.Unmarshal(data, &got))
+	withJSON, err := json.Marshal(with)
+	require.NoError(t, err)
 
-	assert.NotContains(t, got, "two_factor_enabled")
+	assert.JSONEq(t, string(withoutJSON), string(withJSON))
+	assert.NotContains(t, string(withJSON), "two_factor_enabled")
+	assert.NotContains(t, string(withJSON), "TwoFactor")
 }
