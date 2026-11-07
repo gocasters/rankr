@@ -1,0 +1,70 @@
+{
+  "score_events": [
+    {
+      "event_id": "evt-0001",
+      "event_name": "issue_opened",
+      "user_id": "2003",
+      "score": 4
+    },
+    {
+      "event_id": "evt-0002",
+      "event_name": "pull_request_opened",
+      "user_id": "2001",
+      "score": 1
+    },
+    {
+      "event_id": "evt-0003",
+      "event_name": "pull_request_review",
+      "user_id": "2002",
+      "score": 3
+    },
+    {
+      "event_id": "evt-0004",
+      "event_name": "pull_request_review",
+      "user_id": "2002",
+      "score": 3
+    },
+    {
+      "event_id": "evt-0005",
+      "event_name": "issue_comment",
+      "user_id": "2001",
+      "score": 6
+    },
+    {
+      "event_id": "evt-0006",
+      "event_name": "pull_request_closed",
+      "user_id": "2001",
+      "score": 2
+    },
+    {
+      "event_id": "evt-0007",
+      "event_name": "commit_push",
+      "user_id": "2002",
+      "score": 7
+    },
+    {
+      "event_id": "evt-0008",
+      "event_name": "issue_closed",
+      "user_id": "2002",
+      "score": 5
+    },
+    {
+      "event_id": "evt-0009",
+      "event_name": "pull_request_closed",
+      "user_id": "2003",
+      "score": 2
+    }
+  ],
+  "all_time_leaderboard": {
+    "leaderboard:1000001:all_time": {
+      "2001": 9,
+      "2002": 18,
+      "2003": 6
+    },
+    "leaderboard:global:all_time": {
+      "2001": 9,
+      "2002": 18,
+      "2003": 6
+    }
+  }
+}
