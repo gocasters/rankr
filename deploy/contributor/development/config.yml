@@ -31,13 +31,13 @@ scheduler_cfg:
 
 
 redis:
-  host: "rankr-shared-redis"
+  host: "shared-redis"
   port: 6379
   password: ""
   db: 0
 
 watermill_nats:
-  url: "nats://rankr-shared-nats:4222"
+  url: "nats://shared-nats:4222"
   client_id: "contributor"
   durable_name: "contributor-consumer"
   queue_group: "event-group"
@@ -69,7 +69,7 @@ database_retry:
   retry_delay: 100ms
 
 nats_adapter:
-  url: "nats://rankr-shared-nats:4222"
+  url: "nats://shared-nats:4222"
   max_reconnects: -1
   reconnect_wait: 1s
 
@@ -95,7 +95,7 @@ batch_processor:
 total_shutdown_timeout: 30m
 
 postgres_db:
-  host: rankr-shared-postgres
+  host: shared-postgres
   port: 5432
   user: contributor_user
   password: contributor_pass
