@@ -19,6 +19,12 @@ func (s *Server) PublishGithubActivity(c echo.Context) error {
 	hubSig256 := c.Request().Header.Get("X-Hub-Signature-256")
 	body, err := s.Service.VerifyEvent(c.Request().Body, hookID, eventName, deliveryUID, hubSig256)
 	if err != nil {
+		if errors.Is(err, delivery.ErrWebhookConfig) {
+			logger.L().Error("webhook service misconfigured", "err", err)
+			return c.JSON(http.StatusInternalServerError, map[string]string{
+				"error": "internal server error",
+			})
+		}
 		var httpStatus int
 		if errors.Is(err, delivery.ErrWebhookHmacSigFailure) {
 			httpStatus = http.StatusUnauthorized

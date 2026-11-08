@@ -4,6 +4,7 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"strings"
 	"testing"
 )
@@ -87,8 +88,8 @@ func TestVerifyEventRejectsEmptySecret(t *testing.T) {
 	service := New(nil, nil, nil, nil, 1<<20, "", 0)
 
 	_, err := service.VerifyEvent(strings.NewReader(string(payload)), testHookID, testEventName, testDeliveryUID, signPayload(nil, payload))
-	if err == nil || !strings.Contains(err.Error(), "secret") {
-		t.Fatalf("VerifyEvent() error = %v, want empty secret error", err)
+	if !errors.Is(err, ErrWebhookConfig) || errors.Is(err, ErrWebhookHmacSigFailure) {
+		t.Fatalf("VerifyEvent() error = %v, want ErrWebhookConfig and not ErrWebhookHmacSigFailure", err)
 	}
 }
 

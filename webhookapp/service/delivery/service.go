@@ -97,10 +97,10 @@ func (s *Service) saveEvent(ctx context.Context, event *eventpb.Event) error {
 
 func (s *Service) VerifyEvent(eventReader io.Reader, hookID, eventName, deliveryUID, hubSig256 string) ([]byte, error) {
 	if len(s.githubHmacSecret) == 0 {
-		return nil, fmt.Errorf("%w: GitHub webhook secret must be set", ErrWebhookHmacSigFailure)
+		return nil, fmt.Errorf("%w: GitHub webhook secret must be set", ErrWebhookConfig)
 	}
 	if s.githubMaxEventSize <= 0 {
-		return nil, fmt.Errorf("GitHub payload size limit must be positive")
+		return nil, fmt.Errorf("%w: GitHub payload size limit must be positive", ErrWebhookConfig)
 	}
 
 	if err := s.validateGitHubHeaders(hookID, eventName, deliveryUID, hubSig256); err != nil {
