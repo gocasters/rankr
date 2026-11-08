@@ -106,6 +106,37 @@ func TestVerifyEventRejectsPayloadOverLimit(t *testing.T) {
 	}
 }
 
+func TestVerifyEventReturnsSignatureFailureBeforeOtherChecks(t *testing.T) {
+	secret := []byte("test-secret")
+	tests := []struct {
+		name        string
+		hookID      string
+		signature   string
+		payload     string
+		maxSize     int64
+		wantSigFail bool
+	}{
+		{name: "hook ID and signature missing", payload: `{}`, maxSize: 1 << 20, wantSigFail: true},
+		{name: "oversized body with missing signature", hookID: testHookID, payload: "12345", maxSize: 4, wantSigFail: true},
+		{name: "oversized body with malformed signature", hookID: testHookID, signature: "deadbeef", payload: "12345", maxSize: 4, wantSigFail: true},
+		{name: "hook ID missing with valid signature", signature: signPayload(secret, []byte(`{}`)), payload: `{}`, maxSize: 1 << 20},
+		{name: "oversized body with well-formed signature", hookID: testHookID, signature: signPayload(secret, []byte("1234")), payload: "12345", maxSize: 4},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			service := New(nil, nil, nil, secret, tt.maxSize, "", 0)
+			_, err := service.VerifyEvent(strings.NewReader(tt.payload), tt.hookID, testEventName, testDeliveryUID, tt.signature)
+			if err == nil {
+				t.Fatal("VerifyEvent() error = nil, want error")
+			}
+			if got := errors.Is(err, ErrWebhookHmacSigFailure); got != tt.wantSigFail {
+				t.Fatalf("VerifyEvent() error = %v, ErrWebhookHmacSigFailure = %t, want %t", err, got, tt.wantSigFail)
+			}
+		})
+	}
+}
+
 func signPayload(secret, payload []byte) string {
 	mac := hmac.New(sha256.New, secret)
 	_, _ = mac.Write(payload)
