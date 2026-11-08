@@ -24,6 +24,7 @@ services:
       - WEBHOOK_REDIS__HOST=shared-redis
       - WEBHOOK_REDIS__PORT=6379
       - WEBHOOK_NATS__URL=nats://shared-nats:4222
+      - WEBHOOK_GITHUB__SECRET=${GITHUB_WEBHOOK_SECRET}
     entrypoint: ["air", "-c", "/app/.air/.air.webhook.toml"]
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8090/github-webhook/health-check > /dev/null"]
