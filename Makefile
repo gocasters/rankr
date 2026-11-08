@@ -11,6 +11,8 @@ DEFAULT_AIR_VERSION ?= v1.66.1
 DEFAULT_BRANCH ?= main
 PROTOC_GEN_GO_VERSION ?= v1.34.2
 PROTOC_GEN_GO_GRPC_VERSION ?= v1.5.1
+# Keep in sync with the golangci-lint version in .github/workflows/ci.yml
+GOLANGCI_LINT_VERSION ?= v2.4.0
 DOCKER_COMPOSE ?= docker compose
 INFRA_SCRIPT := ./deploy/script/start_infrastructure.sh
 INFRA_SCRIPT_PROD := ./deploy/script/start_infrastructure_prod.sh
@@ -28,17 +30,20 @@ export DEFAULT_GO_IMAGE_NAME DEFAULT_GO_IMAGE_VERSION DEFAULT_AIR_VERSION
 .PHONY: test build clean mod-tidy lint install-linter help
 
 # --- Agentic gate (see AGENTS.md) ---
-.PHONY: check check-all
+.PHONY: check check-all arch-lint
 BASE ?= origin/main
 
 check: ## Gate for a change: gofmt, vet, race tests and build on packages changed vs $(BASE)
 	@BASE=$(BASE) ./scripts/check.sh
 
-check-all: ## Same checks on every package (red until the baseline issue is fixed)
+check-all: arch-lint ## Same checks on every package (red until the baseline issue is fixed)
 	@test -z "$$(gofmt -l $$(git ls-files '*.go' | grep -v '^protobuf/golang/'))" || (gofmt -l $$(git ls-files '*.go' | grep -v '^protobuf/golang/'); exit 1)
 	go vet ./...
 	go test -race -short -count=1 ./...
 	go build ./...
+
+arch-lint: ## Architecture rules (#285): no cross-app imports, no math/rand outside tests (depguard, see .golangci.yml)
+	golangci-lint run --enable-only depguard ./...
 
 start: build
 	$(BUILD_DIR)/$(BINARY_NAME)
@@ -59,7 +64,7 @@ lint:
 	golangci-lint run
 
 install-linter:
-	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 
 # ====================================================================================
 # Protobuf Commands
@@ -526,6 +531,7 @@ help:
 	@echo "    clean                 - Clean build artifacts"
 	@echo "    mod-tidy              - Tidy go modules"
 	@echo "    lint                  - Run linter"
+	@echo "    arch-lint             - Run architecture rules (depguard only)"
 	@echo "    install-linter        - Install linter"
 	@echo "    install-protoc-plugins - Install protoc plugins"
 	@echo "    install-buf           - Install Buf"
