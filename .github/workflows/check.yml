@@ -4,6 +4,10 @@ on:
   pull_request:
     branches: [main]
 
+# Repo variable BUF_VERSION overrides; else Makefile default (v1.56.0). Make uses ?=.
+env:
+  BUF_VERSION: ${{ vars.BUF_VERSION || 'v1.56.0' }}
+
 permissions:
   contents: read
 
@@ -20,3 +24,24 @@ jobs:
           go-version-file: go.mod
       - name: make check (changed packages)
         run: make check BASE=origin/${{ github.base_ref }}
+
+  # Issue #268: fail the PR if a .proto change would break existing clients.
+  proto-breaking:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: buf setup version (buf-setup-action wants no leading v)
+        run: echo "BUF_SETUP_VERSION=${BUF_VERSION#v}" >> "$GITHUB_ENV"
+
+      - uses: bufbuild/buf-setup-action@v1.47.2
+        with:
+          version: ${{ env.BUF_SETUP_VERSION || '1.56.0' }}
+
+      - name: check protobuf for breaking changes
+        run: |
+          git branch -f "${{ github.base_ref }}" "origin/${{ github.base_ref }}"
+          make proto-breaking DEFAULT_BRANCH=${{ github.base_ref }}
