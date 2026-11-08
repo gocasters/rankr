@@ -31,6 +31,7 @@ deploy/project/development/.env.development
 deploy/auth/development/.env.development
 deploy/stage/.env.stage
 deploy/stage/.deploy-history
+deploy/stage/.deploy-lock
 
 # Editor/IDE
 
@@ -49,3 +50,5 @@ logs
 /deploy/development/traefik/logs/access.log
 deploy/development/traefik/logs/traefik.log
 /uploads
+.env.production
+deploy/auth/production/.env.production

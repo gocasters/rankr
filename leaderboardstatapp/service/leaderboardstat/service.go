@@ -466,6 +466,9 @@ func convertProtoProjectsScore(protoScores map[uint64]float64) map[types.ID]floa
 func (s *Service) GetPublicLeaderboard(ctx context.Context, projectID types.ID, pageSize int32, page int32) (ProjectScoreList, error) {
 	log := logger.L()
 	log.Info("GetPublicLeaderboard called")
+	if pageSize < 1 {
+		return ProjectScoreList{}, fmt.Errorf("page size must be positive, got %d", pageSize)
+	}
 
 	userScoreEntries, total, err := s.redisLeaderboardRepo.GetPublicLeaderboardPaginated(ctx, projectID, page, pageSize)
 	if err != nil {

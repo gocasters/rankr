@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"log/slog"
 
 	"github.com/gocasters/rankr/contributorapp/service/contributor"
@@ -82,5 +83,27 @@ func (h Handler) GetContributorsByVCS(ctx context.Context, req *contributorpb.Ge
 	return &contributorpb.GetContributorsByVCSResponse{
 		VcsProvider:  string(serviceResp.VcsProvider),
 		Contributors: mappings,
+	}, nil
+}
+
+func (h Handler) GetContributorInfo(ctx context.Context, req *contributorpb.GetContributorInfoRequest) (*contributorpb.GetContributorInfoResponse, error) {
+	log := logger.L()
+	log.Info("gRPC GetContributorInfo request received", slog.Any("contributor_id", req))
+
+	c, err := h.svc.GetProfile(ctx, types.ID(req.ContributorId))
+	if err != nil {
+		log.Error("failed to get contributor info by id", slog.Any("error", err))
+		return nil, status.Error(codes.Internal, "failed to fetch contributor info")
+	}
+
+	return &contributorpb.GetContributorInfoResponse{
+		ContributorId:  uint64(c.ID),
+		GithubId:       c.GitHubID,
+		GithubUsername: c.GitHubUsername,
+		DisplayName:    c.DisplayName,
+		PrivacyMode:    string(c.PrivacyMode),
+		ProfileImage:   c.ProfileImage,
+		Bio:            c.Bio,
+		CreatedAt:      timestamppb.New(c.CreatedAt),
 	}, nil
 }

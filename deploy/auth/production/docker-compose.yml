@@ -15,6 +15,7 @@ services:
       - CONFIG_PATH=/app/deploy/auth/production/config.yml
       - ENV=production
       - auth_postgres_db__password=${AUTH_PASS}
+      - auth_jwt__secret=${JWT_SECRET:?set in deploy/.env.production}
 
 networks:
   rankr-prod-network:

@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # Stage deploy helper for rankr. See docs/stage.md.
 #
-#   deploy.sh deploy     build the current checkout, start it, check health;
-#                        rolls back to the previous release if health fails
+#   deploy.sh deploy     build the current checkout, start it, check health
+#                        and run smoke.sh; rolls back to the previous release
+#                        if either fails
 #   deploy.sh rollback   start the previous release again (no build)
 #   deploy.sh status     container status
 #   deploy.sh logs [svc] follow logs
 #   deploy.sh health     health of every v1 service through the gateway
+#   deploy.sh smoke      smoke test through the gateway (smoke.sh)
 #   deploy.sh down       stop the stack (volumes are kept)
 set -euo pipefail
 
@@ -82,6 +84,10 @@ wait_healthy() {
     return 1
 }
 
+smoke() {
+    "$STAGE_DIR/smoke.sh" "http://127.0.0.1:$GATEWAY_PORT"
+}
+
 previous_tag() {
     [[ -f "$HISTORY" ]] && tail -n 1 "$HISTORY" || true
 }
@@ -97,11 +103,11 @@ case "${1:-}" in
         echo "deploying $tag (previous: ${prev:-none})"
         TAG="$tag" compose build
         start "$tag"
-        if wait_healthy; then
+        if wait_healthy && smoke; then
             echo "$tag" >> "$HISTORY"
             echo "deployed $tag"
         else
-            echo "health check failed for $tag" >&2
+            echo "health or smoke check failed for $tag" >&2
             if [[ -n "$prev" ]]; then
                 echo "rolling back to $prev" >&2
                 start "$prev" --no-build
@@ -130,11 +136,14 @@ case "${1:-}" in
     health)
         health
         ;;
+    smoke)
+        smoke
+        ;;
     down)
         compose down
         ;;
     *)
-        sed -n '2,11p' "$0"
+        sed -n '2,13p' "$0"
         exit 1
         ;;
 esac
