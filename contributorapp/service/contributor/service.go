@@ -28,10 +28,9 @@ type Repository interface {
 }
 
 type Service struct {
-	repository     Repository
-	validator      Validator
-	CacheManager   cachemanager.CacheManager
-	forceAcceptOtp int
+	repository   Repository
+	validator    Validator
+	CacheManager cachemanager.CacheManager
 }
 
 func NewService(

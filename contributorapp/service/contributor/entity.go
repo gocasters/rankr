@@ -12,7 +12,7 @@ type Contributor struct {
 	Password       string      `json:"-" db:"password"`
 	Role           string      `json:"role" db:"role"`
 	IsVerified     bool        `json:"is_verified" db:"is_verified"`
-	TwoFactor      bool        `json:"two_factor_enabled" db:"two_factor_enabled"`
+	TwoFactor      bool        `json:"-" db:"two_factor_enabled"` // not implemented; never exposed
 	PrivacyMode    PrivacyMode `json:"privacy_mode" db:"privacy_mode"`
 	DisplayName    string      `json:"display_name,omitempty" db:"display_name"`
 	ProfileImage   string      `json:"profile_image,omitempty" db:"profile_image"`
