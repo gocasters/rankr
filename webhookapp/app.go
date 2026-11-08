@@ -24,6 +24,9 @@ import (
 	"github.com/gocasters/rankr/webhookapp/delivery/http"
 )
 
+// defaultGithubMaxPayloadSize is GitHub's documented webhook payload cap (25 MiB).
+const defaultGithubMaxPayloadSize = 25 << 20
+
 type Application struct {
 	HTTPServer          http.Server
 	EventRepo           delivery.EventRepository
@@ -57,7 +60,7 @@ func Setup(config Config, conn *database.Database, pub message.Publisher, redisA
 
 	githubMaxPayloadSize := config.GithubConfig.MaxPayloadSizeMB * (1 << 20)
 	if githubMaxPayloadSize == 0 {
-		githubMaxPayloadSize = 1 << 20
+		githubMaxPayloadSize = defaultGithubMaxPayloadSize
 	}
 
 	deliveryService := delivery.New(&eventRepo, pub, &eventDurableRepo, []byte(config.GithubConfig.Secret), githubMaxPayloadSize, config.InsertQueueName, config.InsertBatchSize)
