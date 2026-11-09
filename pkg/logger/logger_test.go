@@ -35,6 +35,52 @@ func TestMapLevel(t *testing.T) {
 	}
 }
 
+func TestNewFileWriter(t *testing.T) {
+	tests := []struct {
+		name           string
+		fileMaxBackups int
+		wantMaxBackups int
+	}{
+		{
+			name:           "defaults max backups",
+			wantMaxBackups: defaultFileMaxBackups,
+		},
+		{
+			name:           "uses configured max backups",
+			fileMaxBackups: 3,
+			wantMaxBackups: 3,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := Config{
+				UseLocalTime:     true,
+				FileMaxSizeInMB:  10,
+				FileMaxAgeInDays: 7,
+				FileMaxBackups:   tt.fileMaxBackups,
+			}
+			writer := newFileWriter(cfg, "logs/service.log")
+
+			if writer.Filename != "logs/service.log" {
+				t.Errorf("Filename = %q, want %q", writer.Filename, "logs/service.log")
+			}
+			if writer.MaxSize != 10 {
+				t.Errorf("MaxSize = %d, want 10", writer.MaxSize)
+			}
+			if writer.MaxAge != 7 {
+				t.Errorf("MaxAge = %d, want 7", writer.MaxAge)
+			}
+			if writer.MaxBackups != tt.wantMaxBackups {
+				t.Errorf("MaxBackups = %d, want %d", writer.MaxBackups, tt.wantMaxBackups)
+			}
+			if !writer.Compress {
+				t.Error("Compress = false, want true")
+			}
+		})
+	}
+}
+
 // --- Init Tests ---
 func TestInit(t *testing.T) {
 	resetGlobals()

@@ -62,14 +62,18 @@ watermill_nats:
   ping_interval: 30s
   max_pings_out: 1
 
-  use_jetstream: false
+  use_jetstream: true
+  deliver_policy: "by_start_time"
+  # TODO: Set shortly before deploy to an RFC3339 time within the 24h idempotency window.
+  deliver_start_time: "YYYY-MM-DDTHH:MM:SSZ"
 
 logger:
-  level: "debug" # Can be `debug`, `info`, `warn`, `error`
+  level: "info" # Can be `debug`, `info`, `warn`, `error`
   file_path: "logs/leaderboardscoringapp/service.log"
   use_local_time: true
   file_max_size_in_mb: 10
   file_max_age_in_days: 7
+  file_max_backups: 5
 
 raw_event_consumer:
   processed_key_ttl: 24h

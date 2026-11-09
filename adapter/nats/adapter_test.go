@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
+	watermillnats "github.com/ThreeDotsLabs/watermill-nats/v2/pkg/nats"
+	natsgo "github.com/nats-io/nats.go"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -28,6 +30,69 @@ var validConfig = Config{
 func TestConfigValidate_Valid(t *testing.T) {
 	vErrors := validConfig.Validate()
 	assert.Empty(t, vErrors)
+}
+
+func TestConfigValidate_DeliverPolicy(t *testing.T) {
+	startTime := time.Date(2026, time.November, 9, 8, 0, 0, 0, time.UTC)
+	testCases := []struct {
+		name       string
+		policy     string
+		startTime  time.Time
+		wantErrKey string
+	}{
+		{name: "default"},
+		{name: "all", policy: "all"},
+		{name: "new", policy: "new"},
+		{name: "by start time", policy: "by_start_time", startTime: startTime},
+		{name: "unknown", policy: "foo", wantErrKey: "deliver_policy"},
+		{name: "by start time without time", policy: "by_start_time", wantErrKey: "deliver_start_time"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			config := validConfig
+			config.DeliverPolicy = tc.policy
+			config.DeliverStartTime = tc.startTime
+
+			errs := config.Validate()
+			if tc.wantErrKey == "" {
+				assert.Empty(t, errs)
+				return
+			}
+			assert.Contains(t, errs, tc.wantErrKey)
+		})
+	}
+}
+
+func TestJetStreamConsumerOptions(t *testing.T) {
+	startTime := time.Date(2026, time.November, 9, 8, 0, 0, 0, time.UTC)
+	testCases := []struct {
+		name             string
+		policy           string
+		startTime        time.Time
+		wantPolicy       natsgo.DeliverPolicy
+		wantOptStartTime *time.Time
+	}{
+		{name: "default", wantPolicy: natsgo.DeliverAllPolicy},
+		{name: "all", policy: "all", wantPolicy: natsgo.DeliverAllPolicy},
+		{name: "new", policy: "new", wantPolicy: natsgo.DeliverNewPolicy},
+		{name: "by start time", policy: "by_start_time", startTime: startTime, wantPolicy: natsgo.DeliverByStartTimePolicy, wantOptStartTime: &startTime},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			config := validConfig
+			config.DeliverPolicy = tc.policy
+			config.DeliverStartTime = tc.startTime
+
+			options := newJetStreamConsumerOptions(config)
+
+			assert.Equal(t, config.DurableName, options.durableName)
+			assert.Equal(t, tc.wantPolicy, options.deliverPolicy)
+			assert.Equal(t, tc.wantOptStartTime, options.deliverStartTime)
+			assert.Equal(t, 10, options.maxDeliver)
+		})
+	}
 }
 
 func TestConfigValidate_Invalid(t *testing.T) {
@@ -220,6 +285,19 @@ func TestConfigSetDefaults_PartialConfig(t *testing.T) {
 	assert.Equal(t, 2*time.Minute, config.PingInterval)
 	assert.Equal(t, 2, config.MaxPingsOut)
 	assert.True(t, config.AllowReconnect)
+}
+
+func TestNewSubscriberConfig_LimitsNakRedelivery(t *testing.T) {
+	config := validConfig
+	config.SetDefaults()
+
+	subscriberConfig := newSubscriberConfig(config, nil, &watermillnats.NATSMarshaler{})
+
+	if subscriberConfig.NakDelay == nil {
+		t.Fatal("newSubscriberConfig() NakDelay = nil, want non-nil")
+	}
+	assert.Equal(t, nakRedeliveryDelay, subscriberConfig.NakDelay.WaitTime(1))
+	assert.Equal(t, watermillnats.TermSignal, subscriberConfig.NakDelay.WaitTime(nakMaxRedeliveries))
 }
 
 func TestFormatValidationErrors(t *testing.T) {

@@ -12,22 +12,75 @@ import (
 	natsgo "github.com/nats-io/nats.go"
 )
 
+const (
+	nakRedeliveryDelay = 5 * time.Second
+	nakMaxRedeliveries = 10
+	deliverPolicyAll   = "all"
+	deliverPolicyNew   = "new"
+	deliverPolicyStart = "by_start_time"
+)
+
 // Config represents NATS configuration
 type Config struct {
-	URL            string        `koanf:"url"`
-	ClusterID      string        `koanf:"cluster_id"`
-	ClientID       string        `koanf:"client_id"`
-	DurableName    string        `koanf:"durable_name"`
-	QueueGroup     string        `koanf:"queue_group"`
-	AckWaitTimeout time.Duration `koanf:"ack_wait_timeout"`
-	MaxInflight    int           `koanf:"max_inflight"`
-	ConnectTimeout time.Duration `koanf:"connect_timeout"`
-	ReconnectWait  time.Duration `koanf:"reconnect_wait"`
-	MaxReconnects  int           `koanf:"max_reconnects"`
-	PingInterval   time.Duration `koanf:"ping_interval"`
-	MaxPingsOut    int           `koanf:"max_pings_out"`
-	AllowReconnect bool          `koanf:"allow_reconnect"`
-	UseJetStream   bool          `koanf:"use_jetstream"`
+	URL              string        `koanf:"url"`
+	ClusterID        string        `koanf:"cluster_id"`
+	ClientID         string        `koanf:"client_id"`
+	DurableName      string        `koanf:"durable_name"`
+	QueueGroup       string        `koanf:"queue_group"`
+	AckWaitTimeout   time.Duration `koanf:"ack_wait_timeout"`
+	MaxInflight      int           `koanf:"max_inflight"`
+	ConnectTimeout   time.Duration `koanf:"connect_timeout"`
+	ReconnectWait    time.Duration `koanf:"reconnect_wait"`
+	MaxReconnects    int           `koanf:"max_reconnects"`
+	PingInterval     time.Duration `koanf:"ping_interval"`
+	MaxPingsOut      int           `koanf:"max_pings_out"`
+	AllowReconnect   bool          `koanf:"allow_reconnect"`
+	UseJetStream     bool          `koanf:"use_jetstream"`
+	DeliverPolicy    string        `koanf:"deliver_policy"`
+	DeliverStartTime time.Time     `koanf:"deliver_start_time"`
+}
+
+type jetStreamConsumerOptions struct {
+	durableName      string
+	deliverPolicy    natsgo.DeliverPolicy
+	deliverStartTime *time.Time
+	maxDeliver       int
+}
+
+func newJetStreamConsumerOptions(config Config) jetStreamConsumerOptions {
+	options := jetStreamConsumerOptions{
+		durableName:   config.DurableName,
+		deliverPolicy: natsgo.DeliverAllPolicy,
+		maxDeliver:    nakMaxRedeliveries,
+	}
+
+	switch config.DeliverPolicy {
+	case deliverPolicyNew:
+		options.deliverPolicy = natsgo.DeliverNewPolicy
+	case deliverPolicyStart:
+		options.deliverPolicy = natsgo.DeliverByStartTimePolicy
+		options.deliverStartTime = &config.DeliverStartTime
+	}
+
+	return options
+}
+
+func (o jetStreamConsumerOptions) subOpts(ackWait time.Duration) []natsgo.SubOpt {
+	deliverOption := natsgo.DeliverAll()
+	switch o.deliverPolicy {
+	case natsgo.DeliverNewPolicy:
+		deliverOption = natsgo.DeliverNew()
+	case natsgo.DeliverByStartTimePolicy:
+		deliverOption = natsgo.StartTime(*o.deliverStartTime)
+	}
+
+	return []natsgo.SubOpt{
+		natsgo.Durable(o.durableName),
+		deliverOption,
+		natsgo.AckExplicit(),
+		natsgo.AckWait(ackWait),
+		natsgo.MaxDeliver(o.maxDeliver),
+	}
 }
 
 // Validate validates the NATS configuration
@@ -66,6 +119,16 @@ func (c Config) Validate() map[string]error {
 		errs["max_pings_out"] = fmt.Errorf("max pings out must be positive, got: %d", c.MaxPingsOut)
 	}
 
+	switch c.DeliverPolicy {
+	case "", deliverPolicyAll, deliverPolicyNew:
+	case deliverPolicyStart:
+		if c.DeliverStartTime.IsZero() {
+			errs["deliver_start_time"] = fmt.Errorf("deliver start time is required for %q policy", deliverPolicyStart)
+		}
+	default:
+		errs["deliver_policy"] = fmt.Errorf("deliver policy must be one of %q, %q, or %q, got: %q", deliverPolicyAll, deliverPolicyNew, deliverPolicyStart, c.DeliverPolicy)
+	}
+
 	return errs
 }
 
@@ -95,6 +158,9 @@ func (c *Config) SetDefaults() {
 	if c.MaxPingsOut == 0 {
 		c.MaxPingsOut = 2
 	}
+	if c.DeliverPolicy == "" {
+		c.DeliverPolicy = deliverPolicyAll
+	}
 	c.AllowReconnect = true // default to true
 }
 
@@ -119,6 +185,16 @@ type Adapter struct {
 	subscriber message.Subscriber
 	conn       *natsgo.Conn
 	logger     watermill.LoggerAdapter
+}
+
+func newSubscriberConfig(config Config, opts []natsgo.Option, unmarshaler nats.Unmarshaler) nats.SubscriberConfig {
+	return nats.SubscriberConfig{
+		URL:            config.URL,
+		NatsOptions:    opts,
+		Unmarshaler:    unmarshaler,
+		AckWaitTimeout: config.AckWaitTimeout,
+		NakDelay:       nats.NewMaxRetryDelay(nakRedeliveryDelay, nakMaxRedeliveries),
+	}
 }
 
 // New creates a new NATS adapter with Watermill integration
@@ -165,19 +241,14 @@ func New(ctx context.Context, config Config, logger watermill.LoggerAdapter) (ad
 	marshaler := &nats.NATSMarshaler{}
 
 	if config.UseJetStream {
+		consumerOptions := newJetStreamConsumerOptions(config)
 
 		jsConfig := nats.JetStreamConfig{
-			Disabled:      false,
-			AutoProvision: true,
-			SubscribeOptions: []natsgo.SubOpt{
-				natsgo.Durable(config.DurableName),
-				natsgo.DeliverAll(),
-				natsgo.AckExplicit(),
-				natsgo.AckWait(config.AckWaitTimeout),
-				natsgo.MaxDeliver(10),
-			},
-			AckAsync:      false,
-			DurablePrefix: "",
+			Disabled:         false,
+			AutoProvision:    true,
+			SubscribeOptions: consumerOptions.subOpts(config.AckWaitTimeout),
+			AckAsync:         false,
+			DurablePrefix:    "",
 		}
 
 		publisherConfig := nats.PublisherConfig{
@@ -193,13 +264,8 @@ func New(ctx context.Context, config Config, logger watermill.LoggerAdapter) (ad
 			return
 		}
 
-		subscriberConfig := nats.SubscriberConfig{
-			URL:            config.URL,
-			NatsOptions:    opts,
-			Unmarshaler:    marshaler,
-			AckWaitTimeout: config.AckWaitTimeout,
-			JetStream:      jsConfig,
-		}
+		subscriberConfig := newSubscriberConfig(config, opts, marshaler)
+		subscriberConfig.JetStream = jsConfig
 
 		subscriber, err = nats.NewSubscriber(subscriberConfig, logger)
 		if err != nil {
@@ -219,12 +285,7 @@ func New(ctx context.Context, config Config, logger watermill.LoggerAdapter) (ad
 			return
 		}
 
-		subscriberConfig := nats.SubscriberConfig{
-			URL:            config.URL,
-			NatsOptions:    opts,
-			Unmarshaler:    marshaler,
-			AckWaitTimeout: config.AckWaitTimeout,
-		}
+		subscriberConfig := newSubscriberConfig(config, opts, marshaler)
 
 		subscriber, err = nats.NewSubscriber(subscriberConfig, logger)
 		if err != nil {
