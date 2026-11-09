@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
+	watermillnats "github.com/ThreeDotsLabs/watermill-nats/v2/pkg/nats"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -220,6 +221,19 @@ func TestConfigSetDefaults_PartialConfig(t *testing.T) {
 	assert.Equal(t, 2*time.Minute, config.PingInterval)
 	assert.Equal(t, 2, config.MaxPingsOut)
 	assert.True(t, config.AllowReconnect)
+}
+
+func TestNewSubscriberConfig_LimitsNakRedelivery(t *testing.T) {
+	config := validConfig
+	config.SetDefaults()
+
+	subscriberConfig := newSubscriberConfig(config, nil, &watermillnats.NATSMarshaler{})
+
+	if subscriberConfig.NakDelay == nil {
+		t.Fatal("newSubscriberConfig() NakDelay = nil, want non-nil")
+	}
+	assert.Equal(t, nakRedeliveryDelay, subscriberConfig.NakDelay.WaitTime(1))
+	assert.Equal(t, watermillnats.TermSignal, subscriberConfig.NakDelay.WaitTime(nakMaxRedeliveries))
 }
 
 func TestFormatValidationErrors(t *testing.T) {
