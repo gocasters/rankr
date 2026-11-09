@@ -62,7 +62,10 @@ watermill_nats:
   ping_interval: 30s
   max_pings_out: 1
 
-  use_jetstream: false
+  use_jetstream: true
+  deliver_policy: "by_start_time"
+  # TODO: Set shortly before deploy to an RFC3339 time within the 24h idempotency window.
+  deliver_start_time: "YYYY-MM-DDTHH:MM:SSZ"
 
 logger:
   level: "info" # Can be `debug`, `info`, `warn`, `error`
