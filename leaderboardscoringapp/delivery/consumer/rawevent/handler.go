@@ -2,12 +2,13 @@ package rawevent
 
 import (
 	"errors"
+	"log/slog"
+
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/gocasters/rankr/pkg/logger"
 	eventpb "github.com/gocasters/rankr/protobuf/golang/event/v1"
 	"google.golang.org/protobuf/proto"
-	"log/slog"
 )
 
 type Handler struct {
@@ -22,21 +23,30 @@ func NewHandler(svc *leaderboardscoring.Service, checker *IdempotencyChecker) Ha
 	}
 }
 
+func isPermanent(err error) bool {
+	return errors.Is(err, leaderboardscoring.ErrInvalidEventRequest)
+}
+
 func (h Handler) HandleEvent(msg *message.Message) error {
 	logger := logger.L()
 	var event eventpb.Event
 	if err := proto.Unmarshal(msg.Payload, &event); err != nil {
-		logger.Error(
+		logger.Warn(
 			"Failed to unmarshal event payload",
 			slog.String("msg_id", msg.UUID),
 			slog.String("error", err.Error()),
 		)
-		return err // NACK
+		return nil // ACK
 	}
 
 	eventReq, rErr := leaderboardscoring.NewEventRequest().MapProtoEventToEventRequest(&event)
 	if rErr != nil {
-		return rErr // NACK
+		logger.Warn(
+			"Failed to map event payload",
+			slog.String("event_id", event.GetId()),
+			slog.String("error", rErr.Error()),
+		)
+		return nil // ACK
 	}
 
 	processEventFunc := func() error {
@@ -60,6 +70,14 @@ func (h Handler) HandleEvent(msg *message.Message) error {
 	case errors.Is(err, ErrEventLocked):
 		logger.Info("Event skipped: currently locked by another processor", slog.String("event_id", eventReq.ID))
 		return nil // we ACK to remove it, as another worker is responsible.
+
+	case isPermanent(err):
+		logger.Warn(
+			"Event dropped: invalid event",
+			slog.String("event_id", eventReq.ID),
+			slog.String("error", err.Error()),
+		)
+		return nil // ACK
 
 	default:
 		logger.Error(
