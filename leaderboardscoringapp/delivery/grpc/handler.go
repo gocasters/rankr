@@ -80,3 +80,34 @@ func leaderboardResToProtobuf(leaderboardRes leaderboardscoring.GetLeaderboardRe
 	}
 	return leaderboardPBRes
 }
+
+func (h Handler) GetVCSUserScoreBreakdown(ctx context.Context, req *leaderboardscoringpb.GetVCSUserScoreBreakdownRequest) (*leaderboardscoringpb.GetVCSUserScoreBreakdownResponse, error) {
+	log := logger.L()
+	log.Info("gRPC GetVCSUserScoreBreakdown request received", slog.Any("request", req))
+
+	if req == nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid request")
+	}
+
+	res, err := h.leaderboardScoringSvc.GetVCSUserScoreBreakdown(ctx, req.GetUserId())
+	if err != nil {
+		log.Error(
+			"failed to get vcs user score breakdown from service",
+			slog.String("error", err.Error()),
+			slog.Any("request", req),
+		)
+
+		switch {
+		case errors.Is(err, leaderboardscoring.ErrInvalidArguments):
+			return nil, status.Error(codes.InvalidArgument, "Invalid request parameters provided.")
+		default:
+			return nil, status.Error(codes.Internal, "An unexpected internal error occurred.")
+		}
+	}
+
+	return &leaderboardscoringpb.GetVCSUserScoreBreakdownResponse{
+		Pr:     res.PR,
+		Review: res.Review,
+		Issue:  res.Issue,
+	}, nil
+}

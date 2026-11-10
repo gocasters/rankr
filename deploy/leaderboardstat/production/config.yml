@@ -48,6 +48,18 @@ project_rpc:
     - "UNAVAILABLE"
     - "DEADLINE_EXCEEDED"
 
+contributor_rpc:
+  host: "contributor-app"
+  port: 8093
+  grpc_service_name: "contributor.v1.ContributorService"
+  max_attempts: 3
+  initial_backoff: 30s
+  max_backoff: 50s
+  backoff_multiplier: 1.5
+  retryable_status_codes:
+    - "UNAVAILABLE"
+    - "DEADLINE_EXCEEDED"
+
 # Crons, documented in docs/leaderboardstat-crons.md. Five-field crontabs,
 # local time zone. Override with STAT_SCHEDULER_CFG__<KEY>, e.g.
 # STAT_SCHEDULER_CFG__PUBLIC_LEADERBOARD_CRON. A missing key falls back to

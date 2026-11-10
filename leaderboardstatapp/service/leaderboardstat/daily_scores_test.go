@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/gocasters/rankr/adapter/leaderboardscoring"
 	"github.com/gocasters/rankr/adapter/project"
 	lbscoring "github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/gocasters/rankr/pkg/cachemanager"
@@ -37,6 +38,10 @@ func (f *fakeScoringClient) GetLeaderboard(_ context.Context, req *lbscoring.Get
 		ProjectID:       req.ProjectID,
 		LeaderboardRows: rows[start:end],
 	}, nil
+}
+
+func (f *fakeScoringClient) GetVCSUserScoreBreakdown(context.Context, string) (leaderboardscoring.UserScoreBreakdownResponse, error) {
+	return leaderboardscoring.UserScoreBreakdownResponse{}, nil
 }
 
 type fakeProjectClient struct {
@@ -179,7 +184,7 @@ func TestGetDailyContributorScores_ProjectAttribution(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			scoring := &fakeScoringClient{rowsByProject: tt.rows, err: tt.scoreErr}
 			repo := &fakeDailyScoreRepo{}
-			svc := NewService(repo, Validator{}, cachemanager.CacheManager{}, nil, scoring, &fakeProjectClient{projects: tt.projects, err: tt.projErr})
+			svc := NewService(repo, Validator{}, cachemanager.CacheManager{}, nil, scoring, &fakeProjectClient{projects: tt.projects, err: tt.projErr}, nil)
 
 			err := svc.GetDailyContributorScores(context.Background())
 
@@ -204,7 +209,7 @@ func TestGetDailyContributorScores_RowProjectIDIsAuthoritative(t *testing.T) {
 		"1001": {{Rank: 1, UserID: "7", Score: 30, ProjectID: ptr("2002")}},
 	}}
 	repo := &fakeDailyScoreRepo{}
-	svc := NewService(repo, Validator{}, cachemanager.CacheManager{}, nil, scoring, &fakeProjectClient{projects: []project.ProjectItem{{GitRepoID: "1001"}}})
+	svc := NewService(repo, Validator{}, cachemanager.CacheManager{}, nil, scoring, &fakeProjectClient{projects: []project.ProjectItem{{GitRepoID: "1001"}}}, nil)
 
 	require.NoError(t, svc.GetDailyContributorScores(context.Background()))
 
@@ -218,13 +223,13 @@ func TestGetDailyContributorScores_Pagination(t *testing.T) {
 	const repo = "1001"
 	total := leaderboardPageSize + 1
 	rows := make([]lbscoring.LeaderboardRow, 0, total)
-	for i := range total {
+	for i := 0; i < total; i++ {
 		rows = append(rows, lbscoring.LeaderboardRow{Rank: int64(i + 1), UserID: strconv.Itoa(i + 1), Score: 1, ProjectID: ptr(repo)})
 	}
 
 	scoring := &fakeScoringClient{rowsByProject: map[string][]lbscoring.LeaderboardRow{repo: rows}}
 	store := &fakeDailyScoreRepo{}
-	svc := NewService(store, Validator{}, cachemanager.CacheManager{}, nil, scoring, &fakeProjectClient{projects: []project.ProjectItem{{GitRepoID: repo}}})
+	svc := NewService(store, Validator{}, cachemanager.CacheManager{}, nil, scoring, &fakeProjectClient{projects: []project.ProjectItem{{GitRepoID: repo}}}, nil)
 
 	require.NoError(t, svc.GetDailyContributorScores(context.Background()))
 

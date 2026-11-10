@@ -23,6 +23,7 @@ const (
 // EventPersistence = database layer
 type EventPersistence interface {
 	AddProcessedScoreEvents(ctx context.Context, events []ProcessedScoreEvent) error
+	GetVCSUserScoreBreakdown(ctx context.Context, userID string) (ScoreBreakdown, error)
 	AddSnapshot(ctx context.Context, snapshots []SnapshotRow) error
 }
 
@@ -458,4 +459,25 @@ func mapLeaderboardScoringToParam(scoring LeaderboardQueryResult, projectID *str
 	}
 
 	return leaderboardRes
+}
+
+func (s *Service) GetVCSUserScoreBreakdown(ctx context.Context, userID string) (GetVCSUserScoreBreakdownResponse, error) {
+	log := logger.L()
+
+	if userID == "" {
+		log.Error("Invalid GetVCSUserScoreBreakdown request", slog.String("error", "user_id must not be empty"))
+		return GetVCSUserScoreBreakdownResponse{}, ErrInvalidArguments
+	}
+
+	scoreBreakdown, err := s.eventPersistence.GetVCSUserScoreBreakdown(ctx, userID)
+	if err != nil {
+		log.Error("failed to get user score breakdown from repository", slog.Any("error", err))
+		return GetVCSUserScoreBreakdownResponse{}, err
+	}
+
+	return GetVCSUserScoreBreakdownResponse{
+		PR:     scoreBreakdown.PR,
+		Review: scoreBreakdown.Review,
+		Issue:  scoreBreakdown.Issue,
+	}, nil
 }

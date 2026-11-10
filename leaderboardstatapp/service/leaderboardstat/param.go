@@ -32,3 +32,18 @@ type LeaderboardFilterRequest struct {
 	Page      int          `koanf:"page"`
 	PageSize  int          `koanf:"page_size"`
 }
+
+type GetContributorStatResponse struct {
+	ContributorID  types.ID                  `json:"contributor_id"`
+	GlobalRank     uint                      `json:"global_rank"`
+	TotalScore     float64                   `json:"total_score"`
+	ProjectsScore  map[types.ID]float64      `json:"project_score"`
+	ScoreHistory   map[types.ID][]ScoreEntry `json:"score_history"`
+	ScoreBreakdown ScoreBreakdown            `json:"score_breakdown"`
+}
+
+type ScoreBreakdown struct {
+	PR     int64 `json:"pr"`
+	Review int64 `json:"review"`
+	Issue  int64 `json:"issue"`
+}

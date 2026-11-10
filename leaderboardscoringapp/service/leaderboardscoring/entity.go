@@ -146,3 +146,9 @@ const (
 	minOffset   = 0
 	maxOffset   = 1_000_000
 )
+
+type ScoreBreakdown struct {
+	PR     int64
+	Review int64
+	Issue  int64
+}
