@@ -23,6 +23,9 @@ func NewHandler(svc *leaderboardscoring.Service, checker *IdempotencyChecker) Ha
 	}
 }
 
+// isPermanent reports errors that fail the same way on every redelivery.
+// Such events are ACKed instead of retried forever: the raw event is kept in
+// webhook_db, so it can be replayed after the cause is fixed.
 func isPermanent(err error) bool {
 	return errors.Is(err, leaderboardscoring.ErrInvalidEventRequest)
 }
@@ -36,7 +39,7 @@ func (h Handler) HandleEvent(msg *message.Message) error {
 			slog.String("msg_id", msg.UUID),
 			slog.String("error", err.Error()),
 		)
-		return err // NACK
+		return nil // ACK: a retry cannot decode it either
 	}
 
 	eventReq, rErr := leaderboardscoring.NewEventRequest().MapProtoEventToEventRequest(&event)
@@ -46,7 +49,7 @@ func (h Handler) HandleEvent(msg *message.Message) error {
 			slog.String("event_id", event.GetId()),
 			slog.String("error", rErr.Error()),
 		)
-		return rErr // NACK
+		return nil // ACK: a retry cannot map it either
 	}
 
 	processEventFunc := func() error {
@@ -77,11 +80,11 @@ func handleProcessingResult(eventID string, err error) error {
 
 	case isPermanent(err):
 		log.Warn(
-			"Invalid event was not acknowledged",
+			"Event dropped: invalid event",
 			slog.String("event_id", eventID),
 			slog.String("error", err.Error()),
 		)
-		return err // NACK
+		return nil // ACK: see isPermanent
 
 	default:
 		log.Error(

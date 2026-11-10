@@ -10,7 +10,10 @@ import (
 	"github.com/gocasters/rankr/pkg/logger"
 )
 
-func TestHandleEventRejectsPayloadBeforeWrite(t *testing.T) {
+// A payload that cannot be decoded or mapped fails the same way on every
+// redelivery, so it is ACKed instead of looping. The raw event stays in
+// webhook_db and can be replayed once the bug is fixed.
+func TestHandleEventAcksUndecodablePayload(t *testing.T) {
 	if err := logger.Init(logger.Config{}); err != nil {
 		t.Fatal(err)
 	}
@@ -24,14 +27,14 @@ func TestHandleEventRejectsPayloadBeforeWrite(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			msg := message.NewMessage("test", tc.payload)
-			if err := (Handler{}).HandleEvent(msg); err == nil {
-				t.Fatal("HandleEvent() = nil, want NACK before scoring write")
+			if err := (Handler{}).HandleEvent(msg); err != nil {
+				t.Fatalf("HandleEvent() = %v, want nil (ACK, no scoring write)", err)
 			}
 		})
 	}
 }
 
-func TestHandleProcessingResultOnlyAcknowledgesCompletedEvents(t *testing.T) {
+func TestHandleProcessingResult(t *testing.T) {
 	if err := logger.Init(logger.Config{}); err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +48,7 @@ func TestHandleProcessingResultOnlyAcknowledgesCompletedEvents(t *testing.T) {
 		{name: "successful write"},
 		{name: "already processed", err: ErrEventAlreadyProcessed},
 		{name: "locked", err: ErrEventLocked, want: ErrEventLocked},
-		{name: "invalid event", err: leaderboardscoring.ErrInvalidEventRequest, want: leaderboardscoring.ErrInvalidEventRequest},
+		{name: "invalid event is ACKed", err: errors.Join(leaderboardscoring.ErrInvalidEventRequest, errors.New("timestamp: cannot be blank"))},
 		{name: "transient failure", err: transientErr, want: transientErr},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
