@@ -17,6 +17,7 @@ type ScoresListResponse struct{}
 
 type CategoryList int
 
+//nolint:unused // categories are not wired up yet
 const (
 	global CategoryList = iota
 	cdp

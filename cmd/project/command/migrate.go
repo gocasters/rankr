@@ -66,7 +66,9 @@ func migrate() {
 		log.Println("Migrations up completed.")
 	} else if down {
 		log.Println("Running migrations down...")
-		mgr.Down()
+		if err := mgr.Down(); err != nil {
+			log.Fatalf("Migrations down error: %v", err)
+		}
 		log.Println("Migrations down completed.")
 	} else {
 		log.Println("Please specify a migration direction with --up or --down")

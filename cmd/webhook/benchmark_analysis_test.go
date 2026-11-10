@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	crand "crypto/rand"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -428,6 +429,9 @@ func (r *RedisBulkInserter) bulkInsertPostgresSQL(ctx context.Context, events []
 		}
 
 		jsonPayload, err := convertEventToJSON(&event)
+		if err != nil {
+			return fmt.Errorf("failed to convert event: %w", err)
+		}
 
 		batch.Queue(`
 			INSERT INTO webhook_events 
@@ -444,15 +448,12 @@ func (r *RedisBulkInserter) bulkInsertPostgresSQL(ctx context.Context, events []
 	}
 
 	results := r.db.SendBatch(ctx, batch)
-	defer func(results pgx.BatchResults) {
-		err := results.Close()
-		if err != nil {
-
-		}
-	}(results)
+	defer func() { _ = results.Close() }()
 
 	for i := 0; i < batch.Len(); i++ {
-		results.Exec()
+		if _, err := results.Exec(); err != nil {
+			return fmt.Errorf("failed to insert event: %w", err)
+		}
 	}
 
 	return nil
@@ -487,6 +488,9 @@ func (r *RedisBulkInserter) StartWorker(ctx context.Context) {
 
 func ProcessEventDirect(ctx context.Context, ev *eventpb.Event) error {
 	jsonPayload, err := convertEventToJSON(ev)
+	if err != nil {
+		return err
+	}
 
 	_, err = pgPool.Exec(ctx,
 		`
@@ -587,7 +591,7 @@ func RandomEventData() (*eventpb.Event, error) {
 
 func randomHex(n int) string {
 	buf := make([]byte, n/2)
-	rand.Read(buf)
+	_, _ = crand.Read(buf)
 	return fmt.Sprintf("%x", buf)
 }
 

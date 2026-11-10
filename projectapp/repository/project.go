@@ -202,8 +202,6 @@ func isNoRows(err error) bool {
 }
 
 func isUniqueViolation(err error) bool {
-
-	type causer interface{ Error() string }
 	if err == nil {
 		return false
 	}

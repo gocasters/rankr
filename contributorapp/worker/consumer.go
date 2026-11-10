@@ -60,7 +60,7 @@ func (p Pool) Start(ctx context.Context) {
 		}()
 	}
 
-	consumerName := fmt.Sprintf("%s", uuid.NewString())
+	consumerName := uuid.NewString()
 	for {
 		select {
 		case <-ctx.Done():

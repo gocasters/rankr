@@ -20,7 +20,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create OTel client: %v", err)
 	}
-	defer client.Shutdown(context.Background())
+	defer func() { _ = client.Shutdown(context.Background()) }()
 
 	fmt.Println("\nSimple Tracing:")
 	simpleTracing(client)
@@ -38,9 +38,7 @@ func main() {
 }
 
 func simpleTracing(client *otel.OtelClient) {
-	ctx := context.Background()
-
-	ctx, span := client.StartSpan(ctx, "user-operation")
+	_, span := client.StartSpan(context.Background(), "user-operation")
 	defer span.End()
 
 	span.SetAttributes(

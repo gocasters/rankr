@@ -12,6 +12,20 @@ linters:
   default: standard
   enable:
     - depguard
+  exclusions:
+    # Unchecked Close/Remove/Fprint and friends, as golangci-lint v1 allowed.
+    presets:
+      - std-error-handling
+    # Frozen folders (AGENTS.md): not changed, so not linted.
+    paths:
+      - ^hub/
+      - ^realtimeapp/
+      - ^notifapp/
+    rules:
+      # Moving off deprecated APIs (grpc.Dial, echo's middleware.Logger,
+      # testcontainers networks) changes behaviour; it is follow-up work.
+      - linters: [staticcheck]
+        text: "SA1019:"
   settings:
     depguard:
       rules:

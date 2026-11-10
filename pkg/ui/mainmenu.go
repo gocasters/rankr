@@ -290,7 +290,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, tea.Quit
 			case "enter":
-				if m.state == selectService {
+				switch m.state {
+				case selectService:
 					i, ok := m.list.SelectedItem().(item)
 					if ok {
 						m.selected = i.command
@@ -298,7 +299,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.setupCommandList()
 					}
 					return m, nil
-				} else if m.state == selectCommand {
+				case selectCommand:
 					i, ok := m.list.SelectedItem().(item)
 					if ok {
 						cmd := i.command

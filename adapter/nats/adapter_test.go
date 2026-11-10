@@ -254,13 +254,14 @@ func TestFormatValidationErrors(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			result := FormatValidationErrors(tc.errors)
 
-			if tc.name == "empty errors" {
+			switch tc.name {
+			case "empty errors":
 				assert.Equal(t, tc.expectedResult, result)
-			} else if tc.name == "single error" {
+			case "single error":
 				assert.Contains(t, result, "validation errors:")
 				assert.Contains(t, result, "url:")
 				assert.Contains(t, result, "assert.AnError")
-			} else {
+			default:
 				assert.Contains(t, result, "validation errors:")
 			}
 		})
@@ -270,7 +271,7 @@ func TestFormatValidationErrors(t *testing.T) {
 func TestNew_NilContext(t *testing.T) {
 	logger := watermill.NewStdLogger(false, false)
 
-	adapter, err := New(nil, validConfig, logger)
+	adapter, err := New(nil, validConfig, logger) //nolint:staticcheck // SA1012: the nil context is what this test checks
 
 	assert.Nil(t, adapter)
 	assert.Error(t, err)

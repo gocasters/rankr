@@ -15,7 +15,7 @@ func TestQuickStart(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
 	}
-	defer client.Shutdown(context.Background())
+	defer func() { _ = client.Shutdown(context.Background()) }()
 
 	if client == nil {
 		t.Error("Client should not be nil")
@@ -29,7 +29,7 @@ func TestQuickStartOTLP(t *testing.T) {
 		t.Logf("OTLP client creation failed (expected if no collector): %v", err)
 		return
 	}
-	defer client.Shutdown(context.Background())
+	defer func() { _ = client.Shutdown(context.Background()) }()
 
 	if client == nil {
 		t.Error("Client should not be nil")
@@ -41,10 +41,9 @@ func TestOtelClient_StartSpan(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
 	}
-	defer client.Shutdown(context.Background())
+	defer func() { _ = client.Shutdown(context.Background()) }()
 
-	ctx := context.Background()
-	ctx, span := client.StartSpan(ctx, "test-span")
+	_, span := client.StartSpan(context.Background(), "test-span")
 
 	if span == nil {
 		t.Error("Span should not be nil")
@@ -59,7 +58,7 @@ func TestOtelClient_Counter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
 	}
-	defer client.Shutdown(context.Background())
+	defer func() { _ = client.Shutdown(context.Background()) }()
 
 	counter, err := client.Counter("test_counter", "Test counter")
 	if err != nil {
@@ -79,7 +78,7 @@ func TestOtelClient_Histogram(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
 	}
-	defer client.Shutdown(context.Background())
+	defer func() { _ = client.Shutdown(context.Background()) }()
 
 	histogram, err := client.Histogram("test_histogram", "Test histogram")
 	if err != nil {
@@ -99,7 +98,7 @@ func TestOtelClient_CounterWithSpan(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
 	}
-	defer client.Shutdown(context.Background())
+	defer func() { _ = client.Shutdown(context.Background()) }()
 
 	ctx := context.Background()
 	err = client.CounterWithSpan(ctx, "test_counter_with_span", "Test counter with span", 1.0,
@@ -115,7 +114,7 @@ func TestOtelClient_ContextPropagation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
 	}
-	defer client.Shutdown(context.Background())
+	defer func() { _ = client.Shutdown(context.Background()) }()
 
 	ctx, span := client.StartSpan(context.Background(), "parent-span")
 	defer span.End()
@@ -173,7 +172,7 @@ func TestIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create client: %v", err)
 	}
-	defer client.Shutdown(context.Background())
+	defer func() { _ = client.Shutdown(context.Background()) }()
 
 	ctx := context.Background()
 
