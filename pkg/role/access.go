@@ -113,9 +113,7 @@ func moduleFromPath(path string) string {
 	if path == "" {
 		return ""
 	}
-	if strings.HasPrefix(path, "v1/") {
-		path = strings.TrimPrefix(path, "v1/")
-	}
+	path = strings.TrimPrefix(path, "v1/")
 	if path == "" {
 		return ""
 	}

@@ -45,8 +45,10 @@ func TestInit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Could not get working directory: %v", err)
 	}
-	os.Chdir(tempDir)
-	defer os.Chdir(originalWd) // Change back to original directory after test.
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Could not change to temp dir: %v", err)
+	}
+	defer func() { _ = os.Chdir(originalWd) }() // Change back to original directory after test.
 
 	cfg := Config{
 		Level:            "debug",
@@ -83,8 +85,10 @@ func TestInit_Concurrent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Could not get working directory: %v", err)
 	}
-	os.Chdir(tempDir)
-	defer os.Chdir(originalWd)
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Could not change to temp dir: %v", err)
+	}
+	defer func() { _ = os.Chdir(originalWd) }()
 
 	cfg := Config{FilePath: "concurrent.log"}
 
@@ -127,8 +131,10 @@ func TestInit_WritesToStdout(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Could not get working directory: %v", err)
 	}
-	os.Chdir(tempDir)
-	defer os.Chdir(originalWd)
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Could not change to temp dir: %v", err)
+	}
+	defer func() { _ = os.Chdir(originalWd) }()
 
 	cfg := Config{
 		FilePath: "stdout_test.log",
@@ -146,7 +152,7 @@ func TestInit_WritesToStdout(t *testing.T) {
 	// At the end, restore stdout and close the global logger
 	defer func() {
 		os.Stdout = originalStdout
-		Close()
+		_ = Close()
 	}()
 
 	// Use a channel to signal when reading is complete
@@ -154,7 +160,7 @@ func TestInit_WritesToStdout(t *testing.T) {
 	// Read all output from the pipe in a separate goroutine
 	go func() {
 		var b strings.Builder
-		io.Copy(&b, r)
+		_, _ = io.Copy(&b, r)
 		r.Close()
 		outC <- b.String()
 	}()
@@ -200,8 +206,10 @@ func TestL_AfterInit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Could not get working directory: %v", err)
 	}
-	os.Chdir(tempDir)
-	defer os.Chdir(originalWd)
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Could not change to temp dir: %v", err)
+	}
+	defer func() { _ = os.Chdir(originalWd) }()
 
 	cfg := Config{
 		Level:    "info",
@@ -234,8 +242,10 @@ func TestClose(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Could not get working directory: %v", err)
 		}
-		os.Chdir(tempDir)
-		defer os.Chdir(originalWd)
+		if err := os.Chdir(tempDir); err != nil {
+			t.Fatalf("Could not change to temp dir: %v", err)
+		}
+		defer func() { _ = os.Chdir(originalWd) }()
 
 		cfg := Config{FilePath: "test_close.log"}
 		if err := Init(cfg); err != nil {
@@ -266,8 +276,10 @@ func TestNew_ReturnsSeparateInstances(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Could not get working directory: %v", err)
 	}
-	os.Chdir(tempDir)
-	defer os.Chdir(originalWd)
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Could not change to temp dir: %v", err)
+	}
+	defer func() { _ = os.Chdir(originalWd) }()
 
 	cfg := Config{
 		Level:    "warn",
@@ -302,8 +314,10 @@ func TestNew_Integration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Could not get working directory: %v", err)
 	}
-	os.Chdir(tempDir)
-	defer os.Chdir(originalWd)
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Could not change to temp dir: %v", err)
+	}
+	defer func() { _ = os.Chdir(originalWd) }()
 
 	logFilePath := "new_logger_integration.log"
 	cfg := Config{
@@ -352,8 +366,10 @@ func TestLoggerIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Could not get working directory: %v", err)
 	}
-	os.Chdir(tempDir)
-	defer os.Chdir(originalWd)
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Could not change to temp dir: %v", err)
+	}
+	defer func() { _ = os.Chdir(originalWd) }()
 
 	cfg := Config{
 		Level:            "info",

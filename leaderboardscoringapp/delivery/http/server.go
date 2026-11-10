@@ -1,8 +1,6 @@
 package http
 
 import (
-	"context"
-
 	"github.com/gocasters/rankr/pkg/httpserver"
 )
 
@@ -25,10 +23,6 @@ func (s Server) Serve() error {
 	}
 
 	return nil
-}
-
-func (s Server) stop(ctx context.Context) error {
-	return s.HTTPServer.Stop(ctx)
 }
 
 func (s Server) RegisterRoutes() {
