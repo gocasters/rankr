@@ -14,8 +14,6 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-const defaultFileMaxBackups = 5
-
 var (
 	globalLogger *slog.Logger
 	globalWriter io.Closer
@@ -32,17 +30,12 @@ type Config struct {
 }
 
 func newFileWriter(cfg Config, logPath string) *lumberjack.Logger {
-	maxBackups := cfg.FileMaxBackups
-	if maxBackups <= 0 {
-		maxBackups = defaultFileMaxBackups
-	}
-
 	return &lumberjack.Logger{
 		Filename:   logPath,
 		LocalTime:  cfg.UseLocalTime,
 		MaxSize:    cfg.FileMaxSizeInMB,
 		MaxAge:     cfg.FileMaxAgeInDays,
-		MaxBackups: maxBackups,
+		MaxBackups: cfg.FileMaxBackups,
 		Compress:   true,
 	}
 }

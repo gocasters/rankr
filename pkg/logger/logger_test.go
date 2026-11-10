@@ -42,8 +42,8 @@ func TestNewFileWriter(t *testing.T) {
 		wantMaxBackups int
 	}{
 		{
-			name:           "defaults max backups",
-			wantMaxBackups: defaultFileMaxBackups,
+			name:           "omitted max backups is unlimited",
+			wantMaxBackups: 0,
 		},
 		{
 			name:           "uses configured max backups",

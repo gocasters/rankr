@@ -70,6 +70,7 @@ logger:
   use_local_time: true
   file_max_size_in_mb: 10
   file_max_age_in_days: 7
+  file_max_backups: 5
 
 raw_event_consumer:
   processed_key_ttl: 24h

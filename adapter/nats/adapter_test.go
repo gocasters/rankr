@@ -223,7 +223,7 @@ func TestConfigSetDefaults_PartialConfig(t *testing.T) {
 	assert.True(t, config.AllowReconnect)
 }
 
-func TestNewSubscriberConfig_LimitsNakRedelivery(t *testing.T) {
+func TestNewSubscriberConfig_KeepsFailedEventsForRetry(t *testing.T) {
 	config := validConfig
 	config.SetDefaults()
 
@@ -233,7 +233,8 @@ func TestNewSubscriberConfig_LimitsNakRedelivery(t *testing.T) {
 		t.Fatal("newSubscriberConfig() NakDelay = nil, want non-nil")
 	}
 	assert.Equal(t, nakRedeliveryDelay, subscriberConfig.NakDelay.WaitTime(1))
-	assert.Equal(t, watermillnats.TermSignal, subscriberConfig.NakDelay.WaitTime(nakMaxRedeliveries))
+	assert.Equal(t, nakRedeliveryDelay, subscriberConfig.NakDelay.WaitTime(10))
+	assert.Equal(t, nakRedeliveryDelay, subscriberConfig.NakDelay.WaitTime(11))
 }
 
 func TestFormatValidationErrors(t *testing.T) {

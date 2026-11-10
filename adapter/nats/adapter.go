@@ -12,10 +12,7 @@ import (
 	natsgo "github.com/nats-io/nats.go"
 )
 
-const (
-	nakRedeliveryDelay = 5 * time.Second
-	nakMaxRedeliveries = 10
-)
+const nakRedeliveryDelay = 5 * time.Second
 
 // Config represents NATS configuration
 type Config struct {
@@ -132,7 +129,7 @@ func newSubscriberConfig(config Config, opts []natsgo.Option, unmarshaler nats.U
 		NatsOptions:    opts,
 		Unmarshaler:    unmarshaler,
 		AckWaitTimeout: config.AckWaitTimeout,
-		NakDelay:       nats.NewMaxRetryDelay(nakRedeliveryDelay, nakMaxRedeliveries),
+		NakDelay:       nats.NewStaticDelay(nakRedeliveryDelay),
 	}
 }
 

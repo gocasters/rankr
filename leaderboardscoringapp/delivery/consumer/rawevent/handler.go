@@ -36,7 +36,7 @@ func (h Handler) HandleEvent(msg *message.Message) error {
 			slog.String("msg_id", msg.UUID),
 			slog.String("error", err.Error()),
 		)
-		return nil // ACK
+		return err // NACK
 	}
 
 	eventReq, rErr := leaderboardscoring.NewEventRequest().MapProtoEventToEventRequest(&event)
@@ -46,7 +46,7 @@ func (h Handler) HandleEvent(msg *message.Message) error {
 			slog.String("event_id", event.GetId()),
 			slog.String("error", rErr.Error()),
 		)
-		return nil // ACK
+		return rErr // NACK
 	}
 
 	processEventFunc := func() error {
@@ -55,34 +55,38 @@ func (h Handler) HandleEvent(msg *message.Message) error {
 
 	// Wrap the business logic with the idempotency check.
 	err := h.idempotencyChecker.CheckEvent(msg.Context(), eventReq.ID, processEventFunc)
+	return handleProcessingResult(eventReq.ID, err)
+}
 
+func handleProcessingResult(eventID string, err error) error {
+	log := logger.L()
 	switch {
 	case err == nil:
 		// Success
-		logger.Debug("Event processed successfully", slog.String("event_id", eventReq.ID))
+		log.Debug("Event processed successfully", slog.String("event_id", eventID))
 		return nil // ACK
 
 	case errors.Is(err, ErrEventAlreadyProcessed):
 		// This is not an error, it's an expected outcome for duplicates.
-		logger.Info("Event skipped: already processed", slog.String("event_id", eventReq.ID))
+		log.Info("Event skipped: already processed", slog.String("event_id", eventID))
 		return nil // ACK
 
 	case errors.Is(err, ErrEventLocked):
-		logger.Info("Event skipped: currently locked by another processor", slog.String("event_id", eventReq.ID))
-		return nil // we ACK to remove it, as another worker is responsible.
+		log.Info("Event skipped: currently locked by another processor", slog.String("event_id", eventID))
+		return err // NACK; the other processor may fail.
 
 	case isPermanent(err):
-		logger.Warn(
-			"Event dropped: invalid event",
-			slog.String("event_id", eventReq.ID),
+		log.Warn(
+			"Invalid event was not acknowledged",
+			slog.String("event_id", eventID),
 			slog.String("error", err.Error()),
 		)
-		return nil // ACK
+		return err // NACK
 
 	default:
-		logger.Error(
+		log.Error(
 			"Error processing event",
-			slog.String("event_id", eventReq.ID),
+			slog.String("event_id", eventID),
 			slog.String("error", err.Error()),
 		)
 		return err // NACK and requeue
