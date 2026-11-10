@@ -5,6 +5,7 @@ ARG GOPROXY=https://mirrors.aliyun.com/goproxy,direct
 
 FROM ${GO_IMAGE_NAME}:${GO_IMAGE_VERSION}
 ARG AIR_VERSION
+ARG GOPROXY
 
 WORKDIR /app
 ENV GOPROXY=${GOPROXY}
