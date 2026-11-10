@@ -5,12 +5,13 @@ package logger
 
 import (
 	"fmt"
-	"gopkg.in/natefinch/lumberjack.v2"
 	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
+
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 var (
@@ -25,6 +26,18 @@ type Config struct {
 	UseLocalTime     bool   `koanf:"use_local_time"`
 	FileMaxSizeInMB  int    `koanf:"file_max_size_in_mb"`
 	FileMaxAgeInDays int    `koanf:"file_max_age_in_days"`
+	FileMaxBackups   int    `koanf:"file_max_backups"`
+}
+
+func newFileWriter(cfg Config, logPath string) *lumberjack.Logger {
+	return &lumberjack.Logger{
+		Filename:   logPath,
+		LocalTime:  cfg.UseLocalTime,
+		MaxSize:    cfg.FileMaxSizeInMB,
+		MaxAge:     cfg.FileMaxAgeInDays,
+		MaxBackups: cfg.FileMaxBackups,
+		Compress:   true,
+	}
 }
 
 // resolveLogPath validates and resolves the log file path based on the configuration.
@@ -81,12 +94,7 @@ func Init(cfg Config) error {
 			return
 		}
 
-		fileWriter := &lumberjack.Logger{
-			Filename:  logPath,
-			LocalTime: cfg.UseLocalTime,
-			MaxSize:   cfg.FileMaxSizeInMB,
-			MaxAge:    cfg.FileMaxAgeInDays,
-		}
+		fileWriter := newFileWriter(cfg, logPath)
 
 		level := mapLevel(cfg.Level)
 		globalLogger = slog.New(
@@ -134,12 +142,7 @@ func New(cfg Config) (*slog.Logger, io.Closer, error) {
 		return nil, nil, fmt.Errorf("failed to create log directory: %w", err)
 	}
 
-	fileWriter := &lumberjack.Logger{
-		Filename:  logPath,
-		LocalTime: cfg.UseLocalTime,
-		MaxSize:   cfg.FileMaxSizeInMB,
-		MaxAge:    cfg.FileMaxAgeInDays,
-	}
+	fileWriter := newFileWriter(cfg, logPath)
 
 	level := mapLevel(cfg.Level)
 	logger := slog.New(
