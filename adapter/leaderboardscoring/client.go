@@ -68,3 +68,24 @@ func (c *Client) Close() {
 		c.rpcClient.Close()
 	}
 }
+
+type UserScoreBreakdownResponse struct {
+	PR     int64
+	Review int64
+	Issue  int64
+}
+
+func (c *Client) GetVCSUserScoreBreakdown(ctx context.Context, userID string) (UserScoreBreakdownResponse, error) {
+
+	res, err := c.leaderboardScoringClient.
+		GetVCSUserScoreBreakdown(ctx, &leaderboardscoringpb.GetVCSUserScoreBreakdownRequest{UserId: userID})
+	if err != nil {
+		return UserScoreBreakdownResponse{}, err
+	}
+
+	return UserScoreBreakdownResponse{
+		PR:     res.GetPr(),
+		Review: res.GetReview(),
+		Issue:  res.GetIssue(),
+	}, nil
+}

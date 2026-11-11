@@ -3,6 +3,8 @@ package leaderboardstat
 import (
 	"context"
 	"fmt"
+	"github.com/gocasters/rankr/adapter/contributor"
+	"github.com/gocasters/rankr/adapter/leaderboardscoring"
 
 	"github.com/gocasters/rankr/adapter/project"
 	lbscoring "github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring" //nolint:depguard // TODO(#285 follow-up): use the protobuf leaderboardscoring client types
@@ -38,10 +40,15 @@ type Repository interface {
 
 type LeaderboardScoringClient interface {
 	GetLeaderboard(ctx context.Context, req *lbscoring.GetLeaderboardRequest) (*lbscoring.GetLeaderboardResponse, error)
+	GetVCSUserScoreBreakdown(ctx context.Context, userID string) (leaderboardscoring.UserScoreBreakdownResponse, error)
 }
 
 type ProjectClient interface {
 	ListProjects(ctx context.Context, req *project.ListProjectsRequest) (*project.ListProjectsResponse, error)
+}
+
+type ContributorClient interface {
+	GetContributorInfo(ctx context.Context, id types.ID) (contributor.InfoResponse, error)
 }
 
 type RedisLeaderboardRepository interface {
@@ -56,9 +63,10 @@ type Service struct {
 	redisLeaderboardRepo RedisLeaderboardRepository
 	lbScoringClient      LeaderboardScoringClient
 	projectClient        ProjectClient
+	contributorClient    ContributorClient
 }
 
-func NewService(repo Repository, validator Validator, cacheManger cachemanager.CacheManager, redisLeaderboardRepo RedisLeaderboardRepository, lbClient LeaderboardScoringClient, projectClient ProjectClient) Service {
+func NewService(repo Repository, validator Validator, cacheManger cachemanager.CacheManager, redisLeaderboardRepo RedisLeaderboardRepository, lbClient LeaderboardScoringClient, projectClient ProjectClient, contributorClient ContributorClient) Service {
 	return Service{
 		repository:           repo,
 		validator:            validator,
@@ -66,6 +74,7 @@ func NewService(repo Repository, validator Validator, cacheManger cachemanager.C
 		redisLeaderboardRepo: redisLeaderboardRepo,
 		lbScoringClient:      lbClient,
 		projectClient:        projectClient,
+		contributorClient:    contributorClient,
 	}
 }
 
@@ -374,34 +383,49 @@ func (s *Service) buildScoreHistory(records []ScoreRecord) map[types.ID][]ScoreE
 	return history
 }
 
-func (s *Service) GetContributorStats(ctx context.Context, contributorID types.ID) (ContributorStats, error) {
+func (s *Service) GetContributorStats(ctx context.Context, contributorID types.ID) (GetContributorStatResponse, error) {
 	totalScore, err := s.repository.GetContributorTotalScore(ctx, contributorID)
 	if err != nil {
-		return ContributorStats{}, err
+		return GetContributorStatResponse{}, err
 	}
 	globalRank, err := s.repository.GetContributorTotalRank(ctx, contributorID)
 	if err != nil {
-		return ContributorStats{}, err
+		return GetContributorStatResponse{}, err
 	}
 	projectsScore, err := s.repository.GetContributorProjectScores(ctx, contributorID)
 	if err != nil {
-		return ContributorStats{}, err
+		return GetContributorStatResponse{}, err
 	}
 	scoreRecords, err := s.repository.GetContributorScoreHistory(ctx, contributorID)
 	if err != nil {
-		return ContributorStats{}, err
+		return GetContributorStatResponse{}, err
 	}
 
 	scoreHistory := s.buildScoreHistory(scoreRecords)
 
-	stats := ContributorStats{
+	contributorInfo, err := s.contributorClient.GetContributorInfo(ctx, contributorID)
+	if err != nil {
+		return GetContributorStatResponse{}, err
+	}
+
+	githubID := strconv.FormatInt(contributorInfo.GitHubID, 10)
+	vcsUserScoreBreakdown, err := s.lbScoringClient.GetVCSUserScoreBreakdown(ctx, githubID)
+	if err != nil {
+		return GetContributorStatResponse{}, err
+	}
+
+	return GetContributorStatResponse{
 		ContributorID: contributorID,
 		GlobalRank:    globalRank,
 		TotalScore:    totalScore,
 		ProjectsScore: projectsScore,
 		ScoreHistory:  scoreHistory,
-	}
-	return stats, nil
+		ScoreBreakdown: ScoreBreakdown{
+			PR:     vcsUserScoreBreakdown.PR,
+			Review: vcsUserScoreBreakdown.Review,
+			Issue:  vcsUserScoreBreakdown.Issue,
+		},
+	}, nil
 }
 
 /*func (s *Service) GetContributorTotalStats(ctx context.Context, contributorID types.ID) (ContributorTotalStats, error) {
