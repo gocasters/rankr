@@ -475,9 +475,5 @@ func (s *Service) GetVCSUserScoreBreakdown(ctx context.Context, userID string) (
 		return GetVCSUserScoreBreakdownResponse{}, err
 	}
 
-	return GetVCSUserScoreBreakdownResponse{
-		PR:     scoreBreakdown.PR,
-		Review: scoreBreakdown.Review,
-		Issue:  scoreBreakdown.Issue,
-	}, nil
+	return GetVCSUserScoreBreakdownResponse(scoreBreakdown), nil
 }

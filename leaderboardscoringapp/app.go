@@ -72,7 +72,7 @@ func Setup(ctx context.Context, config Config) *Application {
 	}
 	log.Info("Redis adapter initialized successfully")
 
-	// Initialize NATS Watermill adapter (for raw's events consumption)
+	// Initialize NATS Watermill adapter (for raw events consumption)
 	wmLogger := watermill.NewStdLogger(true, true)
 	natsWMAdapter, err := nats.New(ctx, config.WatermillNats, wmLogger)
 	if err != nil {

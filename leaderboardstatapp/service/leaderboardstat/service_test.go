@@ -9,7 +9,6 @@ import (
 
 	contributorclient "github.com/gocasters/rankr/adapter/contributor"
 	lbscoringclient "github.com/gocasters/rankr/adapter/leaderboardscoring"
-	lbscoring "github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
 	"github.com/gocasters/rankr/pkg/logger"
 	types "github.com/gocasters/rankr/type"
 	"github.com/stretchr/testify/assert"
@@ -52,12 +51,10 @@ func (c *contributorStatsContributor) GetContributorInfo(_ context.Context, id t
 }
 
 type contributorStatsScoring struct {
+	LeaderboardScoringClient
 	userID string
 }
 
-func (s *contributorStatsScoring) GetLeaderboard(context.Context, *lbscoring.GetLeaderboardRequest) (*lbscoring.GetLeaderboardResponse, error) {
-	return nil, nil
-}
 func (s *contributorStatsScoring) GetVCSUserScoreBreakdown(_ context.Context, userID string) (lbscoringclient.UserScoreBreakdownResponse, error) {
 	s.userID = userID
 	return lbscoringclient.UserScoreBreakdownResponse{PR: 11, Review: 7, Issue: 4}, nil
