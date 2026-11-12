@@ -100,7 +100,7 @@ func TestCSV_ValidFile_AllSuccess(t *testing.T) {
 	assert.Equal(t, "carol@example.com", r3.Email)
 }
 
-// C13 KNOWN BUG (bugParserColumns): when an OPTIONAL column is absent from the
+// C13 KNOWN BUG #352 (bugParserColumns): when an OPTIONAL column is absent from the
 // header, colIdx has no entry for it, the map lookup returns 0, and the field
 // receives the value of the FIRST column (github_id). Any file that omits
 // display_name/profile_image/bio (legal: only 4 columns are required) imports
@@ -202,7 +202,7 @@ func TestCSV_MissingRequiredColumns(t *testing.T) {
 	}
 }
 
-// KNOWN BUG (bugParserColumns): the missing-required-column early return
+// KNOWN BUG #352 (bugParserColumns): the missing-required-column early return
 // leaves ProcessResult.Fail at 0 although FailRecords has one entry (the
 // normal path sets Fail = len(FailRecords)). Expected: the counters agree.
 func TestKnownBug_CSV_MissingRequiredColumn_FailCounter(t *testing.T) {
@@ -285,7 +285,7 @@ func TestCSV_OverflowGithubID_PerRow(t *testing.T) {
 	assert.Equal(t, int64(101), recordByRow(t, res, 2).GithubID)
 }
 
-// KNOWN BUG (bugImportValidation): the parser accepts github_id <= 0 (ParseInt
+// KNOWN BUG #345 (bugImportValidation): the parser accepts github_id <= 0 (ParseInt
 // has no lower bound) although the create/update API rejects negative ids.
 // Expected: a non-positive github_id fails its row as a validation error.
 func TestKnownBug_CSV_NegativeGithubID_Accepted(t *testing.T) {
@@ -429,7 +429,7 @@ func TestCSV_RowNumbers_MatchInput(t *testing.T) {
 	assert.Equal(t, map[int]bool{1: true, 3: true}, rowNumbers)
 }
 
-// KNOWN BUG (bugParserColumns): excelize's Rows().Columns() drops trailing
+// KNOWN BUG #352 (bugParserColumns): excelize's Rows().Columns() drops trailing
 // empty cells, so an XLSX row whose LAST optional cells are empty is shorter
 // than the header and fails with "row length less than header". The same data
 // as CSV imports fine. Expected: trailing empty cells mean "" values.
@@ -457,7 +457,7 @@ func TestKnownBug_XLSX_TrailingEmptyCells_RowRejected(t *testing.T) {
 	})
 }
 
-// KNOWN BUG (bugParserColumns): with workers <= 0 (e.g. process_count missing
+// KNOWN BUG #352 (bugParserColumns): with workers <= 0 (e.g. process_count missing
 // from config) no worker reads the rows: Process returns Success=0, Fail=0,
 // no error, and the job ends "failed" with every row silently lost.
 // Expected: either an error, or every row accounted for.

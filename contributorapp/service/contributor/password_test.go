@@ -242,7 +242,7 @@ func TestPasswordMatches_Bcrypt(t *testing.T) {
 	}
 }
 
-// KNOWN BUG (bugPlaintextFallback): when the stored value is not a bcrypt
+// KNOWN BUG #346 (bugPlaintextFallback): when the stored value is not a bcrypt
 // hash, passwordMatches falls back to `stored == provided`, so a plaintext
 // (legacy or corrupted) password column logs the user in. Expected: only a
 // bcrypt hash can ever match. If product decides legacy plaintext rows must

@@ -443,7 +443,7 @@ func TestUpdateProfile_OnlyFieldsChanged(t *testing.T) {
 	assert.False(t, sent.IsVerified)
 }
 
-// KNOWN BUG (bugEmailWipe): UpdateProfile builds the Contributor without
+// KNOWN BUG #351 (bugEmailWipe): UpdateProfile builds the Contributor without
 // Email, and repository.UpdateProfileContributor writes `email=$7`
 // unconditionally, so every profile edit erases the stored email.
 // Expected: the email stored before the update reaches the repository

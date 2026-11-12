@@ -409,7 +409,7 @@ func TestValidateUpsert_Minimal(t *testing.T) {
 	})
 }
 
-// KNOWN BUG (bugImportValidation): ValidateUpsertContributorRequest checks only
+// KNOWN BUG #345 (bugImportValidation): ValidateUpsertContributorRequest checks only
 // github_username, so the CSV/XLSX import path accepts any privacy_mode. The
 // DB column is privacy_mode_enum, so such a row later fails as an UNEXPECTED
 // database error instead of a per-row validation error. Expected: the import
@@ -432,7 +432,7 @@ func TestKnownBug_ValidateUpsert_PrivacyMode(t *testing.T) {
 	})
 }
 
-// KNOWN BUG (bugValidationMessages): two validation messages describe the
+// KNOWN BUG #348 (bugValidationMessages): two validation messages describe the
 // wrong rule — github_id < 1 reports "must be 'public' or 'private'", and a
 // too-long display_name reports "between 3 and 100 characters" although 0..2
 // characters are accepted. Expected: each message describes its own rule.

@@ -23,12 +23,12 @@ import (
 // code. Do setup with the real t (require.*), and put only the assertions
 // that describe the desired behaviour inside the check function.
 
-// Issue ids for the bugs locked in this package. Replace the placeholder with
-// the GitHub number (e.g. "#412") once the issue is filed — this is the only
-// place to change. Keys match the cards in new-issues-274.html.
+// GitHub issues for the bugs locked in this package. When an issue is fixed,
+// delete its constant together with the knownBug wrapper of its tests. Add a
+// new constant (issue number + short title) for every newly filed bug.
 const (
-	bugImportValidation = "BUG-274-03 (import path validation diverges from API)"
-	bugParserColumns    = "BUG-274-02 (CSV/XLSX parser column and row handling)"
+	bugImportValidation = "#345 (import path validation diverges from API)"
+	bugParserColumns    = "#352 (CSV/XLSX parser column and row handling)"
 )
 
 type bugRecorder struct{ msgs []string }
