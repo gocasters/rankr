@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/xuri/excelize/v2"
 )
 
 // process_test.go — Issue #274 (TD-23), scenarios C1–C13 from test-plan-274.html.
@@ -16,9 +17,11 @@ import (
 // Characterization tests for the CSV parser (CSVProcess.Process and the shared
 // processRowsWithHeader). They lock the CURRENT behaviour of the import path:
 // what maps to a success record, what aborts the whole file, what becomes a
-// per-row failure, and how header validation behaves. Three documented
-// anomalies (V3/V4/V11) are locked deliberately — see the comments at C3, C6
-// and C13; they must only change together with a conscious fix.
+// per-row failure, and how header validation behaves. The "whole file fails
+// on a malformed row" rule (C6/C7) is the agreed behaviour. Known BUGS are not
+// locked as expected values: they are TestKnownBug_* tests (see
+// knownbug_test.go) that assert the correct behaviour and SKIP while the bug
+// is present.
 
 const fullHeader = "github_id,github_username,display_name,profile_image,bio,privacy_mode,email\n"
 
@@ -97,13 +100,12 @@ func TestCSV_ValidFile_AllSuccess(t *testing.T) {
 	assert.Equal(t, "carol@example.com", r3.Email)
 }
 
-// C13 (P0, documents bug V11 — Q5-a decision: report, do NOT fix here):
-// when an OPTIONAL column is absent from the header, colIdx has no entry for
-// it, so map lookups fall back to index 0 and the field receives the value of
-// the FIRST column (github_id) instead of "". The required columns still map
-// correctly. Any file that omits display_name/profile_image/bio (perfectly
-// legal: only 4 columns are required) is imported with these fields corrupted.
-func TestCSV_MissingOptionalColumn_FallsBackToGithubID(t *testing.T) {
+// C13 KNOWN BUG (bugParserColumns): when an OPTIONAL column is absent from the
+// header, colIdx has no entry for it, the map lookup returns 0, and the field
+// receives the value of the FIRST column (github_id). Any file that omits
+// display_name/profile_image/bio (legal: only 4 columns are required) imports
+// every row with these fields corrupted. Expected: absent column => "".
+func TestKnownBug_CSV_MissingOptionalColumn_FallsBackToGithubID(t *testing.T) {
 	f := writeTempCSV(t,
 		"github_id,github_username,privacy_mode,email\n"+
 			"12345,alice,real,a@b.com\n")
@@ -120,11 +122,11 @@ func TestCSV_MissingOptionalColumn_FallsBackToGithubID(t *testing.T) {
 	assert.Equal(t, "real", r.PrivacyMode)
 	assert.Equal(t, "a@b.com", r.Email)
 
-	// BUG (V11): absent optional columns fall back to colIdx default 0,
-	// which is github_id's column. Expected correct behaviour would be "".
-	assert.Equal(t, "12345", r.DisplayName, "V11: missing column falls back to github_id")
-	assert.Equal(t, "12345", r.ProfileImage, "V11: missing column falls back to github_id")
-	assert.Equal(t, "12345", r.Bio, "V11: missing column falls back to github_id")
+	knownBug(t, bugParserColumns, func(a *assert.Assertions) {
+		a.Empty(r.DisplayName, "absent display_name column must give \"\", not the github_id value")
+		a.Empty(r.ProfileImage, "absent profile_image column must give \"\", not the github_id value")
+		a.Empty(r.Bio, "absent bio column must give \"\", not the github_id value")
+	})
 }
 
 // C2 (P1): header names are matched case-insensitively and trimmed of
@@ -150,11 +152,8 @@ func TestCSV_HeaderCaseAndWhitespaceInsensitive(t *testing.T) {
 // C3 (P0): removing any single required column aborts header validation with
 // exactly one FailRecord: RecordNumber=0 (file-level, not row-level), reason
 // "missing required column: X", ErrType=validation.
-//
-// V4 (Q4-a decision): the early return leaves the Fail FIELD at 0 while
-// FailRecords already has one element — an inconsistency in the current code.
-// ProcessJob reads FailRecords, so it is harmless today, but if someone starts
-// trusting result.Fail this test must be revisited consciously.
+// (The Fail counter on this path is a known bug — see
+// TestKnownBug_CSV_MissingRequiredColumn_FailCounter.)
 func TestCSV_MissingRequiredColumns(t *testing.T) {
 	required := []string{"github_id", "github_username", "privacy_mode", "email"}
 
@@ -199,10 +198,25 @@ func TestCSV_MissingRequiredColumns(t *testing.T) {
 
 			assert.Empty(t, res.SuccessRecords)
 			assert.Equal(t, 0, res.Success)
-			assert.Equal(t, 0, res.Fail, "V4: Fail field stays 0 although FailRecords has 1 entry")
-			assert.Equal(t, 1, len(res.FailRecords))
 		})
 	}
+}
+
+// KNOWN BUG (bugParserColumns): the missing-required-column early return
+// leaves ProcessResult.Fail at 0 although FailRecords has one entry (the
+// normal path sets Fail = len(FailRecords)). Expected: the counters agree.
+func TestKnownBug_CSV_MissingRequiredColumn_FailCounter(t *testing.T) {
+	f, err := os.Open(filepath.Join("testdata", "missing_col.csv"))
+	require.NoError(t, err)
+	defer f.Close()
+
+	res, err := newTestCSVProcess(2, 2).Process(f)
+	require.NoError(t, err)
+	require.Len(t, res.FailRecords, 1)
+
+	knownBug(t, bugParserColumns, func(a *assert.Assertions) {
+		a.Equal(len(res.FailRecords), res.Fail, "ProcessResult.Fail must equal len(FailRecords)")
+	})
 }
 
 // C3b (P0): the checked-in fixture missing github_id produces the same
@@ -252,32 +266,43 @@ func TestCSV_InvalidGithubID_PerRow(t *testing.T) {
 	assert.Equal(t, int64(101), r.GithubID)
 }
 
-// C5 (P1): github_id parsing is zero-boundary: any value ParseInt accepts is
-// stored as-is (negative included), values outside int64 fail per-row.
-func TestCSV_NegativeAndOverflowGithubID(t *testing.T) {
+// C5 (P1): a github_id outside int64 fails only its own row.
+func TestCSV_OverflowGithubID_PerRow(t *testing.T) {
 	f := writeTempCSV(t, fullHeader+
-		"-5,neg001,Negative,,,real,neg@example.com\n"+
 		"99999999999999999999,ovf001,Overflow,,,real,ovf@example.com\n"+
 		"101,ok001,Ok,,,real,ok@example.com\n")
 
 	res, err := newTestCSVProcess(2, 2).Process(f)
 	require.NoError(t, err)
 
-	assert.Equal(t, 3, res.Total)
-	assert.Equal(t, 2, res.Success)
+	assert.Equal(t, 2, res.Total)
+	assert.Equal(t, 1, res.Success)
 	assert.Equal(t, 1, res.Fail)
-
-	// current behaviour: -5 is accepted (ParseInt has no lower-bound check)
-	neg := recordByRow(t, res, 1)
-	assert.Equal(t, int64(-5), neg.GithubID, "negative ids currently pass (zero-boundary ParseInt)")
-
-	// overflow fails per-row
 	require.Len(t, res.FailRecords, 1)
-	assert.Equal(t, 2, res.FailRecords[0].RecordNumber)
+	assert.Equal(t, 1, res.FailRecords[0].RecordNumber)
 	assert.Contains(t, res.FailRecords[0].Reason, "invalid github id")
+	assert.Equal(t, ErrTypeValidation, res.FailRecords[0].ErrType)
+	assert.Equal(t, int64(101), recordByRow(t, res, 2).GithubID)
+}
 
-	ok := recordByRow(t, res, 3)
-	assert.Equal(t, int64(101), ok.GithubID)
+// KNOWN BUG (bugImportValidation): the parser accepts github_id <= 0 (ParseInt
+// has no lower bound) although the create/update API rejects negative ids.
+// Expected: a non-positive github_id fails its row as a validation error.
+func TestKnownBug_CSV_NegativeGithubID_Accepted(t *testing.T) {
+	f := writeTempCSV(t, fullHeader+
+		"-5,neg001,Negative,,,real,neg@example.com\n"+
+		"101,ok001,Ok,,,real,ok@example.com\n")
+
+	res, err := newTestCSVProcess(2, 2).Process(f)
+	require.NoError(t, err)
+
+	knownBug(t, bugImportValidation, func(a *assert.Assertions) {
+		a.Equal(1, res.Success, "only the valid row may succeed")
+		if a.Len(res.FailRecords, 1, "the negative github_id row must fail") {
+			a.Equal(1, res.FailRecords[0].RecordNumber)
+			a.Equal(ErrTypeValidation, res.FailRecords[0].ErrType)
+		}
+	})
 }
 
 // C6 (P0): V3 lock (Q3-a decision) — a row shorter than the header aborts the
@@ -402,4 +427,51 @@ func TestCSV_RowNumbers_MatchInput(t *testing.T) {
 		rowNumbers[r.RowNumber] = true
 	}
 	assert.Equal(t, map[int]bool{1: true, 3: true}, rowNumbers)
+}
+
+// KNOWN BUG (bugParserColumns): excelize's Rows().Columns() drops trailing
+// empty cells, so an XLSX row whose LAST optional cells are empty is shorter
+// than the header and fails with "row length less than header". The same data
+// as CSV imports fine. Expected: trailing empty cells mean "" values.
+func TestKnownBug_XLSX_TrailingEmptyCells_RowRejected(t *testing.T) {
+	x := excelize.NewFile()
+	sheet := x.GetSheetName(0)
+	require.NoError(t, x.SetSheetRow(sheet, "A1", &[]string{"github_id", "github_username", "privacy_mode", "email", "bio"}))
+	require.NoError(t, x.SetSheetRow(sheet, "A2", &[]string{"101", "alice01", "real", "alice@example.com", ""}))
+	require.NoError(t, x.SetSheetRow(sheet, "A3", &[]string{"102", "bob002", "real", "bob@example.com", "has a bio"}))
+	p := filepath.Join(t.TempDir(), "input.xlsx")
+	require.NoError(t, x.SaveAs(p))
+	require.NoError(t, x.Close())
+
+	f, err := os.Open(p)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = f.Close() })
+
+	res, err := XLSXProcess{workers: 2, buffer: 2}.Process(f)
+	require.NoError(t, err)
+	require.Equal(t, 2, res.Total)
+
+	knownBug(t, bugParserColumns, func(a *assert.Assertions) {
+		a.Equal(2, res.Success, "a row with an empty last cell must import like the CSV equivalent")
+		a.Empty(res.FailRecords, "no row may fail only because its trailing cells are empty")
+	})
+}
+
+// KNOWN BUG (bugParserColumns): with workers <= 0 (e.g. process_count missing
+// from config) no worker reads the rows: Process returns Success=0, Fail=0,
+// no error, and the job ends "failed" with every row silently lost.
+// Expected: either an error, or every row accounted for.
+// (buffer >= rows here so the producer goroutine does not block forever.)
+func TestKnownBug_CSV_ZeroWorkers_DropsRowsSilently(t *testing.T) {
+	f := writeTempCSV(t, fullHeader+
+		"101,alice01,Alice,,,real,alice@example.com\n"+
+		"102,bob002,Bob,,,real,bob@example.com\n")
+
+	res, err := newTestCSVProcess(0, 10).Process(f)
+
+	knownBug(t, bugParserColumns, func(a *assert.Assertions) {
+		if err == nil {
+			a.Equal(res.Total, res.Success+res.Fail, "every row must end up as success or fail, or Process must return an error")
+		}
+	})
 }

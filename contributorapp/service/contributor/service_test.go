@@ -435,13 +435,38 @@ func TestUpdateProfile_OnlyFieldsChanged(t *testing.T) {
 	assert.Equal(t, "alice01", sent.GitHubUsername)
 	assert.Equal(t, PrivacyModeReal, sent.PrivacyMode)
 
-	// security-sensitive fields stay zero: they are NOT part of a profile
-	// update. NB: the repository still writes email=$7 with this zero value —
-	// see the F2 finding in the PR disclosure (repository layer, out of scope).
-	assert.Empty(t, sent.Password)
-	assert.Empty(t, sent.Role)
+	// credentials and authorization fields are NOT part of a profile update.
+	// (Email is deliberately not asserted here: it is a known bug, see
+	// TestKnownBug_UpdateProfile_WipesEmail.)
+	assert.Empty(t, sent.Password, "profile update must never carry a password")
+	assert.Empty(t, sent.Role, "profile update must never change the role")
 	assert.False(t, sent.IsVerified)
-	assert.Empty(t, sent.Email)
+}
+
+// KNOWN BUG (bugEmailWipe): UpdateProfile builds the Contributor without
+// Email, and repository.UpdateProfileContributor writes `email=$7`
+// unconditionally, so every profile edit erases the stored email.
+// Expected: the email stored before the update reaches the repository
+// unchanged. If the issue is fixed in the repository instead (dropping
+// email from the UPDATE), replace this with a repository/integration test.
+func TestKnownBug_UpdateProfile_WipesEmail(t *testing.T) {
+	repo := new(mockRepository)
+	repo.On("GetContributorByID", mock.Anything, types.ID(1)).
+		Return(&Contributor{ID: 1, GitHubUsername: "alice01", Email: "alice@example.com"}, nil).Once()
+
+	var sent Contributor
+	repo.On("UpdateProfileContributor", mock.Anything, mock.Anything).
+		Run(func(args mock.Arguments) { sent = args.Get(1).(Contributor) }).
+		Return(&Contributor{ID: 1}, nil).Once()
+
+	_, err := newTestService(repo).UpdateProfile(context.Background(), validUpdateReq())
+	require.NoError(t, err)
+	repo.AssertExpectations(t)
+
+	knownBug(t, bugEmailWipe, func(a *assert.Assertions) {
+		a.Equal("alice@example.com", sent.Email,
+			"UpdateProfile must preserve the stored email; the repository UPDATE writes email=$7, so an empty value erases it")
+	})
 }
 
 // --- upsert (the bridge used by the CSV import path — AC: "CSV job parsing") ---

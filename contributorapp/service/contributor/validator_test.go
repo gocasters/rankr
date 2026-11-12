@@ -193,7 +193,8 @@ func TestValidateCreate_GitHubID(t *testing.T) {
 	}{
 		{"zero means unknown and is accepted", 0, ""},
 		{"1 accepted", 1, ""},
-		{"negative rejected", -5, ErrValidationPositive},
+		// the message text for this case is wrong — see TestKnownBug_ValidationMessages
+		{"negative rejected", -5, "github_id"},
 	}
 
 	for _, tt := range tests {
@@ -224,9 +225,10 @@ func TestValidateCreate_OptionalLengths(t *testing.T) {
 		{"display_name 100 accepted", func(r *CreateContributorRequest) {
 			r.DisplayName = strings.Repeat("d", 100)
 		}, ""},
-		{"display_name 101 rejected with shared length message", func(r *CreateContributorRequest) {
+		// rejected, but with a misleading message — see TestKnownBug_ValidationMessages
+		{"display_name 101 rejected", func(r *CreateContributorRequest) {
 			r.DisplayName = strings.Repeat("d", 101)
-		}, ErrValidationLength3To100},
+		}, "display_name"},
 		{"bio 500 accepted", func(r *CreateContributorRequest) {
 			r.Bio = strings.Repeat("b", 500)
 		}, ""},
@@ -330,7 +332,6 @@ func TestValidateUpdate_AllErrorMessages(t *testing.T) {
 func TestValidateCreate_ErrorMessageConstants(t *testing.T) {
 	assert.Equal(t, "is required", ErrValidationRequired)
 	assert.Equal(t, "must be 'real' or 'anonymous'", ErrValidationEnumPrivacy)
-	assert.Equal(t, "must be 'public' or 'private'", ErrValidationPositive)
 	assert.Equal(t, "must be between 3 and 100 characters", ErrValidationLength3To100)
 	assert.Equal(t, "must be between 6 and 72 characters", ErrValidationLength6To72)
 
@@ -384,9 +385,8 @@ func TestValidatePassword_OldNewBoundary(t *testing.T) {
 	}
 }
 
-// A12 (P0): upsert (the CSV import path) validates ONLY github_username.
-// This deliberately locks the V2 gap: arbitrary privacy_mode values are
-// accepted here — see Q1 decision (document, fix in a separate issue).
+// A12 (P0): upsert (the CSV import path) requires github_username.
+// What it should ALSO reject is in TestKnownBug_ValidateUpsert_PrivacyMode.
 func TestValidateUpsert_Minimal(t *testing.T) {
 	v := NewValidator()
 
@@ -398,22 +398,63 @@ func TestValidateUpsert_Minimal(t *testing.T) {
 		assert.Equal(t, "invalid request", err.Error())
 	})
 
-	t.Run("arbitrary privacy accepted (V2 gap, documented)", func(t *testing.T) {
+	t.Run("valid row accepted", func(t *testing.T) {
 		err := v.ValidateUpsertContributorRequest(UpsertContributorRequest{
 			GitHubID:       1,
 			GitHubUsername: "alice01",
-			PrivacyMode:    "TOTALLY_INVALID",
-			Email:          "not-an-email",
-		})
-		require.NoError(t, err, "upsert must keep accepting any privacy/email (Q1-b decision)")
-	})
-
-	t.Run("empty privacy accepted (upsert is intentionally minimal)", func(t *testing.T) {
-		err := v.ValidateUpsertContributorRequest(UpsertContributorRequest{
-			GitHubUsername: "alice01",
-			PrivacyMode:    "",
+			PrivacyMode:    PrivacyModeReal,
+			Email:          "alice@example.com",
 		})
 		require.NoError(t, err)
+	})
+}
+
+// KNOWN BUG (bugImportValidation): ValidateUpsertContributorRequest checks only
+// github_username, so the CSV/XLSX import path accepts any privacy_mode. The
+// DB column is privacy_mode_enum, so such a row later fails as an UNEXPECTED
+// database error instead of a per-row validation error. Expected: the import
+// path enforces the same enum as create/update (see A1/A2).
+func TestKnownBug_ValidateUpsert_PrivacyMode(t *testing.T) {
+	v := NewValidator()
+	invalid := []PrivacyMode{"TOTALLY_INVALID", "REAL", "yes"}
+
+	errs := make(map[PrivacyMode]error, len(invalid))
+	for _, p := range invalid {
+		errs[p] = v.ValidateUpsertContributorRequest(UpsertContributorRequest{
+			GitHubID: 1, GitHubUsername: "alice01", PrivacyMode: p,
+		})
+	}
+
+	knownBug(t, bugImportValidation, func(a *assert.Assertions) {
+		for p, err := range errs {
+			a.Error(err, "upsert must reject privacy_mode %q exactly like create/update", p)
+		}
+	})
+}
+
+// KNOWN BUG (bugValidationMessages): two validation messages describe the
+// wrong rule — github_id < 1 reports "must be 'public' or 'private'", and a
+// too-long display_name reports "between 3 and 100 characters" although 0..2
+// characters are accepted. Expected: each message describes its own rule.
+func TestKnownBug_ValidationMessages(t *testing.T) {
+	v := NewValidator()
+	ctx := context.Background()
+
+	negID := validCreateReq()
+	negID.GitHubID = -5
+	errID := v.ValidateCreateContributorRequest(ctx, negID)
+	require.Error(t, errID)
+
+	longName := validCreateReq()
+	longName.DisplayName = strings.Repeat("d", 101)
+	errName := v.ValidateCreateContributorRequest(ctx, longName)
+	require.Error(t, errName)
+
+	knownBug(t, bugValidationMessages, func(a *assert.Assertions) {
+		a.NotContains(errID.Error(), "public",
+			"github_id error must describe the positive-number rule, not a privacy/visibility enum")
+		a.NotContains(errName.Error(), "between 3 and",
+			"display_name accepts 0..100 characters; the message must not claim a minimum of 3")
 	})
 }
 
