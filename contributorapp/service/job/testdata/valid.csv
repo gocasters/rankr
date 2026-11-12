@@ -1,0 +1,4 @@
+github_id,github_username,display_name,profile_image,bio,privacy_mode,email
+101,alice01,Alice Smith,https://img.example/alice.png,Bio of alice,real,alice@example.com
+102,bob002,"Doe, John",,,"anonymous",bob@example.com
+103,carol03,carol03,,Likes Go,real,carol@example.com
