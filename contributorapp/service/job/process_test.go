@@ -57,7 +57,7 @@ func recordByRow(t *testing.T, res ProcessResult, row int) ContributorRecord {
 func TestCSV_ValidFile_AllSuccess(t *testing.T) {
 	f, err := os.Open(filepath.Join("testdata", "valid.csv"))
 	require.NoError(t, err)
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	res, err := newTestCSVProcess(4, 2).Process(f)
 	require.NoError(t, err)
@@ -208,7 +208,7 @@ func TestCSV_MissingRequiredColumns(t *testing.T) {
 func TestKnownBug_CSV_MissingRequiredColumn_FailCounter(t *testing.T) {
 	f, err := os.Open(filepath.Join("testdata", "missing_col.csv"))
 	require.NoError(t, err)
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	res, err := newTestCSVProcess(2, 2).Process(f)
 	require.NoError(t, err)
@@ -224,7 +224,7 @@ func TestKnownBug_CSV_MissingRequiredColumn_FailCounter(t *testing.T) {
 func TestCSV_MissingRequiredColumn_Fixture(t *testing.T) {
 	f, err := os.Open(filepath.Join("testdata", "missing_col.csv"))
 	require.NoError(t, err)
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	res, err := newTestCSVProcess(2, 2).Process(f)
 	require.NoError(t, err)
@@ -241,7 +241,7 @@ func TestCSV_MissingRequiredColumn_Fixture(t *testing.T) {
 func TestCSV_InvalidGithubID_PerRow(t *testing.T) {
 	f, err := os.Open(filepath.Join("testdata", "bad_id.csv"))
 	require.NoError(t, err)
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	res, err := newTestCSVProcess(4, 2).Process(f)
 	require.NoError(t, err)
@@ -312,7 +312,7 @@ func TestKnownBug_CSV_NegativeGithubID_Accepted(t *testing.T) {
 func TestCSV_ShortRow_FailsWholeFile(t *testing.T) {
 	f, err := os.Open(filepath.Join("testdata", "short_row.csv"))
 	require.NoError(t, err)
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	res, err := newTestCSVProcess(4, 2).Process(f)
 	require.Error(t, err)
