@@ -1,0 +1,160 @@
+# golangci-lint v2 configuration.
+#
+# Default linters ("standard") are left unchanged; this file only adds
+# depguard to enforce the architecture rules from issue #285 / AGENTS.md:
+#   1. An app (<name>app/) never imports another app's packages. Cross-app
+#      calls go through the generated protobuf clients in protobuf/golang/.
+#   2. No math/rand (or math/rand/v2) outside _test.go files.
+# Run only these rules with `make arch-lint`.
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - depguard
+  settings:
+    depguard:
+      rules:
+        no-math-rand:
+          list-mode: lax
+          files:
+            - "$all"
+            - "!$test"
+            # Dev-only fake event generator; randomness is its purpose.
+            - "!**/pkg/eventgenerator/**"
+          deny:
+            - pkg: "math/rand"
+              desc: "use crypto/rand or inject a rand source"
+            - pkg: "math/rand/v2"
+              desc: "use crypto/rand or inject a rand source"
+        # One rule per app: files inside <app>/ may not import any other app.
+        authapp-isolation:
+          list-mode: lax
+          files: ["**/authapp/**"]
+          deny:
+            - { pkg: "github.com/gocasters/rankr/contributorapp", desc: &cross-app "apps must not import other apps; use the protobuf client in protobuf/golang/" }
+            - { pkg: "github.com/gocasters/rankr/leaderboardscoringapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/leaderboardstatapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/notifapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/projectapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/realtimeapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/taskapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/userprofileapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/webhookapp", desc: *cross-app }
+        contributorapp-isolation:
+          list-mode: lax
+          files: ["**/contributorapp/**"]
+          deny:
+            - { pkg: "github.com/gocasters/rankr/authapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/leaderboardscoringapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/leaderboardstatapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/notifapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/projectapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/realtimeapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/taskapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/userprofileapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/webhookapp", desc: *cross-app }
+        leaderboardscoringapp-isolation:
+          list-mode: lax
+          files: ["**/leaderboardscoringapp/**"]
+          deny:
+            - { pkg: "github.com/gocasters/rankr/authapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/contributorapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/leaderboardstatapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/notifapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/projectapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/realtimeapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/taskapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/userprofileapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/webhookapp", desc: *cross-app }
+        leaderboardstatapp-isolation:
+          list-mode: lax
+          files: ["**/leaderboardstatapp/**"]
+          deny:
+            - { pkg: "github.com/gocasters/rankr/authapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/contributorapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/leaderboardscoringapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/notifapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/projectapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/realtimeapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/taskapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/userprofileapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/webhookapp", desc: *cross-app }
+        notifapp-isolation:
+          list-mode: lax
+          files: ["**/notifapp/**"]
+          deny:
+            - { pkg: "github.com/gocasters/rankr/authapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/contributorapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/leaderboardscoringapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/leaderboardstatapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/projectapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/realtimeapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/taskapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/userprofileapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/webhookapp", desc: *cross-app }
+        projectapp-isolation:
+          list-mode: lax
+          files: ["**/projectapp/**"]
+          deny:
+            - { pkg: "github.com/gocasters/rankr/authapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/contributorapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/leaderboardscoringapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/leaderboardstatapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/notifapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/realtimeapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/taskapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/userprofileapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/webhookapp", desc: *cross-app }
+        realtimeapp-isolation:
+          list-mode: lax
+          files: ["**/realtimeapp/**"]
+          deny:
+            - { pkg: "github.com/gocasters/rankr/authapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/contributorapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/leaderboardscoringapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/leaderboardstatapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/notifapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/projectapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/taskapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/userprofileapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/webhookapp", desc: *cross-app }
+        taskapp-isolation:
+          list-mode: lax
+          files: ["**/taskapp/**"]
+          deny:
+            - { pkg: "github.com/gocasters/rankr/authapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/contributorapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/leaderboardscoringapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/leaderboardstatapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/notifapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/projectapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/realtimeapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/userprofileapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/webhookapp", desc: *cross-app }
+        userprofileapp-isolation:
+          list-mode: lax
+          files: ["**/userprofileapp/**"]
+          deny:
+            - { pkg: "github.com/gocasters/rankr/authapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/contributorapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/leaderboardscoringapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/leaderboardstatapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/notifapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/projectapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/realtimeapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/taskapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/webhookapp", desc: *cross-app }
+        webhookapp-isolation:
+          list-mode: lax
+          files: ["**/webhookapp/**"]
+          deny:
+            - { pkg: "github.com/gocasters/rankr/authapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/contributorapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/leaderboardscoringapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/leaderboardstatapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/notifapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/projectapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/realtimeapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/taskapp", desc: *cross-app }
+            - { pkg: "github.com/gocasters/rankr/userprofileapp", desc: *cross-app }

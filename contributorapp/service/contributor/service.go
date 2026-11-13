@@ -28,10 +28,9 @@ type Repository interface {
 }
 
 type Service struct {
-	repository     Repository
-	validator      Validator
-	CacheManager   cachemanager.CacheManager
-	forceAcceptOtp int
+	repository   Repository
+	validator    Validator
+	CacheManager cachemanager.CacheManager
 }
 
 func NewService(
@@ -59,13 +58,14 @@ func (s Service) GetProfile(ctx context.Context, id types.ID) (GetProfileRespons
 	}
 
 	return GetProfileResponse{
-		ID:           contributor.ID,
-		GitHubID:     contributor.GitHubID,
-		DisplayName:  contributor.DisplayName,
-		ProfileImage: contributor.ProfileImage,
-		Bio:          contributor.Bio,
-		PrivacyMode:  contributor.PrivacyMode,
-		CreatedAt:    contributor.CreatedAt,
+		ID:             contributor.ID,
+		GitHubID:       contributor.GitHubID,
+		GitHubUsername: contributor.GitHubUsername,
+		DisplayName:    contributor.DisplayName,
+		ProfileImage:   contributor.ProfileImage,
+		Bio:            contributor.Bio,
+		PrivacyMode:    contributor.PrivacyMode,
+		CreatedAt:      contributor.CreatedAt,
 	}, nil
 }
 

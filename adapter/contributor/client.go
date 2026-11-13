@@ -3,6 +3,7 @@ package contributor
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/gocasters/rankr/pkg/grpc"
 	contributorpb "github.com/gocasters/rankr/protobuf/golang/contributor/v1"
@@ -83,4 +84,36 @@ func (c *Client) GetContributorsByVCS(ctx context.Context, vcsProvider string, u
 	}
 
 	return mappings, nil
+}
+
+type InfoResponse struct {
+	ID             int64
+	GitHubID       int64
+	GitHubUsername string
+	DisplayName    string
+	ProfileImage   string
+	Bio            string
+	PrivacyMode    string
+	CreatedAt      time.Time
+}
+
+func (c *Client) GetContributorInfo(ctx context.Context, id types.ID) (InfoResponse, error) {
+	res, err := c.contributorService.
+		GetContributorInfo(ctx, &contributorpb.GetContributorInfoRequest{ContributorId: uint64(id)})
+	if err != nil {
+		return InfoResponse{}, err
+	}
+
+	createdAt := res.GetCreatedAt()
+
+	return InfoResponse{
+		ID:             int64(res.ContributorId),
+		GitHubID:       res.GithubId,
+		GitHubUsername: res.GithubUsername,
+		DisplayName:    res.DisplayName,
+		ProfileImage:   res.ProfileImage,
+		Bio:            res.Bio,
+		PrivacyMode:    res.PrivacyMode,
+		CreatedAt:      createdAt.AsTime(),
+	}, nil
 }

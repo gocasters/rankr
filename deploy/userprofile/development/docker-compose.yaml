@@ -1,11 +1,17 @@
 services:
   userprofile-app:
+    image: rankr-go-dev:${GO_IMAGE_VERSION:-${DEFAULT_GO_IMAGE_VERSION:-1.25.3-alpine}}
     build:
-      context: ../../.. # Build from the project root
-      dockerfile: ./deploy/userprofile/development/Dockerfile
+      context: ../../..
+      dockerfile: ./deploy/development/Dockerfile
+      args:
+        GO_IMAGE_NAME: ${GO_IMAGE_NAME:-${DEFAULT_GO_IMAGE_NAME:-golang}}
+        GO_IMAGE_VERSION: ${GO_IMAGE_VERSION:-${DEFAULT_GO_IMAGE_VERSION:-1.25.3-alpine}}
+        AIR_VERSION: ${AIR_VERSION:-${DEFAULT_AIR_VERSION:-v1.66.1}}
     container_name: userprofile-app
     volumes:
       - ../../..:/app
+      - rankr-go-build-cache:/root/.cache/go-build
     networks:
       - rankr-shared-development-network
     environment:
@@ -18,6 +24,17 @@ services:
       - userprofile_REDIS_HOST=shared-redis
       - userprofile_NATS_URL=nats://shared-nats:4222
     entrypoint: [ "air", "-c", "/app/.air/.air.userprofile.toml" ]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/v1/userprofile/health_check > /dev/null"]
+      interval: 8s
+      timeout: 3s
+      retries: 5
+      start_period: 8s
+
+volumes:
+  rankr-go-build-cache:
+    name: rankr-go-build-cache
+
 networks:
   rankr-shared-development-network:
     external: true

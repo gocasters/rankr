@@ -36,6 +36,9 @@ and are frozen. `hub/`, `argus`, `cmd/api`, and Temporal are frozen components,
 not services in the Stage v1 stack. `deploy/stage/docker-compose.yml` is the
 source for which services actually run in Stage.
 
+For V1, the Task adapter is intentionally not implemented. `userprofileapp/adapter/task.go`
+remains a stub that returns no tasks; this is a scope decision, not unfinished work.
+
 ## Ports
 
 These are configured service ports. The runtime gRPC column lists only

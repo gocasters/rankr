@@ -3,6 +3,9 @@ package userprofileapp
 import (
 	"context"
 	"fmt"
+	"github.com/gocasters/rankr/adapter/contributor"
+	"github.com/gocasters/rankr/adapter/leaderboardstat"
+	"github.com/gocasters/rankr/pkg/grpc"
 	"github.com/gocasters/rankr/pkg/httpserver"
 	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/gocasters/rankr/userprofileapp/adapter"
@@ -24,13 +27,49 @@ type Application struct {
 }
 
 func Setup(ctx context.Context, cfg Config) (Application, error) {
-	contributorInfoRPC := adapter.NewContributorInfoRPC()
-	contributorStatRPC := adapter.NewContributorStatRPC()
-	taskRPC := adapter.NewTaskRPC()
+	if err := cfg.Validate(); err != nil {
+		return Application{}, err
+	}
+	log := logger.L()
+	cfg.ContributorRPC.NonBlocking = true
+	cfg.LeaderboardStatRPC.NonBlocking = true
 
-	validator := userprofile.NewValidator(contributorInfoRPC)
+	// Initialize grpc Clients
+	// ============================================================
+	contributorGRPCClient, err := grpc.NewClient(cfg.ContributorRPC, log)
+	if err != nil {
+		return Application{}, err
+	}
 
-	service := userprofile.NewService(contributorInfoRPC, taskRPC, contributorStatRPC, validator)
+	contributorStatsGRPCClient, err := grpc.NewClient(cfg.LeaderboardStatRPC, log)
+	if err != nil {
+		return Application{}, err
+	}
+
+	// Initialize  clients
+	// ============================================================
+	contributorClient, err := contributor.New(contributorGRPCClient)
+	if err != nil {
+		return Application{}, err
+	}
+
+	contributorStatClient, err := leaderboardstat.New(contributorStatsGRPCClient)
+	if err != nil {
+		return Application{}, err
+	}
+
+	// Initialize  adapters
+	// ============================================================
+	contributorSvc := adapter.NewContributorAdapter(contributorClient)
+
+	contributorStatSvc := adapter.NewContributorStatAdapter(contributorStatClient)
+
+	// ============================================================
+	taskSvc := adapter.NewTaskRPC()
+
+	validator := userprofile.NewValidator(contributorSvc)
+
+	service := userprofile.NewService(contributorSvc, taskSvc, contributorStatSvc, validator, cfg.Service)
 
 	handler := http.NewHandler(service)
 
