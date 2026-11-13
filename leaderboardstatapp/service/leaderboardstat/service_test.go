@@ -150,3 +150,36 @@ func TestSetPublicLeaderboard_StoresEveryTimeframe(t *testing.T) {
 	}
 	assert.ElementsMatch(t, want, asked)
 }
+func TestSetPublicLeaderboard_DailyFirstForAllProjects(t *testing.T) {
+	scoring := &fakeScoringClient{
+		rowsByProject: map[string][]lbscoring.LeaderboardRow{
+			"1001": {{Rank: 1, UserID: "7", Score: 30}},
+			"2002": {{Rank: 1, UserID: "8", Score: 50}},
+		},
+	}
+	projects := &fakeProjectClient{
+		projects: []project.ProjectItem{
+			{ProjectID: "p-a", GitRepoID: "1001"},
+			{ProjectID: "p-b", GitRepoID: "2002"},
+		},
+	}
+	redis := &fakeRedisLB{}
+
+	s := Service{
+		lbScoringClient:      scoring,
+		projectClient:        projects,
+		redisLeaderboardRepo: redis,
+	}
+
+	require.NoError(t, s.SetPublicLeaderboard(context.Background()))
+
+	// 2 projects x 5 timeframes = 10 requests.
+	require.Len(t, scoring.requests, 10)
+
+	// The first two requests must be daily, one per project, so a run that
+	// hits its deadline still refreshes the key the public read path uses.
+	assert.Equal(t, "daily", scoring.requests[0].Timeframe)
+	assert.Equal(t, "daily", scoring.requests[1].Timeframe)
+	assert.Equal(t, "1001", *scoring.requests[0].ProjectID)
+	assert.Equal(t, "2002", *scoring.requests[1].ProjectID)
+}
