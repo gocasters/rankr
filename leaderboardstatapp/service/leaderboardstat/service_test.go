@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/gocasters/rankr/adapter/project"
-	lbscoring "github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
+	lbscoring "github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring" //nolint:depguard // TODO(#285 follow-up): use the protobuf leaderboardscoring client types
 	"github.com/gocasters/rankr/pkg/logger"
 	types "github.com/gocasters/rankr/type"
 	"github.com/stretchr/testify/assert"
