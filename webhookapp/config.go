@@ -26,6 +26,7 @@ type Config struct {
 	RecoveryConfig       recovery.Config   `koanf:"recovery_config"`
 	BulkInsertConfig     insert.Config     `koanf:"bulk_insert_config"`
 	ProjectGRPC          grpc.ClientConfig `koanf:"project_grpc"`
+	GithubConfig         GithubConfig      `koanf:"github"`
 }
 
 type NATSConfig struct {
@@ -38,4 +39,9 @@ type NATSConfig struct {
 		Name     string   `koanf:"name"`
 		Subjects []string `koanf:"subjects"`
 	} `koanf:"stream"`
+}
+
+type GithubConfig struct {
+	Secret           string `koanf:"secret"`
+	MaxPayloadSizeMB int64  `koanf:"max_payload_size_mb"`
 }

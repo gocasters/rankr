@@ -14,6 +14,10 @@ func newRootCommand() *cobra.Command {
 		Use: "web",
 	}
 
+	preview := root.PersistentFlags().Bool(
+		"preview", false, "Enable a local preview with sample data",
+	)
+
 	root.AddCommand(&cobra.Command{
 		Use:   "serve",
 		Short: "Start the web service",
@@ -37,10 +41,18 @@ func newRootCommand() *cobra.Command {
 				return err
 			}
 
+			if *preview {
+				cfg.HTTPServer.PublicPaths = append(
+					cfg.HTTPServer.PublicPaths, "/preview",
+				)
+			}
+
 			server, err := newServer(cfg.HTTPServer)
 			if err != nil {
 				return err
 			}
+
+			registerLeaderboardPreview(server.GetRouter(), *preview)
 
 			return serve(cmd.Context(), server)
 		},

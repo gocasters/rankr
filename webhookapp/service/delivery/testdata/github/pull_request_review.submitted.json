@@ -1,0 +1,11 @@
+{
+  "action": "submitted",
+  "review": {
+    "id": 5000001, "user": {"id": 2002, "login": "maintainer-b"},
+    "body": "Looks good.", "state": "approved", "submitted_at": "2026-10-20T11:00:00Z",
+    "commit_id": "0000000000000000000000000000000000000001", "author_association": "MEMBER"
+  },
+  "pull_request": {"id": 4000001, "number": 12, "user": {"id": 2001, "login": "contributor-a"}},
+  "repository": {"id": 1000001, "name": "example-repo", "full_name": "example-org/example-repo"},
+  "sender": {"id": 2002, "login": "maintainer-b"}
+}
