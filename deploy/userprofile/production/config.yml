@@ -74,10 +74,6 @@ raw_event_consumer:
   prefix_processed_key: "processed_events"
   prefix_lock_key: "lock"
 
-database_retry:
-  max_retries: 3
-  retry_delay: 100ms
-
 nats_adapter:
   url: "nats://shared-nats:4222"
   max_reconnects: -1
@@ -104,20 +100,5 @@ batch_processor:
 
 total_shutdown_timeout: 30m
 
-path_of_migration: "./userprofileapp/repository/migrations"
-
 service:
   upstream_time_out: 5s
-
-postgres_db:
-  host: shared-postgres
-  port: 5432
-  user: userprofile_user
-  password: change_me_userprofile
-  db_name: userprofile_db
-  ssl_mode: disable
-  max_conns: 25  
-  min_conns: 5  
-  max_conn_lifetime: 300
-  max_conn_idle_time: 60
-  health_check_period: 60
