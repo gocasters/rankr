@@ -36,6 +36,13 @@ and are frozen. `hub/`, `argus`, `cmd/api`, and Temporal are frozen components,
 not services in the Stage v1 stack. `deploy/stage/docker-compose.yml` is the
 source for which services actually run in Stage.
 
+`userprofileapp/` is a read-only aggregator. It has no Postgres database, no
+repository layer and no migrations: it builds a profile from contributor and
+leaderboardstat data over gRPC. That is why `init-services-db.sh` creates no
+`userprofile_db`. If the service ever needs to own data, add the database to
+both init scripts and a `userprofileapp/repository/migrations` directory in
+the same PR.
+
 For V1, the Task adapter is intentionally not implemented. `userprofileapp/adapter/task.go`
 remains a stub that returns no tasks; this is a scope decision, not unfinished work.
 
