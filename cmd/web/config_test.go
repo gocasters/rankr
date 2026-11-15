@@ -42,3 +42,21 @@ http_server:
 			cfg.HTTPServer.ShutdownTimeout)
 	}
 }
+
+func TestDevelopmentConfigIncludesLeaderboardAPI(t *testing.T) {
+	configPath := filepath.Join(
+		"..", "..", "deploy", "web", "development", "config.yml",
+	)
+
+	cfg, err := loadConfig(configPath)
+	if err != nil {
+		t.Fatalf("load development config: %v", err)
+	}
+
+	if cfg.LeaderboardAPI.BaseURL == "" {
+		t.Error("development config must include leaderboard API URL")
+	}
+	if cfg.LeaderboardAPI.Timeout <= 0 {
+		t.Error("development config must include a positive API timeout")
+	}
+}

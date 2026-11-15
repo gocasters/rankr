@@ -4,7 +4,8 @@ Part of issue #218. Currently provides an HTTP server, health check,
 configuration loading, and graceful shutdown.
 
 An opt-in leaderboard preview renders sample, empty, and error states.
-The API-backed page and shared feature flag integration are follow-up work.
+An opt-in leaderboard page fetches data from the leaderboardstat HTTP API.
+Shared feature flag integration remains follow-up work.
 
 ## Run locally
 
@@ -40,6 +41,30 @@ Use the page links to inspect the sample table, empty state, and error state.
 The preview uses sample data and is disabled by default.
 
 Templates are embedded in the binary. Restart the web process after editing them.
+
+## API-backed leaderboard
+
+Start leaderboardstat and its dependencies, then run:
+
+```bash
+go run ./cmd/web serve --leaderboard
+```
+
+Open http://localhost:8085/leaderboard?project_id=1028435569.
+
+`project_id` is the numeric GitHub repository ID.
+The page displays up to 10 rows, or an empty or error state.
+The page is disabled by default.
+
+Configure `leaderboard_api.base_url` and `leaderboard_api.timeout`
+in YAML. Environment overrides are also supported:
+
+```bash
+WEB__LEADERBOARD_API__BASE_URL=http://127.0.0.1:8081 go run ./cmd/web serve --leaderboard
+```
+
+The refresh button updates the leaderboard using htmx.
+htmx 2.0.11 is loaded from jsDelivr with an integrity check.
 
 ## Configuration
 
