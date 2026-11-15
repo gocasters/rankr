@@ -252,3 +252,40 @@ func isRetryableError(err error) bool {
 
 	return false
 }
+
+func (db PostgreSQLRepository) GetVCSUserScoreBreakdown(ctx context.Context, userID string) (leaderboardscoring.ScoreBreakdown, error) {
+
+	query := `
+			SELECT COALESCE(SUM (
+									CASE
+										WHEN event_type IN ('pull_request_opened', 'pull_request_closed')
+										THEN score_delta
+										ELSE 0
+									END), 0) AS score_pr,
+					COALESCE (SUM (
+									CASE
+										WHEN event_type IN ('issue_opened', 'issue_closed', 'issue_comment')
+										THEN score_delta
+										ELSE 0
+									END),0) AS score_issue,
+					COALESCE (SUM (
+									CASE
+										WHEN event_type = 'pull_request_review'
+										THEN score_delta
+										ELSE 0
+									END), 0) AS score_review
+			FROM processed_score_events
+			WHERE user_id = $1;
+`
+	var scoreBreakdown leaderboardscoring.ScoreBreakdown
+	err := db.postgreSQL.Pool.QueryRow(ctx, query, userID).Scan(
+		&scoreBreakdown.PR,
+		&scoreBreakdown.Issue,
+		&scoreBreakdown.Review,
+	)
+	if err != nil {
+		return leaderboardscoring.ScoreBreakdown{}, err
+	}
+
+	return scoreBreakdown, nil
+}

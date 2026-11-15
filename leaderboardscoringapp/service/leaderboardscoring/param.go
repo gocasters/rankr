@@ -463,3 +463,9 @@ func (q *GetLeaderboardRequest) BuildKey() string {
 
 	return key
 }
+
+type GetVCSUserScoreBreakdownResponse struct {
+	PR     int64
+	Review int64
+	Issue  int64
+}

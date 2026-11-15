@@ -10,6 +10,13 @@ message ContributorStatResponse {
   double total_score = 3;
   map<uint64, double> projects_score = 4;
   map<uint64, ProjectScoreHistory> score_history = 5;
+  ScoreBreakdown score_breakdown = 6;
+}
+
+message ScoreBreakdown {
+  int64 pr = 1;
+  int64 review = 2;
+  int64 issue = 3;
 }
 
 message ProjectScoreHistory {

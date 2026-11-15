@@ -3,6 +3,7 @@ package leaderboardstatapp
 import (
 	"context"
 	"fmt"
+	"github.com/gocasters/rankr/adapter/contributor"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -38,13 +39,10 @@ type Application struct {
 	Scheduler              scheduler.Scheduler
 	scoringRPCClient       *grpc.RPCClient
 	projectRPCClient       *grpc.RPCClient
+	contributorRPCClient   *grpc.RPCClient
 }
 
-func Setup(
-	ctx context.Context,
-	config Config,
-	postgresConn *database.Database,
-) (Application, error) {
+func Setup(ctx context.Context, config Config, postgresConn *database.Database) (Application, error) {
 	statLogger := logger.L()
 
 	redisAdapter, err := redis.New(ctx, config.Redis)
@@ -54,7 +52,7 @@ func Setup(
 	}
 	cache := cachemanager.NewCacheManager(redisAdapter)
 
-	// initial rpc server
+	// initial rpc clients
 	scoringRPCClient, err := grpc.NewClient(config.LeaderboardScoringRPC, statLogger)
 	if err != nil {
 		return Application{}, fmt.Errorf("failed to create RPC client!!: %w", err)
@@ -79,11 +77,26 @@ func Setup(
 		return Application{}, fmt.Errorf("failed to create project client: %w", err)
 	}
 
+	contributorRPCClient, err := grpc.NewClient(config.ContributorRPC, statLogger)
+	if err != nil {
+		scoringRPCClient.Close()
+		projectRPCClient.Close()
+		return Application{}, fmt.Errorf("failed to creat contributor RPC client: %w", err)
+	}
+
+	contributorClient, err := contributor.New(contributorRPCClient)
+	if err != nil {
+		scoringRPCClient.Close()
+		projectRPCClient.Close()
+		contributorRPCClient.Close()
+		return Application{}, fmt.Errorf("failed to create contributor client: %w", err)
+	}
+
 	statRepo := repository.NewLeaderboardstatRepo(config.Repository, postgresConn)
 	statValidator := leaderboardstat.NewValidator(statRepo)
 	redisLeaderboardRepo := repository.NewRedisLeaderboardRepository(redisAdapter.Client())
 
-	statSvc := leaderboardstat.NewService(statRepo, statValidator, *cache, redisLeaderboardRepo, lbScoringClient, projectClient)
+	statSvc := leaderboardstat.NewService(statRepo, statValidator, *cache, redisLeaderboardRepo, lbScoringClient, projectClient, contributorClient)
 	statHandler := statHTTP.NewHandler(statSvc)
 
 	httpServer, err := httpserver.New(config.HTTPServer)
@@ -91,6 +104,7 @@ func Setup(
 		statLogger.Error("failed to initialize HTTP server", slog.Any("error", err))
 		scoringRPCClient.Close()
 		projectRPCClient.Close()
+		contributorRPCClient.Close()
 		return Application{}, err
 	}
 
@@ -99,6 +113,7 @@ func Setup(
 		statLogger.Error("Failed to initialize gRPC server", slog.String("error", gErr.Error()))
 		scoringRPCClient.Close()
 		projectRPCClient.Close()
+		contributorRPCClient.Close()
 		return Application{}, gErr
 	}
 	statGrpcHandler := statGRPC.NewHandler(statSvc)
@@ -115,13 +130,14 @@ func Setup(
 			httpServer,
 			statHandler,
 		),
-		GRPCServer:       statGrpcServer,
-		Config:           config,
-		CacheManager:     *cache,
-		redis:            redisAdapter,
-		Scheduler:        statScheduler,
-		scoringRPCClient: scoringRPCClient,
-		projectRPCClient: projectRPCClient,
+		GRPCServer:           statGrpcServer,
+		Config:               config,
+		CacheManager:         *cache,
+		redis:                redisAdapter,
+		Scheduler:            statScheduler,
+		scoringRPCClient:     scoringRPCClient,
+		projectRPCClient:     projectRPCClient,
+		contributorRPCClient: contributorRPCClient,
 	}, nil
 }
 
@@ -223,6 +239,11 @@ func (app *Application) closeRPCClients() {
 	if app.projectRPCClient != nil {
 		app.projectRPCClient.Close()
 		statLogger.Info("Project RPC client closed")
+	}
+
+	if app.contributorRPCClient != nil {
+		app.contributorRPCClient.Close()
+		statLogger.Info("Contributor RPC client closed")
 	}
 }
 
