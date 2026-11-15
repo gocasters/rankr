@@ -17,22 +17,22 @@ type MockRedisClient struct {
 }
 
 func (m *MockRedisClient) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis_client.StatusCmd {
-	args := m.Mock.Called(ctx, key, value, expiration)
+	args := m.Called(ctx, key, value, expiration)
 	return args.Get(0).(*redis_client.StatusCmd)
 }
 
 func (m *MockRedisClient) Get(ctx context.Context, key string) *redis_client.StringCmd {
-	args := m.Mock.Called(ctx, key)
+	args := m.Called(ctx, key)
 	return args.Get(0).(*redis_client.StringCmd)
 }
 
 func (m *MockRedisClient) Del(ctx context.Context, keys ...string) *redis_client.IntCmd {
-	args := m.Mock.Called(ctx, keys)
+	args := m.Called(ctx, keys)
 	return args.Get(0).(*redis_client.IntCmd)
 }
 
 func (m *MockRedisClient) TTL(ctx context.Context, key string) *redis_client.DurationCmd {
-	args := m.Mock.Called(ctx, key)
+	args := m.Called(ctx, key)
 	return args.Get(0).(*redis_client.DurationCmd)
 }
 
@@ -69,7 +69,7 @@ func TestCacheManager_Set(t *testing.T) {
 
 		err := cacheManager.Set(ctx, "key1", "value1", time.Minute)
 		assert.NoError(t, err)
-		mockClient.Mock.AssertExpectations(t)
+		mockClient.AssertExpectations(t)
 	})
 
 	// Test case: Set returns error
@@ -83,7 +83,7 @@ func TestCacheManager_Set(t *testing.T) {
 		err := cacheManager.Set(ctx, "key2", "value2", time.Minute)
 		assert.Error(t, err)
 		assert.Equal(t, "redis set error", err.Error())
-		mockClient.Mock.AssertExpectations(t)
+		mockClient.AssertExpectations(t)
 	})
 }
 
@@ -100,7 +100,7 @@ func TestCacheManager_Get(t *testing.T) {
 		result, err := cacheManager.Get(ctx, "key1")
 		assert.NoError(t, err)
 		assert.Equal(t, "value1", result)
-		mockClient.Mock.AssertExpectations(t)
+		mockClient.AssertExpectations(t)
 	})
 
 	// Test case: Get returns error
@@ -115,6 +115,6 @@ func TestCacheManager_Get(t *testing.T) {
 		assert.Error(t, err)
 		assert.Equal(t, "", result)
 		assert.Equal(t, "redis get error", err.Error())
-		mockClient.Mock.AssertExpectations(t)
+		mockClient.AssertExpectations(t)
 	})
 }

@@ -25,6 +25,8 @@ func main() {
 }
 
 // newHttpServerWithoutOtel For test this example go to http://127.0.0.1:8080/ping
+//
+//nolint:unused // switch the call in main to try it
 func newHttpServerWithoutOtel() {
 	serverConfig := httpserver.Config{
 		Port:            8080,

@@ -31,7 +31,9 @@ func NewSchedulerService(config Config, webhookSvc delivery.Service) *BulkInsert
 func (s *BulkInsertScheduler) Start(done <-chan bool, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	s.scheduler.Every(s.config.BulkInsertIntervalInSeconds).Seconds().Do(s.BulkInsertEvents)
+	if _, err := s.scheduler.Every(s.config.BulkInsertIntervalInSeconds).Seconds().Do(s.BulkInsertEvents); err != nil {
+		logger.L().Error("failed to schedule bulk insert", slog.String("error", err.Error()))
+	}
 	s.scheduler.StartAsync()
 
 	<-done

@@ -72,7 +72,9 @@ func migrate() {
 			fmt.Printf("failed to migrate up: %v", err)
 		}
 	} else if down {
-		mgr.Down()
+		if err := mgr.Down(); err != nil {
+			fmt.Printf("failed to migrate down: %v", err)
+		}
 	} else {
 		log.Println("Please specify a migration direction with --up or --down")
 		os.Exit(2)

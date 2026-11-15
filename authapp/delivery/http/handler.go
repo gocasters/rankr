@@ -116,11 +116,11 @@ func buildMeResponse(claims *tokenservice.UserClaims) echo.Map {
 		"role":    claims.Role,
 		"access":  claims.Access,
 	}
-	if claims.RegisteredClaims.ExpiresAt != nil {
-		response["expires_at"] = claims.RegisteredClaims.ExpiresAt.Time.Format(time.RFC3339)
+	if claims.ExpiresAt != nil {
+		response["expires_at"] = claims.ExpiresAt.Format(time.RFC3339)
 	}
-	if claims.RegisteredClaims.IssuedAt != nil {
-		response["issued_at"] = claims.RegisteredClaims.IssuedAt.Time.Format(time.RFC3339)
+	if claims.IssuedAt != nil {
+		response["issued_at"] = claims.IssuedAt.Format(time.RFC3339)
 	}
 	return response
 }

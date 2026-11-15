@@ -185,8 +185,10 @@ func TestCompositeOtelAdapter_GetCarrierFromContext(t *testing.T) {
 	}
 }
 
+type testCtxKey string
+
 func TestCompositeOtelAdapter_GetContextFromCarrier(t *testing.T) {
-	expectedCtx := context.WithValue(context.Background(), "test", "value")
+	expectedCtx := context.WithValue(context.Background(), testCtxKey("test"), "value")
 	adapter := &compositeOtelAdapter{
 		propagationHandler: &mockPropagationHandler{context: expectedCtx},
 		isConfigured:       true,
@@ -234,7 +236,7 @@ func TestCompositeOtelAdapter_AddFloat64Counter(t *testing.T) {
 	ctx := context.Background()
 	meter, _ := adapter.NewMeter("test-meter")
 
-	adapter.AddFloat64Counter(ctx, meter, "test_counter", "Test counter description", 1.5)
+	_ = adapter.AddFloat64Counter(ctx, meter, "test_counter", "Test counter description", 1.5)
 
 	if len(mockTracerProvider.startedSpans) != 1 {
 		t.Errorf("Expected 1 span to be created, got %d", len(mockTracerProvider.startedSpans))

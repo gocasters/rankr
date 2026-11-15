@@ -99,9 +99,8 @@ func (s *Service) saveEvent(ctx context.Context, event *eventpb.Event) error {
 
 	if queueLength >= s.insertBatchSize {
 		go func() {
-			err := s.ProcessBatch(context.Background())
-			if err != nil {
-				// log error
+			if err := s.ProcessBatch(context.Background()); err != nil {
+				logger.L().Error("failed to process batch", slog.String("error", err.Error()))
 			}
 		}()
 	}

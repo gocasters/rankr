@@ -339,26 +339,6 @@ func (s *Service) sortDailyScores(dailyScores []DailyContributorScore) []DailyCo
 	return sorted
 }
 
-// TODO - Implement UserID To ContributorID
-func (s *Service) mapUserIDToContributorID(ctx context.Context, userID string) (types.ID, error) {
-	return types.ID(1), nil
-}
-
-func (s *Service) updateCacheAfterDailyCalculation(ctx context.Context, scores []DailyContributorScore) error {
-	log := logger.L()
-	cacheKey := "global_leaderboard:daily"
-	if err := s.cacheManager.Delete(ctx, cacheKey); err != nil {
-		return fmt.Errorf("failed to clear cache: %w", err)
-	}
-	cacheSetErr := s.cacheManager.Set(ctx, cacheKey, scores, 24*time.Hour)
-	if cacheSetErr != nil {
-		return fmt.Errorf("failed to set cache: %w", cacheSetErr)
-	}
-
-	log.Info("Cache set successfully", slog.String("cache_key", cacheKey), slog.String("timestamp", time.Now().String()))
-	return nil
-}
-
 func (s *Service) buildScoreHistory(records []ScoreRecord) map[types.ID][]ScoreEntry {
 
 	history := make(map[types.ID][]ScoreEntry)
@@ -454,14 +434,6 @@ func (s *Service) GetContributorStats(ctx context.Context, contributorID types.I
 
 	return stats, nil
 }*/
-
-func convertProtoProjectsScore(protoScores map[uint64]float64) map[types.ID]float64 {
-	projectsScore := make(map[types.ID]float64)
-	for projectID, score := range protoScores {
-		projectsScore[types.ID(projectID)] = score
-	}
-	return projectsScore
-}
 
 func (s *Service) GetPublicLeaderboard(ctx context.Context, projectID types.ID, pageSize int32, page int32) (ProjectScoreList, error) {
 	log := logger.L()

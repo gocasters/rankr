@@ -56,7 +56,6 @@ type Service struct {
 	jobRepo            Repository
 	publisher          Publisher
 	contributorAdapter ContributorAdapter
-	fileProcessor      FileProcessor
 	failRepo           FailRepository
 	validator          ValidatorJobRepo
 }
@@ -308,6 +307,7 @@ func (s Service) JobStatus(ctx context.Context, id uint) (GetJobResponse, error)
 		}
 	}
 
+	//nolint:staticcheck // S1016: keep the API response independent of the entity
 	return GetJobResponse{
 		ID:             job.ID,
 		SuccessCount:   job.SuccessCount,

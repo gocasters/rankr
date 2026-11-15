@@ -47,13 +47,14 @@ func TestIntegrationSuite(t *testing.T) {
 
 // SetupSuite initializes all containers and dependencies
 func (suite *IntegrationTestSuite) SetupSuite() {
-	logger.Init(logger.Config{
+	err := logger.Init(logger.Config{
 		Level:            "debug",
 		FilePath:         "logs/leaderboardscoringapp/integration_test.log",
 		UseLocalTime:     true,
 		FileMaxSizeInMB:  10,
 		FileMaxAgeInDays: 7,
 	})
+	suite.Require().NoError(err)
 
 	suite.ctx = context.Background()
 
@@ -236,8 +237,8 @@ func (suite *IntegrationTestSuite) SetupTest() {
 	suite.redisClient.FlushAll(suite.ctx)
 
 	// Clear database tables
-	suite.postgresConn.Pool.Exec(suite.ctx, "TRUNCATE processed_score_events CASCADE")
-	suite.postgresConn.Pool.Exec(suite.ctx, "TRUNCATE user_total_scores CASCADE")
+	_, _ = suite.postgresConn.Pool.Exec(suite.ctx, "TRUNCATE processed_score_events CASCADE")
+	_, _ = suite.postgresConn.Pool.Exec(suite.ctx, "TRUNCATE user_total_scores CASCADE")
 
 	suite.mockPublisher.Reset()
 }

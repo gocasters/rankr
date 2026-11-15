@@ -186,7 +186,7 @@ func TestClient_Close(t *testing.T) {
 		},
 	})
 
-	go server.Serve(lis)
+	go func() { _ = server.Serve(lis) }()
 	defer server.Stop()
 
 	conn, err := grpc.Dial(lis.Addr().String(), grpc.WithInsecure())
