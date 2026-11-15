@@ -172,12 +172,12 @@ install-protoc-plugins:
 install-buf:
 	@echo "Installing Buf $(BUF_VERSION)..."
 	@if command -v buf &> /dev/null && buf --version &> /dev/null; then \
-	   CURRENT_VERSION=$(buf --version | sed 's/^v//'); \
-	   EXPECTED_VERSION=$(echo "$(BUF_VERSION)" | sed 's/^v//'); \
+	   CURRENT_VERSION=$$(buf --version | sed 's/^v//'); \
+	   EXPECTED_VERSION=$$(echo "$(BUF_VERSION)" | sed 's/^v//'); \
 	   if [ "$$CURRENT_VERSION" = "$$EXPECTED_VERSION" ]; then \
 	      echo "Buf $(BUF_VERSION) is already installed"; \
 	   else \
-	      echo "Buf version mismatch. Expected $(BUF_VERSION), found $CURRENT_VERSION. Reinstalling..."; \
+	      echo "Buf version mismatch. Expected $(BUF_VERSION), found $$CURRENT_VERSION. Reinstalling..."; \
 	      $(MAKE) install-buf-force; \
 	   fi; \
 	else \
@@ -189,7 +189,7 @@ install-buf-force:
 	@echo "Force installing Buf $(BUF_VERSION)..."
 	@if command -v curl &> /dev/null; then \
 	   ARCHIVE="/tmp/buf-$(BUF_VERSION).tar.gz"; \
-	   curl -sSL "https://github.com/bufbuild/buf/releases/download/v$(BUF_VERSION)/buf-$$(uname -s)-$$(uname -m).tar.gz" -o $$ARCHIVE && \
+	   curl -sSL "https://github.com/bufbuild/buf/releases/download/$(BUF_VERSION)/buf-$$(uname -s)-$$(uname -m).tar.gz" -o $$ARCHIVE && \
 	   tar -xzf $$ARCHIVE -C /tmp && \
 	   chmod +x /tmp/buf/bin/buf && \
 	   sudo mv /tmp/buf/bin/buf /usr/local/bin/buf && \
