@@ -10,20 +10,28 @@ import (
 )
 
 func (s *Service) HandlePullRequestReviewEvent(provider eventpb.EventProvider, action string, body []byte, deliveryUID string) error {
+	ev, err := buildPullRequestReviewEvent(provider, action, body, deliveryUID)
+	if err != nil {
+		return err
+	}
+	return s.saveEvent(context.Background(), ev)
+}
+
+func buildPullRequestReviewEvent(provider eventpb.EventProvider, action string, body []byte, deliveryUID string) (*eventpb.Event, error) {
 	switch action {
 	case "submitted":
 		var reviewData PullRequestReviewSubmittedRequest
 		if err := json.Unmarshal(body, &reviewData); err != nil {
-			return err
+			return nil, err
 		}
-		return s.PublishPullRequestReviewSubmitted(reviewData, provider, deliveryUID)
+		return newPullRequestReviewSubmittedEvent(reviewData, provider, deliveryUID), nil
 
 	default:
-		return fmt.Errorf("pull request review action '%s' not handled", action)
+		return nil, fmt.Errorf("pull request review action '%s' not handled", action)
 	}
 }
 
-func (s *Service) PublishPullRequestReviewSubmitted(req PullRequestReviewSubmittedRequest, provider eventpb.EventProvider, deliveryUID string) error {
+func newPullRequestReviewSubmittedEvent(req PullRequestReviewSubmittedRequest, provider eventpb.EventProvider, deliveryUID string) *eventpb.Event {
 	ev := &eventpb.Event{
 		Id:             deliveryUID,
 		EventName:      eventpb.EventName_EVENT_NAME_PULL_REQUEST_REVIEW_SUBMITTED,
@@ -42,6 +50,5 @@ func (s *Service) PublishPullRequestReviewSubmitted(req PullRequestReviewSubmitt
 		},
 	}
 
-	ctx := context.Background()
-	return s.saveEvent(ctx, ev)
+	return ev
 }

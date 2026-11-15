@@ -1,0 +1,3 @@
+github_id,github_username,display_name,profile_image,bio,privacy_mode,email
+101,alice01,Alice,,,real,alice@example.com
+notanumber,bob002,bob,,,real,bob@example.com

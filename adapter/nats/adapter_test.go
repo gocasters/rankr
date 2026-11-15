@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ThreeDotsLabs/watermill"
+	watermillnats "github.com/ThreeDotsLabs/watermill-nats/v2/pkg/nats"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -222,6 +223,20 @@ func TestConfigSetDefaults_PartialConfig(t *testing.T) {
 	assert.True(t, config.AllowReconnect)
 }
 
+func TestNewSubscriberConfig_KeepsFailedEventsForRetry(t *testing.T) {
+	config := validConfig
+	config.SetDefaults()
+
+	subscriberConfig := newSubscriberConfig(config, nil, &watermillnats.NATSMarshaler{})
+
+	if subscriberConfig.NakDelay == nil {
+		t.Fatal("newSubscriberConfig() NakDelay = nil, want non-nil")
+	}
+	assert.Equal(t, nakRedeliveryDelay, subscriberConfig.NakDelay.WaitTime(1))
+	assert.Equal(t, nakRedeliveryDelay, subscriberConfig.NakDelay.WaitTime(10))
+	assert.Equal(t, nakRedeliveryDelay, subscriberConfig.NakDelay.WaitTime(11))
+}
+
 func TestFormatValidationErrors(t *testing.T) {
 	testCases := []struct {
 		name           string
@@ -254,13 +269,14 @@ func TestFormatValidationErrors(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			result := FormatValidationErrors(tc.errors)
 
-			if tc.name == "empty errors" {
+			switch tc.name {
+			case "empty errors":
 				assert.Equal(t, tc.expectedResult, result)
-			} else if tc.name == "single error" {
+			case "single error":
 				assert.Contains(t, result, "validation errors:")
 				assert.Contains(t, result, "url:")
 				assert.Contains(t, result, "assert.AnError")
-			} else {
+			default:
 				assert.Contains(t, result, "validation errors:")
 			}
 		})
@@ -270,7 +286,7 @@ func TestFormatValidationErrors(t *testing.T) {
 func TestNew_NilContext(t *testing.T) {
 	logger := watermill.NewStdLogger(false, false)
 
-	adapter, err := New(nil, validConfig, logger)
+	adapter, err := New(nil, validConfig, logger) //nolint:staticcheck // SA1012: the nil context is what this test checks
 
 	assert.Nil(t, adapter)
 	assert.Error(t, err)

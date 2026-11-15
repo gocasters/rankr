@@ -17,7 +17,7 @@ var serveCmd = &cobra.Command{
 
 func serve() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"message":"Hello from Go HTTP server","status":"ok"}`))
+		_, _ = w.Write([]byte(`{"message":"Hello from Go HTTP server","status":"ok"}`))
 	})
 
 	err := http.ListenAndServe(":8080", nil)

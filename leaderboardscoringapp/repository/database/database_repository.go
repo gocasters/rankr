@@ -7,7 +7,7 @@ import (
 	"github.com/gocasters/rankr/pkg/logger"
 	"github.com/gocasters/rankr/pkg/statuscode"
 	"log/slog"
-	"math/rand"
+	"math/rand" //nolint:depguard // retry jitter only, not security-sensitive; TODO(#285 follow-up): switch to crypto/rand or an injected source
 	"time"
 
 	"github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"

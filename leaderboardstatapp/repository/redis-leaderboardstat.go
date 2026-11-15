@@ -26,7 +26,7 @@ func NewRedisLeaderboardRepository(client *redis.Client) *RedisLeaderboardReposi
 }
 
 func (r *RedisLeaderboardRepository) GetPublicLeaderboardPaginated(ctx context.Context, projectID types.ID, page, pageSize int32) ([]leaderboardstat.UserScoreEntry, int64, error) {
-	cacheKey := fmt.Sprintf("public_leaderboard:project:%d", projectID)
+	cacheKey := fmt.Sprintf("public_leaderboard:project:%d:timeframe:daily", projectID)
 
 	if page < 1 {
 		page = 1
@@ -79,9 +79,9 @@ func (r *RedisLeaderboardRepository) GetPublicLeaderboardPaginated(ctx context.C
 	return userScores, total, nil
 }
 
-func (r *RedisLeaderboardRepository) SetPublicLeaderboard(ctx context.Context, projectID types.ID, userScores map[int]float64, ttl time.Duration) error {
+func (r *RedisLeaderboardRepository) SetPublicLeaderboard(ctx context.Context, projectID types.ID, timeframe string, userScores map[int]float64, ttl time.Duration) error {
 	log := logger.L()
-	cacheKey := fmt.Sprintf("public_leaderboard:project:%d", projectID)
+	cacheKey := fmt.Sprintf("public_leaderboard:project:%d:timeframe:%s", projectID, timeframe)
 
 	pipe := r.client.Pipeline()
 

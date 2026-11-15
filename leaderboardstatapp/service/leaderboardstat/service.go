@@ -7,7 +7,7 @@ import (
 	"github.com/gocasters/rankr/adapter/leaderboardscoring"
 
 	"github.com/gocasters/rankr/adapter/project"
-	lbscoring "github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring"
+	lbscoring "github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring" //nolint:depguard // TODO(#285 follow-up): use the protobuf leaderboardscoring client types
 
 	"github.com/gocasters/rankr/pkg/cachemanager"
 	"github.com/gocasters/rankr/pkg/logger"
@@ -53,7 +53,7 @@ type ContributorClient interface {
 
 type RedisLeaderboardRepository interface {
 	GetPublicLeaderboardPaginated(ctx context.Context, projectID types.ID, page int32, pageSize int32) ([]UserScoreEntry, int64, error)
-	SetPublicLeaderboard(ctx context.Context, projectID types.ID, userScores map[int]float64, ttl time.Duration) error
+	SetPublicLeaderboard(ctx context.Context, projectID types.ID, timeframe string, userScores map[int]float64, ttl time.Duration) error
 }
 
 type Service struct {
@@ -348,26 +348,6 @@ func (s *Service) sortDailyScores(dailyScores []DailyContributorScore) []DailyCo
 	return sorted
 }
 
-// TODO - Implement UserID To ContributorID
-func (s *Service) mapUserIDToContributorID(ctx context.Context, userID string) (types.ID, error) {
-	return types.ID(1), nil
-}
-
-func (s *Service) updateCacheAfterDailyCalculation(ctx context.Context, scores []DailyContributorScore) error {
-	log := logger.L()
-	cacheKey := "global_leaderboard:daily"
-	if err := s.cacheManager.Delete(ctx, cacheKey); err != nil {
-		return fmt.Errorf("failed to clear cache: %w", err)
-	}
-	cacheSetErr := s.cacheManager.Set(ctx, cacheKey, scores, 24*time.Hour)
-	if cacheSetErr != nil {
-		return fmt.Errorf("failed to set cache: %w", cacheSetErr)
-	}
-
-	log.Info("Cache set successfully", slog.String("cache_key", cacheKey), slog.String("timestamp", time.Now().String()))
-	return nil
-}
-
 func (s *Service) buildScoreHistory(records []ScoreRecord) map[types.ID][]ScoreEntry {
 
 	history := make(map[types.ID][]ScoreEntry)
@@ -479,14 +459,6 @@ func (s *Service) GetContributorStats(ctx context.Context, contributorID types.I
 	return stats, nil
 }*/
 
-func convertProtoProjectsScore(protoScores map[uint64]float64) map[types.ID]float64 {
-	projectsScore := make(map[types.ID]float64)
-	for projectID, score := range protoScores {
-		projectsScore[types.ID(projectID)] = score
-	}
-	return projectsScore
-}
-
 func (s *Service) GetPublicLeaderboard(ctx context.Context, projectID types.ID, pageSize int32, page int32) (ProjectScoreList, error) {
 	log := logger.L()
 	log.Info("GetPublicLeaderboard called")
@@ -557,6 +529,13 @@ func (s *Service) SetPublicLeaderboard(ctx context.Context) error {
 
 	ttl := 3 * time.Minute
 
+	type publicProject struct {
+		item project.ProjectItem
+		id   types.ID
+	}
+
+	// Check every project once and keep the valid ones for both passes.
+	var valid []publicProject
 	for _, proj := range allProjects {
 		if proj.GitRepoID == "" {
 			log.Warn("Project has no git_repo_id, skipping",
@@ -565,79 +544,102 @@ func (s *Service) SetPublicLeaderboard(ctx context.Context) error {
 			continue
 		}
 
-		log.Info("Updating public leaderboard for project",
-			slog.String("project_id", proj.ProjectID),
-			slog.String("git_repo_id", proj.GitRepoID),
-			slog.String("name", proj.Name))
-
-		userScores := make(map[int]float64)
-
-		pageSize := int32(100)
-		offset := int32(0)
-
-		for {
-			getLeaderboardReq := &lbscoring.GetLeaderboardRequest{
-				Timeframe: "daily",
-				ProjectID: &proj.GitRepoID,
-				PageSize:  pageSize,
-				Offset:    offset,
-			}
-
-			leaderboardRes, err := s.lbScoringClient.GetLeaderboard(ctx, getLeaderboardReq)
-			if err != nil {
-				log.Error("Failed to get leaderboard data for project",
-					slog.String("git_repo_id", proj.GitRepoID),
-					slog.String("error", err.Error()))
-				break
-			}
-
-			for _, row := range leaderboardRes.LeaderboardRows {
-				contributorID, err := strconv.Atoi(row.UserID)
-				if err != nil {
-					log.Warn("Failed to convert user ID",
-						slog.String("user_id", row.UserID))
-					continue
-				}
-
-				userScores[contributorID] = float64(row.Score)
-			}
-
-			if len(leaderboardRes.LeaderboardRows) < int(pageSize) {
-				break
-			}
-
-			offset += pageSize
+		gitRepoIDInt, parseErr := strconv.ParseUint(proj.GitRepoID, 10, 64)
+		if parseErr != nil {
+			log.Error("Failed to parse git_repo_id as uint64",
+				slog.String("git_repo_id", proj.GitRepoID),
+				slog.String("error", parseErr.Error()))
+			continue
 		}
 
-		if len(userScores) > 0 {
-			gitRepoIDInt, parseErr := strconv.ParseUint(proj.GitRepoID, 10, 64)
-			if parseErr != nil {
-				log.Error("Failed to parse git_repo_id as uint64",
-					slog.String("git_repo_id", proj.GitRepoID),
-					slog.String("error", parseErr.Error()))
-				continue
-			}
+		valid = append(valid, publicProject{item: proj, id: types.ID(gitRepoIDInt)})
+	}
 
-			err := s.redisLeaderboardRepo.SetPublicLeaderboard(ctx, types.ID(gitRepoIDInt), userScores, ttl)
-			if err != nil {
-				log.Error("Failed to set public leaderboard in Redis",
-					slog.String("git_repo_id", proj.GitRepoID),
-					slog.String("error", err.Error()))
-				continue
-			}
+	// First pass: the public read path only uses the daily key, so refresh
+	// daily for every project before the run's deadline is spent on the
+	// other timeframes.
+	for _, p := range valid {
+		s.refreshPublicLeaderboard(ctx, p.item, p.id, lbscoring.Daily.String(), ttl)
+	}
 
-			log.Info("Updated public leaderboard for project",
-				slog.String("git_repo_id", proj.GitRepoID),
-				slog.String("name", proj.Name),
-				slog.Int("total_contributors", len(userScores)),
-				slog.String("ttl", ttl.String()))
-		} else {
-			log.Warn("No scores found for project",
-				slog.String("git_repo_id", proj.GitRepoID),
-				slog.String("name", proj.Name))
+	// Second pass: the other timeframes use whatever time is left in the run.
+	for _, tf := range lbscoring.Timeframes {
+		if tf == lbscoring.Daily {
+			continue
+		}
+		for _, p := range valid {
+			s.refreshPublicLeaderboard(ctx, p.item, p.id, tf.String(), ttl)
 		}
 	}
 
 	log.Info("Public leaderboard updated successfully")
 	return nil
+}
+
+// refreshPublicLeaderboard reads one project's leaderboard for one timeframe
+// from leaderboardscoring and writes it to that timeframe's sorted set.
+func (s *Service) refreshPublicLeaderboard(ctx context.Context, proj project.ProjectItem, projectID types.ID, timeframe string, ttl time.Duration) {
+	log := logger.L()
+
+	userScores := make(map[int]float64)
+	pageSize := int32(100)
+	offset := int32(0)
+
+	for {
+		getLeaderboardReq := &lbscoring.GetLeaderboardRequest{
+			Timeframe: timeframe,
+			ProjectID: &proj.GitRepoID,
+			PageSize:  pageSize,
+			Offset:    offset,
+		}
+
+		leaderboardRes, err := s.lbScoringClient.GetLeaderboard(ctx, getLeaderboardReq)
+		if err != nil {
+			log.Error("Failed to get leaderboard data for project",
+				slog.String("git_repo_id", proj.GitRepoID),
+				slog.String("timeframe", timeframe),
+				slog.String("error", err.Error()))
+			break
+		}
+
+		for _, row := range leaderboardRes.LeaderboardRows {
+			contributorID, err := strconv.Atoi(row.UserID)
+			if err != nil {
+				log.Warn("Failed to convert user ID",
+					slog.String("user_id", row.UserID))
+				continue
+			}
+
+			userScores[contributorID] = float64(row.Score)
+		}
+
+		if len(leaderboardRes.LeaderboardRows) < int(pageSize) {
+			break
+		}
+
+		offset += pageSize
+	}
+
+	if len(userScores) == 0 {
+		log.Warn("No scores found for project",
+			slog.String("git_repo_id", proj.GitRepoID),
+			slog.String("name", proj.Name),
+			slog.String("timeframe", timeframe))
+		return
+	}
+
+	if err := s.redisLeaderboardRepo.SetPublicLeaderboard(ctx, projectID, timeframe, userScores, ttl); err != nil {
+		log.Error("Failed to set public leaderboard in Redis",
+			slog.String("git_repo_id", proj.GitRepoID),
+			slog.String("timeframe", timeframe),
+			slog.String("error", err.Error()))
+		return
+	}
+
+	log.Info("Updated public leaderboard for project",
+		slog.String("git_repo_id", proj.GitRepoID),
+		slog.String("name", proj.Name),
+		slog.String("timeframe", timeframe),
+		slog.Int("total_contributors", len(userScores)),
+		slog.String("ttl", ttl.String()))
 }

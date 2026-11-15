@@ -12,28 +12,36 @@ import (
 )
 
 func (s *Service) HandlePullRequestEvent(provider eventpb.EventProvider, action string, body []byte, deliveryUID string) error {
+	ev, err := buildPullRequestEvent(provider, action, body, deliveryUID)
+	if err != nil {
+		return err
+	}
+	return s.saveEvent(context.Background(), ev)
+}
+
+func buildPullRequestEvent(provider eventpb.EventProvider, action string, body []byte, deliveryUID string) (*eventpb.Event, error) {
 	switch action {
 	case "opened":
 		var req PullRequestOpenedRequest
 		if err := json.Unmarshal(body, &req); err != nil {
-			return err
+			return nil, err
 		}
 
-		return s.publishPullRequestOpened(req, provider, deliveryUID)
+		return newPullRequestOpenedEvent(req, provider, deliveryUID), nil
 
 	case "closed":
 		var req PullRequestClosedRequest
 		if err := json.Unmarshal(body, &req); err != nil {
-			return err
+			return nil, err
 		}
-		return s.publishPullRequestClosed(req, provider, deliveryUID)
+		return newPullRequestClosedEvent(req, provider, deliveryUID), nil
 
 	default:
-		return fmt.Errorf("pull request action '%s' not handled", action)
+		return nil, fmt.Errorf("pull request action '%s' not handled", action)
 	}
 }
 
-func (s *Service) publishPullRequestOpened(req PullRequestOpenedRequest, provider eventpb.EventProvider, deliveryUID string) error {
+func newPullRequestOpenedEvent(req PullRequestOpenedRequest, provider eventpb.EventProvider, deliveryUID string) *eventpb.Event {
 	_ = deliveryUID
 	ev := &eventpb.Event{
 		Id:             watermill.NewUUID(),
@@ -56,11 +64,10 @@ func (s *Service) publishPullRequestOpened(req PullRequestOpenedRequest, provide
 		},
 	}
 
-	ctx := context.Background()
-	return s.saveEvent(ctx, ev)
+	return ev
 }
 
-func (s *Service) publishPullRequestClosed(req PullRequestClosedRequest, provider eventpb.EventProvider, deliveryUID string) error {
+func newPullRequestClosedEvent(req PullRequestClosedRequest, provider eventpb.EventProvider, deliveryUID string) *eventpb.Event {
 	_ = deliveryUID
 	authorID := req.Sender.ID
 	if req.PullRequest.User != nil {
@@ -102,6 +109,5 @@ func (s *Service) publishPullRequestClosed(req PullRequestClosedRequest, provide
 		},
 	}
 
-	ctx := context.Background()
-	return s.saveEvent(ctx, ev)
+	return ev
 }

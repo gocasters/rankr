@@ -58,13 +58,19 @@ func serve() {
 		mgr := migrator.New(cfg.PostgresDB, cfg.PathOfMigration)
 		if migrateUp {
 			leaderboardLogger.Info("Running migrations up...")
-			mgr.Up()
-			leaderboardLogger.Info("Migrations up completed.")
+			if err := mgr.Up(); err != nil {
+				leaderboardLogger.Error("failed to run migrations up", "error", err)
+			} else {
+				leaderboardLogger.Info("Migrations up completed.")
+			}
 		}
 		if migrateDown {
 			leaderboardLogger.Info("Running migrations down...")
-			mgr.Down()
-			leaderboardLogger.Info("Migrations down completed.")
+			if err := mgr.Down(); err != nil {
+				leaderboardLogger.Error("failed to run migrations down", "error", err)
+			} else {
+				leaderboardLogger.Info("Migrations down completed.")
+			}
 		}
 	}
 

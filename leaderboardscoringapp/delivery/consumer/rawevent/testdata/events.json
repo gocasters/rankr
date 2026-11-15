@@ -1,0 +1,22 @@
+[
+  {"id": "evt-0001", "eventName": "EVENT_NAME_ISSUE_OPENED", "time": "2026-10-20T08:00:00Z", "repositoryId": "1000001", "repositoryName": "example-org/example-repo", "provider": "EVENT_PROVIDER_GITHUB",
+   "issueOpenedPayload": {"userId": "2003", "issueId": "3000001", "issueNumber": 11, "title": "Leaderboard ignores project id", "labels": ["bug"]}},
+  {"id": "evt-0002", "eventName": "EVENT_NAME_PULL_REQUEST_OPENED", "time": "2026-10-20T09:00:00Z", "repositoryId": "1000001", "repositoryName": "example-org/example-repo", "provider": "EVENT_PROVIDER_GITHUB",
+   "prOpenedPayload": {"userId": "2001", "prId": "4000001", "prNumber": 12, "title": "Use project id in leaderboard key", "branchName": "fix/11-project-id", "targetBranch": "main"}},
+  {"id": "evt-0003", "eventName": "EVENT_NAME_PULL_REQUEST_REVIEW_SUBMITTED", "time": "2026-10-20T10:00:00Z", "repositoryId": "1000001", "repositoryName": "example-org/example-repo", "provider": "EVENT_PROVIDER_GITHUB",
+   "prReviewPayload": {"reviewerUserId": "2002", "prAuthorUserId": "2001", "prId": "4000001", "prNumber": 12, "state": "REVIEW_STATE_COMMENTED"}},
+  {"id": "evt-0004", "eventName": "EVENT_NAME_PULL_REQUEST_REVIEW_SUBMITTED", "time": "2026-10-20T11:00:00Z", "repositoryId": "1000001", "repositoryName": "example-org/example-repo", "provider": "EVENT_PROVIDER_GITHUB",
+   "prReviewPayload": {"reviewerUserId": "2002", "prAuthorUserId": "2001", "prId": "4000001", "prNumber": 12, "state": "REVIEW_STATE_APPROVED"}},
+  {"id": "evt-0005", "eventName": "EVENT_NAME_ISSUE_COMMENTED", "time": "2026-10-20T11:30:00Z", "repositoryId": "1000001", "repositoryName": "example-org/example-repo", "provider": "EVENT_PROVIDER_GITHUB",
+   "issueCommentedPayload": {"userId": "2001", "issueAuthorId": "2003", "issueId": "3000001", "issueNumber": 11, "commentLength": 42}},
+  {"id": "evt-0006", "eventName": "EVENT_NAME_PULL_REQUEST_CLOSED", "time": "2026-10-20T12:00:00Z", "repositoryId": "1000001", "repositoryName": "example-org/example-repo", "provider": "EVENT_PROVIDER_GITHUB",
+   "prClosedPayload": {"userId": "2001", "mergerUserId": "2002", "prId": "4000001", "prNumber": 12, "closeReason": "PR_CLOSE_REASON_MERGED", "merged": true, "additions": 14, "deletions": 3, "filesChanged": 2, "commitsCount": 1, "targetBranch": "main"}},
+  {"id": "evt-0007", "eventName": "EVENT_NAME_PUSHED", "time": "2026-10-20T12:00:05Z", "repositoryId": "1000001", "repositoryName": "example-org/example-repo", "provider": "EVENT_PROVIDER_GITHUB",
+   "pushPayload": {"userId": "2002", "branchName": "main", "commitsCount": 1, "commits": [{"authorName": "contributor-a", "commitId": "0000000000000000000000000000000000000001", "message": "Use project id in leaderboard key (#12)", "additions": 14, "deletions": 3, "modified": 2}]}},
+  {"id": "evt-0008", "eventName": "EVENT_NAME_ISSUE_CLOSED", "time": "2026-10-20T12:00:10Z", "repositoryId": "1000001", "repositoryName": "example-org/example-repo", "provider": "EVENT_PROVIDER_GITHUB",
+   "issueClosedPayload": {"userId": "2002", "issueAuthorId": "2003", "issueId": "3000001", "issueNumber": 11, "closeReason": "ISSUE_CLOSE_REASON_COMPLETED", "openedAt": "2026-10-20T08:00:00Z", "commentsCount": 1}},
+  {"id": "evt-0009", "eventName": "EVENT_NAME_PULL_REQUEST_CLOSED", "time": "2026-10-21T09:00:00Z", "repositoryId": "1000001", "repositoryName": "example-org/example-repo", "provider": "EVENT_PROVIDER_GITHUB",
+   "prClosedPayload": {"userId": "2003", "mergerUserId": "2003", "prId": "4000002", "prNumber": 13, "closeReason": "PR_CLOSE_REASON_CLOSED_WITHOUT_MERGE", "merged": false, "targetBranch": "main"}},
+  {"id": "evt-0006", "eventName": "EVENT_NAME_PULL_REQUEST_CLOSED", "time": "2026-10-20T12:00:00Z", "repositoryId": "1000001", "repositoryName": "example-org/example-repo", "provider": "EVENT_PROVIDER_GITHUB",
+   "prClosedPayload": {"userId": "2001", "mergerUserId": "2002", "prId": "4000001", "prNumber": 12, "closeReason": "PR_CLOSE_REASON_MERGED", "merged": true, "additions": 14, "deletions": 3, "filesChanged": 2, "commitsCount": 1, "targetBranch": "main"}}
+]

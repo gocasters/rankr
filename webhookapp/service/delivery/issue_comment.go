@@ -10,19 +10,27 @@ import (
 )
 
 func (s *Service) HandleIssueCommentEvent(provider eventpb.EventProvider, action string, body []byte, deliveryUID string) error {
+	ev, err := buildIssueCommentEvent(provider, action, body, deliveryUID)
+	if err != nil {
+		return err
+	}
+	return s.saveEvent(context.Background(), ev)
+}
+
+func buildIssueCommentEvent(provider eventpb.EventProvider, action string, body []byte, deliveryUID string) (*eventpb.Event, error) {
 	switch action {
 	case "created":
 		var req IssueCommentCreatedRequest
 		if err := json.Unmarshal(body, &req); err != nil {
-			return err
+			return nil, err
 		}
-		return s.publishIssueComment(req, provider, deliveryUID)
+		return newIssueCommentEvent(req, provider, deliveryUID), nil
 	default:
-		return fmt.Errorf("issue_comment action '%s' not handled", action)
+		return nil, fmt.Errorf("issue_comment action '%s' not handled", action)
 	}
 }
 
-func (s *Service) publishIssueComment(req IssueCommentCreatedRequest, provider eventpb.EventProvider, deliveryUID string) error {
+func newIssueCommentEvent(req IssueCommentCreatedRequest, provider eventpb.EventProvider, deliveryUID string) *eventpb.Event {
 	ev := &eventpb.Event{
 		Id:             deliveryUID,
 		EventName:      eventpb.EventName_EVENT_NAME_ISSUE_COMMENTED,
@@ -41,6 +49,5 @@ func (s *Service) publishIssueComment(req IssueCommentCreatedRequest, provider e
 		},
 	}
 
-	ctx := context.Background()
-	return s.saveEvent(ctx, ev)
+	return ev
 }

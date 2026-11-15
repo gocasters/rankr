@@ -1,0 +1,15 @@
+{
+  "action": "closed",
+  "number": 13,
+  "pull_request": {
+    "id": 4000002, "number": 13, "state": "closed", "title": "Try a different cache key",
+    "user": {"id": 2003, "login": "contributor-c"},
+    "created_at": "2026-10-21T08:00:00Z", "closed_at": "2026-10-21T09:00:00Z", "merged_at": null,
+    "merged": false, "merged_by": null,
+    "head": {"ref": "try/cache-key"}, "base": {"ref": "main"},
+    "additions": 5, "deletions": 1, "changed_files": 1, "commits": 1,
+    "labels": [], "assignees": []
+  },
+  "repository": {"id": 1000001, "name": "example-repo", "full_name": "example-org/example-repo"},
+  "sender": {"id": 2003, "login": "contributor-c"}
+}

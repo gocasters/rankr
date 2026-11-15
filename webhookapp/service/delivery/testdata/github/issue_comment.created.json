@@ -1,0 +1,13 @@
+{
+  "action": "created",
+  "issue": {
+    "id": 3000001, "number": 11, "state": "open", "title": "Leaderboard ignores project id",
+    "user": {"id": 2003, "login": "contributor-c"}, "created_at": "2026-10-20T08:00:00Z"
+  },
+  "comment": {
+    "id": 6000001, "user": {"id": 2001, "login": "contributor-a"},
+    "body": "The key is built in `generateKeys`.", "created_at": "2026-10-20T11:30:00Z"
+  },
+  "repository": {"id": 1000001, "name": "example-repo", "full_name": "example-org/example-repo"},
+  "sender": {"id": 2001, "login": "contributor-a"}
+}

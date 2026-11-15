@@ -22,15 +22,25 @@ go mod download
 cp deploy/infrastructure/postgresql/development/.env-example deploy/infrastructure/postgresql/development/.env
 cp deploy/task/development/.env.example deploy/task/development/.env
 
-# 4. Start shared infrastructure (PostgreSQL, Redis, NATS, ...)
-make infra-up
+# 4a. Stage v1 stack (recommended): shared infra + six v1 apps + dev gateway
+make up-v1
 
-# 5. Start the services you need, one by one
+# — or —
+
+# 4b. Full dev stack: all shared infra (including EMQX) plus every application service
+make infra-up
+make services-up
+
+# 4c. Start only the services you need, one by one (after make infra-up)
 make start-auth-app-dev
 make start-project-app-dev
 ```
 
-To start every service at once, use `make services-up` (heavy on a laptop).
+`make up-v1` brings up the base Docker network, PostgreSQL, Redis, NATS, OpenResty (dev gateway on port 80), and the six Stage v1 services: auth, contributor, leaderboardscoring, leaderboardstat, project, and webhook. It skips EMQX and non–v1 apps (notification, realtime, task, userprofile).
+
+**Behavior:** each v1 service is started in order and Compose waits up to **`DEV_WAIT_TIMEOUT` seconds** (default **20**) for its **healthcheck** to pass. If any service fails that window, `up-v1` still starts the rest, then **exits with status 1** and prints a warning instead of “all services are up”. On a cold machine or first compile, raise the budget, e.g. `DEV_WAIT_TIMEOUT=120 make up-v1`. After you change **`deploy/development/Dockerfile`**, **`DEFAULT_AIR_VERSION` / Air args in the Makefile**, or **`go.mod`**, run **`FORCE=1 make docker-build-dev`** once so the shared `rankr-go-dev` image is rebuilt (by default `docker-build-dev` skips the build when the image already exists). GNU Make reserves **`-f`** for the makefile path, so we use **`FORCE=1`** instead of a `-f` flag.
+
+To start every application service at once without using `up-v1`, use `make services-up` (heavy on a laptop).
 
 New here? Read [AGENTS.md](AGENTS.md) and [docs/agentic/WORKFLOW.md](docs/agentic/WORKFLOW.md) before your first PR.
 
@@ -38,8 +48,45 @@ New here? Read [AGENTS.md](AGENTS.md) and [docs/agentic/WORKFLOW.md](docs/agenti
 
 ```bash
 make stop-auth-app-dev    # stop one service
-make infra-logs           # follow infrastructure logs
-make infra-down           # stop shared infrastructure
+make down                 # stop all dev application services and shared infrastructure
+make logs                 # follow shared infrastructure logs (via infra-logs)
+make infra-logs           # same as above
+```
+
+### Webhook development
+
+The webhook service requires an HMAC secret at startup. Generate a local-only
+secret and save it in the Compose environment file:
+
+```bash
+openssl rand -hex 32
+
+# Create this ignored file and paste the generated value after `=`.
+printf 'GITHUB_WEBHOOK_SECRET=replace-with-the-generated-value\n' \
+  > deploy/webhook/development/.env
+```
+
+Never commit the generated secret or any `.env` file. Docker Compose loads
+`deploy/webhook/development/.env` when starting the webhook service.
+
+Start the shared infrastructure and webhook service with:
+
+```bash
+make infra-up
+make start-webhook-app-dev-log
+```
+
+`make start-webhook-app-dev`, `make services-up`, and `make up` also require
+`GITHUB_WEBHOOK_SECRET`. Any GitHub webhook sender or simulator must sign its
+payloads with the same value.
+
+The repository does not currently provide a supported webhook simulator or a
+host-exposed development webhook endpoint. Use the package tests for webhook
+verification changes until that development workflow is added:
+
+```bash
+go test -short ./webhookapp/...
+make check
 ```
 
 ## 📋 Development Setup
