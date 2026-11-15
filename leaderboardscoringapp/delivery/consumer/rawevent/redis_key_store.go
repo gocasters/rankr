@@ -2,11 +2,18 @@ package rawevent
 
 import (
 	"context"
-	"errors"
 	"time"
 
 	"github.com/redis/go-redis/v9"
 )
+
+var releaseLockLua = redis.NewScript(`
+if redis.call("get", KEYS[1]) == ARGV[1] then
+  return redis.call("del", KEYS[1])
+else
+  return 0
+end
+`)
 
 type redisKeyStore struct {
 	client *redis.Client
@@ -26,25 +33,5 @@ func (s redisKeyStore) Set(ctx context.Context, key, value string, ttl time.Dura
 }
 
 func (s redisKeyStore) DeleteIfEqual(ctx context.Context, key, value string) error {
-	err := s.client.Watch(ctx, func(tx *redis.Tx) error {
-		current, err := tx.Get(ctx, key).Result()
-		if errors.Is(err, redis.Nil) {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
-		if current != value {
-			return nil
-		}
-		_, err = tx.TxPipelined(ctx, func(pipe redis.Pipeliner) error {
-			pipe.Del(ctx, key)
-			return nil
-		})
-		return err
-	}, key)
-	if errors.Is(err, redis.TxFailedErr) {
-		return nil
-	}
-	return err
+	return releaseLockLua.Run(ctx, s.client, []string{key}, value).Err()
 }
