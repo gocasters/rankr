@@ -23,4 +23,5 @@ type Config struct {
 	SchedulerCfg          scheduler.Config  `koanf:"scheduler_cfg"`
 	LeaderboardScoringRPC grpc.ClientConfig `koanf:"leaderboard_scoring_rpc"`
 	ProjectRPC            grpc.ClientConfig `koanf:"project_rpc"`
+	ContributorRPC        grpc.ClientConfig `koanf:"contributor_rpc"`
 }

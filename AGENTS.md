@@ -18,6 +18,7 @@ A contribution leaderboard for GitHub repos. GitHub webhooks are scored, and a p
 ## Commands
 
 - `make check` is **the** gate. It runs gofmt, vet, `go test -race -short` and build on the packages your branch changes. It must be green before you open a PR, and CI runs it too.
+- Per-service test instructions (commands, suite layout, conventions) live in that service's own `README.md` — see `contributorapp/README.md`; read it before changing the service.
 - `make check-all` runs the same checks over the whole repo. It is red today because of a known baseline; see the issue labelled `baseline`.
 - `make infra-up`, then `make start-<svc>-app-dev`: run locally.
 - `make proto-gen` and `make proto-lint`: protobuf.

@@ -7,6 +7,11 @@ import (
 	"testing"
 	"time"
 
+	contributorclient "github.com/gocasters/rankr/adapter/contributor"
+	lbscoringclient "github.com/gocasters/rankr/adapter/leaderboardscoring"
+	"github.com/gocasters/rankr/adapter/project"
+	lbscoring "github.com/gocasters/rankr/leaderboardscoringapp/service/leaderboardscoring" //nolint:depguard // TODO(#285 follow-up): use the protobuf leaderboardscoring client types
+
 	"github.com/gocasters/rankr/pkg/logger"
 	types "github.com/gocasters/rankr/type"
 	"github.com/stretchr/testify/assert"
@@ -21,18 +26,79 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+type contributorStatsRepo struct {
+	Repository
+	history []ScoreRecord
+}
+
+func (r contributorStatsRepo) GetContributorTotalScore(context.Context, types.ID) (float64, error) {
+	return 42, nil
+}
+func (r contributorStatsRepo) GetContributorTotalRank(context.Context, types.ID) (uint, error) {
+	return 3, nil
+}
+func (r contributorStatsRepo) GetContributorProjectScores(context.Context, types.ID) (map[types.ID]float64, error) {
+	return map[types.ID]float64{types.ID(8): 12}, nil
+}
+func (r contributorStatsRepo) GetContributorScoreHistory(context.Context, types.ID) ([]ScoreRecord, error) {
+	return r.history, nil
+}
+
+type contributorStatsContributor struct {
+	requestedID types.ID
+}
+
+func (c *contributorStatsContributor) GetContributorInfo(_ context.Context, id types.ID) (contributorclient.InfoResponse, error) {
+	c.requestedID = id
+	return contributorclient.InfoResponse{GitHubID: 987654}, nil
+}
+
+type contributorStatsScoring struct {
+	LeaderboardScoringClient
+	userID string
+}
+
+func (s *contributorStatsScoring) GetVCSUserScoreBreakdown(_ context.Context, userID string) (lbscoringclient.UserScoreBreakdownResponse, error) {
+	s.userID = userID
+	return lbscoringclient.UserScoreBreakdownResponse{PR: 11, Review: 7, Issue: 4}, nil
+}
+
+func TestGetContributorStats_ScoreBreakdownAndHistory(t *testing.T) {
+	initStatsTestLogger(t)
+	contributorID := types.ID(23)
+	earnedAt := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
+	repo := contributorStatsRepo{history: []ScoreRecord{{ProjectID: types.ID(8), Activity: "pull request", Score: 9, EarnedAt: earnedAt}}}
+	contributor := &contributorStatsContributor{}
+	scoring := &contributorStatsScoring{}
+	svc := Service{repository: repo, contributorClient: contributor, lbScoringClient: scoring}
+
+	got, err := svc.GetContributorStats(context.Background(), contributorID)
+	require.NoError(t, err)
+	assert.Equal(t, contributorID, contributor.requestedID)
+	assert.Equal(t, "987654", scoring.userID)
+	assert.Equal(t, ScoreBreakdown{PR: 11, Review: 7, Issue: 4}, got.ScoreBreakdown)
+	assert.Equal(t, []ScoreEntry{{Activity: "pull request", Score: 9, EarnedAt: earnedAt}}, got.ScoreHistory[types.ID(8)])
+}
+
+func initStatsTestLogger(t *testing.T) {
+	t.Helper()
+	require.NoError(t, logger.Init(logger.Config{Level: "error"}))
+}
+
 // fakeRedisLB returns fixed data instead of talking to Redis.
 type fakeRedisLB struct {
-	entries []UserScoreEntry
-	total   int64
-	err     error
+	entries       []UserScoreEntry
+	total         int64
+	err           error
+	setTimeframes []string
 }
 
 func (f *fakeRedisLB) GetPublicLeaderboardPaginated(ctx context.Context, projectID types.ID, page, pageSize int32) ([]UserScoreEntry, int64, error) {
 	return f.entries, f.total, f.err
 }
 
-func (f *fakeRedisLB) SetPublicLeaderboard(ctx context.Context, projectID types.ID, userScores map[int]float64, ttl time.Duration) error {
+func (f *fakeRedisLB) SetPublicLeaderboard(ctx context.Context, projectID types.ID, timeframe string, userScores map[int]float64, ttl time.Duration) error {
+	f.setTimeframes = append(f.setTimeframes, timeframe)
 	return nil
 }
 
@@ -118,4 +184,64 @@ func TestGetPublicLeaderboard(t *testing.T) {
 			assert.Equal(t, tt.wantTotalPages, got.TotalPages)
 		})
 	}
+}
+func TestSetPublicLeaderboard_StoresEveryTimeframe(t *testing.T) {
+	scoring := &fakeScoringClient{
+		rowsByProject: map[string][]lbscoring.LeaderboardRow{
+			"1001": {{Rank: 1, UserID: "7", Score: 30}},
+		},
+	}
+	projects := &fakeProjectClient{
+		projects: []project.ProjectItem{{ProjectID: "p-a", GitRepoID: "1001"}},
+	}
+	redis := &fakeRedisLB{}
+
+	s := Service{
+		lbScoringClient:      scoring,
+		projectClient:        projects,
+		redisLeaderboardRepo: redis,
+	}
+
+	err := s.SetPublicLeaderboard(context.Background())
+	require.NoError(t, err)
+	want := []string{"daily", "weekly", "monthly", "yearly", "all_time"}
+	assert.ElementsMatch(t, want, redis.setTimeframes)
+	var asked []string
+	for _, req := range scoring.requests {
+		asked = append(asked, req.Timeframe)
+	}
+	assert.ElementsMatch(t, want, asked)
+}
+func TestSetPublicLeaderboard_DailyFirstForAllProjects(t *testing.T) {
+	scoring := &fakeScoringClient{
+		rowsByProject: map[string][]lbscoring.LeaderboardRow{
+			"1001": {{Rank: 1, UserID: "7", Score: 30}},
+			"2002": {{Rank: 1, UserID: "8", Score: 50}},
+		},
+	}
+	projects := &fakeProjectClient{
+		projects: []project.ProjectItem{
+			{ProjectID: "p-a", GitRepoID: "1001"},
+			{ProjectID: "p-b", GitRepoID: "2002"},
+		},
+	}
+	redis := &fakeRedisLB{}
+
+	s := Service{
+		lbScoringClient:      scoring,
+		projectClient:        projects,
+		redisLeaderboardRepo: redis,
+	}
+
+	require.NoError(t, s.SetPublicLeaderboard(context.Background()))
+
+	// 2 projects x 5 timeframes = 10 requests.
+	require.Len(t, scoring.requests, 10)
+
+	// The first two requests must be daily, one per project, so a run that
+	// hits its deadline still refreshes the key the public read path uses.
+	assert.Equal(t, "daily", scoring.requests[0].Timeframe)
+	assert.Equal(t, "daily", scoring.requests[1].Timeframe)
+	assert.Equal(t, "1001", *scoring.requests[0].ProjectID)
+	assert.Equal(t, "2002", *scoring.requests[1].ProjectID)
 }

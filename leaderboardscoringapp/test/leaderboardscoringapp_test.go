@@ -47,13 +47,14 @@ func TestIntegrationSuite(t *testing.T) {
 
 // SetupSuite initializes all containers and dependencies
 func (suite *IntegrationTestSuite) SetupSuite() {
-	logger.Init(logger.Config{
+	err := logger.Init(logger.Config{
 		Level:            "debug",
 		FilePath:         "logs/leaderboardscoringapp/integration_test.log",
 		UseLocalTime:     true,
 		FileMaxSizeInMB:  10,
 		FileMaxAgeInDays: 7,
 	})
+	suite.Require().NoError(err)
 
 	suite.ctx = context.Background()
 
@@ -236,8 +237,8 @@ func (suite *IntegrationTestSuite) SetupTest() {
 	suite.redisClient.FlushAll(suite.ctx)
 
 	// Clear database tables
-	suite.postgresConn.Pool.Exec(suite.ctx, "TRUNCATE processed_score_events CASCADE")
-	suite.postgresConn.Pool.Exec(suite.ctx, "TRUNCATE user_total_scores CASCADE")
+	_, _ = suite.postgresConn.Pool.Exec(suite.ctx, "TRUNCATE processed_score_events CASCADE")
+	_, _ = suite.postgresConn.Pool.Exec(suite.ctx, "TRUNCATE user_total_scores CASCADE")
 
 	suite.mockPublisher.Reset()
 }
@@ -489,6 +490,32 @@ func (suite *IntegrationTestSuite) TestEventPersistence_Real() {
 	suite.NoError(err)
 	suite.Equal(leaderboardscoring.PullRequestOpened.String(), eventType)
 	suite.Equal(int64(10), score)
+}
+
+func (suite *IntegrationTestSuite) TestGetVCSUserScoreBreakdown_Real() {
+	ctx := context.Background()
+	const userID = "breakdown-user"
+	events := []leaderboardscoring.ProcessedScoreEvent{
+		{UserID: userID, EventName: leaderboardscoring.PullRequestOpened, Score: 10, Timestamp: time.Now().UTC()},
+		{UserID: userID, EventName: leaderboardscoring.PullRequestClosed, Score: 7, Timestamp: time.Now().UTC()},
+		{UserID: userID, EventName: leaderboardscoring.PullRequestReview, Score: 5, Timestamp: time.Now().UTC()},
+		{UserID: userID, EventName: leaderboardscoring.IssueOpened, Score: 3, Timestamp: time.Now().UTC()},
+		{UserID: userID, EventName: leaderboardscoring.IssueClosed, Score: 2, Timestamp: time.Now().UTC()},
+		{UserID: userID, EventName: leaderboardscoring.IssueComment, Score: 1, Timestamp: time.Now().UTC()},
+		{UserID: userID, EventName: leaderboardscoring.CommitPush, Score: 100, Timestamp: time.Now().UTC()},
+		{UserID: "other-user", EventName: leaderboardscoring.PullRequestOpened, Score: 200, Timestamp: time.Now().UTC()},
+	}
+	require.NoError(suite.T(), suite.persistence.AddProcessedScoreEvents(ctx, events))
+
+	got, err := suite.persistence.GetVCSUserScoreBreakdown(ctx, userID)
+	require.NoError(suite.T(), err)
+	suite.Equal(int64(17), got.PR)
+	suite.Equal(int64(5), got.Review)
+	suite.Equal(int64(6), got.Issue)
+
+	empty, err := suite.persistence.GetVCSUserScoreBreakdown(ctx, "no-events-user")
+	require.NoError(suite.T(), err)
+	suite.Equal(leaderboardscoring.ScoreBreakdown{}, empty)
 }
 
 // Get leaderboard through service (reads from real Redis)

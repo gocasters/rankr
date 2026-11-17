@@ -79,12 +79,12 @@ func (suite *HistoricalEventTestSuite) createTableWithMigration() {
 	_, err := suite.db.Exec(suite.ctx, createTableQuery)
 	require.NoError(suite.T(), err, "Failed to create test table")
 
-	suite.db.Exec(suite.ctx, "DROP INDEX IF EXISTS webhook_events_webhook_unique_idx")
-	suite.db.Exec(suite.ctx, "DROP INDEX IF EXISTS webhook_events_historical_unique_idx")
-	suite.db.Exec(suite.ctx, "DROP INDEX IF EXISTS webhook_events_global_unique_idx")
-	suite.db.Exec(suite.ctx, "DROP INDEX IF EXISTS webhook_events_delivery_unique_idx")
-	suite.db.Exec(suite.ctx, "DROP INDEX IF EXISTS webhook_events_event_key_unique_idx")
-	suite.db.Exec(suite.ctx, "ALTER TABLE webhook_events DROP CONSTRAINT IF EXISTS webhook_events_provider_delivery_id_unique")
+	_, _ = suite.db.Exec(suite.ctx, "DROP INDEX IF EXISTS webhook_events_webhook_unique_idx")
+	_, _ = suite.db.Exec(suite.ctx, "DROP INDEX IF EXISTS webhook_events_historical_unique_idx")
+	_, _ = suite.db.Exec(suite.ctx, "DROP INDEX IF EXISTS webhook_events_global_unique_idx")
+	_, _ = suite.db.Exec(suite.ctx, "DROP INDEX IF EXISTS webhook_events_delivery_unique_idx")
+	_, _ = suite.db.Exec(suite.ctx, "DROP INDEX IF EXISTS webhook_events_event_key_unique_idx")
+	_, _ = suite.db.Exec(suite.ctx, "ALTER TABLE webhook_events DROP CONSTRAINT IF EXISTS webhook_events_provider_delivery_id_unique")
 
 	eventKeyIndexQuery := `
 	CREATE UNIQUE INDEX IF NOT EXISTS webhook_events_event_key_unique_idx
@@ -392,11 +392,12 @@ func (suite *HistoricalEventTestSuite) TestSaveHistoricalEvent_ConcurrentSaves_N
 	var successCount, duplicateCount int
 	for i := 0; i < 5; i++ {
 		err := <-done
-		if err == nil {
+		switch err {
+		case nil:
 			successCount++
-		} else if err == ErrDuplicateEvent {
+		case ErrDuplicateEvent:
 			duplicateCount++
-		} else {
+		default:
 			suite.T().Errorf("Unexpected error: %v", err)
 		}
 	}

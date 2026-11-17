@@ -87,6 +87,10 @@ func TransformPRToEvents(pr *github.PullRequest) ([]*eventpb.Event, error) {
 }
 
 func TransformReviewToEvent(review *github.Review, pr *github.PullRequest) (*eventpb.Event, error) {
+	if review.SubmittedAt.IsZero() {
+		return nil, fmt.Errorf("review %d has no submitted_at (state=%s)", review.ID, review.State)
+	}
+
 	reviewState := mapReviewState(review.State)
 
 	event := &eventpb.Event{

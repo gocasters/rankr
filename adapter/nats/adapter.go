@@ -12,6 +12,8 @@ import (
 	natsgo "github.com/nats-io/nats.go"
 )
 
+const nakRedeliveryDelay = 5 * time.Second
+
 // Config represents NATS configuration
 type Config struct {
 	URL            string        `koanf:"url"`
@@ -121,6 +123,16 @@ type Adapter struct {
 	logger     watermill.LoggerAdapter
 }
 
+func newSubscriberConfig(config Config, opts []natsgo.Option, unmarshaler nats.Unmarshaler) nats.SubscriberConfig {
+	return nats.SubscriberConfig{
+		URL:            config.URL,
+		NatsOptions:    opts,
+		Unmarshaler:    unmarshaler,
+		AckWaitTimeout: config.AckWaitTimeout,
+		NakDelay:       nats.NewStaticDelay(nakRedeliveryDelay),
+	}
+}
+
 // New creates a new NATS adapter with Watermill integration
 func New(ctx context.Context, config Config, logger watermill.LoggerAdapter) (adapter *Adapter, initErr error) {
 	if ctx == nil {
@@ -193,13 +205,8 @@ func New(ctx context.Context, config Config, logger watermill.LoggerAdapter) (ad
 			return
 		}
 
-		subscriberConfig := nats.SubscriberConfig{
-			URL:            config.URL,
-			NatsOptions:    opts,
-			Unmarshaler:    marshaler,
-			AckWaitTimeout: config.AckWaitTimeout,
-			JetStream:      jsConfig,
-		}
+		subscriberConfig := newSubscriberConfig(config, opts, marshaler)
+		subscriberConfig.JetStream = jsConfig
 
 		subscriber, err = nats.NewSubscriber(subscriberConfig, logger)
 		if err != nil {
@@ -219,12 +226,7 @@ func New(ctx context.Context, config Config, logger watermill.LoggerAdapter) (ad
 			return
 		}
 
-		subscriberConfig := nats.SubscriberConfig{
-			URL:            config.URL,
-			NatsOptions:    opts,
-			Unmarshaler:    marshaler,
-			AckWaitTimeout: config.AckWaitTimeout,
-		}
+		subscriberConfig := newSubscriberConfig(config, opts, marshaler)
 
 		subscriber, err = nats.NewSubscriber(subscriberConfig, logger)
 		if err != nil {

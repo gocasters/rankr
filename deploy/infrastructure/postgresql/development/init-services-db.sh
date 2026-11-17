@@ -69,6 +69,8 @@ create_service_db "$AUTH_USER" "$AUTH_PASS" "auth_db"
 create_service_db "$NOTIFAPP_USER" "$NOTIFAPP_PASS" "notification_db"
 create_service_db "$REALTIME_USER" "$REALTIME_PASS" "realtime_db"
 create_service_db "$TASK_USER" "$TASK_PASS" "task_db"
+# No userprofile_db: userprofileapp is a read-only aggregator (gRPC only).
+# See docs/architecture.md.
 
 echo "========================================="
 echo "Database initialization completed!"

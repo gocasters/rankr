@@ -52,9 +52,9 @@ func init() {
 	fetchHistoricalCmd.Flags().IntVar(&batchSize, "batch-size", 100, "GitHub API results per page")
 	fetchHistoricalCmd.Flags().BoolVar(&includeReviews, "include-reviews", true, "Fetch PR reviews (more API calls)")
 
-	fetchHistoricalCmd.MarkFlagRequired("owner")
-	fetchHistoricalCmd.MarkFlagRequired("repo")
-	fetchHistoricalCmd.MarkFlagRequired("token")
+	_ = fetchHistoricalCmd.MarkFlagRequired("owner")
+	_ = fetchHistoricalCmd.MarkFlagRequired("repo")
+	_ = fetchHistoricalCmd.MarkFlagRequired("token")
 
 	RootCmd.AddCommand(fetchHistoricalCmd)
 }

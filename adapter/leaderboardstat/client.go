@@ -37,11 +37,18 @@ type GetContributorStatRequest struct {
 }
 
 type GetContributorStatResponse struct {
-	ContributorID types.ID
-	GlobalRank    int
-	TotalScore    float64
-	ProjectsScore map[types.ID]float64
-	ScoreHistory  map[types.ID][]ScoreEntry
+	ContributorID  types.ID
+	GlobalRank     int
+	TotalScore     float64
+	ProjectsScore  map[types.ID]float64
+	ScoreHistory   map[types.ID][]ScoreEntry
+	ScoreBreakdown ScoreBreakdown
+}
+
+type ScoreBreakdown struct {
+	PR     int64
+	Review int64
+	Issue  int64
 }
 
 type ScoreEntry struct {
@@ -87,5 +94,10 @@ func (c *Client) GetContributorStats(ctx context.Context, req GetContributorStat
 		TotalScore:    statPbRes.TotalScore,
 		ProjectsScore: projectsScore,
 		ScoreHistory:  scoreHistory,
+		ScoreBreakdown: ScoreBreakdown{
+			PR:     statPbRes.ScoreBreakdown.GetPr(),
+			Review: statPbRes.ScoreBreakdown.GetReview(),
+			Issue:  statPbRes.ScoreBreakdown.GetIssue(),
+		},
 	}, nil
 }

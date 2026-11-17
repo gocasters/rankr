@@ -10,27 +10,35 @@ import (
 )
 
 func (s *Service) HandleIssuesEvent(provider eventpb.EventProvider, action string, body []byte, deliveryUID string) error {
+	ev, err := buildIssuesEvent(provider, action, body, deliveryUID)
+	if err != nil {
+		return err
+	}
+	return s.saveEvent(context.Background(), ev)
+}
+
+func buildIssuesEvent(provider eventpb.EventProvider, action string, body []byte, deliveryUID string) (*eventpb.Event, error) {
 	switch action {
 	case "opened":
 		var req IssueOpenedRequest
 		if err := json.Unmarshal(body, &req); err != nil {
-			return err
+			return nil, err
 		}
-		return s.publishIssueOpened(req, provider, deliveryUID)
+		return newIssueOpenedEvent(req, provider, deliveryUID), nil
 
 	case "closed":
 		var req IssueClosedRequest
 		if err := json.Unmarshal(body, &req); err != nil {
-			return err
+			return nil, err
 		}
-		return s.publishIssueClosed(req, provider, deliveryUID)
+		return newIssueClosedEvent(req, provider, deliveryUID)
 
 	default:
-		return fmt.Errorf("issue action '%s' not handled", action)
+		return nil, fmt.Errorf("issue action '%s' not handled", action)
 	}
 }
 
-func (s *Service) publishIssueOpened(req IssueOpenedRequest, provider eventpb.EventProvider, deliveryUID string) error {
+func newIssueOpenedEvent(req IssueOpenedRequest, provider eventpb.EventProvider, deliveryUID string) *eventpb.Event {
 	ev := &eventpb.Event{
 		Id:             deliveryUID,
 		EventName:      eventpb.EventName_EVENT_NAME_ISSUE_OPENED,
@@ -48,12 +56,10 @@ func (s *Service) publishIssueOpened(req IssueOpenedRequest, provider eventpb.Ev
 		},
 	}
 
-	ctx := context.Background()
-	return s.saveEvent(ctx, ev)
+	return ev
 }
 
-func (s *Service) publishIssueClosed(req IssueClosedRequest, provider eventpb.EventProvider, deliveryUID string) error {
-
+func newIssueClosedEvent(req IssueClosedRequest, provider eventpb.EventProvider, deliveryUID string) (*eventpb.Event, error) {
 	closeReason := eventpb.IssueCloseReason_ISSUE_CLOSE_REASON_UNSPECIFIED
 	if v := req.Issue.StateReason; v != nil {
 		switch *v {
@@ -67,7 +73,7 @@ func (s *Service) publishIssueClosed(req IssueClosedRequest, provider eventpb.Ev
 	}
 
 	if req.Issue.ClosedAt == nil {
-		return fmt.Errorf("invalid IssueClosed payload: issue.closed_at is nil")
+		return nil, fmt.Errorf("invalid IssueClosed payload: issue.closed_at is nil")
 	}
 
 	ev := &eventpb.Event{
@@ -97,6 +103,5 @@ func (s *Service) publishIssueClosed(req IssueClosedRequest, provider eventpb.Ev
 		},
 	}
 
-	ctx := context.Background()
-	return s.saveEvent(ctx, ev)
+	return ev, nil
 }

@@ -2,6 +2,7 @@ package command
 
 import (
 	"context"
+	"github.com/gocasters/rankr/adapter/contributor"
 	"github.com/gocasters/rankr/adapter/leaderboardscoring"
 	"github.com/gocasters/rankr/adapter/project"
 	"github.com/gocasters/rankr/adapter/redis"
@@ -81,10 +82,23 @@ func runScheduler() {
 		return
 	}
 
+	contributorRPCClient, err := grpc.NewClient(cfg.ContributorRPC, leaderboardLogger)
+	if err != nil {
+		leaderboardLogger.Error("failed to create contributor RPC client", "error", err)
+		return
+	}
+	defer contributorRPCClient.Close()
+
+	contributorClient, err := contributor.New(contributorRPCClient)
+	if err != nil {
+		leaderboardLogger.Error("failed to create contributor client", "error", err)
+		return
+	}
+
 	statRepo := repository.NewLeaderboardstatRepo(cfg.Repository, databaseConn)
 	statValidator := leaderboardstat.NewValidator(statRepo)
 	redisLeaderboardRepo := repository.NewRedisLeaderboardRepository(redisAdapter.Client())
-	statSvc := leaderboardstat.NewService(statRepo, statValidator, *cache, redisLeaderboardRepo, lbScoringClient, projectClient)
+	statSvc := leaderboardstat.NewService(statRepo, statValidator, *cache, redisLeaderboardRepo, lbScoringClient, projectClient, contributorClient)
 
 	if err := statSvc.SetPublicLeaderboard(ctx); err != nil {
 		leaderboardLogger.Error("SetPublicLeaderboard failed", "error", err)

@@ -26,8 +26,7 @@ func NewHandler(leaderboardStatSvc leaderboardstat.Service) Handler {
 
 func (h Handler) GetContributorStats(ctx context.Context, req *leaderboardstatpb.ContributorStatRequest) (*leaderboardstatpb.ContributorStatResponse, error) {
 	log := logger.L()
-	log.Info("gRPC GetLeaderboard request received", slog.Any("request", req))
-
+	log.Info("gRPC GetContributorStats request received", slog.Any("request", req))
 	contributorId := req.GetContributorId()
 
 	statsRes, err := h.leaderboardStatSvc.GetContributorStats(ctx, types.ID(contributorId))
@@ -49,6 +48,11 @@ func (h Handler) GetContributorStats(ctx context.Context, req *leaderboardstatpb
 		TotalScore:    statsRes.TotalScore,
 		ProjectsScore: slice.MapFromIDFloat64ToUint64Float64(statsRes.ProjectsScore),
 		ScoreHistory:  scoreHistory,
+		ScoreBreakdown: &leaderboardstatpb.ScoreBreakdown{
+			Pr:     statsRes.ScoreBreakdown.PR,
+			Review: statsRes.ScoreBreakdown.Review,
+			Issue:  statsRes.ScoreBreakdown.Issue,
+		},
 	}
 
 	return contributorStatResponse, nil

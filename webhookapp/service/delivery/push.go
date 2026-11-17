@@ -10,14 +10,22 @@ import (
 )
 
 func (s *Service) HandlePushEvent(provider eventpb.EventProvider, body []byte, deliveryUID string) error {
-	var req PushRequest
-	if err := json.Unmarshal(body, &req); err != nil {
+	ev, err := buildPushEvent(provider, body, deliveryUID)
+	if err != nil {
 		return err
 	}
-	return s.publishPush(req, provider, deliveryUID)
+	return s.saveEvent(context.Background(), ev)
 }
 
-func (s *Service) publishPush(req PushRequest, provider eventpb.EventProvider, deliveryUID string) error {
+func buildPushEvent(provider eventpb.EventProvider, body []byte, deliveryUID string) (*eventpb.Event, error) {
+	var req PushRequest
+	if err := json.Unmarshal(body, &req); err != nil {
+		return nil, err
+	}
+	return newPushEvent(req, provider, deliveryUID), nil
+}
+
+func newPushEvent(req PushRequest, provider eventpb.EventProvider, deliveryUID string) *eventpb.Event {
 	ref := req.Ref
 	branchName := strings.TrimPrefix(ref, "refs/heads/")
 
@@ -60,6 +68,5 @@ func (s *Service) publishPush(req PushRequest, provider eventpb.EventProvider, d
 		},
 	}
 
-	ctx := context.Background()
-	return s.saveEvent(ctx, ev)
+	return ev
 }

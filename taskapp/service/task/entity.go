@@ -25,5 +25,5 @@ type Task struct {
 	DeleteAt               bool       `json:"delete_at"`
 	Locked                 bool       `json:"locked"`
 	Comments               []Comment  `json:"comments"`
-	LinkedPR               *int64     `json:"linked_pr,omitempty"`
+	LinkedPR               *int64     `json:"-"` // not implemented; always nil, never exposed
 }

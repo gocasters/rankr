@@ -280,6 +280,22 @@ func TestTransformReviewToEvent(t *testing.T) {
 	}
 }
 
+func TestTransformReviewToEvent_RejectsMissingSubmittedAt(t *testing.T) {
+	review := &github.Review{
+		ID:    3449826375,
+		State: "PENDING",
+	}
+
+	event, err := TransformReviewToEvent(review, &github.PullRequest{})
+
+	if err == nil {
+		t.Fatal("TransformReviewToEvent() error = nil, want non-nil")
+	}
+	if event != nil {
+		t.Errorf("TransformReviewToEvent() event = %v, want nil", event)
+	}
+}
+
 func TestMapReviewState(t *testing.T) {
 	tests := []struct {
 		input    string

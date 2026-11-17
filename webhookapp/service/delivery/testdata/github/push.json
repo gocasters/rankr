@@ -1,0 +1,13 @@
+{
+  "ref": "refs/heads/main",
+  "head_commit": {"id": "0000000000000000000000000000000000000002", "message": "Use project id in leaderboard key (#12)", "timestamp": "2026-10-20T12:00:05Z"},
+  "commits": [
+    {
+      "id": "0000000000000000000000000000000000000002", "message": "Use project id in leaderboard key (#12)",
+      "timestamp": "2026-10-20T12:00:05Z", "author": {"name": "contributor-a", "username": "contributor-a"},
+      "added": [], "removed": [], "modified": ["leaderboardscoringapp/service/leaderboardscoring/service.go"]
+    }
+  ],
+  "repository": {"id": 1000001, "name": "example-repo", "full_name": "example-org/example-repo"},
+  "sender": {"id": 2002, "login": "maintainer-b"}
+}
