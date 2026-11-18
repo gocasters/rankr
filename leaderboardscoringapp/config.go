@@ -15,6 +15,10 @@ import (
 	"time"
 )
 
+type ActivityFeedConfig struct {
+	Enabled bool `koanf:"enabled"`
+}
+
 type Config struct {
 	// Server configurations
 	HTTPServer httpserver.Config `koanf:"http_server"`
@@ -37,6 +41,10 @@ type Config struct {
 	RawEventConsumer rawevent.Config               `koanf:"raw_event_consumer"`
 	BatchProcessor   batchprocessor.Config         `koanf:"batch_processor"`
 	DatabaseRetry    postgrerepository.RetryConfig `koanf:"database_retry"`
+
+	// ActivityFeed exposes a contributor's latest scored events
+	// (profile.activity_feed flag, off by default).
+	ActivityFeed ActivityFeedConfig `koanf:"activity_feed"`
 
 	// Topics
 	StreamNameRawEvents string `koanf:"stream_name_raw_events"`

@@ -2,6 +2,11 @@ http_server:
   host: ""
   port: 8081
   shutdown_context_timeout: 10s
+  public_paths:
+    - "/v1/contributors/:user_id/activity"
+
+activity_feed:
+  enabled: false
 
 rpc_server:
   host: ""

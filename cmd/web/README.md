@@ -66,6 +66,24 @@ WEB__LEADERBOARD_API__BASE_URL=http://127.0.0.1:8081 go run ./cmd/web serve --le
 The refresh button updates the leaderboard using htmx.
 htmx 2.0.11 is loaded from jsDelivr with an integrity check.
 
+## Profile activity feed
+
+Start leaderboardscoring with `activity_feed.enabled: true`
+(the `profile.activity_feed` flag), then run:
+
+```bash
+go run ./cmd/web serve --profile-activity
+```
+
+Open http://localhost:8085/profile?user_id=90401.
+
+`user_id` is the contributor's numeric GitHub user ID.
+The page lists the latest scored events, newest first, from
+`GET /v1/contributors/:user_id/activity` on leaderboardscoring.
+The page is disabled by default.
+
+Configure `activity_api.base_url` and `activity_api.timeout` in YAML.
+
 ## Configuration
 
 The default file is deploy/web/development/config.yml.

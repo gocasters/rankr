@@ -9,10 +9,10 @@ type Server struct {
 	Handler    Handler
 }
 
-func New(server *httpserver.Server) Server {
+func New(server *httpserver.Server, handler Handler) Server {
 	return Server{
 		HTTPServer: server,
-		Handler:    NewHandler(),
+		Handler:    handler,
 	}
 }
 
@@ -30,4 +30,5 @@ func (s Server) RegisterRoutes() {
 
 	v1 := router.Group("/v1")
 	v1.GET("/health-check", s.healthCheck)
+	v1.GET("/contributors/:user_id/activity", s.Handler.GetContributorActivity)
 }

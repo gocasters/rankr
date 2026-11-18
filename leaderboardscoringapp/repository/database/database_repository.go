@@ -112,7 +112,10 @@ func (db PostgreSQLRepository) insertBatchProcessedScoreEvent(ctx context.Contex
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	columns := []string{"user_id", "event_type", "event_timestamp", "score_delta"}
+	columns := []string{
+		"user_id", "event_type", "event_timestamp", "score_delta",
+		"repository_id", "repository_name", "subject_type", "subject_number",
+	}
 
 	rows := make([][]interface{}, len(events))
 	for i, event := range events {
@@ -121,6 +124,10 @@ func (db PostgreSQLRepository) insertBatchProcessedScoreEvent(ctx context.Contex
 			event.EventName.String(),
 			event.Timestamp,
 			event.Score,
+			event.RepositoryID,
+			event.RepositoryName,
+			event.SubjectType,
+			event.SubjectNumber,
 		}
 	}
 
@@ -251,6 +258,54 @@ func isRetryableError(err error) bool {
 	}
 
 	return false
+}
+
+func (db PostgreSQLRepository) GetContributorActivity(
+	ctx context.Context,
+	userID string,
+	limit int,
+) ([]leaderboardscoring.ContributorActivity, error) {
+	query := `
+		SELECT event_type,
+		       COALESCE(repository_name, ''),
+		       COALESCE(subject_type, ''),
+		       COALESCE(subject_number, 0),
+		       score_delta,
+		       event_timestamp
+		FROM processed_score_events
+		WHERE user_id = $1
+		ORDER BY event_timestamp DESC, id DESC
+		LIMIT $2
+	`
+
+	rows, err := db.postgreSQL.Pool.Query(ctx, query, userID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("query contributor activity: %w", err)
+	}
+	defer rows.Close()
+
+	activity := make([]leaderboardscoring.ContributorActivity, 0, limit)
+	for rows.Next() {
+		var entry leaderboardscoring.ContributorActivity
+		if err := rows.Scan(
+			&entry.Type,
+			&entry.RepositoryName,
+			&entry.SubjectType,
+			&entry.SubjectNumber,
+			&entry.Points,
+			&entry.OccurredAt,
+		); err != nil {
+			return nil, fmt.Errorf("scan contributor activity: %w", err)
+		}
+
+		activity = append(activity, entry)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate contributor activity: %w", err)
+	}
+
+	return activity, nil
 }
 
 func (db PostgreSQLRepository) GetVCSUserScoreBreakdown(ctx context.Context, userID string) (leaderboardscoring.ScoreBreakdown, error) {

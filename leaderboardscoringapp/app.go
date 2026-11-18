@@ -128,7 +128,10 @@ func Setup(ctx context.Context, config Config) *Application {
 			slog.String("error", err.Error()))
 		panic(err)
 	}
-	leaderboardHttpServer := leaderboardHTTP.New(httpServer)
+	leaderboardHttpServer := leaderboardHTTP.New(
+		httpServer,
+		leaderboardHTTP.NewHandler(lbScoringService, config.ActivityFeed.Enabled),
+	)
 
 	// Initialize gRPC server
 	rpcServer, err := grpc.NewServer(config.RPCServer)
