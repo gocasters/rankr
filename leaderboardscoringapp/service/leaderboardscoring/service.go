@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,12 +19,30 @@ const (
 	snapshotBatchSize     = 100  // Fetch 100 users at a time
 	snapshotPersistBatch  = 1000 // Persist every 1000 rows
 	snapshotRetryAttempts = 3
+
+	defaultActivityLimit = 20
+	maxActivityLimit     = 50
 )
+
+// NormalizeActivityLimit applies the activity feed's default and maximum page
+// size to a requested limit.
+func NormalizeActivityLimit(limit int) int {
+	if limit <= 0 {
+		return defaultActivityLimit
+	}
+
+	if limit > maxActivityLimit {
+		return maxActivityLimit
+	}
+
+	return limit
+}
 
 // EventPersistence = database layer
 type EventPersistence interface {
 	AddProcessedScoreEvents(ctx context.Context, events []ProcessedScoreEvent) error
 	GetVCSUserScoreBreakdown(ctx context.Context, userID string) (ScoreBreakdown, error)
+	GetContributorActivity(ctx context.Context, userID string, limit int) ([]ContributorActivity, error)
 	AddSnapshot(ctx context.Context, snapshots []SnapshotRow) error
 }
 
@@ -91,11 +110,16 @@ func (s *Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) erro
 	}
 
 	// Publish to NATS JetStream for batch persistence (once per event)
+	subjectType, subjectNumber := req.Subject()
 	pse := ProcessedScoreEvent{
-		UserID:    req.UserID,
-		EventName: EventName(req.EventName),
-		Score:     score,
-		Timestamp: time.Now().UTC(),
+		UserID:         req.UserID,
+		EventName:      EventName(req.EventName),
+		Score:          score,
+		Timestamp:      req.Timestamp,
+		RepositoryID:   req.RepositoryID,
+		RepositoryName: req.RepositoryName,
+		SubjectType:    subjectType,
+		SubjectNumber:  subjectNumber,
 	}
 
 	dataMsg, mErr := json.Marshal(pse)
@@ -116,6 +140,26 @@ func (s *Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) erro
 	log.Debug(MsgSuccessfullyProcessedEvent, slog.String("event_id", req.ID))
 
 	return nil
+}
+
+// GetContributorActivity returns the contributor's latest scored events, newest
+// first, for the profile activity feed.
+func (s *Service) GetContributorActivity(ctx context.Context, userID string, limit int) ([]ContributorActivity, error) {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return nil, errors.Join(ErrInvalidArguments, errors.New("user id is required"))
+	}
+
+	if s.eventPersistence == nil {
+		return nil, ErrNotImplemented
+	}
+
+	activity, err := s.eventPersistence.GetContributorActivity(ctx, userID, NormalizeActivityLimit(limit))
+	if err != nil {
+		return nil, fmt.Errorf("get contributor activity: %w", err)
+	}
+
+	return activity, nil
 }
 
 func (s *Service) GetLeaderboard(ctx context.Context, req *GetLeaderboardRequest) (GetLeaderboardResponse, error) {

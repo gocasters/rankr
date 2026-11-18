@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>فعالیت اخیر | Rankr</title>
+    <style>
+      body {
+        font-family: Tahoma, sans-serif;
+        max-width: 60rem;
+        margin: 2rem auto;
+        padding: 0 1rem;
+        background: #f5f8fb;
+        color: #183047;
+      }
+      main {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        border: 1px solid #e1e7ef;
+        box-shadow: 0 12px 36px rgba(24, 48, 71, 0.05);
+      }
+      h1 {
+        font-size: clamp(1.7rem, 4vw, 2.5rem);
+      }
+      .table-wrapper {
+        overflow-x: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        text-align: start;
+        padding: 0.75rem;
+        border-bottom: 1px solid #d5e0e8;
+      }
+      caption {
+        text-align: start;
+        margin-bottom: 1rem;
+      }
+      thead {
+        background: #f3f6fa;
+      }
+      tbody tr:hover {
+        background: #f8fafc;
+      }
+      td {
+        font-variant-numeric: tabular-nums;
+      }
+      td:last-child {
+        font-weight: bold;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      @media (max-width: 480px) {
+        body {
+          margin: 1rem auto;
+          padding: 0 0.75rem;
+        }
+        main {
+          padding: 1rem;
+        }
+        th,
+        td {
+          padding: 0.5rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>فعالیت اخیر</h1>
+      <p>شناسهٔ گیت‌هاب: {{.UserID}}</p>
+
+      {{if .Error}}
+      <p role="alert">دریافت فعالیت‌ها انجام نشد.</p>
+      {{else if .Rows}}
+      <div class="table-wrapper">
+        <table>
+          <caption>
+            آخرین رویدادهای امتیازگرفته
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">رویداد</th>
+              <th scope="col">مورد</th>
+              <th scope="col">مخزن</th>
+              <th scope="col">امتیاز</th>
+              <th scope="col">زمان</th>
+            </tr>
+          </thead>
+          <tbody>
+            {{range .Rows}}
+            <tr>
+              <td>{{.Type}}</td>
+              <td>{{.Subject}}</td>
+              <td>{{.Repository}}</td>
+              <td>{{.Points}}</td>
+              <td>{{.When}}</td>
+            </tr>
+            {{end}}
+          </tbody>
+        </table>
+      </div>
+      {{else}}
+      <p>هنوز فعالیتی ثبت نشده است.</p>
+      {{end}}
+    </main>
+  </body>
+</html>
