@@ -255,6 +255,7 @@ func (suite *IntegrationTestSuite) TestProcessScoreEvent_Success() {
 		suite.mockPublisher,
 		"processed_events",
 		leaderboardscoring.NewValidator(),
+		leaderboardscoring.NewLegacyScorer(),
 	)
 
 	userID := uint64(123)
@@ -297,6 +298,7 @@ func (suite *IntegrationTestSuite) TestProcessScoreEvent_InvalidEvent() {
 		suite.mockPublisher,
 		"processed_events",
 		leaderboardscoring.NewValidator(),
+		leaderboardscoring.NewLegacyScorer(),
 	)
 
 	// Missing required fields
@@ -328,6 +330,7 @@ func (suite *IntegrationTestSuite) TestMultipleEvents_IncreaseScore() {
 		suite.mockPublisher,
 		"processed_events",
 		leaderboardscoring.NewValidator(),
+		leaderboardscoring.NewLegacyScorer(),
 	)
 
 	userID := uint64(456)
@@ -390,6 +393,7 @@ func (suite *IntegrationTestSuite) TestLeaderboardRanking_Real() {
 		suite.mockPublisher,
 		"processed_events",
 		leaderboardscoring.NewValidator(),
+		leaderboardscoring.NewLegacyScorer(),
 	)
 
 	// Create users with different scores
@@ -528,6 +532,7 @@ func (suite *IntegrationTestSuite) TestGetLeaderboard_Real() {
 		suite.mockPublisher,
 		"processed_events",
 		leaderboardscoring.NewValidator(),
+		leaderboardscoring.NewLegacyScorer(),
 	)
 
 	// Add users to Redis leaderboard
@@ -571,6 +576,7 @@ func (suite *IntegrationTestSuite) TestConcurrentEvents() {
 		suite.mockPublisher,
 		"processed_events",
 		leaderboardscoring.NewValidator(),
+		leaderboardscoring.NewLegacyScorer(),
 	)
 
 	// Simulate concurrent requests from different users
@@ -623,6 +629,7 @@ func (suite *IntegrationTestSuite) TestPagination_Real() {
 		suite.mockPublisher,
 		"processed_events",
 		leaderboardscoring.NewValidator(),
+		leaderboardscoring.NewLegacyScorer(),
 	)
 
 	// Add 25 users to Redis
@@ -670,6 +677,7 @@ func (suite *IntegrationTestSuite) TestGetLeaderboard_InvalidOffset() {
 		suite.mockPublisher,
 		"processed_events",
 		leaderboardscoring.NewValidator(),
+		leaderboardscoring.NewLegacyScorer(),
 	)
 
 	var projectID = "1001"

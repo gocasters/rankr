@@ -118,6 +118,7 @@ func Setup(ctx context.Context, config Config) *Application {
 		natsAdapter,
 		topicsname.TopicProcessedScoreEvents,
 		lbScoringValidator,
+		leaderboardscoring.NewLegacyScorer(),
 	)
 	log.Info("leaderboard scoring service initialized")
 

@@ -44,6 +44,7 @@ type Service struct {
 	publisher           Publisher
 	processedEventTopic string
 	validator           Validator
+	scorer              Scorer
 }
 
 func NewService(
@@ -52,6 +53,7 @@ func NewService(
 	publisher Publisher,
 	processedEventTopic string,
 	validator Validator,
+	scorer Scorer,
 ) *Service {
 	return &Service{
 		eventPersistence:    persistence,
@@ -59,6 +61,7 @@ func NewService(
 		publisher:           publisher,
 		processedEventTopic: processedEventTopic,
 		validator:           validator,
+		scorer:              scorer,
 	}
 }
 
@@ -69,7 +72,7 @@ func (s *Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) erro
 		return errors.Join(ErrInvalidEventRequest, err)
 	}
 
-	score := calculateScore(req.EventName)
+	score := s.scorer.Score(req)
 	if score == 0 {
 		log.Debug("unsupported event payload; skipping", slog.String("event_id", req.ID))
 		return nil
