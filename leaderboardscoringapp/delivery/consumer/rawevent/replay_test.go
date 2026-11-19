@@ -7,6 +7,8 @@ import (
 	"flag"
 	"maps"
 	"os"
+	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -22,7 +24,8 @@ import (
 
 const (
 	eventsFile      = "testdata/events.json"
-	goldenFile      = "testdata/score_events.golden.json"
+	legacyGolden    = "testdata/score_events.golden.json"
+	rulesV1Golden   = "testdata/score_events.v1.golden.json"
 	processedTopic  = "test.processed"
 	goldenFileMode  = 0o644
 	testLogMaxSize  = 1
@@ -113,6 +116,28 @@ func (m *memoryLeaderboard) allTime() map[string]map[string]int64 {
 	return out
 }
 
+type memoryReviewStore struct {
+	pending map[uint64][]leaderboardscoring.PendingReview
+	daily   map[string]int64
+}
+
+func (m *memoryReviewStore) AddPendingReview(_ context.Context, prID uint64, review leaderboardscoring.PendingReview) error {
+	reviews := slices.DeleteFunc(m.pending[prID], func(r leaderboardscoring.PendingReview) bool { return r.ReviewerID == review.ReviewerID })
+	m.pending[prID] = append(reviews, review)
+	return nil
+}
+
+func (m *memoryReviewStore) TakePendingReviews(_ context.Context, prID uint64) ([]leaderboardscoring.PendingReview, error) {
+	reviews := m.pending[prID]
+	delete(m.pending, prID)
+	return reviews, nil
+}
+
+func (m *memoryReviewStore) IncrementDailyReviews(_ context.Context, reviewerID uint64, day string) (int64, error) {
+	m.daily[day+":"+strconv.FormatUint(reviewerID, 10)]++
+	return m.daily[day+":"+strconv.FormatUint(reviewerID, 10)], nil
+}
+
 type recordingPublisher struct {
 	messages [][]byte
 }
@@ -130,12 +155,16 @@ type pipeline struct {
 }
 
 func newPipeline() *pipeline {
+	return newPipelineWithScorer(leaderboardscoring.NewLegacyScorer())
+}
+
+func newPipelineWithScorer(scorer leaderboardscoring.Scorer) *pipeline {
 	p := &pipeline{
 		store:       newMemoryStore(),
 		leaderboard: &memoryLeaderboard{scores: map[string]map[string]int64{}},
 		publisher:   &recordingPublisher{},
 	}
-	svc := leaderboardscoring.NewService(nil, p.leaderboard, p.publisher, processedTopic, leaderboardscoring.NewValidator())
+	svc := leaderboardscoring.NewService(nil, p.leaderboard, p.publisher, processedTopic, leaderboardscoring.NewValidator(), scorer)
 	checker := &IdempotencyChecker{
 		store:  p.store,
 		config: Config{PrefixProcessedKey: "processed_events", PrefixLockKey: "lock"},
@@ -186,39 +215,51 @@ func (p *pipeline) replay(t *testing.T, events []recordedEvent) []scoreEvent {
 	for _, ev := range events {
 		before := len(p.publisher.messages)
 		require.NoError(t, p.handler.HandleEvent(message.NewMessage(ev.id, ev.payload)))
-		if len(p.publisher.messages) == before {
-			continue
+		for _, data := range p.publisher.messages[before:] {
+			var pse leaderboardscoring.ProcessedScoreEvent
+			require.NoError(t, json.Unmarshal(data, &pse))
+			scored = append(scored, scoreEvent{
+				EventID:   ev.id,
+				EventName: string(pse.EventName),
+				UserID:    pse.UserID,
+				Score:     pse.Score,
+			})
 		}
-		var pse leaderboardscoring.ProcessedScoreEvent
-		require.NoError(t, json.Unmarshal(p.publisher.messages[len(p.publisher.messages)-1], &pse))
-		scored = append(scored, scoreEvent{
-			EventID:   ev.id,
-			EventName: string(pse.EventName),
-			UserID:    pse.UserID,
-			Score:     pse.Score,
-		})
 	}
 	return scored
 }
 
 func TestScoreEventsGolden(t *testing.T) {
-	p := newPipeline()
-	got := goldenResult{
-		ScoreEvents:        p.replay(t, loadEvents(t)),
-		AllTimeLeaderboard: p.leaderboard.allTime(),
+	tests := []struct {
+		name   string
+		scorer leaderboardscoring.Scorer
+		golden string
+	}{
+		{name: "legacy", scorer: leaderboardscoring.NewLegacyScorer(), golden: legacyGolden},
+		{name: "rules v1", scorer: leaderboardscoring.NewRulesV1Scorer(&memoryReviewStore{pending: map[uint64][]leaderboardscoring.PendingReview{}, daily: map[string]int64{}}, nil), golden: rulesV1Golden},
 	}
 
-	encoded, err := json.MarshalIndent(got, "", "  ")
-	require.NoError(t, err)
-	encoded = append(encoded, '\n')
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := newPipelineWithScorer(tt.scorer)
+			got := goldenResult{
+				ScoreEvents:        p.replay(t, loadEvents(t)),
+				AllTimeLeaderboard: p.leaderboard.allTime(),
+			}
 
-	if *update {
-		require.NoError(t, os.WriteFile(goldenFile, encoded, goldenFileMode))
+			encoded, err := json.MarshalIndent(got, "", "  ")
+			require.NoError(t, err)
+			encoded = append(encoded, '\n')
+
+			if *update {
+				require.NoError(t, os.WriteFile(tt.golden, encoded, goldenFileMode))
+			}
+
+			want, err := os.ReadFile(tt.golden)
+			require.NoError(t, err, "run go test -run TestScoreEventsGolden -update to create the golden file")
+			require.Equal(t, string(want), string(encoded))
+		})
 	}
-
-	want, err := os.ReadFile(goldenFile)
-	require.NoError(t, err, "run go test -run TestScoreEventsGolden -update to create the golden file")
-	require.Equal(t, string(want), string(encoded))
 }
 
 func TestReplayTwiceYieldsSameLeaderboard(t *testing.T) {
