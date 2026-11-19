@@ -74,7 +74,7 @@ logger:
 
 raw_event_consumer:
   processed_key_ttl: 24h
-  lock_key_ttl: 5m
+  lock_key_ttl: 30s
   prefix_processed_key: "processed_events"
   prefix_lock_key: "lock"
 
