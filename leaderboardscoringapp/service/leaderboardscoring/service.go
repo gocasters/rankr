@@ -72,11 +72,28 @@ func (s *Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) erro
 		return errors.Join(ErrInvalidEventRequest, err)
 	}
 
-	score := s.scorer.Score(req)
-	if score == 0 {
-		log.Debug("unsupported event payload; skipping", slog.String("event_id", req.ID))
+	awards, err := s.scorer.Score(ctx, req)
+	if err != nil {
+		return fmt.Errorf("score event: %w", err)
+	}
+	if len(awards) == 0 {
+		log.Debug("event does not score; skipping", slog.String("event_id", req.ID))
 		return nil
 	}
+
+	for _, award := range awards {
+		if err := s.applyAward(ctx, req, award); err != nil {
+			return err
+		}
+	}
+
+	log.Debug(MsgSuccessfullyProcessedEvent, slog.String("event_id", req.ID))
+
+	return nil
+}
+
+func (s *Service) applyAward(ctx context.Context, req *EventRequest, award Award) error {
+	log := logger.L()
 
 	// Update Redis leaderboard (real-time) for all timeframes
 	for _, tf := range Timeframes {
@@ -84,8 +101,8 @@ func (s *Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) erro
 
 		upsertScore := UpsertScore{
 			Keys:   keys,
-			Score:  score,
-			UserID: req.UserID,
+			Score:  award.Points,
+			UserID: award.UserID,
 		}
 		if err := s.leaderboard.UpsertScores(ctx, &upsertScore, tf); err != nil {
 			log.Error(ErrFailedToUpdateScores.Error(), slog.String("error", err.Error()))
@@ -93,11 +110,11 @@ func (s *Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) erro
 		}
 	}
 
-	// Publish to NATS JetStream for batch persistence (once per event)
+	// Publish to NATS JetStream for batch persistence (once per award)
 	pse := ProcessedScoreEvent{
-		UserID:    req.UserID,
+		UserID:    award.UserID,
 		EventName: EventName(req.EventName),
-		Score:     score,
+		Score:     award.Points,
 		Timestamp: time.Now().UTC(),
 	}
 
@@ -115,8 +132,6 @@ func (s *Service) ProcessScoreEvent(ctx context.Context, req *EventRequest) erro
 		log.Error("failed to publish processed score event", slog.String("error", err.Error()))
 		return fmt.Errorf("publish event: %w", err)
 	}
-
-	log.Debug(MsgSuccessfullyProcessedEvent, slog.String("event_id", req.ID))
 
 	return nil
 }

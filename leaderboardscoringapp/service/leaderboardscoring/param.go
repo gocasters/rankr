@@ -148,11 +148,21 @@ func (p PullRequestClosedPayload) EventType() string {
 	return PullRequestClosed.String()
 }
 
+type ReviewState int32
+
+const (
+	ReviewStateUnspecified ReviewState = iota
+	ReviewStateApproved
+	ReviewStateChangesRequested
+	ReviewStateCommented
+)
+
 type PullRequestReviewPayload struct {
-	ReviewerUserID uint64 `json:"reviewer_user_id"`
-	PrAuthorUserID uint64 `json:"pr_author_user_id"`
-	PrID           uint64 `json:"pr_id"`
-	PrNumber       int32  `json:"pr_number"`
+	ReviewerUserID uint64      `json:"reviewer_user_id"`
+	PrAuthorUserID uint64      `json:"pr_author_user_id"`
+	PrID           uint64      `json:"pr_id"`
+	PrNumber       int32       `json:"pr_number"`
+	State          ReviewState `json:"state"`
 }
 
 func (p PullRequestReviewPayload) EventType() string {
@@ -276,6 +286,7 @@ func protobufToPayload(eventPB *eventpb.Event) (EventPayload, string, error) {
 			PrAuthorUserID: p.GetPrAuthorUserId(),
 			PrID:           p.GetPrId(),
 			PrNumber:       p.GetPrNumber(),
+			State:          ReviewState(p.GetState()),
 		}
 		payload = prReviewPayload
 		userID = strconv.FormatUint(prReviewPayload.ReviewerUserID, 10)
