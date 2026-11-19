@@ -22,7 +22,8 @@ import (
 
 const (
 	eventsFile      = "testdata/events.json"
-	goldenFile      = "testdata/score_events.golden.json"
+	legacyGolden    = "testdata/score_events.golden.json"
+	rulesV1Golden   = "testdata/score_events.v1.golden.json"
 	processedTopic  = "test.processed"
 	goldenFileMode  = 0o644
 	testLogMaxSize  = 1
@@ -130,12 +131,16 @@ type pipeline struct {
 }
 
 func newPipeline() *pipeline {
+	return newPipelineWithScorer(leaderboardscoring.NewLegacyScorer())
+}
+
+func newPipelineWithScorer(scorer leaderboardscoring.Scorer) *pipeline {
 	p := &pipeline{
 		store:       newMemoryStore(),
 		leaderboard: &memoryLeaderboard{scores: map[string]map[string]int64{}},
 		publisher:   &recordingPublisher{},
 	}
-	svc := leaderboardscoring.NewService(nil, p.leaderboard, p.publisher, processedTopic, leaderboardscoring.NewValidator())
+	svc := leaderboardscoring.NewService(nil, p.leaderboard, p.publisher, processedTopic, leaderboardscoring.NewValidator(), scorer)
 	checker := &IdempotencyChecker{
 		store:  p.store,
 		config: Config{PrefixProcessedKey: "processed_events", PrefixLockKey: "lock"},
@@ -202,23 +207,36 @@ func (p *pipeline) replay(t *testing.T, events []recordedEvent) []scoreEvent {
 }
 
 func TestScoreEventsGolden(t *testing.T) {
-	p := newPipeline()
-	got := goldenResult{
-		ScoreEvents:        p.replay(t, loadEvents(t)),
-		AllTimeLeaderboard: p.leaderboard.allTime(),
+	tests := []struct {
+		name   string
+		scorer leaderboardscoring.Scorer
+		golden string
+	}{
+		{name: "legacy", scorer: leaderboardscoring.NewLegacyScorer(), golden: legacyGolden},
+		{name: "rules v1", scorer: leaderboardscoring.NewRulesV1Scorer(nil), golden: rulesV1Golden},
 	}
 
-	encoded, err := json.MarshalIndent(got, "", "  ")
-	require.NoError(t, err)
-	encoded = append(encoded, '\n')
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := newPipelineWithScorer(tt.scorer)
+			got := goldenResult{
+				ScoreEvents:        p.replay(t, loadEvents(t)),
+				AllTimeLeaderboard: p.leaderboard.allTime(),
+			}
 
-	if *update {
-		require.NoError(t, os.WriteFile(goldenFile, encoded, goldenFileMode))
+			encoded, err := json.MarshalIndent(got, "", "  ")
+			require.NoError(t, err)
+			encoded = append(encoded, '\n')
+
+			if *update {
+				require.NoError(t, os.WriteFile(tt.golden, encoded, goldenFileMode))
+			}
+
+			want, err := os.ReadFile(tt.golden)
+			require.NoError(t, err, "run go test -run TestScoreEventsGolden -update to create the golden file")
+			require.Equal(t, string(want), string(encoded))
+		})
 	}
-
-	want, err := os.ReadFile(goldenFile)
-	require.NoError(t, err, "run go test -run TestScoreEventsGolden -update to create the golden file")
-	require.Equal(t, string(want), string(encoded))
 }
 
 func TestReplayTwiceYieldsSameLeaderboard(t *testing.T) {
