@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -492,4 +493,266 @@ func TestCSV_ZeroWorkers_FallsBackToSingleWorker(t *testing.T) {
 	assert.Equal(t, res.Total, res.Success+res.Fail, "every row must end up as success or fail")
 	assert.Equal(t, 2, res.Success, "both rows must import")
 	assert.Empty(t, res.FailRecords)
+}
+
+// ---- #352 edge cases ------------------------------------------------------
+
+// writeTempXLSX writes rows (rows[0] is the header) to a one-sheet XLSX file.
+func writeTempXLSX(t *testing.T, rows [][]string) *os.File {
+	t.Helper()
+	x := excelize.NewFile()
+	sheet := x.GetSheetName(0)
+	for i, r := range rows {
+		cell, err := excelize.CoordinatesToCellName(1, i+1)
+		require.NoError(t, err)
+		r := r
+		require.NoError(t, x.SetSheetRow(sheet, cell, &r))
+	}
+	p := filepath.Join(t.TempDir(), "input.xlsx")
+	require.NoError(t, x.SaveAs(p))
+	require.NoError(t, x.Close())
+	f, err := os.Open(p)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = f.Close() })
+	return f
+}
+
+// processWithin runs fn and fails the test instead of hanging if it does not
+// return in time (a deadlocked producer would otherwise block until the
+// global go test timeout).
+func processWithin(t *testing.T, fn func() (ProcessResult, error)) (ProcessResult, error) {
+	t.Helper()
+	type out struct {
+		res ProcessResult
+		err error
+	}
+	done := make(chan out, 1)
+	go func() {
+		res, err := fn()
+		done <- out{res, err}
+	}()
+	select {
+	case o := <-done:
+		return o.res, o.err
+	case <-time.After(5 * time.Second):
+		t.Fatal("Process did not return: rows are stuck (deadlock)")
+		return ProcessResult{}, nil
+	}
+}
+
+// assertCountersConsistent checks the invariants of #352c/#352d on any result.
+func assertCountersConsistent(t *testing.T, res ProcessResult) {
+	t.Helper()
+	assert.Equal(t, len(res.FailRecords), res.Fail, "Fail must equal len(FailRecords)")
+	assert.Equal(t, len(res.SuccessRecords), res.Success, "Success must equal len(SuccessRecords)")
+}
+
+// #352d: with no worker and an unbuffered channel, more rows than the buffer
+// used to block the producer forever. Every row (good and bad) must be
+// accounted for, for zero and negative worker counts, on both parsers.
+func TestZeroOrNegativeWorkers_RowsExceedBuffer_NoRowLost(t *testing.T) {
+	const good = 50
+	csvBody := fullHeader
+	xlsxRows := [][]string{{"github_id", "github_username", "privacy_mode", "email"}}
+	for i := 1; i <= good; i++ {
+		csvBody += fmt.Sprintf("%d,user%d,,,,real,u%d@example.com\n", 1000+i, i, i)
+		xlsxRows = append(xlsxRows, []string{fmt.Sprint(1000 + i), fmt.Sprintf("user%d", i), "real", fmt.Sprintf("u%d@example.com", i)})
+	}
+	csvBody += "not-a-number,bad,,,,real,bad@example.com\n"
+	xlsxRows = append(xlsxRows, []string{"not-a-number", "bad", "real", "bad@example.com"})
+
+	for _, workers := range []int{0, -1} {
+		for _, buffer := range []int{0, 1} {
+			name := fmt.Sprintf("workers=%d/buffer=%d", workers, buffer)
+			t.Run("CSV/"+name, func(t *testing.T) {
+				f := writeTempCSV(t, csvBody)
+				res, err := processWithin(t, func() (ProcessResult, error) {
+					return newTestCSVProcess(workers, buffer).Process(f)
+				})
+				require.NoError(t, err)
+				assert.Equal(t, good+1, res.Total)
+				assert.Equal(t, good, res.Success)
+				assert.Equal(t, 1, res.Fail)
+				assert.Equal(t, res.Total, res.Success+res.Fail, "no row may be dropped")
+				assertCountersConsistent(t, res)
+			})
+			t.Run("XLSX/"+name, func(t *testing.T) {
+				f := writeTempXLSX(t, xlsxRows)
+				res, err := processWithin(t, func() (ProcessResult, error) {
+					return XLSXProcess{workers: workers, buffer: buffer}.Process(f)
+				})
+				require.NoError(t, err)
+				assert.Equal(t, good+1, res.Total)
+				assert.Equal(t, good, res.Success)
+				assert.Equal(t, 1, res.Fail)
+				assert.Equal(t, res.Total, res.Success+res.Fail, "no row may be dropped")
+				assertCountersConsistent(t, res)
+			})
+		}
+	}
+}
+
+// #352a: the absent-column bug read index 0, whatever column sits there. With
+// github_id NOT first, an absent optional field must still be "" (not the
+// email in column 0), and required fields must map by name.
+func TestCSV_MissingOptionalColumn_FirstColumnNotGithubID(t *testing.T) {
+	f := writeTempCSV(t,
+		"email,privacy_mode,github_username,github_id\n"+
+			"a@b.com,real,alice,12345\n")
+
+	res, err := newTestCSVProcess(2, 2).Process(f)
+	require.NoError(t, err)
+	require.Equal(t, 1, res.Success)
+
+	r := recordByRow(t, res, 1)
+	assert.Equal(t, int64(12345), r.GithubID)
+	assert.Equal(t, "alice", r.GithubUsername)
+	assert.Equal(t, "real", r.PrivacyMode)
+	assert.Equal(t, "a@b.com", r.Email)
+	assert.Empty(t, r.DisplayName, "absent display_name must be \"\", not column 0 (email)")
+	assert.Empty(t, r.ProfileImage, "absent profile_image must be \"\", not column 0 (email)")
+	assert.Empty(t, r.Bio, "absent bio must be \"\", not column 0 (email)")
+}
+
+// #352a on the XLSX path: a file with only the 4 required columns.
+func TestXLSX_MissingOptionalColumn_MapsToEmpty(t *testing.T) {
+	f := writeTempXLSX(t, [][]string{
+		{"github_id", "github_username", "privacy_mode", "email"},
+		{"12345", "alice", "real", "a@b.com"},
+	})
+
+	res, err := XLSXProcess{workers: 2, buffer: 2}.Process(f)
+	require.NoError(t, err)
+	require.Equal(t, 1, res.Success)
+
+	r := recordByRow(t, res, 1)
+	assert.Equal(t, int64(12345), r.GithubID)
+	assert.Empty(t, r.DisplayName)
+	assert.Empty(t, r.ProfileImage)
+	assert.Empty(t, r.Bio)
+}
+
+// #352b: XLSX rows shorter than the header by different amounts (and with
+// empty cells in the middle, which excelize keeps) are padded with "" and
+// every present value still lands in its own field.
+func TestXLSX_ShortRows_PaddedWithEmpty(t *testing.T) {
+	header := []string{"github_id", "github_username", "privacy_mode", "email", "display_name", "profile_image", "bio"}
+	f := writeTempXLSX(t, [][]string{
+		header,
+		{"101", "alice", "real", "a@x.com", "Alice", "https://img/a", "bio a"}, // full length
+		{"102", "bob", "real", "b@x.com", "Bob"},                               // 2 trailing empties
+		{"103", "carol", "real", "c@x.com"},                                    // only required cells
+		{"104", "dave", "real", "d@x.com", "", "", "bio d"},                    // middle empties, last cell set
+		{"105", "erin"}, // required trailing cells empty too
+	})
+
+	res, err := XLSXProcess{workers: 3, buffer: 1}.Process(f)
+	require.NoError(t, err)
+	require.Equal(t, 5, res.Total)
+	for _, fr := range res.FailRecords {
+		assert.NotContains(t, fr.Reason, "row length", "row %d must be padded, not rejected for its length", fr.RecordNumber)
+	}
+	require.Equal(t, 5, res.Success)
+	assertCountersConsistent(t, res)
+
+	a := recordByRow(t, res, 1)
+	assert.Equal(t, "Alice", a.DisplayName)
+	assert.Equal(t, "https://img/a", a.ProfileImage)
+	assert.Equal(t, "bio a", a.Bio)
+
+	b := recordByRow(t, res, 2)
+	assert.Equal(t, "Bob", b.DisplayName)
+	assert.Empty(t, b.ProfileImage)
+	assert.Empty(t, b.Bio)
+
+	c := recordByRow(t, res, 3)
+	assert.Equal(t, "c@x.com", c.Email)
+	assert.Empty(t, c.DisplayName)
+	assert.Empty(t, c.ProfileImage)
+	assert.Empty(t, c.Bio)
+
+	d := recordByRow(t, res, 4)
+	assert.Empty(t, d.DisplayName)
+	assert.Empty(t, d.ProfileImage)
+	assert.Equal(t, "bio d", d.Bio)
+
+	e := recordByRow(t, res, 5)
+	assert.Equal(t, int64(105), e.GithubID)
+	assert.Equal(t, "erin", e.GithubUsername)
+	assert.Empty(t, e.PrivacyMode)
+	assert.Empty(t, e.Email)
+}
+
+// #352b: empty cells to the right of the header are not data; excelize trims
+// them, so such a row has header length and must not be a "long row" error.
+func TestXLSX_EmptyCellsBeyondHeader_NotLongRow(t *testing.T) {
+	f := writeTempXLSX(t, [][]string{
+		{"github_id", "github_username", "privacy_mode", "email"},
+		{"101", "alice", "real", "a@x.com", "", ""},
+	})
+
+	res, err := XLSXProcess{workers: 1, buffer: 1}.Process(f)
+	require.NoError(t, err)
+	assert.Equal(t, 1, res.Success)
+	assert.Empty(t, res.FailRecords)
+}
+
+// #352b + #352c: a mix of a padded row, an over-long row and a bad id. Only
+// the long row and the bad id fail, each as its own record, and the counters
+// agree with the records.
+func TestXLSX_MixedRows_CountersAgree(t *testing.T) {
+	f := writeTempXLSX(t, [][]string{
+		{"github_id", "github_username", "privacy_mode", "email", "bio"},
+		{"101", "alice", "real", "a@x.com"},               // short -> padded, ok
+		{"102", "bob", "real", "b@x.com", "bio", "EXTRA"}, // long -> fail
+		{"abc", "carol", "real", "c@x.com"},               // short + bad id -> fail
+		{"104", "dave", "real", "d@x.com", "bio d"},       // exact, ok
+	})
+
+	res, err := XLSXProcess{workers: 2, buffer: 0}.Process(f)
+	require.NoError(t, err)
+	assert.Equal(t, 4, res.Total)
+	assert.Equal(t, 2, res.Success)
+	assert.Equal(t, 2, res.Fail)
+	assert.Equal(t, res.Total, res.Success+res.Fail)
+	assertCountersConsistent(t, res)
+
+	reasons := map[int]string{}
+	for _, fr := range res.FailRecords {
+		reasons[fr.RecordNumber] = fr.Reason
+	}
+	assert.Contains(t, reasons[2], "row length more than header")
+	assert.Contains(t, reasons[3], "invalid github id")
+}
+
+// #352c on the XLSX path: missing required column, header-only sheet and a
+// completely empty sheet all keep Fail == len(FailRecords).
+func TestXLSX_EarlyReturnPaths_FailCounter(t *testing.T) {
+	t.Run("missing required column", func(t *testing.T) {
+		f := writeTempXLSX(t, [][]string{
+			{"github_id", "github_username", "privacy_mode"},
+			{"101", "alice", "real"},
+		})
+		res, err := XLSXProcess{workers: 1, buffer: 1}.Process(f)
+		require.NoError(t, err)
+		require.Len(t, res.FailRecords, 1)
+		assert.Equal(t, 0, res.FailRecords[0].RecordNumber)
+		assert.Contains(t, res.FailRecords[0].Reason, "missing required column: email")
+		assertCountersConsistent(t, res)
+	})
+	t.Run("header only", func(t *testing.T) {
+		f := writeTempXLSX(t, [][]string{{"github_id", "github_username", "privacy_mode", "email"}})
+		res, err := XLSXProcess{workers: 1, buffer: 1}.Process(f)
+		require.NoError(t, err)
+		assert.Equal(t, 0, res.Total)
+		assert.Empty(t, res.FailRecords)
+		assertCountersConsistent(t, res)
+	})
+	t.Run("empty sheet", func(t *testing.T) {
+		f := writeTempXLSX(t, nil)
+		res, err := XLSXProcess{workers: 1, buffer: 1}.Process(f)
+		require.NoError(t, err)
+		require.Len(t, res.FailRecords, 1, "no header means the required columns are missing")
+		assertCountersConsistent(t, res)
+	})
 }
