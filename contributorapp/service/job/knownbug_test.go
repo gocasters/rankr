@@ -28,7 +28,6 @@ import (
 // new constant (issue number + short title) for every newly filed bug.
 const (
 	bugImportValidation = "#345 (import path validation diverges from API)"
-	bugParserColumns    = "#352 (CSV/XLSX parser column and row handling)"
 )
 
 type bugRecorder struct{ msgs []string }
