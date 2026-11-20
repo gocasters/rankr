@@ -1,7 +1,9 @@
 package job
 
 import (
+	"archive/zip"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -755,4 +757,67 @@ func TestXLSX_EarlyReturnPaths_FailCounter(t *testing.T) {
 		require.Len(t, res.FailRecords, 1, "no header means the required columns are missing")
 		assertCountersConsistent(t, res)
 	})
+}
+
+// writeCorruptSharedStringsXLSX writes rows to a valid XLSX container whose
+// xl/sharedStrings.xml is truncated, so decoding fails while the rows are
+// read (excelize surfaces it from Rows().Columns()).
+func writeCorruptSharedStringsXLSX(t *testing.T, rows [][]string) *os.File {
+	t.Helper()
+	good := writeTempXLSX(t, rows)
+
+	in, err := os.Open(good.Name())
+	require.NoError(t, err)
+	defer func() { _ = in.Close() }()
+	fi, err := in.Stat()
+	require.NoError(t, err)
+	sr, err := zip.NewReader(in, fi.Size())
+	require.NoError(t, err)
+
+	bad := filepath.Join(t.TempDir(), "corrupt.xlsx")
+	out, err := os.Create(bad)
+	require.NoError(t, err)
+	zw := zip.NewWriter(out)
+	found := false
+	for _, f := range sr.File {
+		w, err := zw.Create(f.Name)
+		require.NoError(t, err)
+		rc, err := f.Open()
+		require.NoError(t, err)
+		data, err := io.ReadAll(rc)
+		_ = rc.Close()
+		require.NoError(t, err)
+		if f.Name == "xl/sharedStrings.xml" {
+			found = true
+			require.Greater(t, len(data), 10, "fixture must contain shared strings")
+			data = data[:10]
+		}
+		_, err = w.Write(data)
+		require.NoError(t, err)
+	}
+	require.NoError(t, zw.Close())
+	require.NoError(t, out.Close())
+	require.True(t, found, "fixture must contain xl/sharedStrings.xml")
+
+	f, err := os.Open(bad)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = f.Close() })
+	_ = good.Close()
+	return f
+}
+
+// Review finding on #352: a corrupt XLSX must fail the whole file with an
+// error, exactly like the CSV path (TestCSV_ShortRow_FailsWholeFile). The
+// decode error used to be discarded by `row, _ := rowsIter.Columns()`, so the
+// file ended as a misleading "missing required column" failure with err=nil.
+func TestXLSX_CorruptFile_FailsWholeFile(t *testing.T) {
+	f := writeCorruptSharedStringsXLSX(t, [][]string{
+		{"github_id", "github_username", "privacy_mode", "email"},
+		{"101", "alice01", "real", "alice@example.com"},
+	})
+
+	res, err := XLSXProcess{workers: 2, buffer: 2}.Process(f)
+	require.Error(t, err, "a decode failure must abort the file, not be swallowed")
+	assert.Contains(t, err.Error(), "failed read row")
+	assert.Equal(t, ProcessResult{}, res, "zero result on structural error")
 }

@@ -72,12 +72,19 @@ func (x XLSXProcess) Process(file *os.File) (ProcessResult, error) {
 	if err != nil {
 		return ProcessResult{}, fmt.Errorf("failed get rows: %w", err)
 	}
+	defer func() { _ = rowsIter.Close() }()
 
 	var rows [][]string
 	var header []string
 	first := true
 	for rowsIter.Next() {
-		row, _ := rowsIter.Columns()
+		row, err := rowsIter.Columns()
+		if err != nil {
+			// A decode failure must abort the whole file, exactly like the CSV
+			// path ("failed read row"). Discarding this error used to turn a
+			// partial row into a silent import with empty trailing fields (#352).
+			return ProcessResult{}, fmt.Errorf("failed read row: %w", err)
+		}
 		if first {
 			header = row
 			first = false
@@ -87,6 +94,9 @@ func (x XLSXProcess) Process(file *os.File) (ProcessResult, error) {
 			continue
 		}
 		rows = append(rows, row)
+	}
+	if err := rowsIter.Error(); err != nil {
+		return ProcessResult{}, fmt.Errorf("failed read row: %w", err)
 	}
 
 	return processRowsWithHeader(rows, header, x.workers, x.buffer), nil
