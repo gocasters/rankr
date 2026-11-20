@@ -99,6 +99,14 @@ func processRowsWithHeader(rows [][]string, header []string, workers, buffer int
 		FailRecords:    []FailRecord{},
 	}
 
+	// #352d: never run with zero workers (e.g. process_count missing from the
+	// config). No worker would read rowChan, so Process would return
+	// Success=0/Fail=0 with no error and every row would be dropped silently.
+	// Fall back to a single worker: slower, but no row is ever lost.
+	if workers < 1 {
+		workers = 1
+	}
+
 	colIdx := map[string]int{}
 	for i, col := range header {
 		colName := strings.ToLower(strings.TrimSpace(col))
@@ -108,16 +116,20 @@ func processRowsWithHeader(rows [][]string, header []string, workers, buffer int
 	requiredCols := []ColumnName{GithubID, GithubUsername, PrivacyMode, Email}
 	for _, c := range requiredCols {
 		if _, ok := colIdx[strings.ToLower(c.String())]; !ok {
-			return ProcessResult{
-				Total: len(rows),
-				FailRecords: []FailRecord{
-					{
-						RecordNumber: 0,
-						Reason:       fmt.Sprintf("missing required column: %s", c.String()),
-						LastError:    "header missing required column",
-						ErrType:      ErrTypeValidation,
-					},
+			failRecords := []FailRecord{
+				{
+					RecordNumber: 0,
+					Reason:       fmt.Sprintf("missing required column: %s", c.String()),
+					LastError:    "header missing required column",
+					ErrType:      ErrTypeValidation,
 				},
+			}
+			// #352c: keep Fail in sync with FailRecords on every return path,
+			// exactly like the normal path below (Fail = len(FailRecords)).
+			return ProcessResult{
+				Total:       len(rows),
+				Fail:        len(failRecords),
+				FailRecords: failRecords,
 			}
 		}
 	}
@@ -132,18 +144,28 @@ func processRowsWithHeader(rows [][]string, header []string, workers, buffer int
 		go func() {
 			defer wg.Done()
 			for r := range rowChan {
-				if len(r.data) < len(header) {
+				// #352b: excelize drops trailing empty cells, so an XLSX row can
+				// be shorter than the header. Pad it with "" (lossless: trailing
+				// empties are exactly what was dropped). Only a row LONGER than
+				// the header carries data the header cannot name -> fail it.
+				data := r.data
+				if len(data) > len(header) {
 					failChan <- FailRecord{
 						RecordNumber: r.rowNumber,
-						Reason:       "row length less than header",
-						RawData:      cloneRow(r.data),
-						LastError:    "row too short",
+						Reason:       "row length more than header",
+						RawData:      cloneRow(data),
+						LastError:    "row too long",
 						ErrType:      ErrTypeValidation,
 					}
 					continue
 				}
+				if len(data) < len(header) {
+					padded := make([]string, len(header))
+					copy(padded, data)
+					data = padded
+				}
 
-				idStr := safeGet(r.data, colIdx[strings.ToLower(GithubID.String())])
+				idStr := cellValue(data, colIdx, strings.ToLower(GithubID.String()))
 				id, err := strconv.ParseInt(idStr, 10, 64)
 				if err != nil {
 					failChan <- FailRecord{
@@ -159,12 +181,12 @@ func processRowsWithHeader(rows [][]string, header []string, workers, buffer int
 				cr := ContributorRecord{
 					RowNumber:      r.rowNumber,
 					GithubID:       id,
-					GithubUsername: safeGet(r.data, colIdx[strings.ToLower(GithubUsername.String())]),
-					DisplayName:    safeGet(r.data, colIdx[strings.ToLower(DisplayName.String())]),
-					ProfileImage:   safeGet(r.data, colIdx[strings.ToLower(ProfileImage.String())]),
-					Bio:            safeGet(r.data, colIdx[strings.ToLower(Bio.String())]),
-					PrivacyMode:    safeGet(r.data, colIdx[strings.ToLower(PrivacyMode.String())]),
-					Email:          safeGet(r.data, colIdx[strings.ToLower(Email.String())]),
+					GithubUsername: cellValue(data, colIdx, strings.ToLower(GithubUsername.String())),
+					DisplayName:    cellValue(data, colIdx, strings.ToLower(DisplayName.String())),
+					ProfileImage:   cellValue(data, colIdx, strings.ToLower(ProfileImage.String())),
+					Bio:            cellValue(data, colIdx, strings.ToLower(Bio.String())),
+					PrivacyMode:    cellValue(data, colIdx, strings.ToLower(PrivacyMode.String())),
+					Email:          cellValue(data, colIdx, strings.ToLower(Email.String())),
 					CreatedAt:      time.Now(),
 				}
 
@@ -216,6 +238,18 @@ func safeGet(r []string, idx int) string {
 		return ""
 	}
 	return r[idx]
+}
+
+// cellValue returns the value of the named column in row, or "" when the
+// column is absent from the header. A missing colIdx key must not be confused
+// with index 0: the map zero value would otherwise read the first column
+// (github_id) into every absent optional field (#352a).
+func cellValue(row []string, colIdx map[string]int, name string) string {
+	idx, ok := colIdx[name]
+	if !ok {
+		return ""
+	}
+	return safeGet(row, idx)
 }
 
 func cloneRow(r []string) []string {

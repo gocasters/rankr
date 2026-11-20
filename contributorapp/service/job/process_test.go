@@ -100,12 +100,11 @@ func TestCSV_ValidFile_AllSuccess(t *testing.T) {
 	assert.Equal(t, "carol@example.com", r3.Email)
 }
 
-// C13 KNOWN BUG #352 (bugParserColumns): when an OPTIONAL column is absent from the
-// header, colIdx has no entry for it, the map lookup returns 0, and the field
-// receives the value of the FIRST column (github_id). Any file that omits
-// display_name/profile_image/bio (legal: only 4 columns are required) imports
-// every row with these fields corrupted. Expected: absent column => "".
-func TestKnownBug_CSV_MissingOptionalColumn_FallsBackToGithubID(t *testing.T) {
+// C13 (#352a): when an OPTIONAL column is absent from the header, the field
+// must be "" — a missing colIdx entry must not be confused with index 0, which
+// would leak the github_id value into display_name/profile_image/bio. Only the
+// 4 required columns are mandatory, so such a file is legal.
+func TestCSV_MissingOptionalColumn_MapsToEmpty(t *testing.T) {
 	f := writeTempCSV(t,
 		"github_id,github_username,privacy_mode,email\n"+
 			"12345,alice,real,a@b.com\n")
@@ -122,11 +121,9 @@ func TestKnownBug_CSV_MissingOptionalColumn_FallsBackToGithubID(t *testing.T) {
 	assert.Equal(t, "real", r.PrivacyMode)
 	assert.Equal(t, "a@b.com", r.Email)
 
-	knownBug(t, bugParserColumns, func(a *assert.Assertions) {
-		a.Empty(r.DisplayName, "absent display_name column must give \"\", not the github_id value")
-		a.Empty(r.ProfileImage, "absent profile_image column must give \"\", not the github_id value")
-		a.Empty(r.Bio, "absent bio column must give \"\", not the github_id value")
-	})
+	assert.Empty(t, r.DisplayName, "absent display_name column must give \"\", not the github_id value")
+	assert.Empty(t, r.ProfileImage, "absent profile_image column must give \"\", not the github_id value")
+	assert.Empty(t, r.Bio, "absent bio column must give \"\", not the github_id value")
 }
 
 // C2 (P1): header names are matched case-insensitively and trimmed of
@@ -152,8 +149,6 @@ func TestCSV_HeaderCaseAndWhitespaceInsensitive(t *testing.T) {
 // C3 (P0): removing any single required column aborts header validation with
 // exactly one FailRecord: RecordNumber=0 (file-level, not row-level), reason
 // "missing required column: X", ErrType=validation.
-// (The Fail counter on this path is a known bug — see
-// TestKnownBug_CSV_MissingRequiredColumn_FailCounter.)
 func TestCSV_MissingRequiredColumns(t *testing.T) {
 	required := []string{"github_id", "github_username", "privacy_mode", "email"}
 
@@ -202,10 +197,9 @@ func TestCSV_MissingRequiredColumns(t *testing.T) {
 	}
 }
 
-// KNOWN BUG #352 (bugParserColumns): the missing-required-column early return
-// leaves ProcessResult.Fail at 0 although FailRecords has one entry (the
-// normal path sets Fail = len(FailRecords)). Expected: the counters agree.
-func TestKnownBug_CSV_MissingRequiredColumn_FailCounter(t *testing.T) {
+// #352c: the missing-required-column early return must keep the counters in
+// agreement with the normal path: Fail == len(FailRecords).
+func TestCSV_MissingRequiredColumn_FailCounter(t *testing.T) {
 	f, err := os.Open(filepath.Join("testdata", "missing_col.csv"))
 	require.NoError(t, err)
 	defer func() { _ = f.Close() }()
@@ -214,9 +208,7 @@ func TestKnownBug_CSV_MissingRequiredColumn_FailCounter(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, res.FailRecords, 1)
 
-	knownBug(t, bugParserColumns, func(a *assert.Assertions) {
-		a.Equal(len(res.FailRecords), res.Fail, "ProcessResult.Fail must equal len(FailRecords)")
-	})
+	assert.Equal(t, len(res.FailRecords), res.Fail, "ProcessResult.Fail must equal len(FailRecords)")
 }
 
 // C3b (P0): the checked-in fixture missing github_id produces the same
@@ -429,11 +421,10 @@ func TestCSV_RowNumbers_MatchInput(t *testing.T) {
 	assert.Equal(t, map[int]bool{1: true, 3: true}, rowNumbers)
 }
 
-// KNOWN BUG #352 (bugParserColumns): excelize's Rows().Columns() drops trailing
-// empty cells, so an XLSX row whose LAST optional cells are empty is shorter
-// than the header and fails with "row length less than header". The same data
-// as CSV imports fine. Expected: trailing empty cells mean "" values.
-func TestKnownBug_XLSX_TrailingEmptyCells_RowRejected(t *testing.T) {
+// #352b: excelize's Rows().Columns() drops trailing empty cells, so an XLSX
+// row whose LAST optional cells are empty is shorter than the header. It must
+// be padded with "" and import like the CSV equivalent, not be rejected.
+func TestXLSX_TrailingEmptyCells_Imported(t *testing.T) {
 	x := excelize.NewFile()
 	sheet := x.GetSheetName(0)
 	require.NoError(t, x.SetSheetRow(sheet, "A1", &[]string{"github_id", "github_username", "privacy_mode", "email", "bio"}))
@@ -451,27 +442,54 @@ func TestKnownBug_XLSX_TrailingEmptyCells_RowRejected(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 2, res.Total)
 
-	knownBug(t, bugParserColumns, func(a *assert.Assertions) {
-		a.Equal(2, res.Success, "a row with an empty last cell must import like the CSV equivalent")
-		a.Empty(res.FailRecords, "no row may fail only because its trailing cells are empty")
-	})
+	assert.Equal(t, 2, res.Success, "a row with an empty last cell must import like the CSV equivalent")
+	assert.Empty(t, res.FailRecords, "no row may fail only because its trailing cells are empty")
 }
 
-// KNOWN BUG #352 (bugParserColumns): with workers <= 0 (e.g. process_count missing
-// from config) no worker reads the rows: Process returns Success=0, Fail=0,
-// no error, and the job ends "failed" with every row silently lost.
-// Expected: either an error, or every row accounted for.
-// (buffer >= rows here so the producer goroutine does not block forever.)
-func TestKnownBug_CSV_ZeroWorkers_DropsRowsSilently(t *testing.T) {
+// #352b (companion): only a row LONGER than the header is an error. excelize
+// returns more cells than the header when data extends past the last header
+// column; that row must fail on its own while the rest of the file imports.
+func TestXLSX_LongRow_FailsPerRow(t *testing.T) {
+	x := excelize.NewFile()
+	sheet := x.GetSheetName(0)
+	require.NoError(t, x.SetSheetRow(sheet, "A1", &[]string{"github_id", "github_username", "privacy_mode", "email"}))
+	require.NoError(t, x.SetSheetRow(sheet, "A2", &[]string{"101", "alice01", "real", "alice@example.com", "EXTRA"}))
+	require.NoError(t, x.SetSheetRow(sheet, "A3", &[]string{"102", "bob002", "real", "bob@example.com"}))
+	p := filepath.Join(t.TempDir(), "input.xlsx")
+	require.NoError(t, x.SaveAs(p))
+	require.NoError(t, x.Close())
+
+	f, err := os.Open(p)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = f.Close() })
+
+	res, err := XLSXProcess{workers: 2, buffer: 2}.Process(f)
+	require.NoError(t, err)
+	require.Equal(t, 2, res.Total)
+
+	require.Len(t, res.FailRecords, 1, "the over-long row must fail as its own record")
+	assert.Equal(t, 1, res.FailRecords[0].RecordNumber, "the over-long row is data row 1")
+	assert.Contains(t, res.FailRecords[0].Reason, "row length more than header")
+	assert.Equal(t, ErrTypeValidation, res.FailRecords[0].ErrType)
+	assert.Equal(t, 1, res.Success, "the well-formed row must still import")
+	assert.Equal(t, 1, res.Fail)
+}
+
+// #352d: with workers <= 0 (e.g. process_count missing from config) no worker
+// reads the rows: Process must not return Success=0/Fail=0 with no error and
+// drop every row. The issue allows either an error or a sane default; the
+// chosen fix falls back to a single worker, so a misconfigured import still
+// processes every row instead of losing data.
+func TestCSV_ZeroWorkers_FallsBackToSingleWorker(t *testing.T) {
 	f := writeTempCSV(t, fullHeader+
 		"101,alice01,Alice,,,real,alice@example.com\n"+
 		"102,bob002,Bob,,,real,bob@example.com\n")
 
 	res, err := newTestCSVProcess(0, 10).Process(f)
+	require.NoError(t, err, "workers=0 must fall back, not fail")
 
-	knownBug(t, bugParserColumns, func(a *assert.Assertions) {
-		if err == nil {
-			a.Equal(res.Total, res.Success+res.Fail, "every row must end up as success or fail, or Process must return an error")
-		}
-	})
+	assert.Equal(t, 2, res.Total)
+	assert.Equal(t, res.Total, res.Success+res.Fail, "every row must end up as success or fail")
+	assert.Equal(t, 2, res.Success, "both rows must import")
+	assert.Empty(t, res.FailRecords)
 }
