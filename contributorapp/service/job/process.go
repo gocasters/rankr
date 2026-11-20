@@ -1,7 +1,9 @@
 package job
 
 import (
+	"archive/zip"
 	"encoding/csv"
+	"encoding/xml"
 	"fmt"
 	"github.com/xuri/excelize/v2"
 	"io"
@@ -67,6 +69,14 @@ func (x XLSXProcess) Process(file *os.File) (ProcessResult, error) {
 	}
 	defer f.Close()
 
+	// excelize's row iterator reports no error when a worksheet's XML ends
+	// early, so a truncated sheet would import its partial last row (padding
+	// hides the missing cells) and silently drop the rest. Check the XML is
+	// well-formed ourselves before trusting the iterator.
+	if err := validateWorksheetXML(file); err != nil {
+		return ProcessResult{}, fmt.Errorf("failed read row: %w", err)
+	}
+
 	sheet := f.GetSheetName(0)
 	rowsIter, err := f.Rows(sheet)
 	if err != nil {
@@ -100,6 +110,48 @@ func (x XLSXProcess) Process(file *os.File) (ProcessResult, error) {
 	}
 
 	return processRowsWithHeader(rows, header, x.workers, x.buffer), nil
+}
+
+// validateWorksheetXML reports an error if any worksheet part of the XLSX
+// file is not well-formed XML (e.g. truncated). It uses ReadAt only, so the
+// file offset is left untouched.
+func validateWorksheetXML(file *os.File) error {
+	fi, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("stat xlsx: %w", err)
+	}
+	zr, err := zip.NewReader(file, fi.Size())
+	if err != nil {
+		return fmt.Errorf("open xlsx zip: %w", err)
+	}
+	for _, zf := range zr.File {
+		if !strings.HasPrefix(zf.Name, "xl/worksheets/") || !strings.HasSuffix(zf.Name, ".xml") {
+			continue
+		}
+		if err := checkWellFormedXML(zf); err != nil {
+			return fmt.Errorf("malformed worksheet %s: %w", zf.Name, err)
+		}
+	}
+	return nil
+}
+
+func checkWellFormedXML(zf *zip.File) error {
+	rc, err := zf.Open()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = rc.Close() }()
+	dec := xml.NewDecoder(rc)
+	for {
+		if _, err := dec.Token(); err != nil {
+			if err == io.EOF {
+				// Token returns a syntax error, not io.EOF, if any
+				// element is still open, so EOF here means well-formed.
+				return nil
+			}
+			return err
+		}
+	}
 }
 
 func processRowsWithHeader(rows [][]string, header []string, workers, buffer int) ProcessResult {

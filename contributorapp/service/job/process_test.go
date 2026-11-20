@@ -764,6 +764,16 @@ func TestXLSX_EarlyReturnPaths_FailCounter(t *testing.T) {
 // read (excelize surfaces it from Rows().Columns()).
 func writeCorruptSharedStringsXLSX(t *testing.T, rows [][]string) *os.File {
 	t.Helper()
+	return writeMutatedXLSX(t, rows, "xl/sharedStrings.xml", func(data []byte) []byte {
+		require.Greater(t, len(data), 10, "fixture must contain shared strings")
+		return data[:10]
+	})
+}
+
+// writeMutatedXLSX writes rows to an XLSX file, then rewrites the zip part
+// named entry through mutate (e.g. to truncate it).
+func writeMutatedXLSX(t *testing.T, rows [][]string, entry string, mutate func([]byte) []byte) *os.File {
+	t.Helper()
 	good := writeTempXLSX(t, rows)
 
 	in, err := os.Open(good.Name())
@@ -787,17 +797,16 @@ func writeCorruptSharedStringsXLSX(t *testing.T, rows [][]string) *os.File {
 		data, err := io.ReadAll(rc)
 		_ = rc.Close()
 		require.NoError(t, err)
-		if f.Name == "xl/sharedStrings.xml" {
+		if f.Name == entry {
 			found = true
-			require.Greater(t, len(data), 10, "fixture must contain shared strings")
-			data = data[:10]
+			data = mutate(data)
 		}
 		_, err = w.Write(data)
 		require.NoError(t, err)
 	}
 	require.NoError(t, zw.Close())
 	require.NoError(t, out.Close())
-	require.True(t, found, "fixture must contain xl/sharedStrings.xml")
+	require.True(t, found, "fixture must contain %s", entry)
 
 	f, err := os.Open(bad)
 	require.NoError(t, err)
@@ -818,6 +827,31 @@ func TestXLSX_CorruptFile_FailsWholeFile(t *testing.T) {
 
 	res, err := XLSXProcess{workers: 2, buffer: 2}.Process(f)
 	require.Error(t, err, "a decode failure must abort the file, not be swallowed")
+	assert.Contains(t, err.Error(), "failed read row")
+	assert.Equal(t, ProcessResult{}, res, "zero result on structural error")
+}
+
+// Review finding on #352: excelize's row iterator reports no error when the
+// worksheet XML ends early, so a sheet cut off right after the email cell of
+// row 2 used to import row 1 with an empty display_name (padding hid the
+// missing cell) and silently drop every later row. A malformed worksheet must
+// fail the whole file, like any other decode error.
+func TestXLSX_WorksheetTruncatedAfterEmail_FailsWholeFile(t *testing.T) {
+	f := writeMutatedXLSX(t, [][]string{
+		{"github_id", "github_username", "privacy_mode", "email", "display_name"},
+		{"101", "alice01", "real", "alice@example.com", "Alice A"},
+		{"102", "bob002", "real", "bob@example.com", "Bob B"},
+	}, "xl/worksheets/sheet1.xml", func(data []byte) []byte {
+		s := string(data)
+		i := strings.Index(s, `r="D2"`)
+		require.GreaterOrEqual(t, i, 0, "fixture must contain the email cell D2")
+		j := strings.Index(s[i:], "</c>")
+		require.GreaterOrEqual(t, j, 0, "email cell D2 must be closed")
+		return data[:i+j+len("</c>")]
+	})
+
+	res, err := XLSXProcess{workers: 2, buffer: 2}.Process(f)
+	require.Error(t, err, "a truncated worksheet must abort the file, not import partial rows")
 	assert.Contains(t, err.Error(), "failed read row")
 	assert.Equal(t, ProcessResult{}, res, "zero result on structural error")
 }
