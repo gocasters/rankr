@@ -86,7 +86,7 @@ func (suite *IntegrationTestSuite) SetupSuite() {
 
 func (suite *IntegrationTestSuite) setupPostgres() {
 	req := testcontainers.ContainerRequest{
-		Image:    "postgres:15-alpine",
+		Image:    "postgres:17.2-alpine",
 		Networks: []string{suite.networkName},
 		Hostname: "leaderboardscoring-db",
 		Env: map[string]string{
@@ -142,7 +142,7 @@ func (suite *IntegrationTestSuite) setupPostgres() {
 
 func (suite *IntegrationTestSuite) setupRedis() {
 	req := testcontainers.ContainerRequest{
-		Image:        "redis:7-alpine",
+		Image:        "redis:8.0-alpine",
 		Networks:     []string{suite.networkName},
 		Hostname:     "leaderboardscoring-redis",
 		ExposedPorts: []string{"6379/tcp"},

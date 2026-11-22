@@ -34,14 +34,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: buf setup version (buf-setup-action wants no leading v)
-        run: echo "BUF_SETUP_VERSION=${BUF_VERSION#v}" >> "$GITHUB_ENV"
-
-      - uses: bufbuild/buf-setup-action@v1.47.2
-        with:
-          version: ${{ env.BUF_SETUP_VERSION || '1.56.0' }}
+      - name: Setup Buf
+        uses: ./.github/actions/setup-buf
 
       - name: check protobuf for breaking changes
-        run: |
-          git branch -f "${{ github.base_ref }}" "origin/${{ github.base_ref }}"
-          make proto-breaking DEFAULT_BRANCH=${{ github.base_ref }}
+        run: make proto-breaking DEFAULT_BRANCH=${{ github.base_ref }}

@@ -5,6 +5,12 @@ on:
     branches: ["main"]
   pull_request:
     branches: ["main"]
+  
+env:
+  BUF_VERSION: ${{ vars.BUF_VERSION || 'v1.56.0' }}
+  GITLEAKS_VERSION: ${{ vars.GITLEAKS_VERSION || 'v8.30.1' }}
+  GOVULNCHECK_VERSION: ${{ vars.GOVULNCHECK_VERSION || 'v1.1.4' }}
+  GOLANGCI_LINT_VERSION: ${{ vars.GOLANGCI_LINT_VERSION || 'v2.4.0' }}
 
 jobs:
   build-test-lint:
@@ -18,8 +24,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25.x'
-          check-latest: true
+          go-version-file: go.mod
           cache: true
 
       - name: Go mod tidy & download
@@ -27,23 +32,23 @@ jobs:
           go mod tidy
           go mod download
 
-      - name: Lint
-        uses: golangci/golangci-lint-action@v8
+      - name: Setup Buf
+        uses: ./.github/actions/setup-buf
+
+      - uses: actions/cache@v6
+        id: cache-go-tools
         with:
-          version: v2.4.0
-          args: >
-            --timeout=5m
-#            --format=github-actions
+          path: ~/go/bin
+          key: ${{ runner.os }}-${{ env.GOLANGCI_LINT_VERSION }}-${{ env.GITLEAKS_VERSION }}-${{ env.GOVULNCHECK_VERSION }}
 
-      - name: Test
+      - name: Installing CI check dependencies
         run: |
-          go test ./... -v -coverprofile=coverage.out
+          command -v golangci-lint || make install-linter GOLANGCI_LINT_VERSION=${{ env.GOLANGCI_LINT_VERSION }}
+          command -v gitleaks || make install-gitleaks GITLEAKS_VERSION=${{ env.GITLEAKS_VERSION }}
+          command -v govulncheck || make install-govulncheck GOVULNCHECK_VERSION=${{ env.GOVULNCHECK_VERSION }}
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
-      - name: make check-all
-        run: make check-all
-          
-      - name: Build
-        run: go build -v ./...
-
-      - name: Build production Docker images
-        run: make docker-build-all-prod
+      - name: Running CI checks
+        env:
+          DEFAULT_BRANCH: ${{ github.event_name == 'pull_request' && github.base_ref || 'main' }}
+        run: make ci
