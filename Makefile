@@ -11,6 +11,8 @@ DEFAULT_AIR_VERSION ?= v1.66.1
 DEFAULT_BRANCH ?= main
 PROTOC_GEN_GO_VERSION ?= v1.34.2
 PROTOC_GEN_GO_GRPC_VERSION ?= v1.5.1
+GITLEAKS_VERSION ?= v8.30.1
+GOVULNCHECK_VERSION ?= v1.1.4
 # Keep in sync with the golangci-lint version in .github/workflows/ci.yml
 GOLANGCI_LINT_VERSION ?= v2.4.0
 DOCKER_COMPOSE ?= docker compose
@@ -30,7 +32,7 @@ export DEFAULT_GO_IMAGE_NAME DEFAULT_GO_IMAGE_VERSION DEFAULT_AIR_VERSION
 .PHONY: test build clean mod-tidy lint install-linter help
 
 # --- Agentic gate (see AGENTS.md) ---
-.PHONY: check check-all arch-lint
+.PHONY: check check-all arch-lint install-govulncheck install-gitleaks
 BASE ?= origin/main
 
 check: ## Gate for a change: gofmt, vet, race tests and build on packages changed vs $(BASE)
@@ -65,6 +67,13 @@ lint:
 
 install-linter:
 	go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+
+install-govulncheck:
+	go install golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION)
+
+install-gitleaks:
+	go install github.com/zricethezav/gitleaks/v8@$(GITLEAKS_VERSION)
+
 
 # ====================================================================================
 # Protobuf Commands
@@ -524,6 +533,8 @@ help:
 	@echo "    proto-format          - Format protobuf files"
 	@echo "    proto-deps            - Update protobuf dependencies"
 	@echo "    proto-validate        - Validate protobuf files"
+	@echo "    install-govulncheck   - Install govulncheck to GOPATH/bin"
+	@echo "    install-gitleaks      - Install gitleaks to GOPATH/bin"
 	@echo ""
 	@echo "  Build & Development:"
 	@echo "    build                 - Build all Go packages"
