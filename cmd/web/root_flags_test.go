@@ -1,13 +1,36 @@
 package main
 
 import (
+	"context"
+	"encoding/base64"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/gocasters/rankr/pkg/httpserver"
 )
 
+func clearWebTestEnvironment(t *testing.T) {
+	t.Helper()
+	for _, entry := range os.Environ() {
+		key, _, _ := strings.Cut(entry, "=")
+		if !strings.HasPrefix(key, "WEB__") {
+			continue
+		}
+		t.Setenv(key, "")
+		if err := os.Unsetenv(key); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 func TestServeWebFlags(t *testing.T) {
+	clearWebTestEnvironment(t)
+
 	// A bad port identifies server creation without opening a socket. A bad
 	// API URL identifies leaderboard client creation before server creation.
 	const config = `
@@ -75,7 +98,7 @@ leaderboard_api:
 				t.Setenv(key, value)
 			}
 
-			root := newRootCommand()
+			root := newRootCommand(serve)
 			root.SetArgs(append([]string{"serve"}, tt.args...))
 			root.SilenceUsage = true
 			root.SilenceErrors = true
@@ -89,6 +112,65 @@ leaderboard_api:
 			}
 			if err == nil || !strings.Contains(err.Error(), tt.want) {
 				t.Fatalf("expected error containing %q, got %v", tt.want, err)
+			}
+		})
+	}
+}
+
+func TestServeLeaderboardRoute(t *testing.T) {
+	clearWebTestEnvironment(t)
+
+	for _, tt := range []struct {
+		enabled    bool
+		wantStatus int
+	}{
+		{enabled: false, wantStatus: http.StatusNotFound},
+		{enabled: true, wantStatus: http.StatusOK},
+	} {
+		t.Run(fmt.Sprintf("enabled=%t", tt.enabled), func(t *testing.T) {
+			upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if !tt.enabled {
+					t.Error("disabled leaderboard reached the upstream API")
+				}
+				_, _ = fmt.Fprint(w, `{"project_id":"5001","rows":[{"rank":1,"user_id":101,"score":12}]}`)
+			}))
+			defer upstream.Close()
+
+			config := fmt.Sprintf(`
+http_server:
+  port: 8085
+web:
+  enabled: true
+  leaderboard: %t
+leaderboard_api:
+  base_url: %s
+  timeout: 1s
+`, tt.enabled, upstream.URL)
+			configPath := filepath.Join(t.TempDir(), "config.yml")
+			if err := os.WriteFile(configPath, []byte(config), 0600); err != nil {
+				t.Fatal(err)
+			}
+			t.Setenv("CONFIG_PATH", configPath)
+
+			response := httptest.NewRecorder()
+			root := newRootCommand(func(_ context.Context, server *httpserver.Server) error {
+				request := httptest.NewRequest(http.MethodGet, "/leaderboard?project_id=5001", nil)
+				if !tt.enabled {
+					// Pass the auth middleware so the test observes the missing route.
+					request.Header.Set("X-User-Info", base64.StdEncoding.EncodeToString([]byte(`{"id":42}`)))
+				}
+				server.GetRouter().ServeHTTP(response, request)
+				return nil
+			})
+			root.SetArgs([]string{"serve"})
+			if err := root.ExecuteContext(t.Context()); err != nil {
+				t.Fatal(err)
+			}
+			if response.Code != tt.wantStatus {
+				t.Fatalf("expected status %d, got %d with body %s", tt.wantStatus, response.Code, response.Body)
+			}
+			if tt.enabled && !strings.Contains(response.Body.String(), "<td>101</td>") {
+				t.Errorf("expected leaderboard row in response %s", response.Body)
 			}
 		})
 	}

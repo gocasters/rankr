@@ -1,16 +1,18 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/gocasters/rankr/adapter/leaderboardstat"
+	"github.com/gocasters/rankr/pkg/httpserver"
 	"github.com/gocasters/rankr/pkg/path"
 	"github.com/spf13/cobra"
 )
 
-func newRootCommand() *cobra.Command {
+func newRootCommand(startServer func(context.Context, *httpserver.Server) error) *cobra.Command {
 	root := &cobra.Command{
 		Use: "web",
 	}
@@ -90,7 +92,7 @@ func newRootCommand() *cobra.Command {
 				server.GetRouter(), client, leaderboardEnabled,
 			)
 
-			return serve(cmd.Context(), server)
+			return startServer(cmd.Context(), server)
 		},
 	})
 

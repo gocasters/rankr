@@ -20,7 +20,7 @@ func main() {
 	)
 	defer stop()
 
-	root := newRootCommand()
+	root := newRootCommand(serve)
 
 	if err := root.ExecuteContext(ctx); err != nil {
 		fmt.Fprintln(os.Stderr, err)

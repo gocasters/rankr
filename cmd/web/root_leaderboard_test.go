@@ -8,6 +8,8 @@ import (
 )
 
 func TestLeaderboardCommandRejectsInvalidAPIURL(t *testing.T) {
+	clearWebTestEnvironment(t)
+
 	configPath := filepath.Join(t.TempDir(), "config.yml")
 	content := []byte(`
 http_server:
@@ -23,7 +25,7 @@ leaderboard_api:
 	}
 	t.Setenv("CONFIG_PATH", configPath)
 
-	root := newRootCommand()
+	root := newRootCommand(serve)
 	root.SetArgs([]string{"serve", "--leaderboard"})
 	root.SilenceUsage = true
 	root.SilenceErrors = true
