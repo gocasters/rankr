@@ -220,6 +220,27 @@ Stage shares a small host with other projects, so the stack is capped:
 | each service | 256 MB |
 | gateway | 64 MB |
 
+### JetStream stream limits
+
+| Environment | Webhook `EVENTS_STREAM` (disk) | `leaderboardscoring_processed_events` (memory) |
+|---|---:|---:|
+| Local (`config.local.yml`) | 64 MiB | 100 MiB |
+| Development | 64 MiB | 1 GiB |
+| Stage | 256 MiB | 128 MiB |
+| Production defaults | 1 GiB | 1 GiB |
+
+The webhook reads its stream limit from `nats.stream.max_bytes`, in bytes.
+Stage loads the production YAML and overrides this value with
+`WEBHOOK_NATS__STREAM__MAX_BYTES=268435456`.
+
+The stage NATS server also enforces a shared `max_file_store` of `2GB`.
+The 256 MiB webhook limit is part of that shared disk budget.
+
+Before lowering the webhook limit on an existing stream, pause publishers
+and check the stored byte count with `nats stream info EVENTS_STREAM`.
+If the stream already contains more bytes than the requested limit, webhook
+startup fails and the existing stream configuration is preserved.
+
 ## Known gaps
 
 - `GET /v1/leaderboard/public/:project_id` passes the gateway without a token
