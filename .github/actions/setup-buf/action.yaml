@@ -1,0 +1,17 @@
+name: Setup Buf
+description: Strip leading v from job env BUF_VERSION and install the Buf CLI.
+
+runs:
+  using: composite
+  steps:
+    - name: Buf setup version (buf-setup-action wants no leading v)
+      shell: bash
+      run: |
+        ver="${BUF_VERSION:-v1.56.0}"
+        echo "BUF_VERSION=${ver#v}" >> "$GITHUB_ENV"
+
+    - name: Install Buf
+      uses: bufbuild/buf-setup-action@v1.47.2
+      with:
+        version: ${{ env.BUF_VERSION }}
+        github_token: ${{ github.token }}

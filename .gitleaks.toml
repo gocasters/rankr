@@ -1,0 +1,17 @@
+
+# Inherit all default Gitleaks rules
+[extend]
+useDefault = true
+
+
+# Ignore false positives, test files, or rotated secrets
+[[allowlists]]
+description = "Ignore documentation, tests, and example env files"
+paths = [
+    '''docs/.*''',
+    '''doc/.*''',
+    '''(^|/).*_test\.go$''',
+    '''\.env\.example''',
+    '''development/.*''',
+    '''example/.*''',
+]
