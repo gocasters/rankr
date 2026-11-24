@@ -38,6 +38,7 @@ type NATSConfig struct {
 	Stream               struct {
 		Name     string   `koanf:"name"`
 		Subjects []string `koanf:"subjects"`
+		MaxBytes int64    `koanf:"max_bytes"`
 	} `koanf:"stream"`
 }
 

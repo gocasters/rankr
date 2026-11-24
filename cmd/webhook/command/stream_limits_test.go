@@ -5,6 +5,9 @@ import (
 	"testing"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/gocasters/rankr/pkg/config"
+	"github.com/gocasters/rankr/webhookapp"
 )
 
 func TestStageWebhookStreamLimit(t *testing.T) {
@@ -31,5 +34,23 @@ func TestStageWebhookStreamLimit(t *testing.T) {
 	}
 	if got != want {
 		t.Fatalf("%s = %q, want %q", key, got, want)
+	}
+}
+
+func TestWebhookLoadsStreamLimitFromEnv(t *testing.T) {
+	t.Setenv("WEBHOOK_NATS__STREAM__MAX_BYTES", "268435456")
+
+	var cfg webhookapp.Config
+	err := config.Load(config.Options{
+		Prefix:       "WEBHOOK_",
+		YamlFilePath: "../../../deploy/webhook/production/config.yml",
+	}, &cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	const want int64 = 256 * 1024 * 1024
+	if got := cfg.NATSConfig.Stream.MaxBytes; got != want {
+		t.Fatalf("stream MaxBytes = %d, want %d", got, want)
 	}
 }

@@ -23,6 +23,7 @@ nats:
     subjects:
       - "github.*"
       - "rankr_raw_events"
+    max_bytes: 67108864
 postgres_db:
   host: "shared-postgres"
   port: 5432

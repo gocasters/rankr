@@ -2,6 +2,11 @@ package command
 
 import (
 	"context"
+	"log"
+	"log/slog"
+	"os"
+	"path/filepath"
+
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill-nats/v2/pkg/nats"
 	"github.com/gocasters/rankr/adapter/redis"
@@ -13,10 +18,6 @@ import (
 	"github.com/gocasters/rankr/webhookapp"
 	nc "github.com/nats-io/nats.go"
 	"github.com/spf13/cobra"
-	"log"
-	"log/slog"
-	"os"
-	"path/filepath"
 )
 
 var migrateUp bool
@@ -159,17 +160,12 @@ func serve() {
 			panic(jsErr)
 		}
 
-		_, siErr := js.StreamInfo(cfg.NATSConfig.Stream.Name)
-		if siErr != nil {
-			_, saErr := js.AddStream(&nc.StreamConfig{
-				Name:     cfg.NATSConfig.Stream.Name,
-				Subjects: cfg.NATSConfig.Stream.Subjects, // adjust to your domain naming
-				Storage:  nc.FileStorage,                 // persist on disk
-			})
-			if saErr != nil {
-				lbLogger.Error("Failed to create JetStream stream: ", slog.String("error", saErr.Error()))
-				panic(saErr)
-			}
+		if err := ensureWebhookStream(js, cfg.NATSConfig); err != nil {
+			lbLogger.Error("Failed to configure webhook stream",
+				"stream", cfg.NATSConfig.Stream.Name,
+				"error", err,
+			)
+			panic(err)
 		}
 	}
 
