@@ -264,14 +264,14 @@ func TestReplayStoreErrorIsNackedAndNotScored(t *testing.T) {
 	require.Empty(t, p.leaderboard.scores)
 }
 
-func TestReplayLockedEventIsAckedAndNotScored(t *testing.T) {
+func TestReplayLockedEventIsNackedAndNotScored(t *testing.T) {
 	p := newPipeline()
 	ev := loadEvents(t)[0]
 	p.store.values[p.handler.idempotencyChecker.lockKey(ev.id)] = "other-worker"
 
 	err := p.handler.HandleEvent(message.NewMessage(ev.id, ev.payload))
 
-	require.NoError(t, err)
+	require.ErrorIs(t, err, ErrEventLocked)
 	require.Empty(t, p.publisher.messages)
 	require.Empty(t, p.leaderboard.scores)
 }
