@@ -1,16 +1,18 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/gocasters/rankr/adapter/leaderboardstat"
+	"github.com/gocasters/rankr/pkg/httpserver"
 	"github.com/gocasters/rankr/pkg/path"
 	"github.com/spf13/cobra"
 )
 
-func newRootCommand() *cobra.Command {
+func newRootCommand(startServer func(context.Context, *httpserver.Server) error) *cobra.Command {
 	root := &cobra.Command{
 		Use: "web",
 	}
@@ -18,7 +20,7 @@ func newRootCommand() *cobra.Command {
 	preview := root.PersistentFlags().Bool(
 		"preview", false, "Enable a local preview with sample data",
 	)
-	leaderboardEnabled := root.PersistentFlags().Bool(
+	leaderboard := root.PersistentFlags().Bool(
 		"leaderboard", false, "Enable the API-backed leaderboard page",
 	)
 
@@ -45,6 +47,20 @@ func newRootCommand() *cobra.Command {
 				return err
 			}
 
+			// The CLI switches still opt into local use when web.enabled is unset.
+			webEnabled := *preview || *leaderboard
+			if cfg.Web.Enabled != nil {
+				webEnabled = *cfg.Web.Enabled
+			}
+			if !webEnabled {
+				return nil
+			}
+
+			leaderboardEnabled := cfg.Web.Leaderboard
+			if cmd.Flags().Changed("leaderboard") {
+				leaderboardEnabled = *leaderboard
+			}
+
 			if *preview {
 				cfg.HTTPServer.PublicPaths = append(
 					cfg.HTTPServer.PublicPaths, "/preview",
@@ -52,7 +68,7 @@ func newRootCommand() *cobra.Command {
 			}
 
 			var client *leaderboardstat.HTTPClient
-			if *leaderboardEnabled {
+			if leaderboardEnabled {
 				client, err = leaderboardstat.NewHTTPClient(
 					cfg.LeaderboardAPI.BaseURL,
 					cfg.LeaderboardAPI.Timeout,
@@ -73,10 +89,10 @@ func newRootCommand() *cobra.Command {
 
 			registerLeaderboardPreview(server.GetRouter(), *preview)
 			registerLeaderboard(
-				server.GetRouter(), client, *leaderboardEnabled,
+				server.GetRouter(), client, leaderboardEnabled,
 			)
 
-			return serve(cmd.Context(), server)
+			return startServer(cmd.Context(), server)
 		},
 	})
 

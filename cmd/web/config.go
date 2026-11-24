@@ -11,6 +11,11 @@ import (
 type Config struct {
 	HTTPServer httpserver.Config `koanf:"http_server"`
 
+	Web struct {
+		Enabled     *bool `koanf:"enabled"`
+		Leaderboard bool  `koanf:"leaderboard"`
+	} `koanf:"web"`
+
 	LeaderboardAPI struct {
 		BaseURL string        `koanf:"base_url"`
 		Timeout time.Duration `koanf:"timeout"`

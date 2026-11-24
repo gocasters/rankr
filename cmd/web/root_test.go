@@ -11,7 +11,7 @@ func TestServeReturnsMissingConfigError(t *testing.T) {
 	configPath := filepath.Join(t.TempDir(), "missing.yml")
 	t.Setenv("CONFIG_PATH", configPath)
 
-	root := newRootCommand()
+	root := newRootCommand(serve)
 	root.SetArgs([]string{"serve"})
 	root.SilenceUsage = true
 	root.SilenceErrors = true
