@@ -1,0 +1,26 @@
+{
+  "score_events": [
+    {
+      "event_id": "evt-0006",
+      "event_name": "pull_request_closed",
+      "user_id": "2001",
+      "score": 10
+    },
+    {
+      "event_id": "evt-0006",
+      "event_name": "pull_request_closed",
+      "user_id": "2002",
+      "score": 3
+    }
+  ],
+  "all_time_leaderboard": {
+    "leaderboard:1000001:all_time": {
+      "2001": 10,
+      "2002": 3
+    },
+    "leaderboard:global:all_time": {
+      "2001": 10,
+      "2002": 3
+    }
+  }
+}
