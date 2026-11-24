@@ -28,6 +28,29 @@ func NewEventRequest() *EventRequest {
 	return &EventRequest{}
 }
 
+// Subject reports what the scored event is about: a pull request, an issue, or
+// a push, together with that pull request or issue number when it has one.
+func (er *EventRequest) Subject() (string, int32) {
+	switch payload := er.Payload.(type) {
+	case PullRequestOpenedPayload:
+		return SubjectTypePullRequest, payload.PrNumber
+	case PullRequestClosedPayload:
+		return SubjectTypePullRequest, payload.PrNumber
+	case PullRequestReviewPayload:
+		return SubjectTypePullRequest, payload.PrNumber
+	case IssueOpenedPayload:
+		return SubjectTypeIssue, payload.IssueNumber
+	case IssueClosedPayload:
+		return SubjectTypeIssue, payload.IssueNumber
+	case IssueCommentedPayload:
+		return SubjectTypeIssue, payload.IssueNumber
+	case PushPayload:
+		return SubjectTypePush, 0
+	default:
+		return "", 0
+	}
+}
+
 func (er *EventRequest) String() string {
 	data, _ := json.MarshalIndent(er, "", " ")
 	return string(data)

@@ -124,11 +124,32 @@ type LeaderboardQueryResult struct {
 }
 
 type ProcessedScoreEvent struct {
-	ID        int64     `json:"id"`
-	UserID    string    `json:"user_id"`
-	EventName EventName `json:"event_name"`
-	Score     int64     `json:"score"`
-	Timestamp time.Time `json:"timestamp"`
+	ID             int64     `json:"id"`
+	UserID         string    `json:"user_id"`
+	EventName      EventName `json:"event_name"`
+	Score          int64     `json:"score"`
+	Timestamp      time.Time `json:"timestamp"`
+	RepositoryID   uint64    `json:"repository_id,omitempty"`
+	RepositoryName string    `json:"repository_name,omitempty"`
+	SubjectType    string    `json:"subject_type,omitempty"`
+	SubjectNumber  int32     `json:"subject_number,omitempty"`
+}
+
+// Scored-event subjects, as shown in a contributor's activity feed.
+const (
+	SubjectTypePullRequest = "pull_request"
+	SubjectTypeIssue       = "issue"
+	SubjectTypePush        = "push"
+)
+
+// ContributorActivity is one scored event in a contributor's activity feed.
+type ContributorActivity struct {
+	Type           EventName `json:"type"`
+	RepositoryName string    `json:"repository"`
+	SubjectType    string    `json:"subject_type,omitempty"`
+	SubjectNumber  int32     `json:"subject_number,omitempty"`
+	Points         int64     `json:"points"`
+	OccurredAt     time.Time `json:"time"`
 }
 
 type SnapshotRow struct {

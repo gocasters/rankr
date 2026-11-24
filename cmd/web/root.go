@@ -21,6 +21,9 @@ func newRootCommand() *cobra.Command {
 	leaderboardEnabled := root.PersistentFlags().Bool(
 		"leaderboard", false, "Enable the API-backed leaderboard page",
 	)
+	profileActivityEnabled := root.PersistentFlags().Bool(
+		"profile-activity", false, "Enable the contributor profile activity feed",
+	)
 
 	root.AddCommand(&cobra.Command{
 		Use:   "serve",
@@ -66,6 +69,21 @@ func newRootCommand() *cobra.Command {
 				)
 			}
 
+			var activityAPIClient *activityClient
+			if *profileActivityEnabled {
+				activityAPIClient, err = newActivityClient(
+					cfg.ActivityAPI.BaseURL,
+					cfg.ActivityAPI.Timeout,
+				)
+				if err != nil {
+					return fmt.Errorf("web: create activity client: %w", err)
+				}
+
+				cfg.HTTPServer.PublicPaths = append(
+					cfg.HTTPServer.PublicPaths, "/profile",
+				)
+			}
+
 			server, err := newServer(cfg.HTTPServer)
 			if err != nil {
 				return err
@@ -74,6 +92,9 @@ func newRootCommand() *cobra.Command {
 			registerLeaderboardPreview(server.GetRouter(), *preview)
 			registerLeaderboard(
 				server.GetRouter(), client, *leaderboardEnabled,
+			)
+			registerActivity(
+				server.GetRouter(), activityAPIClient, *profileActivityEnabled,
 			)
 
 			return serve(cmd.Context(), server)
