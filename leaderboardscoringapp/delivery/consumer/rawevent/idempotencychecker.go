@@ -14,7 +14,7 @@ import (
 
 type Config struct {
 	ProcessedKeyTTL time.Duration `koanf:"processed_key_ttl"` // 24 * time.Hour
-	LockKeyTTL      time.Duration `koanf:"lock_key_ttl"`      // 5 * time.Minute
+	LockKeyTTL      time.Duration `koanf:"lock_key_ttl"`      // 30 * time.Second
 
 	PrefixProcessedKey string `koanf:"prefix_processed_key"` // processed_events
 	PrefixLockKey      string `koanf:"prefix_lock_key"`      // lock
